@@ -28,3 +28,11 @@ func Error(c *gin.Context, message string) {
 		Data:    nil,
 	})
 }
+
+func ErrorAuth(c *gin.Context, message string) {
+	c.JSON(http.StatusUnauthorized, ApiResponse{
+		Code:    1,
+		Message: message,
+		Data:    nil,
+	})
+}

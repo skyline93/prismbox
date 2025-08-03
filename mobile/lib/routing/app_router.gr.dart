@@ -11,7 +11,7 @@ part of 'app_router.dart';
 
 abstract class _$AppRouter extends RootStackRouter {
   // ignore: unused_element
-  _$AppRouter();
+  _$AppRouter({super.navigatorKey});
 
   @override
   final Map<String, PageFactory> pagesMap = {
@@ -21,10 +21,22 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AlbumPage(),
       );
     },
+    HomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const HomePage(),
+      );
+    },
     LibraryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const LibraryPage(),
+      );
+    },
+    LoginRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const LoginPage(),
       );
     },
     MediaRoute.name: (routeData) {
@@ -58,9 +70,26 @@ abstract class _$AppRouter extends RootStackRouter {
 /// [AlbumPage]
 class AlbumRoute extends PageRouteInfo<void> {
   const AlbumRoute({List<PageRouteInfo>? children})
-    : super(AlbumRoute.name, initialChildren: children);
+      : super(
+          AlbumRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'AlbumRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [HomePage]
+class HomeRoute extends PageRouteInfo<void> {
+  const HomeRoute({List<PageRouteInfo>? children})
+      : super(
+          HomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'HomeRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -69,9 +98,26 @@ class AlbumRoute extends PageRouteInfo<void> {
 /// [LibraryPage]
 class LibraryRoute extends PageRouteInfo<void> {
   const LibraryRoute({List<PageRouteInfo>? children})
-    : super(LibraryRoute.name, initialChildren: children);
+      : super(
+          LibraryRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'LibraryRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [LoginPage]
+class LoginRoute extends PageRouteInfo<void> {
+  const LoginRoute({List<PageRouteInfo>? children})
+      : super(
+          LoginRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'LoginRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -80,7 +126,10 @@ class LibraryRoute extends PageRouteInfo<void> {
 /// [MediaPage]
 class MediaRoute extends PageRouteInfo<void> {
   const MediaRoute({List<PageRouteInfo>? children})
-    : super(MediaRoute.name, initialChildren: children);
+      : super(
+          MediaRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MediaRoute';
 
@@ -91,7 +140,10 @@ class MediaRoute extends PageRouteInfo<void> {
 /// [NavigationPage]
 class NavigationRoute extends PageRouteInfo<void> {
   const NavigationRoute({List<PageRouteInfo>? children})
-    : super(NavigationRoute.name, initialChildren: children);
+      : super(
+          NavigationRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'NavigationRoute';
 
@@ -102,7 +154,10 @@ class NavigationRoute extends PageRouteInfo<void> {
 /// [ServerConfigPage]
 class ServerConfigRoute extends PageRouteInfo<void> {
   const ServerConfigRoute({List<PageRouteInfo>? children})
-    : super(ServerConfigRoute.name, initialChildren: children);
+      : super(
+          ServerConfigRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'ServerConfigRoute';
 
@@ -113,7 +168,10 @@ class ServerConfigRoute extends PageRouteInfo<void> {
 /// [SplashPage]
 class SplashRoute extends PageRouteInfo<void> {
   const SplashRoute({List<PageRouteInfo>? children})
-    : super(SplashRoute.name, initialChildren: children);
+      : super(
+          SplashRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'SplashRoute';
 

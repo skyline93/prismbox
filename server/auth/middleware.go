@@ -13,14 +13,14 @@ func Middleware(secretKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			core.Error(c, "Authorization header is required")
+			core.ErrorAuth(c, "Authorization header is required")
 			c.Abort()
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			core.Error(c, "Authorization header format must be Bearer {token}")
+			core.ErrorAuth(c, "Authorization header format must be Bearer {token}")
 			c.Abort()
 			return
 		}
@@ -28,7 +28,7 @@ func Middleware(secretKey []byte) gin.HandlerFunc {
 		tokenString := parts[1]
 		userID, err := ValidateToken(tokenString, secretKey)
 		if err != nil {
-			core.Error(c, "Invalid or expired token")
+			core.ErrorAuth(c, "Invalid or expired token")
 			c.Abort()
 			return
 		}
@@ -64,7 +64,7 @@ func FlexibleAuthMiddleware(secretKey []byte, signer *urlsigner.Signer) gin.Hand
 		}
 
 		// 3. 所有认证方式都失败
-		core.Error(c, "Authentication required")
+		core.ErrorAuth(c, "Authentication required")
 		c.Abort()
 	}
 }

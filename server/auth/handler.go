@@ -108,30 +108,30 @@ func (h *AuthHandler) Register(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var input UserLoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		core.Error(c, "Invalid input: "+err.Error())
+		core.ErrorAuth(c, "Invalid input: "+err.Error())
 		return
 	}
 
 	var user models.User
 	if err := h.DB.Where("username = ?", input.Username).First(&user).Error; err != nil {
-		core.Error(c, "Invalid username or password")
+		core.ErrorAuth(c, "Invalid username or password")
 		return
 	}
 
 	if !CheckPasswordHash(input.Password, user.Password) {
-		core.Error(c, "Invalid username or password")
+		core.ErrorAuth(c, "Invalid username or password")
 		return
 	}
 
 	accessToken, err := GenerateAccessToken(user.ID, h.JWTSecret, h.AccessTokenExpiresIn)
 	if err != nil {
-		core.Error(c, "Failed to generate access token")
+		core.ErrorAuth(c, "Failed to generate access token")
 		return
 	}
 
 	refreshToken, err := GenerateRefreshToken(user.ID, h.JWTSecret, h.RefreshTokenExpiresIn)
 	if err != nil {
-		core.Error(c, "Failed to generate refresh token")
+		core.ErrorAuth(c, "Failed to generate refresh token")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		ExpiresAt: time.Now().Add(time.Hour * 24 * 30),
 	}
 	if err := h.DB.Create(&rtRecord).Error; err != nil {
-		core.Error(c, "Failed to save refresh token")
+		core.ErrorAuth(c, "Failed to save refresh token")
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var input RefreshTokenInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		core.Error(c, "Invalid input: "+err.Error())
+		core.ErrorAuth(c, "Invalid input: "+err.Error())
 		return
 	}
 
@@ -175,18 +175,18 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 			core.Error(c, "Invalid or revoked refresh token")
 			return
 		}
-		core.Error(c, "Database error")
+		core.ErrorAuth(c, "Database error")
 		return
 	}
 
 	if time.Now().After(refreshTokenRecord.ExpiresAt) {
-		core.Error(c, "Refresh token is expired")
+		core.ErrorAuth(c, "Refresh token is expired")
 		return
 	}
 
 	newAccessToken, err := GenerateAccessToken(refreshTokenRecord.UserID, h.JWTSecret, h.AccessTokenExpiresIn)
 	if err != nil {
-		core.Error(c, "Failed to generate new access token")
+		core.ErrorAuth(c, "Failed to generate new access token")
 		return
 	}
 
