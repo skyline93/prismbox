@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// 2. 连接数据库并迁移
-	db, err := database.ConnectAndMigrate(cfg.DatabaseURL)
+	db, err := database.ConnectAndMigrate(&cfg.DB)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

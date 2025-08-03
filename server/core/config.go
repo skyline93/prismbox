@@ -7,6 +7,18 @@ import (
 	"time"
 )
 
+type DBConfig struct {
+	Type       string
+	SQLitePath string
+	Host       string
+	User       string
+	Password   string
+	DBName     string
+	Port       string
+	SSLMode    string
+	TimeZone   string
+}
+
 type Config struct {
 	JWTSecret             []byte
 	URLSignerSecret       []byte
@@ -15,37 +27,40 @@ type Config struct {
 	PublicBaseURL         string
 	SignedURLLoadTTL      time.Duration
 
-	DatabaseURL   string
+	DB            DBConfig
 	ServerAddress string
 	UploadDir     string
 }
 
 func LoadConfig() (*Config, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "qwertyuiop"
-		// return nil, errors.New("JWT_SECRET environment variable not set")
-	}
+	secret := getEnv("JWT_SECRET", "qwertyuiop")
+	urlSignerSecret := getEnv("URL_SIGNER_SECRET", "qazwsxedc")
+	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://localhost:8080")
 
-	urlSignerSecret := os.Getenv("URL_SIGNER_SECRET")
-	if urlSignerSecret == "" {
-		urlSignerSecret = "qazwsxedc"
-		// return nil, errors.New("URL_SIGNER_SECRET environment variable not set")
-	}
-
-	publicBaseURL := os.Getenv("PUBLIC_BASE_URL")
-	if publicBaseURL == "" {
-		// 在开发环境中可以提供一个默认值
-		publicBaseURL = "http://localhost:8080"
-	}
-
-	ttlStr := os.Getenv("SIGNED_URL_LOAD_TTL")
-	if ttlStr == "" {
-		ttlStr = "1m" // 提供一个合理的默认值：1分钟
-	}
+	ttlStr := getEnv("SIGNED_URL_LOAD_TTL", "1m")
 	signedURLLoadTTL, err := time.ParseDuration(ttlStr)
 	if err != nil {
 		return nil, errors.New("invalid SIGNED_URL_LOAD_TTL format: " + err.Error())
+	}
+
+	dbType := getEnv("DB_TYPE", "sqlite")
+
+	var dbConfig DBConfig
+	if dbType == "postgres" {
+		dbConfig = DBConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			User:     getEnv("DB_USER", "postgres"),
+			Password: getEnv("DB_PASSWORD", "password"),
+			DBName:   getEnv("DB_NAME", "photo_app_db"),
+			Port:     getEnv("DB_PORT", "5432"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+			TimeZone: getEnv("DB_TIMEZONE", "Asia/Shanghai"),
+		}
+	} else {
+		dbConfig = DBConfig{
+			Type:       "sqlite",
+			SQLitePath: getEnv("DB_SQLITE_PATH", "server.db"),
+		}
 	}
 
 	return &Config{
@@ -55,8 +70,15 @@ func LoadConfig() (*Config, error) {
 		RefreshTokenExpiresIn: time.Hour * 24 * 30,
 		PublicBaseURL:         publicBaseURL,
 		SignedURLLoadTTL:      signedURLLoadTTL,
-		DatabaseURL:           "server.db",
+		DB:                    dbConfig,
 		ServerAddress:         "0.0.0.0:8080",
 		UploadDir:             "uploads",
 	}, nil
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }

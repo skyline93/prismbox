@@ -1,44 +1,65 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"server/core"
 	"server/models"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 // ConnectAndMigrate 负责连接到数据库并执行自动迁移。
-// 它接收数据库文件的路径作为参数。
-// 它会确保所有在 models 包中定义的表都已创建或更新。
-func ConnectAndMigrate(databaseURL string) (*gorm.DB, error) {
-	// 配置GORM的日志记录器，可以设置为 Silent, Error, Warn, Info
-	// 这里使用 Info 级别，可以看到所有执行的SQL语句，便于调试
+// 它现在是一个工厂函数，根据配置动态选择数据库。
+func ConnectAndMigrate(cfg *core.DBConfig) (*gorm.DB, error) {
+	var dialector gorm.Dialector
+	dbType := cfg.Type
+
+	log.Printf("Attempting to connect to database of type: %s", dbType)
+
+	if dbType == "postgres" {
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
+			cfg.Host,
+			cfg.User,
+			cfg.Password,
+			cfg.DBName,
+			cfg.Port,
+			cfg.SSLMode,
+			cfg.TimeZone,
+		)
+		dialector = postgres.Open(dsn)
+	} else if dbType == "sqlite" {
+		dialector = sqlite.Open(cfg.SQLitePath)
+	} else {
+		return nil, fmt.Errorf("unsupported database type: %s", dbType)
+	}
+
+	// 配置GORM的日志记录器
 	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
-			// SlowThreshold: logger.DefaultSlowThreshold, // 慢 SQL 阈值
-			LogLevel: logger.Info, // 日志级别
-			Colorful: true,        // 启用彩色打印
+			LogLevel: logger.Info,
+			Colorful: true,
 		},
 	)
 
-	// 连接到SQLite数据库
-	db, err := gorm.Open(sqlite.Open(databaseURL), &gorm.Config{
+	// 使用选择好的Dialector进行连接
+	db, err := gorm.Open(dialector, &gorm.Config{
 		Logger: newLogger,
 	})
 
 	if err != nil {
-		log.Printf("Failed to connect to database: %v", err)
+		log.Printf("Failed to connect to %s database: %v", dbType, err)
 		return nil, err
 	}
 
-	log.Println("Database connection established successfully.")
+	log.Printf("%s database connection established successfully.", dbType)
 
-	// 自动迁移，GORM会检查模型与数据库表的差异，并进行更新
-	// 这对于开发非常方便
+	// 自动迁移逻辑保持不变，GORM会处理SQL方言的差异
 	log.Println("Running auto migration...")
 	err = db.AutoMigrate(
 		&models.User{},
