@@ -10,7 +10,10 @@ class MediaPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('所有照片')),
-      body: Center(child: Text("照片页面待开发")),
+      body: RefreshIndicator(
+        child: Center(child: Text("照片页面待开发")),
+        onRefresh: () async => {print("下拉刷新")},
+      ),
     );
   }
 }

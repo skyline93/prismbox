@@ -4,6 +4,7 @@ import 'package:mobile/ui/main/page/main_navigation_page.dart';
 import 'package:mobile/ui/media/page/media_page.dart';
 import 'package:mobile/ui/album/page/album_page.dart';
 import 'package:mobile/ui/library/page/library_page.dart';
+import 'package:mobile/ui/library/page/server_config_page.dart';
 
 part 'app_router.gr.dart';
 
@@ -16,5 +17,6 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: MediaRoute.page, path: "/media"),
     AutoRoute(page: AlbumRoute.page, path: "/album"),
     AutoRoute(page: LibraryRoute.page, path: "/library"),
+    AutoRoute(page: ServerConfigRoute.page, path: "/server_config"),
   ];
 }
