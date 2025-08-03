@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"server/constant"
@@ -13,8 +12,8 @@ import (
 	"server/processing"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +27,21 @@ type PhotoHandler struct {
 	UploadDir string
 }
 
-// Upload 处理单个媒体文件的上传请求
+// Upload godoc
+// @Summary      上传单个媒体文件
+// @Description  通过 multipart/form-data 上传照片或视频。服务器会先进行秒传检查。
+// @Tags         Photos
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file formData file true "媒体文件本身"
+// @Param        hash formData string true "文件的SHA256哈希值"
+// @Param        item_type formData string true "媒体类型 (IMAGE 或 VIDEO)" Enums(IMAGE, VIDEO)
+// @Param        original_filename formData string false "文件的原始名称"
+// @Success      201  {object}  core.ApiResponse{data=models.Photo} "上传成功，后台处理开始"
+// @Success      200  {object}  core.ApiResponse{data=models.Photo} "文件已存在（秒传成功）"
+// @Failure      400  {object}  core.ApiResponse "请求参数错误、文件上传失败或服务器内部错误"
+// @Security     BearerAuth
+// @Router       /photos/upload [post]
 func (h *PhotoHandler) Upload(c *gin.Context) {
 	// 从认证中间件获取用户ID
 	userID := c.MustGet("userID").(uint)
@@ -40,16 +53,16 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 
 	// 校验必要参数
 	if hash == "" {
-		core.Error(c, http.StatusBadRequest, "Form field 'hash' is required")
+		core.Error(c, "Form field 'hash' is required")
 		return
 	}
 	if itemTypeStr == "" {
-		core.Error(c, http.StatusBadRequest, "Form field 'item_type' is required")
+		core.Error(c, "Form field 'item_type' is required")
 		return
 	}
 	itemType := constant.MediaType(itemTypeStr)
 	if itemType != constant.TypeImage && itemType != constant.TypeVideo {
-		core.Error(c, http.StatusBadRequest, "Invalid 'item_type'. Must be 'IMAGE' or 'VIDEO'")
+		core.Error(c, "Invalid 'item_type'. Must be 'IMAGE' or 'VIDEO'")
 		return
 	}
 
@@ -63,7 +76,7 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 	// 获取上传的文件
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		core.Error(c, http.StatusBadRequest, "File upload failed: "+err.Error())
+		core.Error(c, "File upload failed: "+err.Error())
 		return
 	}
 	defer file.Close()
@@ -71,7 +84,7 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 	// 读取文件内容
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		core.Error(c, http.StatusInternalServerError, "Failed to read file")
+		core.Error(c, "Failed to read file")
 		return
 	}
 
@@ -80,7 +93,7 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 	newFilename := newUUID + filepath.Ext(header.Filename)
 	filePath := filepath.Join(h.UploadDir, newFilename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
-		core.Error(c, http.StatusInternalServerError, "Failed to save file")
+		core.Error(c, "Failed to save file")
 		return
 	}
 
@@ -97,7 +110,7 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 	if err := h.DB.Create(&photo).Error; err != nil {
 		// 如果数据库创建失败，尝试删除已保存的文件以避免产生孤立文件
 		os.Remove(filePath)
-		core.Error(c, http.StatusInternalServerError, "Failed to save initial metadata")
+		core.Error(c, "Failed to save initial metadata")
 		return
 	}
 
@@ -112,7 +125,17 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 	core.Success(c, "Upload successful, processing started", photo)
 }
 
-// GetPhotos 获取当前用户的所有媒体列表（分页）
+// GetPhotos godoc
+// @Summary      获取媒体列表
+// @Description  获取当前用户的所有媒体列表（分页）
+// @Tags         Photos
+// @Produce      json
+// @Param        page query int false "页码" default(1)
+// @Param        limit query int false "每页数量" default(100)
+// @Success      200  {object}  core.ApiResponse{data=[]models.Photo} "成功获取媒体列表"
+// @Failure      400  {object}  core.ApiResponse "数据库错误"
+// @Security     BearerAuth
+// @Router       /photos [get]
 func (h *PhotoHandler) GetPhotos(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
@@ -127,14 +150,23 @@ func (h *PhotoHandler) GetPhotos(c *gin.Context) {
 	var photos []models.Photo
 	// 添加 user_id 查询条件进行数据隔离
 	if err := h.DB.Where("user_id = ?", userID).Order("created_at desc").Limit(limit).Offset(offset).Find(&photos).Error; err != nil {
-		core.Error(c, http.StatusInternalServerError, "Database error")
+		core.Error(c, "Database error")
 		return
 	}
 
 	core.Success(c, "Photos retrieved successfully", photos)
 }
 
-// Delete 将指定的媒体文件移入回收站（软删除）
+// Delete godoc
+// @Summary      删除指定的媒体文件
+// @Description  将指定的媒体文件移入回收站（软删除）
+// @Tags         Photos
+// @Produce      json
+// @Param        uuid path string true "媒体文件的UUID" format(uuid)
+// @Success      200  {object}  core.ApiResponse "成功删除"
+// @Failure      400  {object}  core.ApiResponse "错误信息可能为 'Photo not found or permission denied' 或 'Database error'"
+// @Security     BearerAuth
+// @Router       /photos/{uuid} [delete]
 func (h *PhotoHandler) Delete(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	photoUUID := c.Param("uuid")
@@ -142,18 +174,27 @@ func (h *PhotoHandler) Delete(c *gin.Context) {
 	// 使用 user_id 和 uuid 双重条件来删除，确保用户只能删除自己的照片
 	result := h.DB.Where("uuid = ? AND user_id = ?", photoUUID, userID).Delete(&models.Photo{})
 	if result.Error != nil {
-		core.Error(c, http.StatusInternalServerError, "Database error")
+		core.Error(c, "Database error")
 		return
 	}
 	if result.RowsAffected == 0 {
-		core.Error(c, http.StatusNotFound, "Photo not found or permission denied")
+		core.Error(c, "Photo not found or permission denied")
 		return
 	}
 
 	core.Success(c, "Photo moved to bin", nil)
 }
 
-// DownloadOriginal 下载原始文件
+// DownloadOriginal godoc
+// @Summary      下载原始文件
+// @Description  下载指定UUID的原始媒体文件。
+// @Tags         Photos
+// @Produce      application/octet-stream
+// @Param        uuid path string true "媒体文件的UUID" format(uuid)
+// @Success      200 {file} file "原始文件数据"
+// @Failure      400 {object} core.ApiResponse "错误信息可能为 'Photo not found' 或 'File is not ready yet'"
+// @Security     BearerAuth
+// @Router       /photos/{uuid}/download/original [get]
 func (h *PhotoHandler) DownloadOriginal(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	photoUUID := c.Param("uuid")
@@ -161,20 +202,30 @@ func (h *PhotoHandler) DownloadOriginal(c *gin.Context) {
 	var photo models.Photo
 	// 校验用户权限
 	if err := h.DB.Where("user_id = ?", userID).First(&photo, "uuid = ?", photoUUID).Error; err != nil {
-		core.Error(c, http.StatusNotFound, "Photo not found or permission denied")
+		core.Error(c, "Photo not found or permission denied")
 		return
 	}
 
 	// 检查处理状态，如果还在处理中，则不允许下载
 	if photo.ProcessingStatus != constant.StatusCompleted {
-		core.Error(c, http.StatusAccepted, fmt.Sprintf("File is not ready yet. Current status: %s", photo.ProcessingStatus))
+		core.Error(c, fmt.Sprintf("File is not ready yet. Current status: %s", photo.ProcessingStatus))
 		return
 	}
 
 	h.downloadFile(c, photo.Filename)
 }
 
-// DownloadPreview 下载预览图或预览视频
+// DownloadPreview godoc
+// @Summary      获取预览图或预览视频
+// @Description  获取指定UUID的预览文件 (图片为 .jpg, 视频为 .mp4)。
+// @Tags         Photos
+// @Produce      image/jpeg
+// @Produce      video/mp4
+// @Param        uuid path string true "媒体文件的UUID" format(uuid)
+// @Success      200 {file} file "预览文件数据"
+// @Failure      400 {object} core.ApiResponse "错误信息可能为 'Preview not found' 或 'Preview is not ready yet'"
+// @Security     BearerAuth
+// @Router       /photos/{uuid}/download/preview [get]
 func (h *PhotoHandler) DownloadPreview(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	photoUUID := c.Param("uuid")
@@ -182,12 +233,12 @@ func (h *PhotoHandler) DownloadPreview(c *gin.Context) {
 	var photo models.Photo
 	// 校验用户权限
 	if err := h.DB.Where("user_id = ?", userID).First(&photo, "uuid = ?", photoUUID).Error; err != nil {
-		core.Error(c, http.StatusNotFound, "Photo not found or permission denied")
+		core.Error(c, "Photo not found or permission denied")
 		return
 	}
 
 	if photo.ProcessingStatus != constant.StatusCompleted {
-		core.Error(c, http.StatusAccepted, fmt.Sprintf("Preview is not ready yet. Current status: %s", photo.ProcessingStatus))
+		core.Error(c, fmt.Sprintf("Preview is not ready yet. Current status: %s", photo.ProcessingStatus))
 		return
 	}
 
@@ -200,7 +251,16 @@ func (h *PhotoHandler) DownloadPreview(c *gin.Context) {
 	h.downloadFile(c, photo.UUID+suffix)
 }
 
-// DownloadThumbnail 下载缩略图
+// DownloadThumbnail godoc
+// @Summary      获取缩略图
+// @Description  获取指定UUID的缩略图 (统一为 .jpg 格式)。
+// @Tags         Photos
+// @Produce      image/jpeg
+// @Param        uuid path string true "媒体文件的UUID" format(uuid)
+// @Success      200 {file} file "缩略图文件数据"
+// @Failure      400 {object} core.ApiResponse "错误信息可能为 'Thumbnail not found' 或 'Thumbnail is not ready yet'"
+// @Security     BearerAuth
+// @Router       /photos/{uuid}/download/thumbnail [get]
 func (h *PhotoHandler) DownloadThumbnail(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	photoUUID := c.Param("uuid")
@@ -208,12 +268,12 @@ func (h *PhotoHandler) DownloadThumbnail(c *gin.Context) {
 	var photo models.Photo
 	// 校验用户权限
 	if err := h.DB.Where("user_id = ?", userID).First(&photo, "uuid = ?", photoUUID).Error; err != nil {
-		core.Error(c, http.StatusNotFound, "Photo not found or permission denied")
+		core.Error(c, "Photo not found or permission denied")
 		return
 	}
 
 	if photo.ProcessingStatus != constant.StatusCompleted {
-		core.Error(c, http.StatusAccepted, fmt.Sprintf("Thumbnail is not ready yet. Current status: %s", photo.ProcessingStatus))
+		core.Error(c, fmt.Sprintf("Thumbnail is not ready yet. Current status: %s", photo.ProcessingStatus))
 		return
 	}
 
@@ -229,7 +289,7 @@ func (h *PhotoHandler) downloadFile(c *gin.Context, filename string) {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		// 这是一个服务器侧的问题，文件在数据库里有记录但在磁盘上丢失了
 		log.Printf("File record exists in DB but not found on disk: %s", filePath)
-		core.Error(c, http.StatusNotFound, "File not available on server")
+		core.Error(c, "File not available on server")
 		return
 	}
 

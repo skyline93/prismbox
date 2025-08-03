@@ -21,9 +21,9 @@ func Success(c *gin.Context, message string, data interface{}) {
 }
 
 // 失败响应的辅助函数
-func Error(c *gin.Context, code int, message string) {
-	c.JSON(code, ApiResponse{
-		Code:    code,
+func Error(c *gin.Context, message string) {
+	c.JSON(http.StatusBadRequest, ApiResponse{
+		Code:    1,
 		Message: message,
 		Data:    nil,
 	})

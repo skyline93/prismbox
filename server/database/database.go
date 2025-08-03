@@ -44,6 +44,8 @@ func ConnectAndMigrate(databaseURL string) (*gorm.DB, error) {
 		&models.User{},
 		&models.Photo{},
 		&models.Album{},
+		&models.RefreshToken{},
+		&models.Share{},
 	)
 	if err != nil {
 		log.Printf("Failed to auto migrate database: %v", err)
