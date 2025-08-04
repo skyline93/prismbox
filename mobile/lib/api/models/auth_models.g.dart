@@ -86,3 +86,21 @@ Map<String, dynamic> _$$RefreshTokenSuccessDataImplToJson(
     <String, dynamic>{
       'access_token': instance.accessToken,
     };
+
+_$GetProfileSuccessDataImpl _$$GetProfileSuccessDataImplFromJson(
+        Map<String, dynamic> json) =>
+    _$GetProfileSuccessDataImpl(
+      id: (json['id'] as num).toInt(),
+      username: json['username'] as String,
+      email: json['email'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+
+Map<String, dynamic> _$$GetProfileSuccessDataImplToJson(
+        _$GetProfileSuccessDataImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'username': instance.username,
+      'email': instance.email,
+      'created_at': instance.createdAt.toIso8601String(),
+    };

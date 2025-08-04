@@ -72,3 +72,16 @@ class RefreshTokenSuccessData with _$RefreshTokenSuccessData {
   factory RefreshTokenSuccessData.fromJson(Map<String, dynamic> json) =>
       _$RefreshTokenSuccessDataFromJson(json);
 }
+
+@freezed
+class GetProfileSuccessData with _$GetProfileSuccessData {
+  const factory GetProfileSuccessData({
+    required int id,
+    required String username,
+    required String email,
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+  }) = _GetProfileSuccessData;
+
+  factory GetProfileSuccessData.fromJson(Map<String, dynamic> json) =>
+      _$GetProfileSuccessDataFromJson(json);
+}

@@ -65,6 +65,8 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		protected := apiV1.Group("/")
 		protected.Use(auth.Middleware(cfg.JWTSecret)) // 中间件保持不变
 		{
+			protected.GET("/auth/profile", authHandler.GetProfile)
+
 			// 照片相关路由
 			photoRoutes := protected.Group("/photos")
 			{

@@ -1053,3 +1053,227 @@ abstract class _RefreshTokenSuccessData implements RefreshTokenSuccessData {
   _$$RefreshTokenSuccessDataImplCopyWith<_$RefreshTokenSuccessDataImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
+
+GetProfileSuccessData _$GetProfileSuccessDataFromJson(
+    Map<String, dynamic> json) {
+  return _GetProfileSuccessData.fromJson(json);
+}
+
+/// @nodoc
+mixin _$GetProfileSuccessData {
+  int get id => throw _privateConstructorUsedError;
+  String get username => throw _privateConstructorUsedError;
+  String get email => throw _privateConstructorUsedError;
+  @JsonKey(name: 'created_at')
+  DateTime get createdAt => throw _privateConstructorUsedError;
+
+  /// Serializes this GetProfileSuccessData to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $GetProfileSuccessDataCopyWith<GetProfileSuccessData> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $GetProfileSuccessDataCopyWith<$Res> {
+  factory $GetProfileSuccessDataCopyWith(GetProfileSuccessData value,
+          $Res Function(GetProfileSuccessData) then) =
+      _$GetProfileSuccessDataCopyWithImpl<$Res, GetProfileSuccessData>;
+  @useResult
+  $Res call(
+      {int id,
+      String username,
+      String email,
+      @JsonKey(name: 'created_at') DateTime createdAt});
+}
+
+/// @nodoc
+class _$GetProfileSuccessDataCopyWithImpl<$Res,
+        $Val extends GetProfileSuccessData>
+    implements $GetProfileSuccessDataCopyWith<$Res> {
+  _$GetProfileSuccessDataCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? username = null,
+    Object? email = null,
+    Object? createdAt = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      username: null == username
+          ? _value.username
+          : username // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$GetProfileSuccessDataImplCopyWith<$Res>
+    implements $GetProfileSuccessDataCopyWith<$Res> {
+  factory _$$GetProfileSuccessDataImplCopyWith(
+          _$GetProfileSuccessDataImpl value,
+          $Res Function(_$GetProfileSuccessDataImpl) then) =
+      __$$GetProfileSuccessDataImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {int id,
+      String username,
+      String email,
+      @JsonKey(name: 'created_at') DateTime createdAt});
+}
+
+/// @nodoc
+class __$$GetProfileSuccessDataImplCopyWithImpl<$Res>
+    extends _$GetProfileSuccessDataCopyWithImpl<$Res,
+        _$GetProfileSuccessDataImpl>
+    implements _$$GetProfileSuccessDataImplCopyWith<$Res> {
+  __$$GetProfileSuccessDataImplCopyWithImpl(_$GetProfileSuccessDataImpl _value,
+      $Res Function(_$GetProfileSuccessDataImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? username = null,
+    Object? email = null,
+    Object? createdAt = null,
+  }) {
+    return _then(_$GetProfileSuccessDataImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      username: null == username
+          ? _value.username
+          : username // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$GetProfileSuccessDataImpl implements _GetProfileSuccessData {
+  const _$GetProfileSuccessDataImpl(
+      {required this.id,
+      required this.username,
+      required this.email,
+      @JsonKey(name: 'created_at') required this.createdAt});
+
+  factory _$GetProfileSuccessDataImpl.fromJson(Map<String, dynamic> json) =>
+      _$$GetProfileSuccessDataImplFromJson(json);
+
+  @override
+  final int id;
+  @override
+  final String username;
+  @override
+  final String email;
+  @override
+  @JsonKey(name: 'created_at')
+  final DateTime createdAt;
+
+  @override
+  String toString() {
+    return 'GetProfileSuccessData(id: $id, username: $username, email: $email, createdAt: $createdAt)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$GetProfileSuccessDataImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.username, username) ||
+                other.username == username) &&
+            (identical(other.email, email) || other.email == email) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, id, username, email, createdAt);
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$GetProfileSuccessDataImplCopyWith<_$GetProfileSuccessDataImpl>
+      get copyWith => __$$GetProfileSuccessDataImplCopyWithImpl<
+          _$GetProfileSuccessDataImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$GetProfileSuccessDataImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _GetProfileSuccessData implements GetProfileSuccessData {
+  const factory _GetProfileSuccessData(
+          {required final int id,
+          required final String username,
+          required final String email,
+          @JsonKey(name: 'created_at') required final DateTime createdAt}) =
+      _$GetProfileSuccessDataImpl;
+
+  factory _GetProfileSuccessData.fromJson(Map<String, dynamic> json) =
+      _$GetProfileSuccessDataImpl.fromJson;
+
+  @override
+  int get id;
+  @override
+  String get username;
+  @override
+  String get email;
+  @override
+  @JsonKey(name: 'created_at')
+  DateTime get createdAt;
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$GetProfileSuccessDataImplCopyWith<_$GetProfileSuccessDataImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}

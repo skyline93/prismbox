@@ -367,6 +367,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取当前已认证用户的个人资料（不含敏感信息）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "获取当前用户信息",
+                "responses": {
+                    "200": {
+                        "description": "成功获取用户资料",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.UserProfileResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权或Token无效",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "用户不存在（Token有效但用户已被删除）",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/refresh": {
             "post": {
                 "description": "使用一个有效的、未过期的刷新令牌来获取一个新的访问令牌",
@@ -1054,6 +1103,27 @@ const docTemplate = `{
                 "refresh_token": {
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            }
+        },
+        "auth.UserProfileResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-10-27T10:00:00Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "testuser@example.com"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "username": {
+                    "type": "string",
+                    "example": "testuser"
                 }
             }
         },

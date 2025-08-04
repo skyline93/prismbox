@@ -43,6 +43,21 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
+  auth.UserProfileResponse:
+    properties:
+      created_at:
+        example: "2023-10-27T10:00:00Z"
+        type: string
+      email:
+        example: testuser@example.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      username:
+        example: testuser
+        type: string
+    type: object
   auth.UserRegisterInput:
     properties:
       email:
@@ -471,6 +486,34 @@ paths:
           schema:
             $ref: '#/definitions/core.ApiResponse'
       summary: 用户登出
+      tags:
+      - Authentication
+  /auth/profile:
+    get:
+      description: 获取当前已认证用户的个人资料（不含敏感信息）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取用户资料
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.UserProfileResponse'
+              type: object
+        "401":
+          description: 未授权或Token无效
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "404":
+          description: 用户不存在（Token有效但用户已被删除）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户信息
       tags:
       - Authentication
   /auth/refresh:

@@ -25,7 +25,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final token = await _ref
         .read(secureStorageServiceProvider)
         .getAccessToken();
+
+    final authService = _ref.read(authServiceProvider);
+    await authService.getProfile();
+
     await Future.delayed(const Duration(seconds: 1));
+
     if (token != null && token.isNotEmpty) {
       state = const AuthState.authenticated();
     } else {

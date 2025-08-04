@@ -52,6 +52,13 @@ type LogoutInput struct {
 	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
+type UserProfileResponse struct {
+	ID        uint      `json:"id" example:"1"`
+	Username  string    `json:"username" example:"testuser"`
+	Email     string    `json:"email" example:"testuser@example.com"`
+	CreatedAt time.Time `json:"created_at" example:"2023-10-27T10:00:00Z"`
+}
+
 // --- Handlers ---
 
 // Register godoc
@@ -224,4 +231,42 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 
 	core.Success(c, "Successfully logged out", nil)
+}
+
+// GetProfile godoc
+// @Summary      获取当前用户信息
+// @Description  获取当前已认证用户的个人资料（不含敏感信息）
+// @Tags         Authentication
+// @Produce      json
+// @Success      200 {object} core.ApiResponse{data=UserProfileResponse} "成功获取用户资料"
+// @Failure      401 {object} core.ApiResponse "未授权或Token无效"
+// @Failure      404 {object} core.ApiResponse "用户不存在（Token有效但用户已被删除）"
+// @Security     BearerAuth
+// @Router       /auth/profile [get]
+func (h *AuthHandler) GetProfile(c *gin.Context) {
+	// 1. 从认证中间件设置的上下文中获取用户ID
+	userID := c.MustGet("userID").(uint)
+
+	// 2. 从数据库中查找该用户
+	var user models.User
+	if err := h.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			core.Error(c, "User not found")
+			return
+		}
+		core.Error(c, "Database error")
+		return
+	}
+
+	// 3. 将数据库模型映射到安全的响应DTO
+	// 这是非常关键的一步，确保不会泄露密码哈希等敏感字段
+	userProfile := UserProfileResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt,
+	}
+
+	// 4. 返回成功响应
+	core.Success(c, "User profile retrieved successfully", userProfile)
 }

@@ -57,4 +57,13 @@ class AuthService {
       throw e.response?.data['message'] ?? '注册失败';
     }
   }
+
+  Future<GetProfileSuccessData> getProfile() async {
+    try {
+      final response = await _dio.get('$baseUrl/auth/profile');
+      return GetProfileSuccessData.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw e.response?.data['message'] ?? '获取用户信息失败';
+    }
+  }
 }
