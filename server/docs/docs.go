@@ -680,6 +680,57 @@ const docTemplate = `{
             }
         },
         "/media/{uuid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取指定UUID的媒体详情。可以通过用户认证或有效的分享链接访问。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "获取媒体详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "媒体文件的UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功获取媒体详情",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.MediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "错误信息可能为 'Media not found or permission denied' 或 'Database error'",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {

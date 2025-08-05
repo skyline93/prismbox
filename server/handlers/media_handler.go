@@ -212,6 +212,39 @@ func (h *MediaHandler) GetMedias(c *gin.Context) {
 	core.Success(c, "Medias retrieved successfully", mediaResponses)
 }
 
+// GetMediaDetail godoc
+// @Summary      获取媒体详情
+// @Description  获取指定UUID的媒体详情。可以通过用户认证或有效的分享链接访问。
+// @Tags         Media
+// @Produce      json
+// @Param        uuid path string true "媒体文件的UUID" format(uuid)
+// @Success      200  {object}  core.ApiResponse{data=MediaResponse} "成功获取媒体详情"
+// @Failure      400  {object}  core.ApiResponse "错误信息可能为 'Media not found or permission denied' 或 'Database error'"
+// @Security     BearerAuth
+// @Router       /media/{uuid} [get]
+func (h *MediaHandler) GetMediaDetail(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	mediaUUID := c.Param("uuid")
+
+	var media models.Media
+	if err := h.DB.Where("uuid = ? AND user_id = ?", mediaUUID, userID).First(&media).Error; err != nil {
+		core.Error(c, "Database error")
+		return
+	}
+
+	resp := MediaResponse{
+		UUID:         media.UUID,
+		Filename:     media.Filename,
+		ItemType:     media.ItemType,
+		CreatedAt:    media.CreatedAt,
+		ThumbnailURL: h.URLBuilder.BuildMediaThumbnailPath(media.UUID),
+		PreviewURL:   h.URLBuilder.BuildMediaPreviewPath(media.UUID),
+		DownloadURL:  h.URLBuilder.BuildMediaOriginalPath(media.UUID),
+	}
+
+	core.Success(c, "Media detail retrieved successfully", resp)
+}
+
 // Delete godoc
 // @Summary      删除指定的媒体文件
 // @Description  将指定的媒体文件移入回收站（软删除）

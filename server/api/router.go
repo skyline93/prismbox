@@ -78,6 +78,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 			{
 				mediaRoutes.POST("/upload", mediaHandler.Upload)
 				mediaRoutes.GET("", mediaHandler.GetMedias)
+				mediaRoutes.GET("/:uuid", mediaHandler.GetMediaDetail)
 				mediaRoutes.DELETE("/:uuid", mediaHandler.Delete)
 			}
 
