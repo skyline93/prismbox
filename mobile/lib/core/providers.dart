@@ -1,8 +1,8 @@
 // lib/core/providers.dart
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../api/dio_client.dart';
-import '../api/services/auth_service.dart';
+import '../data/services/dio_client.dart';
+import '../data/services/auth_service.dart';
 import '../core/storage/secure_storage_service.dart';
 
 // 1. Dio Provider (基础)

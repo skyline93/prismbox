@@ -1,9 +1,9 @@
 // lib/auth/notifiers/auth_notifier.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../api/models/auth_models.dart';
-import '../../core/providers.dart';
-import '../../core/storage/secure_storage_service.dart';
-import '../state/auth_state.dart';
+import '../data/models/auth/auth_model.dart';
+import '../core/providers.dart';
+import '../core/storage/secure_storage_service.dart';
+import 'auth_state.dart';
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
   ref,

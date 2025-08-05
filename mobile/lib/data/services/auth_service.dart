@@ -1,8 +1,8 @@
 // lib/api/services/auth_service.dart
 import 'package:dio/dio.dart';
 import '../../core/storage/secure_storage_service.dart';
-import '../models/auth_models.dart';
-import 'package:mobile/api/dio_client.dart';
+import '../models/auth/auth_model.dart';
+import 'package:mobile/data/services/dio_client.dart';
 
 class AuthService {
   final Dio _dio;

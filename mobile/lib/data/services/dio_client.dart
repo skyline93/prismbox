@@ -2,9 +2,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synchronized/synchronized.dart'; // 導入 synchronized 套件
-import '../api/models/auth_models.dart';
-import '../../core/storage/secure_storage_service.dart';
-import 'package:mobile/auth/notifiers/auth_notifier.dart';
+import '../models/auth/auth_model.dart';
+import '../../../core/storage/secure_storage_service.dart';
+import 'package:mobile/auth/auth_notifier.dart';
 import 'package:mobile/config/app_config.dart';
 
 class DioClient {

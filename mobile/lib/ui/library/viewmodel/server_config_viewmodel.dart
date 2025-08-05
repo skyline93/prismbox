@@ -1,6 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/data/models/server_state.dart';
-import 'package:mobile/data/services/server_check_service.dart';
+import 'package:mobile/data/models/old_server_state.dart';
+import 'package:mobile/data/services/old_server_check_service.dart';
 
 class ServerConnectionNotifier extends StateNotifier<ServerConnectionState> {
   final Ref _ref;

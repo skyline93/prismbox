@@ -1,6 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/data/models/server_state.dart';
-import 'package:mobile/data/services/api_service.dart';
+import 'package:mobile/data/models/old_server_state.dart';
+import 'package:mobile/data/services/old_api_service.dart';
 
 class ServerCheckService {
   final ApiService _apiService;

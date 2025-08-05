@@ -1,9 +1,9 @@
 // lib/router/auth_guard.dart
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../auth/notifiers/auth_notifier.dart';
+import '../auth/auth_notifier.dart';
 import 'app_router.dart';
-import 'package:mobile/auth/state/auth_state.dart';
+import 'package:mobile/auth/auth_state.dart';
 
 class AuthGuard extends AutoRouteGuard {
   final Ref ref;
