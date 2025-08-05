@@ -109,7 +109,7 @@ func ProcessVideo(db *gorm.DB, originalPath string, photoUUID string) {
 	}
 
 	// 更新文件信息和状态
-	updatePhotoInfoAndStatus(db, photoUUID, finalStatus, updates)
+	updateMediaInfoAndStatus(db, photoUUID, finalStatus, updates)
 	log.Printf("[VIDEO] Finished processing for %s with status: %s", photoUUID, finalStatus)
 }
 
@@ -122,7 +122,7 @@ func ProcessImage(db *gorm.DB, originalPath string, photoUUID string) {
 	buffer, err := os.ReadFile(originalPath)
 	if err != nil {
 		log.Printf("[IMAGE] Error reading original file for processing (%s): %v", photoUUID, err)
-		updatePhotoInfoAndStatus(db, photoUUID, constant.StatusFailed, nil)
+		updateMediaInfoAndStatus(db, photoUUID, constant.StatusFailed, nil)
 		return
 	}
 
@@ -188,7 +188,7 @@ func ProcessImage(db *gorm.DB, originalPath string, photoUUID string) {
 		finalStatus = constant.StatusFailed
 	}
 
-	updatePhotoInfoAndStatus(db, photoUUID, finalStatus, updates)
+	updateMediaInfoAndStatus(db, photoUUID, finalStatus, updates)
 	log.Printf("[IMAGE] Finished processing for %s with status: %s", photoUUID, finalStatus)
 }
 
@@ -209,7 +209,7 @@ func parseMetadata(filePath string) map[string]interface{} {
 		log.Printf("EXIF decoding failed for %s: %v. Continuing without EXIF.", filePath, err)
 	} else {
 		if dt, err := x.DateTime(); err == nil {
-			updates["photo_taken_at"] = &dt
+			updates["media_taken_at"] = &dt
 		}
 		if make, err := x.Get(exif.Make); err == nil {
 			val, _ := make.StringVal()
@@ -248,8 +248,8 @@ func parseMetadata(filePath string) map[string]interface{} {
 	return updates
 }
 
-// updatePhotoInfoAndStatus 将解析出的元数据和最终处理状态更新到数据库
-func updatePhotoInfoAndStatus(db *gorm.DB, uuid string, status constant.ProcessingStatus, otherUpdates map[string]interface{}) {
+// updateMediaInfoAndStatus 将解析出的元数据和最终处理状态更新到数据库
+func updateMediaInfoAndStatus(db *gorm.DB, uuid string, status constant.ProcessingStatus, otherUpdates map[string]interface{}) {
 	updates := map[string]interface{}{"processing_status": status}
 	if otherUpdates != nil {
 		for k, v := range otherUpdates {
@@ -257,7 +257,7 @@ func updatePhotoInfoAndStatus(db *gorm.DB, uuid string, status constant.Processi
 		}
 	}
 
-	if err := db.Model(&models.Photo{}).Where("uuid = ?", uuid).Updates(updates).Error; err != nil {
+	if err := db.Model(&models.Media{}).Where("uuid = ?", uuid).Updates(updates).Error; err != nil {
 		log.Printf("Failed to update final status and metadata in DB for %s: %v", uuid, err)
 	} else {
 		log.Printf("Successfully updated final status and metadata for %s", uuid)
@@ -266,24 +266,24 @@ func updatePhotoInfoAndStatus(db *gorm.DB, uuid string, status constant.Processi
 
 // ProcessOrphanedTasks 在服务启动时检查并处理未完成的任务
 func ProcessOrphanedTasks(db *gorm.DB, uploadDir string) {
-	var pendingPhotos []models.Photo
-	db.Where("processing_status = ?", constant.StatusPending).Find(&pendingPhotos)
+	var pendingMedias []models.Media
+	db.Where("processing_status = ?", constant.StatusPending).Find(&pendingMedias)
 
-	if len(pendingPhotos) > 0 {
-		log.Printf("Found %d orphaned tasks to process...", len(pendingPhotos))
-		for _, photo := range pendingPhotos {
-			filePath := filepath.Join(uploadDir, photo.Filename)
+	if len(pendingMedias) > 0 {
+		log.Printf("Found %d orphaned tasks to process...", len(pendingMedias))
+		for _, media := range pendingMedias {
+			filePath := filepath.Join(uploadDir, media.Filename)
 			if _, err := os.Stat(filePath); os.IsNotExist(err) {
-				log.Printf("Orphaned task for %s has a missing file, marking as FAILED.", photo.UUID)
-				updatePhotoInfoAndStatus(db, photo.UUID, constant.StatusFailed, nil)
+				log.Printf("Orphaned task for %s has a missing file, marking as FAILED.", media.UUID)
+				updateMediaInfoAndStatus(db, media.UUID, constant.StatusFailed, nil)
 				continue
 			}
 
-			log.Printf("Re-queueing orphaned task for %s", photo.UUID)
-			if photo.ItemType == constant.TypeVideo {
-				go ProcessVideo(db, filePath, photo.UUID)
+			log.Printf("Re-queueing orphaned task for %s", media.UUID)
+			if media.ItemType == constant.TypeVideo {
+				go ProcessVideo(db, filePath, media.UUID)
 			} else {
-				go ProcessImage(db, filePath, photo.UUID)
+				go ProcessImage(db, filePath, media.UUID)
 			}
 		}
 	} else {

@@ -18,8 +18,8 @@ import (
 // @tag.name        Authentication
 // @tag.description 用户注册与登录
 
-// @tag.name        Photos
-// @tag.description 照片和视频的上传、查询和管理
+// @tag.name        Media
+// @tag.description 媒体资源的上传、查询和管理
 
 // @tag.name        Albums
 // @tag.description 相册管理

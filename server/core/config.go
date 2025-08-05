@@ -37,7 +37,7 @@ func LoadConfig() (*Config, error) {
 	urlSignerSecret := getEnv("URL_SIGNER_SECRET", "qazwsxedc")
 	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://localhost:8080")
 
-	ttlStr := getEnv("SIGNED_URL_LOAD_TTL", "1m")
+	ttlStr := getEnv("SIGNED_URL_LOAD_TTL", "30m")
 	signedURLLoadTTL, err := time.ParseDuration(ttlStr)
 	if err != nil {
 		return nil, errors.New("invalid SIGNED_URL_LOAD_TTL format: " + err.Error())

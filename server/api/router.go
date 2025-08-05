@@ -30,14 +30,20 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 	urlSigner := urlsigner.NewSigner(cfg.URLSignerSecret)
 	urlBuilder := routing.NewURLBuilder(cfg.PublicBaseURL)
 
-	photoHandler := &handlers.PhotoHandler{DB: db, UploadDir: cfg.UploadDir}
+	mediaHandler := &handlers.MediaHandler{
+		DB:               db,
+		UploadDir:        cfg.UploadDir,
+		URLSigner:        urlSigner,
+		URLBuilder:       urlBuilder,
+		SignedURLLoadTTL: cfg.SignedURLLoadTTL,
+	}
 	albumHandler := &handlers.AlbumHandler{DB: db}
 
 	shareHandler := &handlers.ShareHandler{
-		DB:            db,
-		PublicBaseURL: cfg.PublicBaseURL,
-		URLSigner:     urlSigner,
-		URLBuilder:    urlBuilder,
+		DB:               db,
+		URLSigner:        urlSigner,
+		SignedURLLoadTTL: cfg.SignedURLLoadTTL,
+		URLBuilder:       urlBuilder,
 	}
 	publicHandler := &handlers.PublicHandler{
 		DB:               db,
@@ -67,12 +73,12 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		{
 			protected.GET("/auth/profile", authHandler.GetProfile)
 
-			// 照片相关路由
-			photoRoutes := protected.Group("/photos")
+			// 媒体相关路由
+			mediaRoutes := protected.Group("/media")
 			{
-				photoRoutes.POST("/upload", photoHandler.Upload)
-				photoRoutes.GET("", photoHandler.GetPhotos)
-				photoRoutes.DELETE("/:uuid", photoHandler.Delete)
+				mediaRoutes.POST("/upload", mediaHandler.Upload)
+				mediaRoutes.GET("", mediaHandler.GetMedias)
+				mediaRoutes.DELETE("/:uuid", mediaHandler.Delete)
 			}
 
 			// 相册相关路由
@@ -96,9 +102,9 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		downloadRoutes := apiV1.Group("/")
 		downloadRoutes.Use(auth.FlexibleAuthMiddleware(cfg.JWTSecret, urlSigner))
 		{
-			downloadRoutes.GET("/photos/:uuid/download/original", photoHandler.DownloadOriginal)
-			downloadRoutes.GET("/photos/:uuid/download/preview", photoHandler.DownloadPreview)
-			downloadRoutes.GET("/photos/:uuid/download/thumbnail", photoHandler.DownloadThumbnail)
+			downloadRoutes.GET("/media/:uuid/download/original", mediaHandler.DownloadOriginal)
+			downloadRoutes.GET("/media/:uuid/download/preview", mediaHandler.DownloadPreview)
+			downloadRoutes.GET("/media/:uuid/download/thumbnail", mediaHandler.DownloadThumbnail)
 		}
 
 		publicApiRoutes := apiV1.Group("/")

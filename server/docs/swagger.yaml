@@ -112,14 +112,12 @@ definitions:
     type: object
   handlers.AddItemsToAlbumInput:
     properties:
-      photo_uuids:
-        example:
-        - '["d8a2a7f0-4b3e-4b6e-9e7b-8d7c2a7f04b3"]'
+      media_uuids:
         items:
           type: string
         type: array
     required:
-    - photo_uuids
+    - media_uuids
     type: object
   handlers.CreateAlbumInput:
     properties:
@@ -137,17 +135,51 @@ definitions:
       duration_minute:
         minimum: 1
         type: integer
-      photo_uuid:
+      media_uuid:
         type: string
       target_user_id:
         type: integer
     required:
     - duration_minute
-    - photo_uuid
+    - media_uuid
+    type: object
+  handlers.MediaResponse:
+    properties:
+      created_at:
+        type: string
+      download_url:
+        type: string
+      filename:
+        type: string
+      item_type:
+        $ref: '#/definitions/constant.MediaType'
+      preview_url:
+        type: string
+      thumbnail_url:
+        type: string
+      uuid:
+        type: string
+    type: object
+  handlers.ShareMetaResponse:
+    properties:
+      height:
+        type: integer
+      item_type:
+        $ref: '#/definitions/constant.MediaType'
+      media_taken_at:
+        type: string
+      original_filename:
+        type: string
+      signed_url:
+        type: string
+      uuid:
+        type: string
+      width:
+        type: integer
     type: object
   models.Album:
     properties:
-      cover_photo_uuid:
+      cover_media_uuid:
         type: string
       created_at:
         type: string
@@ -159,7 +191,7 @@ definitions:
         type: integer
       items:
         items:
-          $ref: '#/definitions/models.Photo'
+          $ref: '#/definitions/models.Media'
         type: array
       name:
         type: string
@@ -171,7 +203,7 @@ definitions:
       uuid:
         type: string
     type: object
-  models.Photo:
+  models.Media:
     properties:
       aperture:
         type: string
@@ -202,11 +234,11 @@ definitions:
         type: number
       longitude:
         type: number
+      media_taken_at:
+        type: string
       mime_type:
         type: string
       original_filename:
-        type: string
-      photo_taken_at:
         type: string
       processing_status:
         $ref: '#/definitions/constant.ProcessingStatus'
@@ -234,15 +266,15 @@ definitions:
       isRevoked:
         description: 是否已被创建者手动撤销
         type: boolean
+      media:
+        $ref: '#/definitions/models.Media'
+      mediaID:
+        description: 分享的是哪个照片
+        type: integer
       owner:
         $ref: '#/definitions/models.User'
       ownerID:
         description: 分享的创建者
-        type: integer
-      photo:
-        $ref: '#/definitions/models.Photo'
-      photoID:
-        description: 分享的是哪个照片
         type: integer
       shareToken:
         description: 用于公开分享链接的唯一令牌
@@ -403,7 +435,7 @@ paths:
       - application/json
       description: 向指定相册添加一个或多个媒体项
       parameters:
-      - description: 目标相册的UUID
+      - description: 相册的UUID
         format: uuid
         in: path
         name: uuid
@@ -411,7 +443,7 @@ paths:
         type: string
       - description: 要添加的媒体UUID列表
         in: body
-        name: photo_uuids
+        name: media_uuids
         required: true
         schema:
           $ref: '#/definitions/handlers.AddItemsToAlbumInput'
@@ -578,7 +610,7 @@ paths:
       summary: 注册新用户
       tags:
       - Authentication
-  /photos:
+  /media:
     get:
       description: 获取当前用户的所有媒体列表（分页）
       parameters:
@@ -603,7 +635,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Photo'
+                    $ref: '#/definitions/handlers.MediaResponse'
                   type: array
               type: object
         "400":
@@ -614,8 +646,8 @@ paths:
       - BearerAuth: []
       summary: 获取媒体列表
       tags:
-      - Photos
-  /photos/{uuid}:
+      - Media
+  /media/{uuid}:
     delete:
       description: 将指定的媒体文件移入回收站（软删除）
       parameters:
@@ -633,7 +665,7 @@ paths:
           schema:
             $ref: '#/definitions/core.ApiResponse'
         "400":
-          description: 错误信息可能为 'Photo not found or permission denied' 或 'Database
+          description: 错误信息可能为 'Media not found or permission denied' 或 'Database
             error'
           schema:
             $ref: '#/definitions/core.ApiResponse'
@@ -641,10 +673,10 @@ paths:
       - BearerAuth: []
       summary: 删除指定的媒体文件
       tags:
-      - Photos
-  /photos/{uuid}/download/original:
+      - Media
+  /media/{uuid}/download/original:
     get:
-      description: 下载指定UUID的原始媒体文件。
+      description: 下载指定UUID的原始媒体文件。可以通过用户认证或有效的分享链接访问。
       parameters:
       - description: 媒体文件的UUID
         format: uuid
@@ -659,18 +691,27 @@ paths:
           description: 原始文件数据
           schema:
             type: file
-        "400":
-          description: 错误信息可能为 'Photo not found' 或 'File is not ready yet'
+        "403":
+          description: 权限不足或分享链接无效/过期
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "404":
+          description: 照片未找到
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "500":
+          description: 文件未就绪或服务器内部错误
           schema:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
+      - SignedURL: []
       summary: 下载原始文件
       tags:
-      - Photos
-  /photos/{uuid}/download/preview:
+      - Media
+  /media/{uuid}/download/preview:
     get:
-      description: 获取指定UUID的预览文件 (图片为 .jpg, 视频为 .mp4)。
+      description: 获取指定UUID的预览文件。可以通过用户认证或有效的分享链接访问。
       parameters:
       - description: 媒体文件的UUID
         format: uuid
@@ -686,18 +727,27 @@ paths:
           description: 预览文件数据
           schema:
             type: file
-        "400":
-          description: 错误信息可能为 'Preview not found' 或 'Preview is not ready yet'
+        "403":
+          description: 权限不足或分享链接无效/过期
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "404":
+          description: 照片未找到
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "500":
+          description: 文件未就绪或服务器内部错误
           schema:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
+      - SignedURL: []
       summary: 获取预览图或预览视频
       tags:
-      - Photos
-  /photos/{uuid}/download/thumbnail:
+      - Media
+  /media/{uuid}/download/thumbnail:
     get:
-      description: 获取指定UUID的缩略图 (统一为 .jpg 格式)。
+      description: 获取指定UUID的缩略图。可以通过用户认证或有效的分享链接访问。
       parameters:
       - description: 媒体文件的UUID
         format: uuid
@@ -712,16 +762,25 @@ paths:
           description: 缩略图文件数据
           schema:
             type: file
-        "400":
-          description: 错误信息可能为 'Thumbnail not found' 或 'Thumbnail is not ready yet'
+        "403":
+          description: 权限不足或分享链接无效/过期
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "404":
+          description: 照片未找到
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "500":
+          description: 文件未就绪或服务器内部错误
           schema:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
+      - SignedURL: []
       summary: 获取缩略图
       tags:
-      - Photos
-  /photos/upload:
+      - Media
+  /media/upload:
     post:
       consumes:
       - multipart/form-data
@@ -759,7 +818,7 @@ paths:
             - $ref: '#/definitions/core.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Photo'
+                  $ref: '#/definitions/models.Media'
               type: object
         "201":
           description: 上传成功，后台处理开始
@@ -768,7 +827,7 @@ paths:
             - $ref: '#/definitions/core.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Photo'
+                  $ref: '#/definitions/models.Media'
               type: object
         "400":
           description: 请求参数错误、文件上传失败或服务器内部错误
@@ -778,7 +837,7 @@ paths:
       - BearerAuth: []
       summary: 上传单个媒体文件
       tags:
-      - Photos
+      - Media
   /s/{share_token}:
     get:
       description: 通过一个公开的分享令牌访问媒体资源。服务器会返回一个包含临时签名URL的HTML页面。
@@ -862,7 +921,7 @@ paths:
             - $ref: '#/definitions/core.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Photo'
+                  $ref: '#/definitions/handlers.ShareMetaResponse'
               type: object
         "404":
           description: 分享链接不存在
@@ -907,8 +966,8 @@ swagger: "2.0"
 tags:
 - description: 用户注册与登录
   name: Authentication
-- description: 照片和视频的上传、查询和管理
-  name: Photos
+- description: 媒体资源的上传、查询和管理
+  name: Media
 - description: 相册管理
   name: Albums
 - description: 共享资源

@@ -24,7 +24,7 @@ type CreateAlbumInput struct {
 
 // AddItemsToAlbumInput 定义了向相册添加媒体的请求体结构
 type AddItemsToAlbumInput struct {
-	PhotoUUIDs []string `json:"photo_uuids" binding:"required" example:"[\"d8a2a7f0-4b3e-4b6e-9e7b-8d7c2a7f04b3\"]"`
+	MediaUUIDs []string `json:"media_uuids" binding:"required"`
 }
 
 // CreateAlbum godoc
@@ -122,7 +122,7 @@ func (h *AlbumHandler) GetAlbum(c *gin.Context) {
 	}
 
 	// 分页查询关联的媒体项
-	var items []*models.Photo
+	var items []*models.Media
 	h.DB.Model(&album).Order("created_at desc").Limit(limit).Offset(offset).Association("Items").Find(&items)
 	album.Items = items
 	album.ItemCount = h.DB.Model(&album).Association("Items").Count()
@@ -136,8 +136,8 @@ func (h *AlbumHandler) GetAlbum(c *gin.Context) {
 // @Tags         Albums
 // @Accept       json
 // @Produce      json
-// @Param        uuid path string true "目标相册的UUID" format(uuid)
-// @Param        photo_uuids body AddItemsToAlbumInput true "要添加的媒体UUID列表"
+// @Param        uuid path string true "相册的UUID" format(uuid)
+// @Param        media_uuids body AddItemsToAlbumInput true "要添加的媒体UUID列表"
 // @Success      200  {object}  core.ApiResponse "媒体项添加成功"
 // @Failure      400  {object}  core.ApiResponse "请求参数错误、相册或照片未找到、无权限等"
 // @Security     BearerAuth
@@ -153,36 +153,35 @@ func (h *AlbumHandler) AddItemsToAlbum(c *gin.Context) {
 		return
 	}
 
-	var input struct {
-		PhotoUUIDs []string `json:"photo_uuids" binding:"required"`
-	}
+	var input AddItemsToAlbumInput
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		core.Error(c, "Invalid input: "+err.Error())
 		return
 	}
 
-	var photosToAdd []*models.Photo
+	var mediaToAdd []*models.Media
 	// 关键安全校验：确保要添加的照片也属于当前用户
-	if err := h.DB.Where("uuid IN ? AND user_id = ?", input.PhotoUUIDs, userID).Find(&photosToAdd).Error; err != nil {
-		core.Error(c, "Failed to find photos")
+	if err := h.DB.Where("uuid IN ? AND user_id = ?", input.MediaUUIDs, userID).Find(&mediaToAdd).Error; err != nil {
+		core.Error(c, "Failed to find media")
 		return
 	}
 
-	if len(photosToAdd) == 0 {
-		core.Error(c, "None of the provided photos were found or you do not have permission")
+	if len(mediaToAdd) == 0 {
+		core.Error(c, "None of the provided media were found or you do not have permission")
 		return
 	}
 
 	// 使用 Append 进行关联添加
-	if err := h.DB.Model(&album).Association("Items").Append(photosToAdd); err != nil {
+	if err := h.DB.Model(&album).Association("Items").Append(mediaToAdd); err != nil {
 		core.Error(c, "Failed to add items to album")
 		return
 	}
 
 	// 如果相册还没有封面，自动将第一张添加的照片设为封面
-	if album.CoverPhotoUUID == nil && len(photosToAdd) > 0 {
-		firstPhotoUUID := photosToAdd[0].UUID
-		h.DB.Model(&album).Update("cover_photo_uuid", &firstPhotoUUID)
+	if album.CoverMediaUUID == nil && len(mediaToAdd) > 0 {
+		firstMediaUUID := mediaToAdd[0].UUID
+		h.DB.Model(&album).Update("cover_media_uuid", &firstMediaUUID)
 	}
 
 	core.Success(c, "Items added successfully", nil)

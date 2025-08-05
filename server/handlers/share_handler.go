@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"server/constant"
 	"server/core"
 	"server/models"
 	"server/routing"
@@ -14,16 +14,26 @@ import (
 )
 
 type ShareHandler struct {
-	DB            *gorm.DB
-	PublicBaseURL string
-	URLSigner     *urlsigner.Signer
-	URLBuilder    *routing.URLBuilder
+	DB               *gorm.DB
+	URLSigner        *urlsigner.Signer
+	URLBuilder       *routing.URLBuilder
+	SignedURLLoadTTL time.Duration
 }
 
 type CreateShareInput struct {
-	PhotoUUID      string `json:"photo_uuid" binding:"required"`
+	MediaUUID      string `json:"media_uuid" binding:"required"`
 	TargetUserID   *uint  `json:"target_user_id,omitempty"`
 	DurationMinute int    `json:"duration_minute" binding:"required,min=1"`
+}
+
+type ShareMetaResponse struct {
+	UUID             string             `json:"uuid"`
+	OriginalFilename string             `json:"original_filename"`
+	ItemType         constant.MediaType `json:"item_type"`
+	Width            int                `json:"width"`
+	Height           int                `json:"height"`
+	MediaTokenAt     *time.Time         `json:"media_taken_at"`
+	SignedURL        string             `json:"signed_url"`
 }
 
 // CreateShare godoc
@@ -48,9 +58,9 @@ func (h *ShareHandler) CreateShare(c *gin.Context) {
 	}
 
 	// 1. 验证照片是否存在且属于分享者
-	var photo models.Photo
-	if err := h.DB.First(&photo, "uuid = ? AND user_id = ?", input.PhotoUUID, ownerID).Error; err != nil {
-		core.Error(c, "Photo not found or permission denied")
+	var media models.Media
+	if err := h.DB.First(&media, "uuid = ? AND user_id = ?", input.MediaUUID, ownerID).Error; err != nil {
+		core.Error(c, "Media not found or permission denied")
 		return
 	}
 
@@ -70,8 +80,8 @@ func (h *ShareHandler) CreateShare(c *gin.Context) {
 		ShareToken:   uuid.NewString(),
 		OwnerID:      ownerID,
 		TargetUserID: input.TargetUserID, // 直接使用传入的ID
-		PhotoID:      photo.ID,
-		ExpiresAt:    time.Now().Add(time.Duration(input.DurationMinute)),
+		MediaID:      media.ID,
+		ExpiresAt:    time.Now().Add(time.Minute * time.Duration(input.DurationMinute)),
 	}
 
 	if err := h.DB.Create(&share).Error; err != nil {
@@ -80,7 +90,6 @@ func (h *ShareHandler) CreateShare(c *gin.Context) {
 	}
 
 	// 4. 构建并返回公开链接
-	// publicURL := fmt.Sprintf("%s/s/%s", h.PublicBaseURL, share.ShareToken)
 	publicURL := h.URLBuilder.BuildPublicShareURL(share.ShareToken)
 	core.Success(c, "Share link created successfully", publicURL)
 }
@@ -97,8 +106,8 @@ func (h *ShareHandler) ListSharedWithMe(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	var shares []models.Share
 
-	// 预加载Photo和Owner信息
-	err := h.DB.Preload("Photo").Preload("Owner").
+	// 预加载Media和Owner信息
+	err := h.DB.Preload("Media").Preload("Owner").
 		Where("target_user_id = ? AND is_revoked = ? AND expires_at > ?", userID, false, time.Now()).
 		Find(&shares).Error
 
@@ -116,7 +125,7 @@ func (h *ShareHandler) ListSharedWithMe(c *gin.Context) {
 // @Tags         Shares
 // @Produce      json
 // @Param        share_token path string true "分享令牌"
-// @Success      200 {object} core.ApiResponse{data=models.Photo} "成功，返回照片元数据，并在其中动态添加一个临时的signed_url字段"
+// @Success      200 {object} core.ApiResponse{data=ShareMetaResponse} "成功，返回照片元数据，并在其中动态添加一个临时的signed_url字段"
 // @Failure      404 {object} core.ApiResponse "分享链接不存在"
 // @Failure      410 {object} core.ApiResponse "分享链接已过期或被撤销"
 // @Router       /shares/{share_token}/meta [get]
@@ -125,7 +134,7 @@ func (h *ShareHandler) GetShareMetadata(c *gin.Context) {
 
 	// 1. 在数据库中查找分享记录
 	var share models.Share
-	err := h.DB.Preload("Photo").Where("share_token = ?", shareToken).First(&share).Error
+	err := h.DB.Preload("Media").Where("share_token = ?", shareToken).First(&share).Error
 	if err != nil {
 		core.Error(c, "Share link not found")
 		return
@@ -143,22 +152,22 @@ func (h *ShareHandler) GetShareMetadata(c *gin.Context) {
 
 	// --- 核心区别 ---
 	// 3. 生成一个极短时效的签名URL
-	resourcePath := fmt.Sprintf("/api/v1/photos/%s/download/preview", share.Photo.UUID)
-	signedURL, err := h.URLSigner.Generate(resourcePath, 60*time.Second) // 60秒加载时间
+	resourcePath := h.URLBuilder.BuildMediaPreviewPath(share.Media.UUID)
+	signedURL, err := h.URLSigner.Generate(resourcePath, 0, h.SignedURLLoadTTL)
 	if err != nil {
 		core.Error(c, "Failed to generate temporary resource URL")
 		return
 	}
 
 	// 为了不在原始模型上添加字段，我们创建一个map来组合响应
-	responseData := gin.H{
-		"uuid":              share.Photo.UUID,
-		"item_type":         share.Photo.ItemType,
-		"original_filename": share.Photo.OriginalFilename,
-		"width":             share.Photo.Width,
-		"height":            share.Photo.Height,
-		"photo_taken_at":    share.Photo.PhotoTakenAt,
-		"signed_url":        signedURL, // 将临时的下载链接附加到响应中
+	responseData := ShareMetaResponse{
+		UUID:             share.Media.UUID,
+		ItemType:         share.Media.ItemType,
+		OriginalFilename: share.Media.OriginalFilename,
+		Width:            share.Media.Width,
+		Height:           share.Media.Height,
+		MediaTokenAt:     share.Media.MediaTakenAt,
+		SignedURL:        signedURL, // 将临时的下载链接附加到响应中
 	}
 
 	// 4. 返回纯粹的JSON数据

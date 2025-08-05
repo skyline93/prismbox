@@ -244,14 +244,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "目标相册的UUID",
+                        "description": "相册的UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
                         "description": "要添加的媒体UUID列表",
-                        "name": "photo_uuids",
+                        "name": "media_uuids",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -520,7 +520,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/photos": {
+        "/media": {
             "get": {
                 "security": [
                     {
@@ -532,7 +532,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Photos"
+                    "Media"
                 ],
                 "summary": "获取媒体列表",
                 "parameters": [
@@ -565,7 +565,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/models.Photo"
+                                                "$ref": "#/definitions/handlers.MediaResponse"
                                             }
                                         }
                                     }
@@ -582,7 +582,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/photos/upload": {
+        "/media/upload": {
             "post": {
                 "security": [
                     {
@@ -597,7 +597,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Photos"
+                    "Media"
                 ],
                 "summary": "上传单个媒体文件",
                 "parameters": [
@@ -645,7 +645,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Photo"
+                                            "$ref": "#/definitions/models.Media"
                                         }
                                     }
                                 }
@@ -663,7 +663,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Photo"
+                                            "$ref": "#/definitions/models.Media"
                                         }
                                     }
                                 }
@@ -679,7 +679,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/photos/{uuid}": {
+        "/media/{uuid}": {
             "delete": {
                 "security": [
                     {
@@ -691,7 +691,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Photos"
+                    "Media"
                 ],
                 "summary": "删除指定的媒体文件",
                 "parameters": [
@@ -712,7 +712,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "错误信息可能为 'Photo not found or permission denied' 或 'Database error'",
+                        "description": "错误信息可能为 'Media not found or permission denied' 或 'Database error'",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -720,19 +720,22 @@ const docTemplate = `{
                 }
             }
         },
-        "/photos/{uuid}/download/original": {
+        "/media/{uuid}/download/original": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "SignedURL": []
                     }
                 ],
-                "description": "下载指定UUID的原始媒体文件。",
+                "description": "下载指定UUID的原始媒体文件。可以通过用户认证或有效的分享链接访问。",
                 "produces": [
                     "application/octet-stream"
                 ],
                 "tags": [
-                    "Photos"
+                    "Media"
                 ],
                 "summary": "下载原始文件",
                 "parameters": [
@@ -752,8 +755,20 @@ const docTemplate = `{
                             "type": "file"
                         }
                     },
-                    "400": {
-                        "description": "错误信息可能为 'Photo not found' 或 'File is not ready yet'",
+                    "403": {
+                        "description": "权限不足或分享链接无效/过期",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "照片未找到",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件未就绪或服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -761,20 +776,23 @@ const docTemplate = `{
                 }
             }
         },
-        "/photos/{uuid}/download/preview": {
+        "/media/{uuid}/download/preview": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "SignedURL": []
                     }
                 ],
-                "description": "获取指定UUID的预览文件 (图片为 .jpg, 视频为 .mp4)。",
+                "description": "获取指定UUID的预览文件。可以通过用户认证或有效的分享链接访问。",
                 "produces": [
                     "image/jpeg",
                     "video/mp4"
                 ],
                 "tags": [
-                    "Photos"
+                    "Media"
                 ],
                 "summary": "获取预览图或预览视频",
                 "parameters": [
@@ -794,8 +812,20 @@ const docTemplate = `{
                             "type": "file"
                         }
                     },
-                    "400": {
-                        "description": "错误信息可能为 'Preview not found' 或 'Preview is not ready yet'",
+                    "403": {
+                        "description": "权限不足或分享链接无效/过期",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "照片未找到",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件未就绪或服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -803,19 +833,22 @@ const docTemplate = `{
                 }
             }
         },
-        "/photos/{uuid}/download/thumbnail": {
+        "/media/{uuid}/download/thumbnail": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "SignedURL": []
                     }
                 ],
-                "description": "获取指定UUID的缩略图 (统一为 .jpg 格式)。",
+                "description": "获取指定UUID的缩略图。可以通过用户认证或有效的分享链接访问。",
                 "produces": [
                     "image/jpeg"
                 ],
                 "tags": [
-                    "Photos"
+                    "Media"
                 ],
                 "summary": "获取缩略图",
                 "parameters": [
@@ -835,8 +868,20 @@ const docTemplate = `{
                             "type": "file"
                         }
                     },
-                    "400": {
-                        "description": "错误信息可能为 'Thumbnail not found' 或 'Thumbnail is not ready yet'",
+                    "403": {
+                        "description": "权限不足或分享链接无效/过期",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "照片未找到",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件未就绪或服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1019,7 +1064,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Photo"
+                                            "$ref": "#/definitions/handlers.ShareMetaResponse"
                                         }
                                     }
                                 }
@@ -1202,17 +1247,14 @@ const docTemplate = `{
         "handlers.AddItemsToAlbumInput": {
             "type": "object",
             "required": [
-                "photo_uuids"
+                "media_uuids"
             ],
             "properties": {
-                "photo_uuids": {
+                "media_uuids": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    },
-                    "example": [
-                        "[\"d8a2a7f0-4b3e-4b6e-9e7b-8d7c2a7f04b3\"]"
-                    ]
+                    }
                 }
             }
         },
@@ -1236,14 +1278,14 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "duration_minute",
-                "photo_uuid"
+                "media_uuid"
             ],
             "properties": {
                 "duration_minute": {
                     "type": "integer",
                     "minimum": 1
                 },
-                "photo_uuid": {
+                "media_uuid": {
                     "type": "string"
                 },
                 "target_user_id": {
@@ -1251,10 +1293,62 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.MediaResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "download_url": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "item_type": {
+                    "$ref": "#/definitions/constant.MediaType"
+                },
+                "preview_url": {
+                    "type": "string"
+                },
+                "thumbnail_url": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ShareMetaResponse": {
+            "type": "object",
+            "properties": {
+                "height": {
+                    "type": "integer"
+                },
+                "item_type": {
+                    "$ref": "#/definitions/constant.MediaType"
+                },
+                "media_taken_at": {
+                    "type": "string"
+                },
+                "original_filename": {
+                    "type": "string"
+                },
+                "signed_url": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.Album": {
             "type": "object",
             "properties": {
-                "cover_photo_uuid": {
+                "cover_media_uuid": {
                     "type": "string"
                 },
                 "created_at": {
@@ -1272,7 +1366,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Photo"
+                        "$ref": "#/definitions/models.Media"
                     }
                 },
                 "name": {
@@ -1290,7 +1384,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Photo": {
+        "models.Media": {
             "type": "object",
             "properties": {
                 "aperture": {
@@ -1336,13 +1430,13 @@ const docTemplate = `{
                 "longitude": {
                     "type": "number"
                 },
+                "media_taken_at": {
+                    "type": "string"
+                },
                 "mime_type": {
                     "type": "string"
                 },
                 "original_filename": {
-                    "type": "string"
-                },
-                "photo_taken_at": {
                     "type": "string"
                 },
                 "processing_status": {
@@ -1383,18 +1477,18 @@ const docTemplate = `{
                     "description": "是否已被创建者手动撤销",
                     "type": "boolean"
                 },
+                "media": {
+                    "$ref": "#/definitions/models.Media"
+                },
+                "mediaID": {
+                    "description": "分享的是哪个照片",
+                    "type": "integer"
+                },
                 "owner": {
                     "$ref": "#/definitions/models.User"
                 },
                 "ownerID": {
                     "description": "分享的创建者",
-                    "type": "integer"
-                },
-                "photo": {
-                    "$ref": "#/definitions/models.Photo"
-                },
-                "photoID": {
-                    "description": "分享的是哪个照片",
                     "type": "integer"
                 },
                 "shareToken": {
@@ -1442,8 +1536,8 @@ const docTemplate = `{
             "name": "Authentication"
         },
         {
-            "description": "照片和视频的上传、查询和管理",
-            "name": "Photos"
+            "description": "媒体资源的上传、查询和管理",
+            "name": "Media"
         },
         {
             "description": "相册管理",

@@ -31,8 +31,8 @@ type RefreshToken struct {
 	IsRevoked bool `gorm:"default:false"`
 }
 
-// --- Photo 模型升级: 添加 UserID ---
-type Photo struct {
+// --- Media 模型升级: 添加 UserID ---
+type Media struct {
 	ID               uint                      `gorm:"primarykey" json:"id"`
 	CreatedAt        time.Time                 `json:"created_at"`
 	UpdatedAt        time.Time                 `json:"updated_at"`
@@ -48,7 +48,7 @@ type Photo struct {
 	Width            int                       `json:"width"`
 	Height           int                       `json:"height"`
 	Duration         float64                   `json:"duration"`
-	PhotoTakenAt     *time.Time                `json:"photo_taken_at"`
+	MediaTakenAt     *time.Time                `json:"media_taken_at"`
 	CameraMake       *string                   `json:"camera_make"`
 	CameraModel      *string                   `json:"camera_model"`
 	Aperture         *string                   `json:"aperture"`
@@ -69,8 +69,8 @@ type Album struct {
 	Name           string         `json:"name"`
 	Description    string         `json:"description"`
 	UserID         uint           `gorm:"index" json:"user_id"` // ❗ 核心改动: 关联用户
-	CoverPhotoUUID *string        `json:"cover_photo_uuid"`
-	Items          []*Photo       `gorm:"many2many:album_items;" json:"items,omitempty"`
+	CoverMediaUUID *string        `json:"cover_media_uuid"`
+	Items          []*Media       `gorm:"many2many:album_items;" json:"items,omitempty"`
 	ItemCount      int64          `gorm:"-" json:"item_count"`
 }
 
@@ -91,8 +91,8 @@ type Share struct {
 	TargetUser   *User `gorm:"foreignKey:TargetUserID"`
 
 	// 分享的是哪个照片
-	PhotoID uint  `gorm:"not null"`
-	Photo   Photo `gorm:"foreignKey:PhotoID"`
+	MediaID uint  `gorm:"not null"`
+	Media   Media `gorm:"foreignKey:MediaID"`
 
 	// 分享的过期时间
 	ExpiresAt time.Time
