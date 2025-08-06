@@ -59,6 +59,8 @@ class MediaResponse with _$MediaResponse {
     required String filename,
     required String itemType,
     required String createdAt,
+    required String updatedAt,
+    String? mediaTakenAt,
     String? downloadUrl,
     String? previewUrl,
     String? thumbnailUrl,
@@ -82,19 +84,42 @@ class MediaListResponse with _$MediaListResponse {
       _$MediaListResponseFromJson(json);
 }
 
+@freezed
+class CheckHashesRequest with _$CheckHashesRequest {
+  const factory CheckHashesRequest({required List<String> hashes}) =
+      _CheckHashesRequest;
+}
+
+@freezed
+class CheckHashesResponse with _$CheckHashesResponse {
+  const factory CheckHashesResponse({required List<String> existingHashes}) =
+      _CheckHashesResponse;
+
+  factory CheckHashesResponse.fromJson(Map<String, dynamic> json) =>
+      _$CheckHashesResponseFromJson(json);
+}
+
+@freezed
+class MediaChangesResponse with _$MediaChangesResponse {
+  const factory MediaChangesResponse({
+    required List<MediaResponse> created,
+    required List<MediaResponse> updated,
+    required List<String> deleted,
+  }) = _MediaChangesResponse;
+
+  factory MediaChangesResponse.fromJson(Map<String, dynamic> json) =>
+      _$MediaChangesResponseFromJson(json);
+}
+
 /// API通用响应格式
-@immutable 
+@immutable
 class ApiResponse<T> {
   final int code;
   final String message;
   final T? data;
 
   // 构造函数
-  const ApiResponse({
-    required this.code,
-    required this.message,
-    this.data,
-  });
+  const ApiResponse({required this.code, required this.message, this.data});
 
   // fromJson 工厂构造函数
   factory ApiResponse.fromJson(
@@ -110,11 +135,7 @@ class ApiResponse<T> {
   }
 
   // copyWith 方法
-  ApiResponse<T> copyWith({
-    int? code,
-    String? message,
-    T? data,
-  }) {
+  ApiResponse<T> copyWith({int? code, String? message, T? data}) {
     return ApiResponse<T>(
       code: code ?? this.code,
       message: message ?? this.message,

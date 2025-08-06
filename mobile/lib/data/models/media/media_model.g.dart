@@ -76,6 +76,8 @@ _$MediaResponseImpl _$$MediaResponseImplFromJson(Map<String, dynamic> json) =>
       filename: json['filename'] as String,
       itemType: json['itemType'] as String,
       createdAt: json['createdAt'] as String,
+      updatedAt: json['updatedAt'] as String,
+      mediaTakenAt: json['mediaTakenAt'] as String?,
       downloadUrl: json['downloadUrl'] as String?,
       previewUrl: json['previewUrl'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
@@ -87,6 +89,8 @@ Map<String, dynamic> _$$MediaResponseImplToJson(_$MediaResponseImpl instance) =>
       'filename': instance.filename,
       'itemType': instance.itemType,
       'createdAt': instance.createdAt,
+      'updatedAt': instance.updatedAt,
+      'mediaTakenAt': instance.mediaTakenAt,
       'downloadUrl': instance.downloadUrl,
       'previewUrl': instance.previewUrl,
       'thumbnailUrl': instance.thumbnailUrl,
@@ -110,4 +114,39 @@ Map<String, dynamic> _$$MediaListResponseImplToJson(
       'total': instance.total,
       'page': instance.page,
       'limit': instance.limit,
+    };
+
+_$CheckHashesResponseImpl _$$CheckHashesResponseImplFromJson(
+        Map<String, dynamic> json) =>
+    _$CheckHashesResponseImpl(
+      existingHashes: (json['existingHashes'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+    );
+
+Map<String, dynamic> _$$CheckHashesResponseImplToJson(
+        _$CheckHashesResponseImpl instance) =>
+    <String, dynamic>{
+      'existingHashes': instance.existingHashes,
+    };
+
+_$MediaChangesResponseImpl _$$MediaChangesResponseImplFromJson(
+        Map<String, dynamic> json) =>
+    _$MediaChangesResponseImpl(
+      created: (json['created'] as List<dynamic>)
+          .map((e) => MediaResponse.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      updated: (json['updated'] as List<dynamic>)
+          .map((e) => MediaResponse.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      deleted:
+          (json['deleted'] as List<dynamic>).map((e) => e as String).toList(),
+    );
+
+Map<String, dynamic> _$$MediaChangesResponseImplToJson(
+        _$MediaChangesResponseImpl instance) =>
+    <String, dynamic>{
+      'created': instance.created,
+      'updated': instance.updated,
+      'deleted': instance.deleted,
     };

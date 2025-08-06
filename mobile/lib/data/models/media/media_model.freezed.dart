@@ -636,6 +636,8 @@ mixin _$MediaResponse {
   String get filename => throw _privateConstructorUsedError;
   String get itemType => throw _privateConstructorUsedError;
   String get createdAt => throw _privateConstructorUsedError;
+  String get updatedAt => throw _privateConstructorUsedError;
+  String? get mediaTakenAt => throw _privateConstructorUsedError;
   String? get downloadUrl => throw _privateConstructorUsedError;
   String? get previewUrl => throw _privateConstructorUsedError;
   String? get thumbnailUrl => throw _privateConstructorUsedError;
@@ -661,6 +663,8 @@ abstract class $MediaResponseCopyWith<$Res> {
       String filename,
       String itemType,
       String createdAt,
+      String updatedAt,
+      String? mediaTakenAt,
       String? downloadUrl,
       String? previewUrl,
       String? thumbnailUrl});
@@ -685,6 +689,8 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
     Object? filename = null,
     Object? itemType = null,
     Object? createdAt = null,
+    Object? updatedAt = null,
+    Object? mediaTakenAt = freezed,
     Object? downloadUrl = freezed,
     Object? previewUrl = freezed,
     Object? thumbnailUrl = freezed,
@@ -706,6 +712,14 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as String,
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as String,
+      mediaTakenAt: freezed == mediaTakenAt
+          ? _value.mediaTakenAt
+          : mediaTakenAt // ignore: cast_nullable_to_non_nullable
+              as String?,
       downloadUrl: freezed == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
@@ -735,6 +749,8 @@ abstract class _$$MediaResponseImplCopyWith<$Res>
       String filename,
       String itemType,
       String createdAt,
+      String updatedAt,
+      String? mediaTakenAt,
       String? downloadUrl,
       String? previewUrl,
       String? thumbnailUrl});
@@ -757,6 +773,8 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
     Object? filename = null,
     Object? itemType = null,
     Object? createdAt = null,
+    Object? updatedAt = null,
+    Object? mediaTakenAt = freezed,
     Object? downloadUrl = freezed,
     Object? previewUrl = freezed,
     Object? thumbnailUrl = freezed,
@@ -778,6 +796,14 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as String,
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as String,
+      mediaTakenAt: freezed == mediaTakenAt
+          ? _value.mediaTakenAt
+          : mediaTakenAt // ignore: cast_nullable_to_non_nullable
+              as String?,
       downloadUrl: freezed == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
@@ -802,6 +828,8 @@ class _$MediaResponseImpl implements _MediaResponse {
       required this.filename,
       required this.itemType,
       required this.createdAt,
+      required this.updatedAt,
+      this.mediaTakenAt,
       this.downloadUrl,
       this.previewUrl,
       this.thumbnailUrl});
@@ -818,6 +846,10 @@ class _$MediaResponseImpl implements _MediaResponse {
   @override
   final String createdAt;
   @override
+  final String updatedAt;
+  @override
+  final String? mediaTakenAt;
+  @override
   final String? downloadUrl;
   @override
   final String? previewUrl;
@@ -826,7 +858,7 @@ class _$MediaResponseImpl implements _MediaResponse {
 
   @override
   String toString() {
-    return 'MediaResponse(uuid: $uuid, filename: $filename, itemType: $itemType, createdAt: $createdAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
+    return 'MediaResponse(uuid: $uuid, filename: $filename, itemType: $itemType, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
   }
 
   @override
@@ -841,6 +873,10 @@ class _$MediaResponseImpl implements _MediaResponse {
                 other.itemType == itemType) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt) &&
+            (identical(other.mediaTakenAt, mediaTakenAt) ||
+                other.mediaTakenAt == mediaTakenAt) &&
             (identical(other.downloadUrl, downloadUrl) ||
                 other.downloadUrl == downloadUrl) &&
             (identical(other.previewUrl, previewUrl) ||
@@ -851,8 +887,17 @@ class _$MediaResponseImpl implements _MediaResponse {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, uuid, filename, itemType,
-      createdAt, downloadUrl, previewUrl, thumbnailUrl);
+  int get hashCode => Object.hash(
+      runtimeType,
+      uuid,
+      filename,
+      itemType,
+      createdAt,
+      updatedAt,
+      mediaTakenAt,
+      downloadUrl,
+      previewUrl,
+      thumbnailUrl);
 
   /// Create a copy of MediaResponse
   /// with the given fields replaced by the non-null parameter values.
@@ -876,6 +921,8 @@ abstract class _MediaResponse implements MediaResponse {
       required final String filename,
       required final String itemType,
       required final String createdAt,
+      required final String updatedAt,
+      final String? mediaTakenAt,
       final String? downloadUrl,
       final String? previewUrl,
       final String? thumbnailUrl}) = _$MediaResponseImpl;
@@ -891,6 +938,10 @@ abstract class _MediaResponse implements MediaResponse {
   String get itemType;
   @override
   String get createdAt;
+  @override
+  String get updatedAt;
+  @override
+  String? get mediaTakenAt;
   @override
   String? get downloadUrl;
   @override
@@ -1118,4 +1169,520 @@ abstract class _MediaListResponse implements MediaListResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$MediaListResponseImplCopyWith<_$MediaListResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$CheckHashesRequest {
+  List<String> get hashes => throw _privateConstructorUsedError;
+
+  /// Create a copy of CheckHashesRequest
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $CheckHashesRequestCopyWith<CheckHashesRequest> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $CheckHashesRequestCopyWith<$Res> {
+  factory $CheckHashesRequestCopyWith(
+          CheckHashesRequest value, $Res Function(CheckHashesRequest) then) =
+      _$CheckHashesRequestCopyWithImpl<$Res, CheckHashesRequest>;
+  @useResult
+  $Res call({List<String> hashes});
+}
+
+/// @nodoc
+class _$CheckHashesRequestCopyWithImpl<$Res, $Val extends CheckHashesRequest>
+    implements $CheckHashesRequestCopyWith<$Res> {
+  _$CheckHashesRequestCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of CheckHashesRequest
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? hashes = null,
+  }) {
+    return _then(_value.copyWith(
+      hashes: null == hashes
+          ? _value.hashes
+          : hashes // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$CheckHashesRequestImplCopyWith<$Res>
+    implements $CheckHashesRequestCopyWith<$Res> {
+  factory _$$CheckHashesRequestImplCopyWith(_$CheckHashesRequestImpl value,
+          $Res Function(_$CheckHashesRequestImpl) then) =
+      __$$CheckHashesRequestImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({List<String> hashes});
+}
+
+/// @nodoc
+class __$$CheckHashesRequestImplCopyWithImpl<$Res>
+    extends _$CheckHashesRequestCopyWithImpl<$Res, _$CheckHashesRequestImpl>
+    implements _$$CheckHashesRequestImplCopyWith<$Res> {
+  __$$CheckHashesRequestImplCopyWithImpl(_$CheckHashesRequestImpl _value,
+      $Res Function(_$CheckHashesRequestImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of CheckHashesRequest
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? hashes = null,
+  }) {
+    return _then(_$CheckHashesRequestImpl(
+      hashes: null == hashes
+          ? _value._hashes
+          : hashes // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$CheckHashesRequestImpl implements _CheckHashesRequest {
+  const _$CheckHashesRequestImpl({required final List<String> hashes})
+      : _hashes = hashes;
+
+  final List<String> _hashes;
+  @override
+  List<String> get hashes {
+    if (_hashes is EqualUnmodifiableListView) return _hashes;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_hashes);
+  }
+
+  @override
+  String toString() {
+    return 'CheckHashesRequest(hashes: $hashes)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$CheckHashesRequestImpl &&
+            const DeepCollectionEquality().equals(other._hashes, _hashes));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_hashes));
+
+  /// Create a copy of CheckHashesRequest
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$CheckHashesRequestImplCopyWith<_$CheckHashesRequestImpl> get copyWith =>
+      __$$CheckHashesRequestImplCopyWithImpl<_$CheckHashesRequestImpl>(
+          this, _$identity);
+}
+
+abstract class _CheckHashesRequest implements CheckHashesRequest {
+  const factory _CheckHashesRequest({required final List<String> hashes}) =
+      _$CheckHashesRequestImpl;
+
+  @override
+  List<String> get hashes;
+
+  /// Create a copy of CheckHashesRequest
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$CheckHashesRequestImplCopyWith<_$CheckHashesRequestImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+CheckHashesResponse _$CheckHashesResponseFromJson(Map<String, dynamic> json) {
+  return _CheckHashesResponse.fromJson(json);
+}
+
+/// @nodoc
+mixin _$CheckHashesResponse {
+  List<String> get existingHashes => throw _privateConstructorUsedError;
+
+  /// Serializes this CheckHashesResponse to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of CheckHashesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $CheckHashesResponseCopyWith<CheckHashesResponse> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $CheckHashesResponseCopyWith<$Res> {
+  factory $CheckHashesResponseCopyWith(
+          CheckHashesResponse value, $Res Function(CheckHashesResponse) then) =
+      _$CheckHashesResponseCopyWithImpl<$Res, CheckHashesResponse>;
+  @useResult
+  $Res call({List<String> existingHashes});
+}
+
+/// @nodoc
+class _$CheckHashesResponseCopyWithImpl<$Res, $Val extends CheckHashesResponse>
+    implements $CheckHashesResponseCopyWith<$Res> {
+  _$CheckHashesResponseCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of CheckHashesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? existingHashes = null,
+  }) {
+    return _then(_value.copyWith(
+      existingHashes: null == existingHashes
+          ? _value.existingHashes
+          : existingHashes // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$CheckHashesResponseImplCopyWith<$Res>
+    implements $CheckHashesResponseCopyWith<$Res> {
+  factory _$$CheckHashesResponseImplCopyWith(_$CheckHashesResponseImpl value,
+          $Res Function(_$CheckHashesResponseImpl) then) =
+      __$$CheckHashesResponseImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({List<String> existingHashes});
+}
+
+/// @nodoc
+class __$$CheckHashesResponseImplCopyWithImpl<$Res>
+    extends _$CheckHashesResponseCopyWithImpl<$Res, _$CheckHashesResponseImpl>
+    implements _$$CheckHashesResponseImplCopyWith<$Res> {
+  __$$CheckHashesResponseImplCopyWithImpl(_$CheckHashesResponseImpl _value,
+      $Res Function(_$CheckHashesResponseImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of CheckHashesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? existingHashes = null,
+  }) {
+    return _then(_$CheckHashesResponseImpl(
+      existingHashes: null == existingHashes
+          ? _value._existingHashes
+          : existingHashes // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$CheckHashesResponseImpl implements _CheckHashesResponse {
+  const _$CheckHashesResponseImpl({required final List<String> existingHashes})
+      : _existingHashes = existingHashes;
+
+  factory _$CheckHashesResponseImpl.fromJson(Map<String, dynamic> json) =>
+      _$$CheckHashesResponseImplFromJson(json);
+
+  final List<String> _existingHashes;
+  @override
+  List<String> get existingHashes {
+    if (_existingHashes is EqualUnmodifiableListView) return _existingHashes;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_existingHashes);
+  }
+
+  @override
+  String toString() {
+    return 'CheckHashesResponse(existingHashes: $existingHashes)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$CheckHashesResponseImpl &&
+            const DeepCollectionEquality()
+                .equals(other._existingHashes, _existingHashes));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, const DeepCollectionEquality().hash(_existingHashes));
+
+  /// Create a copy of CheckHashesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$CheckHashesResponseImplCopyWith<_$CheckHashesResponseImpl> get copyWith =>
+      __$$CheckHashesResponseImplCopyWithImpl<_$CheckHashesResponseImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$CheckHashesResponseImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _CheckHashesResponse implements CheckHashesResponse {
+  const factory _CheckHashesResponse(
+      {required final List<String> existingHashes}) = _$CheckHashesResponseImpl;
+
+  factory _CheckHashesResponse.fromJson(Map<String, dynamic> json) =
+      _$CheckHashesResponseImpl.fromJson;
+
+  @override
+  List<String> get existingHashes;
+
+  /// Create a copy of CheckHashesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$CheckHashesResponseImplCopyWith<_$CheckHashesResponseImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+MediaChangesResponse _$MediaChangesResponseFromJson(Map<String, dynamic> json) {
+  return _MediaChangesResponse.fromJson(json);
+}
+
+/// @nodoc
+mixin _$MediaChangesResponse {
+  List<MediaResponse> get created => throw _privateConstructorUsedError;
+  List<MediaResponse> get updated => throw _privateConstructorUsedError;
+  List<String> get deleted => throw _privateConstructorUsedError;
+
+  /// Serializes this MediaChangesResponse to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of MediaChangesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $MediaChangesResponseCopyWith<MediaChangesResponse> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $MediaChangesResponseCopyWith<$Res> {
+  factory $MediaChangesResponseCopyWith(MediaChangesResponse value,
+          $Res Function(MediaChangesResponse) then) =
+      _$MediaChangesResponseCopyWithImpl<$Res, MediaChangesResponse>;
+  @useResult
+  $Res call(
+      {List<MediaResponse> created,
+      List<MediaResponse> updated,
+      List<String> deleted});
+}
+
+/// @nodoc
+class _$MediaChangesResponseCopyWithImpl<$Res,
+        $Val extends MediaChangesResponse>
+    implements $MediaChangesResponseCopyWith<$Res> {
+  _$MediaChangesResponseCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of MediaChangesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? created = null,
+    Object? updated = null,
+    Object? deleted = null,
+  }) {
+    return _then(_value.copyWith(
+      created: null == created
+          ? _value.created
+          : created // ignore: cast_nullable_to_non_nullable
+              as List<MediaResponse>,
+      updated: null == updated
+          ? _value.updated
+          : updated // ignore: cast_nullable_to_non_nullable
+              as List<MediaResponse>,
+      deleted: null == deleted
+          ? _value.deleted
+          : deleted // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$MediaChangesResponseImplCopyWith<$Res>
+    implements $MediaChangesResponseCopyWith<$Res> {
+  factory _$$MediaChangesResponseImplCopyWith(_$MediaChangesResponseImpl value,
+          $Res Function(_$MediaChangesResponseImpl) then) =
+      __$$MediaChangesResponseImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {List<MediaResponse> created,
+      List<MediaResponse> updated,
+      List<String> deleted});
+}
+
+/// @nodoc
+class __$$MediaChangesResponseImplCopyWithImpl<$Res>
+    extends _$MediaChangesResponseCopyWithImpl<$Res, _$MediaChangesResponseImpl>
+    implements _$$MediaChangesResponseImplCopyWith<$Res> {
+  __$$MediaChangesResponseImplCopyWithImpl(_$MediaChangesResponseImpl _value,
+      $Res Function(_$MediaChangesResponseImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of MediaChangesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? created = null,
+    Object? updated = null,
+    Object? deleted = null,
+  }) {
+    return _then(_$MediaChangesResponseImpl(
+      created: null == created
+          ? _value._created
+          : created // ignore: cast_nullable_to_non_nullable
+              as List<MediaResponse>,
+      updated: null == updated
+          ? _value._updated
+          : updated // ignore: cast_nullable_to_non_nullable
+              as List<MediaResponse>,
+      deleted: null == deleted
+          ? _value._deleted
+          : deleted // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$MediaChangesResponseImpl implements _MediaChangesResponse {
+  const _$MediaChangesResponseImpl(
+      {required final List<MediaResponse> created,
+      required final List<MediaResponse> updated,
+      required final List<String> deleted})
+      : _created = created,
+        _updated = updated,
+        _deleted = deleted;
+
+  factory _$MediaChangesResponseImpl.fromJson(Map<String, dynamic> json) =>
+      _$$MediaChangesResponseImplFromJson(json);
+
+  final List<MediaResponse> _created;
+  @override
+  List<MediaResponse> get created {
+    if (_created is EqualUnmodifiableListView) return _created;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_created);
+  }
+
+  final List<MediaResponse> _updated;
+  @override
+  List<MediaResponse> get updated {
+    if (_updated is EqualUnmodifiableListView) return _updated;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_updated);
+  }
+
+  final List<String> _deleted;
+  @override
+  List<String> get deleted {
+    if (_deleted is EqualUnmodifiableListView) return _deleted;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_deleted);
+  }
+
+  @override
+  String toString() {
+    return 'MediaChangesResponse(created: $created, updated: $updated, deleted: $deleted)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$MediaChangesResponseImpl &&
+            const DeepCollectionEquality().equals(other._created, _created) &&
+            const DeepCollectionEquality().equals(other._updated, _updated) &&
+            const DeepCollectionEquality().equals(other._deleted, _deleted));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(_created),
+      const DeepCollectionEquality().hash(_updated),
+      const DeepCollectionEquality().hash(_deleted));
+
+  /// Create a copy of MediaChangesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$MediaChangesResponseImplCopyWith<_$MediaChangesResponseImpl>
+      get copyWith =>
+          __$$MediaChangesResponseImplCopyWithImpl<_$MediaChangesResponseImpl>(
+              this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$MediaChangesResponseImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _MediaChangesResponse implements MediaChangesResponse {
+  const factory _MediaChangesResponse(
+      {required final List<MediaResponse> created,
+      required final List<MediaResponse> updated,
+      required final List<String> deleted}) = _$MediaChangesResponseImpl;
+
+  factory _MediaChangesResponse.fromJson(Map<String, dynamic> json) =
+      _$MediaChangesResponseImpl.fromJson;
+
+  @override
+  List<MediaResponse> get created;
+  @override
+  List<MediaResponse> get updated;
+  @override
+  List<String> get deleted;
+
+  /// Create a copy of MediaChangesResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$MediaChangesResponseImplCopyWith<_$MediaChangesResponseImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
