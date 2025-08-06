@@ -549,6 +549,12 @@ const docTemplate = `{
                         "description": "每页数量",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "只返回在此时间戳 (ISO 8601) 之后更新的记录",
+                        "name": "updated_since",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -575,6 +581,115 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "数据库错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/changes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "根据客户端提供的 ` + "`" + `since` + "`" + ` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "获取增量变更",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "客户端本地记录的最新更新时间戳 (ISO 8601 格式)",
+                        "name": "since",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功获取变更",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.MediaChangesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "时间戳参数缺失或格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/check_hashes": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "客户端上传文件前，先通过此接口检查哪些文件（通过哈希）已经存在于云端，避免重复上传。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "批量预检哈希",
+                "parameters": [
+                    {
+                        "description": "包含文件哈希值数组的JSON对象",
+                        "name": "hashes",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckHashesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.CheckHashesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求体解析错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1309,6 +1424,31 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.CheckHashesRequest": {
+            "type": "object",
+            "required": [
+                "hashes"
+            ],
+            "properties": {
+                "hashes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handlers.CheckHashesResponse": {
+            "type": "object",
+            "properties": {
+                "existing_hashes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "handlers.CreateAlbumInput": {
             "type": "object",
             "required": [
@@ -1344,6 +1484,30 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.MediaChangesResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.MediaResponse"
+                    }
+                },
+                "deleted": {
+                    "description": "删除的媒体只返回 UUID",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updated": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.MediaResponse"
+                    }
+                }
+            }
+        },
         "handlers.MediaResponse": {
             "type": "object",
             "properties": {
@@ -1359,10 +1523,16 @@ const docTemplate = `{
                 "item_type": {
                     "$ref": "#/definitions/constant.MediaType"
                 },
+                "media_taken_at": {
+                    "type": "string"
+                },
                 "preview_url": {
                     "type": "string"
                 },
                 "thumbnail_url": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 },
                 "uuid": {

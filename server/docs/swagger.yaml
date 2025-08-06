@@ -119,6 +119,22 @@ definitions:
     required:
     - media_uuids
     type: object
+  handlers.CheckHashesRequest:
+    properties:
+      hashes:
+        items:
+          type: string
+        type: array
+    required:
+    - hashes
+    type: object
+  handlers.CheckHashesResponse:
+    properties:
+      existing_hashes:
+        items:
+          type: string
+        type: array
+    type: object
   handlers.CreateAlbumInput:
     properties:
       description:
@@ -143,6 +159,22 @@ definitions:
     - duration_minute
     - media_uuid
     type: object
+  handlers.MediaChangesResponse:
+    properties:
+      created:
+        items:
+          $ref: '#/definitions/handlers.MediaResponse'
+        type: array
+      deleted:
+        description: 删除的媒体只返回 UUID
+        items:
+          type: string
+        type: array
+      updated:
+        items:
+          $ref: '#/definitions/handlers.MediaResponse'
+        type: array
+    type: object
   handlers.MediaResponse:
     properties:
       created_at:
@@ -153,9 +185,13 @@ definitions:
         type: string
       item_type:
         $ref: '#/definitions/constant.MediaType'
+      media_taken_at:
+        type: string
       preview_url:
         type: string
       thumbnail_url:
+        type: string
+      updated_at:
         type: string
       uuid:
         type: string
@@ -624,6 +660,10 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: 只返回在此时间戳 (ISO 8601) 之后更新的记录
+        in: query
+        name: updated_since
+        type: string
       produces:
       - application/json
       responses:
@@ -809,6 +849,69 @@ paths:
       - BearerAuth: []
       - SignedURL: []
       summary: 获取缩略图
+      tags:
+      - Media
+  /media/changes:
+    get:
+      description: 根据客户端提供的 `since` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。
+      parameters:
+      - description: 客户端本地记录的最新更新时间戳 (ISO 8601 格式)
+        in: query
+        name: since
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取变更
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/handlers.MediaChangesResponse'
+              type: object
+        "400":
+          description: 时间戳参数缺失或格式错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取增量变更
+      tags:
+      - Media
+  /media/check_hashes:
+    post:
+      consumes:
+      - application/json
+      description: 客户端上传文件前，先通过此接口检查哪些文件（通过哈希）已经存在于云端，避免重复上传。
+      parameters:
+      - description: 包含文件哈希值数组的JSON对象
+        in: body
+        name: hashes
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CheckHashesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/handlers.CheckHashesResponse'
+              type: object
+        "400":
+          description: 请求体解析错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 批量预检哈希
       tags:
       - Media
   /media/upload:
