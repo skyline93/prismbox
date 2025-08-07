@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:mobile/auth/auth_notifier.dart';
+import 'package:mobile/routing/app_router.dart';
 
-// @RoutePage()
-class SplashPage extends HookConsumerWidget {
+@RoutePage()
+class SplashPage extends ConsumerWidget {
   const SplashPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(authNotifierProvider, (previous, next) {
+      next.whenOrNull(
+        authenticated: () =>
+            context.router.replaceAll([const NavigationRoute()]),
+        unauthenticated: () => context.router.replaceAll([const LoginRoute()]),
+        error: (message) => context.router.replaceAll([const LoginRoute()]),
+      );
+    });
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -143,6 +154,7 @@ class SplashPage extends HookConsumerWidget {
                   ),
 
                   const SizedBox(height: 40),
+                  Center(child: CircularProgressIndicator()),
                 ],
               ),
             ),

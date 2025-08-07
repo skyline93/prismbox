@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/services/dio_client.dart';
 import '../data/services/auth_service.dart';
 import '../core/storage/secure_storage_service.dart';
+import 'package:mobile/data/services/server_check_service.dart';
 
 // 1. Dio Provider (基础)
 final dioProvider = Provider<Dio>((ref) {
@@ -22,4 +23,9 @@ final authServiceProvider = Provider<AuthService>((ref) {
   final dio = ref.watch(dioClientProvider).dio;
   final storage = ref.watch(secureStorageServiceProvider);
   return AuthService(dio, storage);
+});
+
+final serverCheckServiceProvider = Provider<ServerCheckService>((ref) {
+  final dio = ref.watch(dioClientProvider).dio;
+  return ServerCheckService(dio);
 });

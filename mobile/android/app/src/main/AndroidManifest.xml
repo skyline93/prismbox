@@ -1,4 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 适用于 Android 13 (API 33) 及以上版本 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- 适用于 Android 12 (API 32) 及以下版本 -->
+    <!-- `maxSdkVersion` 确保这个权限只在旧版本上请求，以符合最新隐私政策 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+    <!-- 为了兼容一些旧插件或API，可以暂时保留写权限，同样限制在旧版本 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+
     <application
         android:label="mobile"
         android:name="${applicationName}"

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import 'package:mobile/data/datasources/app_database.dart'; // 你的 Drift 数据库文件
+import 'package:mobile/data/datasources/app_database.dart';
 
 /// 本地媒体数据源
 ///
@@ -27,31 +27,32 @@ class LocalMediaDataSource {
     final PermissionState ps = await PhotoManager.requestPermissionExtend();
     if (!ps.isAuth) {
       print("权限被拒绝，无法扫描本地媒体。");
-      // 在真实应用中，这里应该通过一个回调或返回状态来通知上层UI，引导用户去设置页开启权限。
       return;
     }
 
     print("开始扫描本地媒体...");
 
-    // 2. 从 photo_manager 获取设备上所有媒体
-    final List<AssetEntity> allDeviceEntities = [];
+    // --- 修复点 1: 使用 Map 进行去重 ---
+    // 不再使用 List<AssetEntity>，而是使用 Map<String, AssetEntity> 来自动处理重复的媒体 ID。
+    final Map<String, AssetEntity> allDeviceEntitiesMap = {};
     final List<AssetPathEntity> assetPaths =
         await PhotoManager.getAssetPathList(
           type: RequestType.common, // 获取图片和视频
         );
 
     for (final path in assetPaths) {
-      // 为了防止一次性加载过多资源导致内存问题，可以分页加载，但对于大多数手机，一次性加载几千个资源的元数据是可行的。
       final List<AssetEntity> assets = await path.getAssetListRange(
         start: 0,
         end: await path.assetCountAsync,
       );
-      allDeviceEntities.addAll(assets);
+      for (final asset in assets) {
+        // 使用 asset.id 作为 key，如果已存在则会覆盖，达到了去重的效果。
+        allDeviceEntitiesMap[asset.id] = asset;
+      }
     }
 
-    final Set<String> deviceAssetIds = allDeviceEntities
-        .map((e) => e.id)
-        .toSet();
+    // --- 修复点 2: 从 Map 的 keys 创建 Set ---
+    final Set<String> deviceAssetIds = allDeviceEntitiesMap.keys.toSet();
 
     // 3. 从本地数据库获取所有已索引的 `localId`
     final List<MediaAsset> dbAssets = await (_mediaAssetDao.select(
@@ -65,16 +66,18 @@ class LocalMediaDataSource {
 
     if (newAssetIds.isNotEmpty) {
       final List<MediaAssetsCompanion> newEntries = [];
-      final Iterable<AssetEntity> newEntities = allDeviceEntities.where(
-        (e) => newAssetIds.contains(e.id),
-      );
 
-      for (final asset in newEntities) {
+      // --- 修复点 3: 直接从去重后的 Map 中获取实体 ---
+      // 遍历需要新增的 ID 集合，并从 Map 中安全地获取唯一的 AssetEntity。
+      for (final assetId in newAssetIds) {
+        final asset = allDeviceEntitiesMap[assetId];
+        if (asset == null) continue; // 安全检查，理论上不会发生
+
         final file = await asset.file;
         newEntries.add(
           MediaAssetsCompanion.insert(
             localId: Value(asset.id),
-            syncStatus: SyncStatus.localOnlyNotSelected, // 初始状态
+            syncStatus: SyncStatus.localOnlyNotSelected,
             assetType: asset.type == AssetType.video
                 ? MediaType.video
                 : MediaType.image,
@@ -84,10 +87,10 @@ class LocalMediaDataSource {
             durationSec: Value(asset.duration),
             createdAt: asset.createDateTime,
             updatedAt: DateTime.now(),
-            // contentHash 可以在需要上传时再计算，以避免启动时产生大量IO开销。
           ),
         );
       }
+
       // 使用批量插入以获得最佳性能
       await _mediaAssetDao.batch((batch) {
         batch.insertAll(_mediaAssetDao.mediaAssets, newEntries);
@@ -100,13 +103,10 @@ class LocalMediaDataSource {
     print("发现 ${deletedAssetIds.length} 个媒体文件已在本地被删除...");
 
     if (deletedAssetIds.isNotEmpty) {
-      // 核心约束：只删除那些还未上传到云端的、仅存在于本地的记录。
-      // 如果一个媒体已经 `synced` 或 `cloudOnly`，即使本地文件被删除了，我们也不应该删除它的数据库记录。
       final deleteQuery = _mediaAssetDao.delete(_mediaAssetDao.mediaAssets)
         ..where(
           (tbl) =>
               tbl.localId.isIn(deletedAssetIds) &
-              // 只清理处于“本地独有”或“同步出错”状态的记录
               (tbl.syncStatus.equalsValue(SyncStatus.localOnlyNotSelected) |
                   tbl.syncStatus.equalsValue(SyncStatus.error)),
         );
