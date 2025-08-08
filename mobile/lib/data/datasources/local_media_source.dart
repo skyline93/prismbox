@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:photo_manager/photo_manager.dart';
-
+import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 
 /// 本地媒体数据源

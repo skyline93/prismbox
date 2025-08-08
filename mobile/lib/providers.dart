@@ -2,11 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/data/datasources/app_database.dart';
-import 'package:mobile/ui/media/viewmodels/timeline_state.dart';
+import 'package:mobile/ui/media/viewmodels/media_state.dart';
 // 导入所有需要被注入的类
 import 'data/repositories/media_repository_impl.dart';
 import 'domain/repositories/media_repository.dart';
-import 'package:mobile/ui/media/viewmodels/timeline_viewmodel.dart';
+import 'package:mobile/data/repositories/media_repository_impl.dart';
+import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart';
+import 'package:mobile/data/datasources/remote_media_source.dart';
+import 'package:mobile/core/providers.dart';
 
 // ==========================================================================
 // Data Layer Providers (数据层提供者)
@@ -26,26 +29,48 @@ final localMediaDataSourceProvider = Provider<LocalMediaDataSource>((ref) {
   return LocalMediaDataSource(db);
 });
 
+final remoteMediaSourceProvider = Provider<RemoteMediaDataSource>((ref) {
+  // RemoteMediaDataSource 依赖于 Dio 实例
+  final dio = ref.watch(dioClientProvider).dio;
+  return RemoteMediaDataSource(dio);
+});
+
 /// 媒体仓库的提供者
 /// 这里我们注册的是抽象类 `MediaRepository`，返回的是具体实现。
 /// 这是依赖倒置原则的最佳实践。
 final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
-  final localDataSource = ref.watch(localMediaDataSourceProvider);
-  final db = ref.watch(databaseProvider);
-  return MediaRepositoryImpl(localDataSource: localDataSource, db: db);
+  return MediaRepositoryImpl(
+    localDataSource: ref.watch(localMediaDataSourceProvider),
+    cloudDataSource: ref.watch(remoteMediaSourceProvider),
+    db: ref.watch(databaseProvider),
+  );
 });
 
 // ==========================================================================
 // Presentation Layer Providers (表现层提供者)
 // ==========================================================================
 
-/// Timeline ViewModel 的提供者
+/// Media ViewModel 的提供者
 ///
 /// 使用 `StateNotifierProvider`，它专门用于提供 `StateNotifier` 的实例。
 /// UI 将通过监听这个 provider 来获取状态并响应变化。
 final timelineViewModelProvider =
-    StateNotifierProvider<TimelineViewModel, TimelineState>((ref) {
+    StateNotifierProvider<MediaViewModel, MediaState>((ref) {
       // 将 MediaRepository 注入到 ViewModel 中。
       final mediaRepository = ref.watch(mediaRepositoryProvider);
-      return TimelineViewModel(mediaRepository, ref);
+      return MediaViewModel(mediaRepository, ref);
     });
+
+/// 定义视图模式的枚举
+enum MediaViewMode {
+  grid, // 网格视图
+  timeline, // 时间线视图
+}
+
+/// 创建一个 StateProvider 来管理当前的视图模式。
+///
+/// StateProvider 是 Riverpod 中最简单的 Provider，非常适合管理简单、可变的 UI 状态。
+/// 我们在这里设置默认视图为 `MediaViewMode.grid`。
+final mediaViewModeProvider = StateProvider<MediaViewMode>(
+  (_) => MediaViewMode.timeline,
+);

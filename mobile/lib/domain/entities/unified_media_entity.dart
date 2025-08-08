@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 // 导入您在 app_database.dart 中定义的枚举，以实现类型安全。
 // 这是推荐的做法，因为它确保了 Domain 层和 Data 层对状态有共同的理解。
 import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/models/media/media_model.dart';
 
 /// 统一的媒体实体 (Unified Media Entity)
 ///
@@ -81,6 +82,8 @@ class UnifiedMediaEntity extends Equatable {
 
   /// 一个派生的 getter，封装业务逻辑，方便 UI 调用。
   bool get isVideo => assetType == MediaType.video;
+
+  DateTime get creationDate => createdAt;
 
   /// 另一个派生 getter，用于计算宽高比，防止除以零的错误。
   double get aspectRatio =>

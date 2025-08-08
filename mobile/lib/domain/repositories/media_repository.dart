@@ -18,6 +18,12 @@ abstract class MediaRepository {
   /// 会自动发出更新后的数据。
   Future<void> loadAndIndexLocalMedia();
 
+  /// 触发一次与云端的数据同步。
+  ///
+  /// 此方法会从云端拉取所有（或增量）媒体元数据，
+  /// 并将其与本地数据库进行合并。
+  // Future<void> syncWithCloud();
+
   // 未来可以添加更多方法...
   // Future<void> markAsPendingBackup(List<int> assetIds);
   // Future<void> deleteMedia(UnifiedMediaEntity entity);

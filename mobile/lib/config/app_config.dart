@@ -7,7 +7,7 @@ class AppConfig {
 class ApiConfig {
   const ApiConfig();
 
-  static const String defaultServerAddr = 'http://10.168.1.201:18090';
+  static const String defaultServerAddr = 'http://10.168.1.243:8080';
   static const String apiVersion = 'v1';
 
   static const Duration connectTimeout = Duration(seconds: 10);

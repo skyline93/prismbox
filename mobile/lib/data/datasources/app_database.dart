@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:mobile/data/models/media/media_model.dart';
 
 // 为了让 Drift 能够生成代码，需要这个 part 文件
 part 'app_database.g.dart';
@@ -22,9 +23,6 @@ enum SyncStatus {
   downloading, // 下载中
   error, // 同步出错
 }
-
-/// 媒体类型 (对应 media_assets.asset_type)
-enum MediaType { image, video }
 
 /// 同步任务的类型 (对应 sync_jobs.job_type)
 enum JobType {
@@ -208,6 +206,74 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
             status: JobStatus.pending,
           ),
         );
+      }
+    });
+  }
+
+  /// [核心事务] 批量更新或插入从云端拉取的媒体数据
+  ///
+  /// 使用 "upsert" 逻辑:
+  /// - 如果云端 `cloudUuid` 对应的记录已存在，则更新它。
+  /// - 如果不存在，则插入新记录。
+  ///
+  /// @param cloudAssets 从 RemoteMediaSource 获取并转换好的数据。
+  Future<void> bulkUpsertCloudMedia(
+    List<MediaAssetsCompanion> cloudAssets,
+  ) async {
+    if (cloudAssets.isEmpty) {
+      return;
+    }
+
+    print("开始将 ${cloudAssets.length} 条云端记录写入本地数据库...");
+
+    // 使用事务确保操作的原子性，要么全部成功，要么全部失败。
+    await transaction(() async {
+      for (final asset in cloudAssets) {
+        // Drift 提供了 insertOnConflictUpdate，完美实现了 Upsert 功能。
+        // 我们基于 cloudUuid 这个唯一键进行冲突判断。
+        await into(mediaAssets).insertOnConflictUpdate(asset);
+      }
+    });
+
+    print("云端记录写入数据库完成。");
+  }
+
+  /// [核心事务] 将从云端获取的变更原子化地应用到本地数据库。
+  ///
+  /// 此方法在一个事务中执行所有操作，以保证数据的一致性。
+  ///
+  /// @param toUpsert 需要创建或更新的媒体列表。
+  /// @param uuidsToDelete 需要删除的媒体的 cloudUuid 列表。
+  Future<void> applyCloudChanges({
+    required List<MediaAssetsCompanion> toUpsert,
+    required List<String> uuidsToDelete,
+  }) async {
+    print("开始应用云端变更到本地数据库...");
+    print("待更新/插入: ${toUpsert.length} 条, 待删除: ${uuidsToDelete.length} 条。");
+
+    // 使用事务确保所有操作要么全部成功，要么全部失败回滚。
+    return transaction(() async {
+      // 1. 处理删除操作
+      if (uuidsToDelete.isNotEmpty) {
+        await (delete(
+          mediaAssets,
+        )..where((tbl) => tbl.cloudUuid.isIn(uuidsToDelete))).go();
+        print("成功删除了 ${uuidsToDelete.length} 条云端指定的记录。");
+      }
+
+      // 2. 处理创建/更新操作
+      if (toUpsert.isNotEmpty) {
+        // 使用批量操作提升性能
+        await batch((batch) {
+          // insertOnConflictUpdate 是 Drift 实现 "Upsert" 的绝佳方式。
+          // 它会根据主键或唯一键（这里我们依赖 cloudUuid）来判断是插入新行还是更新旧行。
+          batch.insertAll(
+            mediaAssets,
+            toUpsert,
+            mode: InsertMode.insertOrReplace,
+          );
+        });
+        print("成功创建/更新了 ${toUpsert.length} 条记录。");
       }
     });
   }

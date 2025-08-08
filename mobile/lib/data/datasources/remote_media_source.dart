@@ -6,11 +6,11 @@ import 'package:mobile/data/services/dio_client.dart';
 
 /// 媒体服务类
 /// 提供媒体相关的API接口封装
-class MediaService {
+class RemoteMediaDataSource {
   final Dio _dio;
   final String baseUrl = DioClient.getBaseUrl();
 
-  MediaService(this._dio);
+  RemoteMediaDataSource(this._dio);
 
   /// 获取当前用户的媒体列表（分页）
   ///
@@ -195,6 +195,34 @@ class MediaService {
       }
     } on DioException catch (e) {
       throw _handleDioError(e, '获取媒体详情');
+    }
+  }
+
+  Future<CheckHashesResponse> checkHashes(CheckHashesRequest intput) async {
+    try {
+      final response = await _dio.post('$baseUrl/media/check_hashes');
+
+      if (response.statusCode == 200) {
+        return CheckHashesResponse.fromJson(response.data['data']);
+      } else {
+        throw Exception('检查hash失败: ${response.data['message']}');
+      }
+    } on DioException catch (e) {
+      throw _handleDioError(e, '检查hash失败');
+    }
+  }
+
+  Future<MediaChangesResponse> getChanges() async {
+    try {
+      final response = await _dio.get('$baseUrl/media/changes', );
+
+      if (response.statusCode == 200) {
+        return MediaChangesResponse.fromJson(response.data['data']);
+      } else {
+        throw Exception('获取增量变更失败: ${response.data['message']}');
+      }
+    } on DioException catch (e) {
+      throw _handleDioError(e, '获取增量变更失败');
     }
   }
 

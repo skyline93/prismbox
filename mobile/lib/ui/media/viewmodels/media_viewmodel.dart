@@ -1,14 +1,16 @@
+// lib/ui/media/viewmodels/media_viewmodel.dart
+
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:mobile/domain/repositories/media_repository.dart';
-import 'package:mobile/ui/media/viewmodels/timeline_state.dart';
+import 'package:mobile/ui/media/viewmodels/media_state.dart';
 
-/// 时间线页面的 ViewModel，现在是 StateNotifier 的实现。
+/// 媒体页面的 ViewModel，现在是 StateNotifier 的实现。
 ///
 /// `StateNotifier` 是一个专门用于管理单一、不可变状态的类。
-/// 它需要一个泛型参数来指定它所管理的状态类型，这里是 `TimelineState`。
-class TimelineViewModel extends StateNotifier<TimelineState> {
+/// 它需要一个泛型参数来指定它所管理的状态类型，这里是 `MediaState`。
+class MediaViewModel extends StateNotifier<MediaState> {
   final MediaRepository _mediaRepository;
   final Ref _ref; // Riverpod 的引用，用于读取其他 provider 或执行特殊操作
 
@@ -17,8 +19,8 @@ class TimelineViewModel extends StateNotifier<TimelineState> {
   /// 构造函数
   ///
   /// 它接收 `MediaRepository` 作为依赖，并调用父类的构造函数来设置初始状态。
-  TimelineViewModel(this._mediaRepository, this._ref)
-    : super(TimelineState.initial()) {
+  MediaViewModel(this._mediaRepository, this._ref)
+    : super(MediaState(isLoading: true, media: [], isSyncingWithCloud: false)) {
     // 在 ViewModel 被创建时，立即开始执行核心逻辑。
     _listenToMediaStream();
     _triggerInitialLoad();
@@ -29,6 +31,14 @@ class TimelineViewModel extends StateNotifier<TimelineState> {
       print("TimelineViewModel disposed. Cancelling stream subscription.");
       _mediaSubscription?.cancel();
     });
+  }
+
+  Future<void> loadInitialMedia() async {
+    try {
+      await _mediaRepository.loadAndIndexLocalMedia();
+    } catch (e) {
+      state = state.copyWith(error: '加载本地媒体失败: $e', isLoading: false);
+    }
   }
 
   /// 1. 监听来自 Repository 的数据流
