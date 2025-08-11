@@ -634,13 +634,20 @@ MediaResponse _$MediaResponseFromJson(Map<String, dynamic> json) {
 mixin _$MediaResponse {
   String get uuid => throw _privateConstructorUsedError;
   String get filename => throw _privateConstructorUsedError;
+  @JsonKey(name: 'item_type')
   String get itemType => throw _privateConstructorUsedError;
+  @JsonKey(name: 'created_at')
   String get createdAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'updated_at')
   String get updatedAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'media_taken_at')
   String? get mediaTakenAt => throw _privateConstructorUsedError;
-  String? get downloadUrl => throw _privateConstructorUsedError;
-  String? get previewUrl => throw _privateConstructorUsedError;
-  String? get thumbnailUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'download_url')
+  String get downloadUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'preview_url')
+  String get previewUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'thumbnail_url')
+  String get thumbnailUrl => throw _privateConstructorUsedError;
 
   /// Serializes this MediaResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -661,13 +668,13 @@ abstract class $MediaResponseCopyWith<$Res> {
   $Res call(
       {String uuid,
       String filename,
-      String itemType,
-      String createdAt,
-      String updatedAt,
-      String? mediaTakenAt,
-      String? downloadUrl,
-      String? previewUrl,
-      String? thumbnailUrl});
+      @JsonKey(name: 'item_type') String itemType,
+      @JsonKey(name: 'created_at') String createdAt,
+      @JsonKey(name: 'updated_at') String updatedAt,
+      @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
+      @JsonKey(name: 'download_url') String downloadUrl,
+      @JsonKey(name: 'preview_url') String previewUrl,
+      @JsonKey(name: 'thumbnail_url') String thumbnailUrl});
 }
 
 /// @nodoc
@@ -691,9 +698,9 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? mediaTakenAt = freezed,
-    Object? downloadUrl = freezed,
-    Object? previewUrl = freezed,
-    Object? thumbnailUrl = freezed,
+    Object? downloadUrl = null,
+    Object? previewUrl = null,
+    Object? thumbnailUrl = null,
   }) {
     return _then(_value.copyWith(
       uuid: null == uuid
@@ -720,18 +727,18 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
           ? _value.mediaTakenAt
           : mediaTakenAt // ignore: cast_nullable_to_non_nullable
               as String?,
-      downloadUrl: freezed == downloadUrl
+      downloadUrl: null == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
-      previewUrl: freezed == previewUrl
+              as String,
+      previewUrl: null == previewUrl
           ? _value.previewUrl
           : previewUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
-      thumbnailUrl: freezed == thumbnailUrl
+              as String,
+      thumbnailUrl: null == thumbnailUrl
           ? _value.thumbnailUrl
           : thumbnailUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as String,
     ) as $Val);
   }
 }
@@ -747,13 +754,13 @@ abstract class _$$MediaResponseImplCopyWith<$Res>
   $Res call(
       {String uuid,
       String filename,
-      String itemType,
-      String createdAt,
-      String updatedAt,
-      String? mediaTakenAt,
-      String? downloadUrl,
-      String? previewUrl,
-      String? thumbnailUrl});
+      @JsonKey(name: 'item_type') String itemType,
+      @JsonKey(name: 'created_at') String createdAt,
+      @JsonKey(name: 'updated_at') String updatedAt,
+      @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
+      @JsonKey(name: 'download_url') String downloadUrl,
+      @JsonKey(name: 'preview_url') String previewUrl,
+      @JsonKey(name: 'thumbnail_url') String thumbnailUrl});
 }
 
 /// @nodoc
@@ -775,9 +782,9 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? mediaTakenAt = freezed,
-    Object? downloadUrl = freezed,
-    Object? previewUrl = freezed,
-    Object? thumbnailUrl = freezed,
+    Object? downloadUrl = null,
+    Object? previewUrl = null,
+    Object? thumbnailUrl = null,
   }) {
     return _then(_$MediaResponseImpl(
       uuid: null == uuid
@@ -804,18 +811,18 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
           ? _value.mediaTakenAt
           : mediaTakenAt // ignore: cast_nullable_to_non_nullable
               as String?,
-      downloadUrl: freezed == downloadUrl
+      downloadUrl: null == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
-      previewUrl: freezed == previewUrl
+              as String,
+      previewUrl: null == previewUrl
           ? _value.previewUrl
           : previewUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
-      thumbnailUrl: freezed == thumbnailUrl
+              as String,
+      thumbnailUrl: null == thumbnailUrl
           ? _value.thumbnailUrl
           : thumbnailUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as String,
     ));
   }
 }
@@ -826,13 +833,13 @@ class _$MediaResponseImpl implements _MediaResponse {
   const _$MediaResponseImpl(
       {required this.uuid,
       required this.filename,
-      required this.itemType,
-      required this.createdAt,
-      required this.updatedAt,
-      this.mediaTakenAt,
-      this.downloadUrl,
-      this.previewUrl,
-      this.thumbnailUrl});
+      @JsonKey(name: 'item_type') required this.itemType,
+      @JsonKey(name: 'created_at') required this.createdAt,
+      @JsonKey(name: 'updated_at') required this.updatedAt,
+      @JsonKey(name: 'media_taken_at') this.mediaTakenAt,
+      @JsonKey(name: 'download_url') required this.downloadUrl,
+      @JsonKey(name: 'preview_url') required this.previewUrl,
+      @JsonKey(name: 'thumbnail_url') required this.thumbnailUrl});
 
   factory _$MediaResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$MediaResponseImplFromJson(json);
@@ -842,19 +849,26 @@ class _$MediaResponseImpl implements _MediaResponse {
   @override
   final String filename;
   @override
+  @JsonKey(name: 'item_type')
   final String itemType;
   @override
+  @JsonKey(name: 'created_at')
   final String createdAt;
   @override
+  @JsonKey(name: 'updated_at')
   final String updatedAt;
   @override
+  @JsonKey(name: 'media_taken_at')
   final String? mediaTakenAt;
   @override
-  final String? downloadUrl;
+  @JsonKey(name: 'download_url')
+  final String downloadUrl;
   @override
-  final String? previewUrl;
+  @JsonKey(name: 'preview_url')
+  final String previewUrl;
   @override
-  final String? thumbnailUrl;
+  @JsonKey(name: 'thumbnail_url')
+  final String thumbnailUrl;
 
   @override
   String toString() {
@@ -917,15 +931,16 @@ class _$MediaResponseImpl implements _MediaResponse {
 
 abstract class _MediaResponse implements MediaResponse {
   const factory _MediaResponse(
-      {required final String uuid,
-      required final String filename,
-      required final String itemType,
-      required final String createdAt,
-      required final String updatedAt,
-      final String? mediaTakenAt,
-      final String? downloadUrl,
-      final String? previewUrl,
-      final String? thumbnailUrl}) = _$MediaResponseImpl;
+          {required final String uuid,
+          required final String filename,
+          @JsonKey(name: 'item_type') required final String itemType,
+          @JsonKey(name: 'created_at') required final String createdAt,
+          @JsonKey(name: 'updated_at') required final String updatedAt,
+          @JsonKey(name: 'media_taken_at') final String? mediaTakenAt,
+          @JsonKey(name: 'download_url') required final String downloadUrl,
+          @JsonKey(name: 'preview_url') required final String previewUrl,
+          @JsonKey(name: 'thumbnail_url') required final String thumbnailUrl}) =
+      _$MediaResponseImpl;
 
   factory _MediaResponse.fromJson(Map<String, dynamic> json) =
       _$MediaResponseImpl.fromJson;
@@ -935,19 +950,26 @@ abstract class _MediaResponse implements MediaResponse {
   @override
   String get filename;
   @override
+  @JsonKey(name: 'item_type')
   String get itemType;
   @override
+  @JsonKey(name: 'created_at')
   String get createdAt;
   @override
+  @JsonKey(name: 'updated_at')
   String get updatedAt;
   @override
+  @JsonKey(name: 'media_taken_at')
   String? get mediaTakenAt;
   @override
-  String? get downloadUrl;
+  @JsonKey(name: 'download_url')
+  String get downloadUrl;
   @override
-  String? get previewUrl;
+  @JsonKey(name: 'preview_url')
+  String get previewUrl;
   @override
-  String? get thumbnailUrl;
+  @JsonKey(name: 'thumbnail_url')
+  String get thumbnailUrl;
 
   /// Create a copy of MediaResponse
   /// with the given fields replaced by the non-null parameter values.

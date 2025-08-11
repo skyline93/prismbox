@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../entities/unified_media_entity.dart';
 
 /// MediaRepository 的抽象接口（契约）。
@@ -22,7 +23,9 @@ abstract class MediaRepository {
   ///
   /// 此方法会从云端拉取所有（或增量）媒体元数据，
   /// 并将其与本地数据库进行合并。
-  // Future<void> syncWithCloud();
+  Future<void> syncWithCloud();
+
+  Future<Uint8List> downloadThumbnail(String uuid);
 
   // 未来可以添加更多方法...
   // Future<void> markAsPendingBackup(List<int> assetIds);

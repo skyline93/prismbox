@@ -8,6 +8,7 @@ import 'package:mobile/data/services/dio_client.dart';
 /// 提供媒体相关的API接口封装
 class RemoteMediaDataSource {
   final Dio _dio;
+  final downloadDio = Dio();
   final String baseUrl = DioClient.getBaseUrl();
 
   RemoteMediaDataSource(this._dio);
@@ -163,9 +164,16 @@ class RemoteMediaDataSource {
   ///
   /// 返回缩略图二进制数据
   Future<Uint8List> downloadThumbnail(String uuid) async {
+    final MediaResponse mediaItem;
     try {
-      final response = await _dio.get(
-        '$baseUrl/media/$uuid/download/thumbnail',
+      mediaItem = await getMediaDetail(uuid);
+    } on DioException catch (e) {
+      throw _handleDioError(e, '下载缩略图');
+    }
+
+    try {
+      final response = await downloadDio.get(
+        mediaItem.thumbnailUrl,
         options: Options(responseType: ResponseType.bytes),
       );
 
@@ -184,12 +192,12 @@ class RemoteMediaDataSource {
   /// [uuid] 媒体文件的UUID
   ///
   /// 返回媒体详细信息
-  Future<MediaDetail> getMediaDetail(String uuid) async {
+  Future<MediaResponse> getMediaDetail(String uuid) async {
     try {
       final response = await _dio.get('$baseUrl/media/$uuid');
 
       if (response.statusCode == 200) {
-        return MediaDetail.fromJson(response.data['data']);
+        return MediaResponse.fromJson(response.data['data']);
       } else {
         throw Exception('获取媒体详情失败: ${response.data['message']}');
       }
@@ -212,17 +220,46 @@ class RemoteMediaDataSource {
     }
   }
 
-  Future<MediaChangesResponse> getChanges() async {
+  Future<MediaChangesResponse> getChanges({DateTime? since}) async {
     try {
-      final response = await _dio.get('$baseUrl/media/changes', );
+      // 准备查询参数
+      final Map<String, dynamic> queryParameters = {};
+      if (since != null) {
+        // 只保留到秒，去除微秒部分，保证Go后端兼容
+        final sinceStr = '${since.toUtc().toIso8601String().split('.').first}Z';
+        queryParameters['since'] = sinceStr;
+      }
+
+      print('RemoteMediaSource: 发起增量同步请求，参数: $queryParameters');
+      final response = await _dio.get(
+        '$baseUrl/media/changes',
+        queryParameters: queryParameters,
+      );
 
       if (response.statusCode == 200) {
-        return MediaChangesResponse.fromJson(response.data['data']);
+        // 1. 先检查并打印原始响应数据，帮助调试
+        final responseData = response.data;
+        print('RemoteMediaSource: 收到响应数据: $responseData');
+
+        if (responseData == null || responseData['data'] == null) {
+          throw Exception('服务器返回了空数据');
+        }
+
+        // 2. 确保 data 字段存在且是Map类型
+        final data = responseData['data'];
+
+        // 3. 使用安全的类型转换创建响应对象
+        return MediaChangesResponse.fromJson(data);
       } else {
-        throw Exception('获取增量变更失败: ${response.data['message']}');
+        final message = response.data?['message'] ?? '未知错误';
+        throw Exception('获取增量变更失败: $message');
       }
     } on DioException catch (e) {
       throw _handleDioError(e, '获取增量变更失败');
+    } catch (e) {
+      // 添加通用错误处理，包含更多上下文信息
+      print('RemoteMediaSource: getChanges 发生异常: $e');
+      rethrow;
     }
   }
 

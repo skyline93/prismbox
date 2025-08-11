@@ -8,6 +8,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/providers.dart';
 
 /// ---------------------------------------------------------------------------
 /// **第 1 步: 创建数据提供者 (Provider)**
@@ -50,6 +51,21 @@ final thumbnailProvider = FutureProvider.family<Uint8List?, UnifiedMediaEntity>(
       if (await file.exists()) {
         // 使用异步方法读取文件内容
         return await file.readAsBytes();
+      }
+    }
+
+    // 后备方案 2：如果是一个仅云端的资源，则从网络下载缩略图
+    if (entity.syncStatus == SyncStatus.cloudOnly && entity.cloudUuid != null) {
+      try {
+        // 从 ref 读取 repository 实例
+        final repository = ref.read(
+          mediaRepositoryProvider,
+        ); // 替换为你的 repository provider
+        // 调用新方法下载数据
+        return await repository.downloadThumbnail(entity.cloudUuid!);
+      } catch (e) {
+        debugPrint("无法从云端加载缩略图 for cloudUuid=${entity.cloudUuid}: $e");
+        // 如果网络请求失败，继续执行到最后返回 null
       }
     }
 

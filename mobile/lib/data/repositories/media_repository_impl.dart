@@ -1,3 +1,5 @@
+// lib/data/repositories/media_repository_impl.dart
+
 import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -8,6 +10,7 @@ import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart'; // 为未来云端同步预留
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/data/models/media/media_model.dart';
+import 'package:mobile/core/storage/sync_state_service.dart';
 
 /// MediaRepository 的具体实现。
 ///
@@ -17,14 +20,17 @@ import 'package:mobile/data/models/media/media_model.dart';
 class MediaRepositoryImpl implements MediaRepository {
   final LocalMediaDataSource _localDataSource;
   final RemoteMediaDataSource _cloudDataSource;
+  final SyncStateService _syncStateService;
   final MediaAssetDao _mediaAssetDao;
 
   MediaRepositoryImpl({
     required LocalMediaDataSource localDataSource,
     required RemoteMediaDataSource cloudDataSource,
+    required SyncStateService syncStateService,
     required AppDatabase db,
   }) : _localDataSource = localDataSource,
        _cloudDataSource = cloudDataSource,
+       _syncStateService = syncStateService,
        _mediaAssetDao = db.mediaAssetDao;
 
   @override
@@ -49,36 +55,53 @@ class MediaRepositoryImpl implements MediaRepository {
     });
   }
 
-  /// **核心实现：使用 getChanges 接口与云端同步**
   @override
   Future<void> syncWithCloud() async {
     print("Repository: 开始执行云端同步...");
     try {
-      // 1. 调用您封装好的 getChanges API
-      final MediaChangesResponse changes = await _cloudDataSource.getChanges();
+      final lastSyncTimestamp = await _syncStateService.getLastSyncTimestamp();
 
-      // 2. 准备需要创建/更新的数据
-      // 合并 'created' 和 'updated' 列表，因为对于本地数据库来说，它们都是 "Upsert" 操作。
+      if (lastSyncTimestamp == null) {
+        print("Repository: 执行首次全量同步 (since is null)");
+        // 在全量同步前，清空本地所有与云端相关的记录
+        // 【修正】直接使用 _mediaAssetDao 来访问和操作 mediaAssets 表
+        (_mediaAssetDao.delete(_mediaAssetDao.mediaAssets)).where(
+          (tbl) =>
+              tbl.syncStatus.isNotValue(SyncStatus.localOnlyNotSelected.name),
+        );
+        print("Repository: 已清空旧的云端数据，准备全量写入。");
+      } else {
+        print("Repository: 执行增量同步，since: $lastSyncTimestamp");
+      }
+
+      // 【修正】使用正确的成员变量名 _cloudDataSource
+      final MediaChangesResponse changes = await _cloudDataSource.getChanges(
+        since: lastSyncTimestamp,
+      );
+
+      // 将 'created' 和 'updated' 合并处理
       final List<MediaResponse> assetsToProcess = [
         ...changes.created,
         ...changes.updated,
       ];
 
-      // 将云端 DTO (MediaResponse) 转换为本地数据库模型 (MediaAssetsCompanion)
-      final List<MediaAssetsCompanion> companionsToUpsert = [];
-      for (final mediaResponse in assetsToProcess) {
-        companionsToUpsert.add(_convertMediaResponseToCompanion(mediaResponse));
-      }
+      // 调用辅助方法将 DTO 列表转换为数据库 Companion 列表
+      final List<MediaAssetsCompanion> companionsToUpsert = assetsToProcess
+          .map((res) => _convertMediaResponseToCompanion(res))
+          .toList();
 
-      // 3. 调用 DAO 的新方法，将所有变更在一个事务中应用
+      // 调用 DAO 将所有变更在一个事务中应用
+      // 【修正】直接使用 _mediaAssetDao
       await _mediaAssetDao.applyCloudChanges(
         toUpsert: companionsToUpsert,
         uuidsToDelete: changes.deleted,
       );
 
-      print("Repository: 云端同步成功完成。");
+      // 同步成功后，更新时间戳
+      await _syncStateService.setLastSyncTimestamp(DateTime.now());
+
+      print("Repository: 云端同步成功完成，并已更新同步时间戳。");
     } catch (e) {
-      // 将底层的异常继续向上抛出，由 ViewModel 层处理
       print("Repository: 云端同步失败 - $e");
       rethrow;
     }
@@ -112,5 +135,10 @@ class MediaRepositoryImpl implements MediaRepository {
       ),
       updatedAt: Value(DateTime.now()),
     );
+  }
+
+  @override
+  Future<Uint8List> downloadThumbnail(String uuid) async {
+    return await _cloudDataSource.downloadThumbnail(uuid);
   }
 }

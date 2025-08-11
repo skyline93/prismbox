@@ -6,10 +6,11 @@ import 'package:mobile/ui/media/viewmodels/media_state.dart';
 // 导入所有需要被注入的类
 import 'data/repositories/media_repository_impl.dart';
 import 'domain/repositories/media_repository.dart';
-import 'package:mobile/data/repositories/media_repository_impl.dart';
 import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/core/providers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/core/storage/sync_state_service.dart';
 
 // ==========================================================================
 // Data Layer Providers (数据层提供者)
@@ -42,6 +43,7 @@ final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
   return MediaRepositoryImpl(
     localDataSource: ref.watch(localMediaDataSourceProvider),
     cloudDataSource: ref.watch(remoteMediaSourceProvider),
+    syncStateService: ref.watch(syncStateServiceProvider),
     db: ref.watch(databaseProvider),
   );
 });
@@ -54,7 +56,7 @@ final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
 ///
 /// 使用 `StateNotifierProvider`，它专门用于提供 `StateNotifier` 的实例。
 /// UI 将通过监听这个 provider 来获取状态并响应变化。
-final timelineViewModelProvider =
+final mediaViewModelProvider =
     StateNotifierProvider<MediaViewModel, MediaState>((ref) {
       // 将 MediaRepository 注入到 ViewModel 中。
       final mediaRepository = ref.watch(mediaRepositoryProvider);
@@ -74,3 +76,24 @@ enum MediaViewMode {
 final mediaViewModeProvider = StateProvider<MediaViewMode>(
   (_) => MediaViewMode.timeline,
 );
+
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
+  ref,
+) async {
+  return await SharedPreferences.getInstance();
+});
+
+final syncStateServiceProvider = Provider<SyncStateService>((ref) {
+  // `watch` 一个 FutureProvider 会在 Future 完成后自动提供其值。
+  // 如果 Future 还在加载中，依赖它的 provider 会等待。
+  final prefs = ref
+      .watch(sharedPreferencesProvider)
+      .when(
+        data: (value) => value,
+        loading: () =>
+            throw Exception('SharedPreferences is not ready'), // 或者提供一个加载状态
+        error: (e, s) =>
+            throw Exception('Failed to load SharedPreferences: $e'),
+      );
+  return SyncStateService(prefs);
+});

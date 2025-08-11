@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'media_model.freezed.dart';
@@ -57,13 +59,13 @@ class MediaResponse with _$MediaResponse {
   const factory MediaResponse({
     required String uuid,
     required String filename,
-    required String itemType,
-    required String createdAt,
-    required String updatedAt,
-    String? mediaTakenAt,
-    String? downloadUrl,
-    String? previewUrl,
-    String? thumbnailUrl,
+    @JsonKey(name: 'item_type') required String itemType,
+    @JsonKey(name: 'created_at') required String createdAt,
+    @JsonKey(name: 'updated_at') required String updatedAt,
+    @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
+    @JsonKey(name: 'download_url') required String downloadUrl,
+    @JsonKey(name: 'preview_url') required String previewUrl,
+    @JsonKey(name: 'thumbnail_url') required String thumbnailUrl,
   }) = _MediaResponse;
 
   factory MediaResponse.fromJson(Map<String, dynamic> json) =>

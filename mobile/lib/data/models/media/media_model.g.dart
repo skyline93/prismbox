@@ -74,26 +74,26 @@ _$MediaResponseImpl _$$MediaResponseImplFromJson(Map<String, dynamic> json) =>
     _$MediaResponseImpl(
       uuid: json['uuid'] as String,
       filename: json['filename'] as String,
-      itemType: json['itemType'] as String,
-      createdAt: json['createdAt'] as String,
-      updatedAt: json['updatedAt'] as String,
-      mediaTakenAt: json['mediaTakenAt'] as String?,
-      downloadUrl: json['downloadUrl'] as String?,
-      previewUrl: json['previewUrl'] as String?,
-      thumbnailUrl: json['thumbnailUrl'] as String?,
+      itemType: json['item_type'] as String,
+      createdAt: json['created_at'] as String,
+      updatedAt: json['updated_at'] as String,
+      mediaTakenAt: json['media_taken_at'] as String?,
+      downloadUrl: json['download_url'] as String,
+      previewUrl: json['preview_url'] as String,
+      thumbnailUrl: json['thumbnail_url'] as String,
     );
 
 Map<String, dynamic> _$$MediaResponseImplToJson(_$MediaResponseImpl instance) =>
     <String, dynamic>{
       'uuid': instance.uuid,
       'filename': instance.filename,
-      'itemType': instance.itemType,
-      'createdAt': instance.createdAt,
-      'updatedAt': instance.updatedAt,
-      'mediaTakenAt': instance.mediaTakenAt,
-      'downloadUrl': instance.downloadUrl,
-      'previewUrl': instance.previewUrl,
-      'thumbnailUrl': instance.thumbnailUrl,
+      'item_type': instance.itemType,
+      'created_at': instance.createdAt,
+      'updated_at': instance.updatedAt,
+      'media_taken_at': instance.mediaTakenAt,
+      'download_url': instance.downloadUrl,
+      'preview_url': instance.previewUrl,
+      'thumbnail_url': instance.thumbnailUrl,
     };
 
 _$MediaListResponseImpl _$$MediaListResponseImplFromJson(

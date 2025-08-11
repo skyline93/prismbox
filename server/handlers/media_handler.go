@@ -229,15 +229,7 @@ func (h *MediaHandler) GetMediaDetail(c *gin.Context) {
 		return
 	}
 
-	resp := MediaResponse{
-		UUID:         media.UUID,
-		Filename:     media.Filename,
-		ItemType:     media.ItemType,
-		CreatedAt:    media.CreatedAt,
-		ThumbnailURL: h.URLBuilder.BuildMediaThumbnailPath(media.UUID),
-		PreviewURL:   h.URLBuilder.BuildMediaPreviewPath(media.UUID),
-		DownloadURL:  h.URLBuilder.BuildMediaOriginalPath(media.UUID),
-	}
+	resp := h.buildMediaResponse(userID, media)
 
 	core.Success(c, "Media detail retrieved successfully", resp)
 }
@@ -483,101 +475,116 @@ func (h *MediaHandler) CheckHashes(c *gin.Context) {
 	core.Success(c, "Hashes checked", CheckHashesResponse{ExistingHashes: existingHashes})
 }
 
-// [新增] GetChanges godoc
-// @Summary      获取增量变更
-// @Description  根据客户端提供的 `since` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。
+// [修改] GetChanges godoc
+// @Summary      获取媒体变更（增量或全量）
+// @Description  根据客户端提供的 `since` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。如果 `since` 未提供，则返回所有媒体的全量数据。
 // @Tags         Media
 // @Produce      json
-// @Param        since query string true "客户端本地记录的最新更新时间戳 (ISO 8601 格式)"
+// @Param        since query string false "【可选】客户端本地记录的最新更新时间戳 (ISO 8601 格式)。如果为空，则执行全量同步。"
 // @Success      200  {object}  core.ApiResponse{data=MediaChangesResponse} "成功获取变更"
-// @Failure      400  {object}  core.ApiResponse "时间戳参数缺失或格式错误"
+// @Failure      400  {object}  core.ApiResponse "时间戳格式错误"
 // @Security     BearerAuth
 // @Router       /media/changes [get]
 func (h *MediaHandler) GetChanges(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	sinceStr := c.Query("since")
 
-	if sinceStr == "" {
-		core.Error(c, "Query parameter 'since' is required")
-		return
-	}
-
-	since, err := time.Parse(iso8601Format, sinceStr)
-	if err != nil {
-		core.Error(c, "Invalid 'since' timestamp format. Use ISO 8601.")
-		return
-	}
-
 	var response MediaChangesResponse
+	var err error
+	var medias []models.Media
 
-	// 1. 查询已创建和已更新的记录
-	var changedMedias []models.Media
-	err = h.DB.Unscoped(). // Unscoped() 包含软删除的记录
-				Where("user_id = ? AND updated_at > ?", userID, since).
-				Find(&changedMedias).Error
-	if err != nil {
-		core.Error(c, "Failed to fetch changes from database: "+err.Error())
-		return
-	}
-
-	// 2. 分类处理变更
-	var createdOrUpdated []models.Media
-	var deletedUUIDs []string
-
-	for _, media := range changedMedias {
-		if media.DeletedAt.Valid && media.DeletedAt.Time.After(since) {
-			// 如果记录被软删除了
-			deletedUUIDs = append(deletedUUIDs, media.UUID)
-		} else if !media.DeletedAt.Valid {
-			// 如果记录是正常的（未被删除）
-			createdOrUpdated = append(createdOrUpdated, media)
+	if sinceStr == "" {
+		// 【新增逻辑】如果 since 为空，执行全量同步
+		// 只查询属于该用户且未被软删除的记录
+		err = h.DB.Where("user_id = ?", userID).Find(&medias).Error
+		if err != nil {
+			core.Error(c, "Failed to fetch all media for full sync: "+err.Error())
+			return
 		}
-	}
+		// 全量同步时，所有记录都视为“已创建”
+		response.Created = h.buildMediaResponses(userID, medias)
+		response.Updated = []MediaResponse{}
+		response.Deleted = []string{}
 
-	// 在原设计中，创建和更新统一处理，这里也遵循此原则
-	// 若要严格区分 created 和 updated，可比较 media.CreatedAt 和 since
-	response.Updated = h.buildMediaResponses(userID, createdOrUpdated)
-	response.Created = []MediaResponse{} // 设计文档要求 created/updated/deleted, 这里将所有非删除变更放入 updated
-	response.Deleted = deletedUUIDs
+	} else {
+		// 【保留原逻辑】如果 since 不为空，执行增量同步
+		since, err := time.Parse(iso8601Format, sinceStr)
+		if err != nil {
+			core.Error(c, "Invalid 'since' timestamp format. Use ISO 8601.")
+			return
+		}
+
+		// 查询已变更的记录 (包括软删除的)
+		err = h.DB.Unscoped().
+			Where("user_id = ? AND updated_at > ?", userID, since).
+			Find(&medias).Error
+		if err != nil {
+			core.Error(c, "Failed to fetch changes from database: "+err.Error())
+			return
+		}
+
+		// 分类处理变更
+		var createdOrUpdated []models.Media
+		var deletedUUIDs = []string{}
+		for _, media := range medias {
+			if media.DeletedAt.Valid && media.DeletedAt.Time.After(since) {
+				deletedUUIDs = append(deletedUUIDs, media.UUID)
+			} else if !media.DeletedAt.Valid {
+				createdOrUpdated = append(createdOrUpdated, media)
+			}
+		}
+
+		// 增量同步时，为了简化客户端逻辑，可以将所有非删除的变更都放在 'updated' 字段中
+		response.Updated = h.buildMediaResponses(userID, createdOrUpdated)
+		response.Created = []MediaResponse{}
+		response.Deleted = deletedUUIDs
+	}
 
 	core.Success(c, "Changes retrieved successfully", response)
+}
+
+func (h *MediaHandler) buildMediaResponse(userID uint, media models.Media) *MediaResponse {
+
+	thumbnailPath := h.URLBuilder.BuildMediaThumbnailPath(media.UUID)
+	previewPath := h.URLBuilder.BuildMediaPreviewPath(media.UUID)
+	originalPath := h.URLBuilder.BuildMediaOriginalPath(media.UUID)
+
+	thumbnailSignedURL, err := h.URLSigner.Generate(thumbnailPath, userID, h.SignedURLLoadTTL)
+	if err != nil {
+		return nil
+	}
+
+	previewSignedURL, err := h.URLSigner.Generate(previewPath, userID, h.SignedURLLoadTTL)
+	if err != nil {
+		return nil
+	}
+
+	originalSignedURL, err := h.URLSigner.Generate(originalPath, userID, h.SignedURLLoadTTL)
+	if err != nil {
+		return nil
+	}
+
+	resp := &MediaResponse{
+		UUID:         media.UUID,
+		Filename:     media.Filename,
+		ItemType:     media.ItemType,
+		CreatedAt:    media.CreatedAt,
+		MediaTakenAt: media.MediaTakenAt,
+		UpdatedAt:    media.UpdatedAt,
+		ThumbnailURL: thumbnailSignedURL,
+		PreviewURL:   previewSignedURL,
+		DownloadURL:  originalSignedURL,
+	}
+
+	return resp
 }
 
 func (h *MediaHandler) buildMediaResponses(userID uint, medias []models.Media) []MediaResponse {
 	mediaResponses := make([]MediaResponse, 0, len(medias))
 
 	for _, media := range medias {
-		thumbnailPath := h.URLBuilder.BuildMediaThumbnailPath(media.UUID)
-		previewPath := h.URLBuilder.BuildMediaPreviewPath(media.UUID)
-		originalPath := h.URLBuilder.BuildMediaOriginalPath(media.UUID)
-
-		thumbnailSignedURL, err := h.URLSigner.Generate(thumbnailPath, userID, h.SignedURLLoadTTL)
-		if err != nil {
-			return nil
-		}
-
-		previewSignedURL, err := h.URLSigner.Generate(previewPath, userID, h.SignedURLLoadTTL)
-		if err != nil {
-			return nil
-		}
-
-		originalSignedURL, err := h.URLSigner.Generate(originalPath, userID, h.SignedURLLoadTTL)
-		if err != nil {
-			return nil
-		}
-
-		resp := MediaResponse{
-			UUID:         media.UUID,
-			Filename:     media.Filename,
-			ItemType:     media.ItemType,
-			CreatedAt:    media.CreatedAt,
-			MediaTakenAt: media.MediaTakenAt,
-			UpdatedAt:    media.UpdatedAt,
-			ThumbnailURL: thumbnailSignedURL,
-			PreviewURL:   previewSignedURL,
-			DownloadURL:  originalSignedURL,
-		}
-		mediaResponses = append(mediaResponses, resp)
+		resp := h.buildMediaResponse(userID, media)
+		mediaResponses = append(mediaResponses, *resp)
 	}
 
 	return mediaResponses

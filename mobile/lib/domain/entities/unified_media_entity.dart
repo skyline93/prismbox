@@ -1,3 +1,5 @@
+// lib/domain/entities/unified_media_entity.dart
+
 import 'package:equatable/equatable.dart';
 
 // 导入您在 app_database.dart 中定义的枚举，以实现类型安全。
