@@ -77,23 +77,23 @@ final mediaViewModeProvider = StateProvider<MediaViewMode>(
   (_) => MediaViewMode.timeline,
 );
 
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
-  ref,
-) async {
-  return await SharedPreferences.getInstance();
+// ==========================================================================
+// Core/Infra Layer Providers (核心/基础设施层提供者)
+// ==========================================================================
+
+/// ✅ 第 1 步: 将 FutureProvider 修改为 Provider
+/// 它现在只是一个占位符，期望在 main.dart 中被 override
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  // 这行代码理论上不应该被执行。
+  // 如果执行了，说明你在 main.dart 中忘记了 override 这个 Provider。
+  throw UnimplementedError('SharedPreferencesProvider was not overridden');
 });
 
+/// ✅ 第 2 步: 简化 syncStateServiceProvider
+/// 它可以直接、同步地 watch 上面的 provider
 final syncStateServiceProvider = Provider<SyncStateService>((ref) {
-  // `watch` 一个 FutureProvider 会在 Future 完成后自动提供其值。
-  // 如果 Future 还在加载中，依赖它的 provider 会等待。
-  final prefs = ref
-      .watch(sharedPreferencesProvider)
-      .when(
-        data: (value) => value,
-        loading: () =>
-            throw Exception('SharedPreferences is not ready'), // 或者提供一个加载状态
-        error: (e, s) =>
-            throw Exception('Failed to load SharedPreferences: $e'),
-      );
+  // 直接 watch，不再需要 .when()
+  // 因为 main.dart 中的 override 保证了实例在此处一定是可用的。
+  final prefs = ref.watch(sharedPreferencesProvider);
   return SyncStateService(prefs);
 });

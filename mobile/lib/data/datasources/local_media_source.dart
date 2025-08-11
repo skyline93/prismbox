@@ -41,6 +41,13 @@ class LocalMediaDataSource {
         );
 
     for (final path in assetPaths) {
+      final count = await path.assetCountAsync;
+
+      // 在ios平台path.assetCountAsync可能为0
+      if (count <= 0) {
+        continue;
+      }
+
       final List<AssetEntity> assets = await path.getAssetListRange(
         start: 0,
         end: await path.assetCountAsync,
