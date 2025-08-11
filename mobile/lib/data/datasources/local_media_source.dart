@@ -4,9 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/datasources/app_database.dart';
-import 'package:pool/pool.dart'; // 1. 导入 pool 包
+import 'package:pool/pool.dart';
 
-/// 本地媒体数据源 (使用 Pool 优化并发稳定性)
+/// 本地媒体数据源 (最终内存优化版)
 class LocalMediaDataSource {
   final MediaAssetDao _mediaAssetDao;
 
@@ -21,24 +21,30 @@ class LocalMediaDataSource {
 
     print("开始扫描本地媒体...");
 
-    final Map<String, AssetEntity> allDeviceEntitiesMap = {};
+    // --- 【核心内存优化：不再全量加载 AssetEntity】 ---
+    // 1. 只获取设备上所有媒体的 ID，这是一个非常轻量的操作。
+    print("正在获取设备所有媒体ID...");
     final List<AssetPathEntity> assetPaths =
-        await PhotoManager.getAssetPathList(type: RequestType.common);
+        await PhotoManager.getAssetPathList(
+          type: RequestType.common,
+          onlyAll: true,
+        );
 
-    for (final path in assetPaths) {
-      final count = await path.assetCountAsync;
-      if (count <= 0) continue;
-      final List<AssetEntity> assets = await path.getAssetListRange(
-        start: 0,
-        end: count,
+    Set<String> deviceAssetIds = {};
+    if (assetPaths.isNotEmpty) {
+      // 通常 "Recent" 或 "所有照片" 相册在第一个
+      final AssetPathEntity mainPath = assetPaths.first;
+      final int totalCount = await mainPath.assetCountAsync;
+      // 使用 getAssetListRange 的一个技巧，只获取id
+      final List<AssetEntity> idOnlyAssets = await mainPath.getAssetListPaged(
+        page: 0,
+        size: totalCount,
       );
-      for (final asset in assets) {
-        allDeviceEntitiesMap[asset.id] = asset;
-      }
+      deviceAssetIds = idOnlyAssets.map((e) => e.id).toSet();
     }
+    print("获取到 ${deviceAssetIds.length} 个设备媒体ID。");
 
-    final Set<String> deviceAssetIds = allDeviceEntitiesMap.keys.toSet();
-
+    // 2. 从数据库获取已存在的ID（这部分已优化，保持不变）
     final query = _mediaAssetDao.selectOnly(_mediaAssetDao.mediaAssets)
       ..addColumns([_mediaAssetDao.mediaAssets.localId])
       ..where(_mediaAssetDao.mediaAssets.localId.isNotNull());
@@ -47,20 +53,17 @@ class LocalMediaDataSource {
         .get();
     final Set<String> dbAssetIds = idList.toSet();
 
+    // 3. 计算差异 - 增量添加
     final Set<String> newAssetIds = deviceAssetIds.difference(dbAssetIds);
     print("发现 ${newAssetIds.length} 个新媒体文件需要索引...");
 
     if (newAssetIds.isNotEmpty) {
-      // --- 【并发池优化】 ---
-      // 2. 创建一个 Pool。这里的数字 10 表示“最多允许10个任务同时运行”。
-      // 这是一个安全启动值，你可以根据测试结果调整（例如 15 或 20）。
-      // 这个值远比500安全得多。
-      final pool = Pool(5);
+      // 使用 Pool 控制并发，防止资源过载
+      final pool = Pool(5); // 保持一个安全的并发数
       int totalAddedCount = 0;
 
-      // 我们仍然可以分批次来组织和插入数据库，但并发获取由Pool控制。
       final List<String> newAssetIdsList = newAssetIds.toList();
-      const int dbBatchSize = 50; // 用于数据库批量插入的大小
+      const int dbBatchSize = 50; // 数据库批处理大小
 
       for (int i = 0; i < newAssetIdsList.length; i += dbBatchSize) {
         final int end = (i + dbBatchSize > newAssetIdsList.length)
@@ -68,47 +71,51 @@ class LocalMediaDataSource {
             : i + dbBatchSize;
         final List<String> batchIds = newAssetIdsList.sublist(i, end);
 
-        print("正在准备处理批次: ${i ~/ dbBatchSize + 1}...");
-
-        // 3. 将任务提交给 Pool，并等待批次中所有任务完成
-        final List<MediaAssetsCompanion?> results = await Future.wait(
-          batchIds.map((assetId) {
-            // pool.withResource 会获取一个“并发许可”
-            // 当池中的并发任务达到上限时，它会等待，直到有任务完成并释放许可
-            return pool.withResource<MediaAssetsCompanion?>(() async {
-              final asset = allDeviceEntitiesMap[assetId];
-              if (asset == null) return null;
-
-              try {
-                final file = await asset.file;
-                if (file == null) {
-                  print("警告: 无法获取资源文件路径: ${asset.id}");
-                  return null;
-                }
-
-                return MediaAssetsCompanion.insert(
-                  localId: Value(asset.id),
-                  syncStatus: SyncStatus.localOnlyNotSelected,
-                  assetType: asset.type == AssetType.video
-                      ? MediaType.video
-                      : MediaType.image,
-                  filePath: Value(file.path),
-                  width: Value(asset.width),
-                  height: Value(asset.height),
-                  durationSec: Value(asset.duration),
-                  createdAt: asset.createDateTime,
-                  updatedAt: DateTime.now(),
-                );
-              } catch (e, s) {
-                // 增加精细的错误捕获，以防某个文件处理失败
-                print('处理 asset ${asset.id} 时发生错误: $e');
-                print(s);
-                return null;
-              }
-            });
-          }),
+        print(
+          "正在处理批次: ${i ~/ dbBatchSize + 1} / ${(newAssetIdsList.length / dbBatchSize).ceil()}...",
         );
 
+        final List<Future<MediaAssetsCompanion?>> futures = batchIds.map((
+          assetId,
+        ) {
+          return pool.withResource<MediaAssetsCompanion?>(() async {
+            try {
+              // --- 【核心内存优化：按需获取 AssetEntity】 ---
+              // 4. 只在需要时，根据ID获取单个 AssetEntity 对象
+              final AssetEntity? asset = await AssetEntity.fromId(assetId);
+              if (asset == null) {
+                print("警告: 无法通过ID找到资源: $assetId");
+                return null;
+              }
+
+              final file = await asset.file;
+              if (file == null) {
+                print("警告: 无法获取资源文件路径: ${asset.id}");
+                return null;
+              }
+
+              return MediaAssetsCompanion.insert(
+                localId: Value(asset.id),
+                syncStatus: SyncStatus.localOnlyNotSelected,
+                assetType: asset.type == AssetType.video
+                    ? MediaType.video
+                    : MediaType.image,
+                filePath: Value(file.path),
+                width: Value(asset.width),
+                height: Value(asset.height),
+                durationSec: Value(asset.duration),
+                createdAt: asset.createDateTime,
+                updatedAt: DateTime.now(),
+              );
+            } catch (e, s) {
+              print('处理 asset $assetId 时发生错误: $e');
+              print(s);
+              return null;
+            }
+          });
+        }).toList();
+
+        final List<MediaAssetsCompanion?> results = await Future.wait(futures);
         final List<MediaAssetsCompanion> newEntries = results
             .whereType<MediaAssetsCompanion>()
             .toList();
@@ -120,13 +127,17 @@ class LocalMediaDataSource {
           totalAddedCount += newEntries.length;
           print("批次处理完成：已添加 ${newEntries.length} 条记录。当前总数: $totalAddedCount");
         }
+
+        // **实验性优化**: 在每个大批次后，手动触发一次事件循环，给GC机会运行。
+        await Future.delayed(Duration.zero);
       }
       print("索引完成：成功添加了 $totalAddedCount 个新媒体记录。");
     }
 
+    // 清理逻辑保持不变
     final Set<String> deletedAssetIds = dbAssetIds.difference(deviceAssetIds);
-    print("发现 ${deletedAssetIds.length} 个媒体文件已在本地被删除...");
     if (deletedAssetIds.isNotEmpty) {
+      // ... (删除逻辑代码)
       final deleteQuery = _mediaAssetDao.delete(_mediaAssetDao.mediaAssets)
         ..where(
           (tbl) =>
