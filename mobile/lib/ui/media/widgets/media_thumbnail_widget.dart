@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/providers.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:mobile/routing/app_router.dart';
 
 /// ---------------------------------------------------------------------------
 /// **第 1 步: 创建数据提供者 (Provider)**
@@ -82,9 +84,18 @@ final thumbnailProvider = FutureProvider.family<Uint8List?, UnifiedMediaEntity>(
 ///   它提供了一个 `WidgetRef` 对象，用于与 Provider 进行交互。
 /// ---------------------------------------------------------------------------
 class MediaThumbnailWidget extends ConsumerWidget {
-  const MediaThumbnailWidget({super.key, required this.entity});
-
   final UnifiedMediaEntity entity;
+  // 【新增】完整的媒体列表，用于传递给详情页
+  final List<UnifiedMediaEntity> mediaList;
+  // 【新增】当前媒体在列表中的索引
+  // final int index;
+
+  const MediaThumbnailWidget({
+    super.key,
+    required this.entity,
+    required this.mediaList,
+    // required this.index,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -96,8 +107,25 @@ class MediaThumbnailWidget extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        debugPrint('Tapped on media with id: ${entity.id}');
-        // TODO: 在这里实现点击后的导航逻辑
+        // 【核心修正】在这里动态查找实体在列表中的索引
+        // 这确保了无论UI如何布局，我们总能找到正确的起始位置
+        final initialIndex = mediaList.indexOf(entity);
+
+        // 如果找到了实体（通常情况下总能找到），则导航
+        if (initialIndex != -1) {
+          debugPrint(
+            'Tapped on media id: ${entity.id}, found at index: $initialIndex. Navigating...',
+          );
+          AutoRouter.of(context).push(
+            MediaDetailRoute(
+              media: mediaList,
+              initialIndex: initialIndex, // <-- 使用我们动态计算出的正确索引
+            ),
+          );
+        } else {
+          // 容错处理：如果因为某些原因实体不在列表中，则不执行任何操作并打印警告
+          debugPrint("警告: 点击的媒体 (id: ${entity.id}) 不在提供的 mediaList 中。");
+        }
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(0),

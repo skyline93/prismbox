@@ -1,282 +1,268 @@
+// lib/ui/media/page/media_detail.dart
+
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/providers.dart';
-import 'package:mobile/ui/media/viewmodels/media_state.dart';
+import 'package:mobile/data/datasources/app_database.dart'; // SyncStatus için gerekli
+// import 'package:mobile/providers.dart'; // mediaRepositoryProvider için gerekli
+import 'package:transparent_image/transparent_image.dart';
+import 'package:video_player/video_player.dart';
 
+/// ---------------------------------------------------------------------------
+/// **为详情页创建数据提供者 (Provider)**
+///
+/// 这个 Provider 负责异步获取全分辨率的媒体数据。
+/// - 对于本地媒体，它会直接返回一个 File 对象。
+/// - 对于仅云端的媒体，它会调用 repository 的方法下载数据。
+/// ---------------------------------------------------------------------------
+final fullMediaProvider = FutureProvider.family<dynamic, UnifiedMediaEntity>((
+  ref,
+  entity,
+) async {
+  // 1. 对于本地资源，直接返回文件对象以获得最佳性能
+  if (entity.filePath != null && entity.filePath!.isNotEmpty) {
+    final file = File(entity.filePath!);
+    if (await file.exists()) {
+      return file;
+    }
+  }
+
+  // 2. 对于仅云端的资源，调用 repository 下载完整媒体
+  if (entity.syncStatus == SyncStatus.cloudOnly && entity.cloudUuid != null) {
+    // TODO
+    // try {
+    //   final repository = ref.read(mediaRepositoryProvider);
+    //   return await repository.downloadMedia(entity.cloudUuid!);
+    // } catch (e) {
+    //   debugPrint("无法从云端下载完整媒体 for cloudUuid=${entity.cloudUuid}: $e");
+    //   throw Exception('无法下载云端资源: $e');
+    // }
+  }
+
+  // 3. 如果本地文件丢失或资源不可用，则抛出异常
+  throw Exception('媒体资源不可用 for entity id: ${entity.id}');
+});
+
+@RoutePage()
 class MediaDetailPage extends ConsumerWidget {
-  final UnifiedMediaEntity media;
+  final List<UnifiedMediaEntity> media;
+  final int initialIndex;
 
-  const MediaDetailPage({super.key, required this.media});
+  const MediaDetailPage({
+    super.key,
+    required this.media,
+    required this.initialIndex,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mediaState = ref.watch(mediaViewModelProvider);
-    // final state = ref.watch(mediaDetailViewModelProvider(photo));
-
-    if (mediaState.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    } else if (mediaState.error != null) {
-      return Scaffold(body: Center(child: Text('错误: ${mediaState.error}')));
-    }
-
-    return _buildDetailScreen(context, ref, mediaState);
-
-    // return mediaState.when(
-    //   loading: () =>
-    //       const Scaffold(body: Center(child: CircularProgressIndicator())),
-    //   error: (error, stack) =>
-    //       Scaffold(body: Center(child: Text('错误: $error'))),
-    //   data: (state) => _buildDetailScreen(context, ref, state),
-    // );
-  }
-
-  Widget _buildDetailScreen(
-    BuildContext context,
-    WidgetRef ref,
-    MediaState state,
-  ) {
-    final viewModel = ref.read(mediaViewModelProvider(state).notifier);
+    final pageController = PageController(initialPage: initialIndex);
 
     return Scaffold(
       backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        // 【修正】使用推荐的常量色值
+        backgroundColor: Colors.black54,
+        foregroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: viewModel.sharePhoto,
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showOptionsMenu(context, viewModel),
-          ),
-        ],
-      ),
-      body: GestureDetector(
-        onTap: () => viewModel.toggleZoom(),
-        child: Stack(
-          children: [
-            _buildImageViewer(state),
-            if (!state.isZoomed) _buildBottomInfo(context, state),
-          ],
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarBrightness: Brightness.dark,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: viewModel.toggleFavorite,
-        backgroundColor: Colors.red,
-        child: Icon(
-          state.isFavorite ? Icons.favorite : Icons.favorite_border,
-          color: Colors.white,
-        ),
+      body: PageView.builder(
+        controller: pageController,
+        itemCount: media.length,
+        itemBuilder: (context, index) {
+          final currentEntity = media[index];
+          if (currentEntity.isVideo) {
+            return MediaVideoViewer(entity: currentEntity);
+          } else {
+            return MediaImageViewer(entity: currentEntity);
+          }
+        },
       ),
     );
   }
+}
 
-  Widget _buildImageViewer(MediaDetailState state) {
-    return Center(
-      child: Hero(
-        tag: 'photo-${state.photo.id}',
-        child: InteractiveViewer(
-          minScale: 1.0,
-          maxScale: 4.0,
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.black,
-            child: Image.network(
-              '${ApiService.baseUrl}/download/${state.photo.id}',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                    size: 100,
-                  ),
-                );
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                        : null,
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+/// 用于显示单张图片的组件
+class MediaImageViewer extends ConsumerWidget {
+  final UnifiedMediaEntity entity;
+  const MediaImageViewer({super.key, required this.entity});
 
-  Widget _buildBottomInfo(BuildContext context, MediaDetailState state) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              state.photo.displayName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _formatDateTime(state.photo.createDate),
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${_formatFileSize(state.photo.fileSize)} • ${state.photo.width}x${state.photo.height}',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            if (state.photo.type == PhotoType.video) ...[
-              const SizedBox(height: 4),
-              Text(
-                '时长: ${_formatDuration(state.photo.duration)}',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 监听 fullMediaProvider 的状态，这部分逻辑是正确的
+    final mediaAsyncValue = ref.watch(fullMediaProvider(entity));
 
-  void _showOptionsMenu(BuildContext context, MediaDetailViewModel viewModel) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[900],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return InteractiveViewer(
+      minScale: 1.0,
+      maxScale: 5.0,
+      child: Center(
+        child: mediaAsyncValue.when(
+          data: (mediaData) {
+            if (mediaData is File) {
+              return FadeInImage(
+                fit: BoxFit.contain,
+                placeholder: MemoryImage(kTransparentImage),
+                image: FileImage(mediaData),
+              );
+            } else if (mediaData is Uint8List) {
+              return FadeInImage(
+                fit: BoxFit.contain,
+                placeholder: MemoryImage(kTransparentImage),
+                image: MemoryImage(mediaData),
+              );
+            }
+            return const Icon(
+              Icons.broken_image,
+              color: Colors.white,
+              size: 60,
+            );
+          },
+          loading: () => const CircularProgressIndicator(color: Colors.white),
+          error: (err, stack) => Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ListTile(
-                leading: const Icon(Icons.download, color: Colors.white),
-                title: const Text(
-                  '下载原图',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  viewModel.downloadPhoto();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('删除', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showDeleteConfirmation(context, viewModel);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share, color: Colors.white),
-                title: const Text('分享', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  viewModel.sharePhoto();
-                },
-              ),
-              const SizedBox(height: 20),
+              const Icon(Icons.error_outline, color: Colors.red, size: 60),
+              const SizedBox(height: 16),
+              Text('无法加载图片', style: TextStyle(color: Colors.red.shade200)),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+}
 
-  void _showDeleteConfirmation(
-    BuildContext context,
-    MediaDetailViewModel viewModel,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('确认删除'),
-          content: const Text('确定要删除这张照片吗？此操作不可撤销。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                viewModel.deletePhoto();
-                Navigator.pop(context); // 返回上一页
-              },
-              child: const Text('删除', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
+/// 用于显示和播放单个视频的组件
+class MediaVideoViewer extends ConsumerStatefulWidget {
+  final UnifiedMediaEntity entity;
+  const MediaVideoViewer({super.key, required this.entity});
+
+  @override
+  ConsumerState<MediaVideoViewer> createState() => _MediaVideoViewerState();
+}
+
+class _MediaVideoViewerState extends ConsumerState<MediaVideoViewer> {
+  VideoPlayerController? _controller;
+  Future<void>? _initializeVideoPlayerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // 使用 ref 调用初始化方法，这是推荐的做法
+    _initializeController(ref);
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
+  // 【修正】将 WidgetRef 作为参数传入
+  Future<void> _initializeController(WidgetRef ref) async {
+    // 【核心修正】直接从 provider 中获取 .future 对象，然后 await 它
+    // 这可以确保我们等待的是异步操作的结果，而不是 AsyncValue 本身
+    try {
+      final mediaData = await ref.read(fullMediaProvider(widget.entity).future);
 
-    if (difference.inDays == 0) {
-      return '今天 ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return '昨天 ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}天前';
-    } else {
-      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+      if (!mounted) return;
+
+      if (mediaData is File) {
+        // 现在 mediaData 是一个正确的 File 对象，不会再报错
+        _controller = VideoPlayerController.file(mediaData);
+      } else {
+        // 此处的逻辑保持不变，用于处理其他数据类型或错误
+        debugPrint("视频播放暂不支持直接从内存加载，需要实现文件缓存。");
+        throw Exception("不支持从内存播放视频");
+      }
+
+      _controller!.setLooping(true);
+      // 将初始化结果赋值给 Future，以便 FutureBuilder 可以监听
+      _initializeVideoPlayerFuture = _controller!.initialize();
+      // 刷新UI以显示 FutureBuilder
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint("视频控制器初始化失败: $e");
+      if (mounted) {
+        // 设置一个失败的 Future 以便 FutureBuilder 显示错误状态
+        setState(() {
+          _initializeVideoPlayerFuture = Future.error(e);
+        });
+      }
     }
   }
 
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024)
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
-  String _formatDuration(double seconds) {
-    final duration = Duration(seconds: seconds.toInt());
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    final secs = duration.inSeconds % 60;
-
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-    } else {
-      return '$minutes:${secs.toString().padLeft(2, '0')}';
+  @override
+  Widget build(BuildContext context) {
+    if (_initializeVideoPlayerFuture == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
+
+    return FutureBuilder(
+      future: _initializeVideoPlayerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            !snapshot.hasError) {
+          return Center(
+            child: AspectRatio(
+              aspectRatio: _controller!.value.aspectRatio,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _controller!.value.isPlaying
+                        ? _controller!.pause()
+                        : _controller!.play();
+                  });
+                },
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    VideoPlayer(_controller!),
+                    if (!_controller!.value.isPlaying)
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.black45,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 60,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                const SizedBox(height: 16),
+                Text('无法播放视频', style: TextStyle(color: Colors.red.shade200)),
+              ],
+            ),
+          );
+        }
+        return const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        );
+      },
+    );
   }
 }

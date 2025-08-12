@@ -82,7 +82,11 @@ class MediaTimelineView extends StatelessWidget {
               itemCount: mediaForDate.length,
               itemBuilder: (context, index) {
                 final mediaEntity = mediaForDate[index];
-                return MediaThumbnailWidget(entity: mediaEntity);
+                return MediaThumbnailWidget(
+                  entity: mediaEntity,
+                  mediaList: media,
+                  // index: index,
+                );
               },
             ),
           ],

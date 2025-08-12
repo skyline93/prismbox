@@ -26,7 +26,11 @@ class MediaGridView extends StatelessWidget {
       itemCount: media.length,
       itemBuilder: (context, index) {
         final mediaEntity = media[index];
-        return MediaThumbnailWidget(entity: mediaEntity);
+        return MediaThumbnailWidget(
+          entity: mediaEntity,
+          mediaList: media,
+          // index: index,
+        );
       },
     );
   }
