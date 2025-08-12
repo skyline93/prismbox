@@ -57,6 +57,7 @@ dependencies:
   pool: ^1.5.1
   video_player: ^2.10.0
   transparent_image: ^2.0.1
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

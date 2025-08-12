@@ -48,7 +48,7 @@ class RemoteMediaDataSource {
   /// [originalFilename] 原始文件名（可选）
   ///
   /// 返回上传后的媒体详细信息
-  Future<MediaDetail> uploadMedia({
+  Future<MediaResponse> uploadMedia({
     required Uint8List file,
     required String hash,
     required MediaType itemType,
@@ -86,7 +86,7 @@ class RemoteMediaDataSource {
       );
 
       if (response.statusCode == 200) {
-        return MediaDetail.fromJson(response.data['data']);
+        return MediaResponse.fromJson(response.data['data']);
       } else {
         throw Exception('上传媒体失败: ${response.data['message']}');
       }
@@ -120,9 +120,16 @@ class RemoteMediaDataSource {
   ///
   /// 返回原始文件二进制数据
   Future<Uint8List> downloadOriginalMedia(String uuid) async {
+    final MediaResponse mediaItem;
     try {
-      final response = await _dio.get(
-        '$baseUrl/media/$uuid/download/original',
+      mediaItem = await getMediaDetail(uuid);
+    } on DioException catch (e) {
+      throw _handleDioError(e, '下载缩略图');
+    }
+
+    try {
+      final response = await downloadDio.get(
+        mediaItem.downloadUrl,
         options: Options(responseType: ResponseType.bytes),
       );
 
@@ -142,9 +149,16 @@ class RemoteMediaDataSource {
   ///
   /// 返回预览文件二进制数据
   Future<Uint8List> downloadPreviewMedia(String uuid) async {
+    final MediaResponse mediaItem;
     try {
-      final response = await _dio.get(
-        '$baseUrl/media/$uuid/download/preview',
+      mediaItem = await getMediaDetail(uuid);
+    } on DioException catch (e) {
+      throw _handleDioError(e, '下载缩略图');
+    }
+
+    try {
+      final response = await downloadDio.get(
+        mediaItem.previewUrl,
         options: Options(responseType: ResponseType.bytes),
       );
 

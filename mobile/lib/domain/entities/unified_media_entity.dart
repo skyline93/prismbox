@@ -38,6 +38,8 @@ class UnifiedMediaEntity extends Equatable {
   /// 对于仅存在于云端的媒体，此值可能为 null。
   final String? filePath;
 
+  final String? fileName;
+
   /// 媒体的宽度（像素）。
   final int? width;
 
@@ -57,6 +59,7 @@ class UnifiedMediaEntity extends Equatable {
     required this.syncStatus,
     required this.assetType,
     this.filePath,
+    this.fileName,
     this.width,
     this.height,
     this.durationSec,
@@ -102,6 +105,7 @@ class UnifiedMediaEntity extends Equatable {
     syncStatus,
     assetType,
     filePath,
+    fileName,
     width,
     height,
     durationSec,

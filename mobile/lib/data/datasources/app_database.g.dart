@@ -60,6 +60,12 @@ class $MediaAssetsTable extends MediaAssets
   late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
       'file_path', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fileNameMeta =
+      const VerificationMeta('fileName');
+  @override
+  late final GeneratedColumn<String> fileName = GeneratedColumn<String>(
+      'file_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _widthMeta = const VerificationMeta('width');
   @override
   late final GeneratedColumn<int> width = GeneratedColumn<int>(
@@ -97,6 +103,7 @@ class $MediaAssetsTable extends MediaAssets
         syncStatus,
         assetType,
         filePath,
+        fileName,
         width,
         height,
         durationSec,
@@ -135,6 +142,10 @@ class $MediaAssetsTable extends MediaAssets
     if (data.containsKey('file_path')) {
       context.handle(_filePathMeta,
           filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta));
+    }
+    if (data.containsKey('file_name')) {
+      context.handle(_fileNameMeta,
+          fileName.isAcceptableOrUnknown(data['file_name']!, _fileNameMeta));
     }
     if (data.containsKey('width')) {
       context.handle(
@@ -187,6 +198,8 @@ class $MediaAssetsTable extends MediaAssets
           .read(DriftSqlType.string, data['${effectivePrefix}asset_type'])!),
       filePath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}file_path']),
+      fileName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}file_name']),
       width: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}width']),
       height: attachedDatabase.typeMapping
@@ -219,6 +232,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
   final SyncStatus syncStatus;
   final MediaType assetType;
   final String? filePath;
+  final String? fileName;
   final int? width;
   final int? height;
   final int? durationSec;
@@ -232,6 +246,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       required this.syncStatus,
       required this.assetType,
       this.filePath,
+      this.fileName,
       this.width,
       this.height,
       this.durationSec,
@@ -260,6 +275,9 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
     }
     if (!nullToAbsent || filePath != null) {
       map['file_path'] = Variable<String>(filePath);
+    }
+    if (!nullToAbsent || fileName != null) {
+      map['file_name'] = Variable<String>(fileName);
     }
     if (!nullToAbsent || width != null) {
       map['width'] = Variable<int>(width);
@@ -292,6 +310,9 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       filePath: filePath == null && nullToAbsent
           ? const Value.absent()
           : Value(filePath),
+      fileName: fileName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fileName),
       width:
           width == null && nullToAbsent ? const Value.absent() : Value(width),
       height:
@@ -317,6 +338,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       assetType: $MediaAssetsTable.$converterassetType
           .fromJson(serializer.fromJson<String>(json['assetType'])),
       filePath: serializer.fromJson<String?>(json['filePath']),
+      fileName: serializer.fromJson<String?>(json['fileName']),
       width: serializer.fromJson<int?>(json['width']),
       height: serializer.fromJson<int?>(json['height']),
       durationSec: serializer.fromJson<int?>(json['durationSec']),
@@ -337,6 +359,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       'assetType': serializer.toJson<String>(
           $MediaAssetsTable.$converterassetType.toJson(assetType)),
       'filePath': serializer.toJson<String?>(filePath),
+      'fileName': serializer.toJson<String?>(fileName),
       'width': serializer.toJson<int?>(width),
       'height': serializer.toJson<int?>(height),
       'durationSec': serializer.toJson<int?>(durationSec),
@@ -353,6 +376,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           SyncStatus? syncStatus,
           MediaType? assetType,
           Value<String?> filePath = const Value.absent(),
+          Value<String?> fileName = const Value.absent(),
           Value<int?> width = const Value.absent(),
           Value<int?> height = const Value.absent(),
           Value<int?> durationSec = const Value.absent(),
@@ -366,6 +390,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
         syncStatus: syncStatus ?? this.syncStatus,
         assetType: assetType ?? this.assetType,
         filePath: filePath.present ? filePath.value : this.filePath,
+        fileName: fileName.present ? fileName.value : this.fileName,
         width: width.present ? width.value : this.width,
         height: height.present ? height.value : this.height,
         durationSec: durationSec.present ? durationSec.value : this.durationSec,
@@ -383,6 +408,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
       assetType: data.assetType.present ? data.assetType.value : this.assetType,
       filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      fileName: data.fileName.present ? data.fileName.value : this.fileName,
       width: data.width.present ? data.width.value : this.width,
       height: data.height.present ? data.height.value : this.height,
       durationSec:
@@ -402,6 +428,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           ..write('syncStatus: $syncStatus, ')
           ..write('assetType: $assetType, ')
           ..write('filePath: $filePath, ')
+          ..write('fileName: $fileName, ')
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
@@ -420,6 +447,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       syncStatus,
       assetType,
       filePath,
+      fileName,
       width,
       height,
       durationSec,
@@ -436,6 +464,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           other.syncStatus == this.syncStatus &&
           other.assetType == this.assetType &&
           other.filePath == this.filePath &&
+          other.fileName == this.fileName &&
           other.width == this.width &&
           other.height == this.height &&
           other.durationSec == this.durationSec &&
@@ -451,6 +480,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
   final Value<SyncStatus> syncStatus;
   final Value<MediaType> assetType;
   final Value<String?> filePath;
+  final Value<String?> fileName;
   final Value<int?> width;
   final Value<int?> height;
   final Value<int?> durationSec;
@@ -464,6 +494,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     this.syncStatus = const Value.absent(),
     this.assetType = const Value.absent(),
     this.filePath = const Value.absent(),
+    this.fileName = const Value.absent(),
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.durationSec = const Value.absent(),
@@ -478,6 +509,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     required SyncStatus syncStatus,
     required MediaType assetType,
     this.filePath = const Value.absent(),
+    this.fileName = const Value.absent(),
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.durationSec = const Value.absent(),
@@ -495,6 +527,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     Expression<String>? syncStatus,
     Expression<String>? assetType,
     Expression<String>? filePath,
+    Expression<String>? fileName,
     Expression<int>? width,
     Expression<int>? height,
     Expression<int>? durationSec,
@@ -509,6 +542,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       if (syncStatus != null) 'sync_status': syncStatus,
       if (assetType != null) 'asset_type': assetType,
       if (filePath != null) 'file_path': filePath,
+      if (fileName != null) 'file_name': fileName,
       if (width != null) 'width': width,
       if (height != null) 'height': height,
       if (durationSec != null) 'duration_sec': durationSec,
@@ -525,6 +559,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       Value<SyncStatus>? syncStatus,
       Value<MediaType>? assetType,
       Value<String?>? filePath,
+      Value<String?>? fileName,
       Value<int?>? width,
       Value<int?>? height,
       Value<int?>? durationSec,
@@ -538,6 +573,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       syncStatus: syncStatus ?? this.syncStatus,
       assetType: assetType ?? this.assetType,
       filePath: filePath ?? this.filePath,
+      fileName: fileName ?? this.fileName,
       width: width ?? this.width,
       height: height ?? this.height,
       durationSec: durationSec ?? this.durationSec,
@@ -572,6 +608,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     if (filePath.present) {
       map['file_path'] = Variable<String>(filePath.value);
     }
+    if (fileName.present) {
+      map['file_name'] = Variable<String>(fileName.value);
+    }
     if (width.present) {
       map['width'] = Variable<int>(width.value);
     }
@@ -600,6 +639,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
           ..write('syncStatus: $syncStatus, ')
           ..write('assetType: $assetType, ')
           ..write('filePath: $filePath, ')
+          ..write('fileName: $fileName, ')
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
@@ -1279,6 +1319,7 @@ typedef $$MediaAssetsTableCreateCompanionBuilder = MediaAssetsCompanion
   required SyncStatus syncStatus,
   required MediaType assetType,
   Value<String?> filePath,
+  Value<String?> fileName,
   Value<int?> width,
   Value<int?> height,
   Value<int?> durationSec,
@@ -1294,6 +1335,7 @@ typedef $$MediaAssetsTableUpdateCompanionBuilder = MediaAssetsCompanion
   Value<SyncStatus> syncStatus,
   Value<MediaType> assetType,
   Value<String?> filePath,
+  Value<String?> fileName,
   Value<int?> width,
   Value<int?> height,
   Value<int?> durationSec,
@@ -1325,6 +1367,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             Value<SyncStatus> syncStatus = const Value.absent(),
             Value<MediaType> assetType = const Value.absent(),
             Value<String?> filePath = const Value.absent(),
+            Value<String?> fileName = const Value.absent(),
             Value<int?> width = const Value.absent(),
             Value<int?> height = const Value.absent(),
             Value<int?> durationSec = const Value.absent(),
@@ -1339,6 +1382,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             syncStatus: syncStatus,
             assetType: assetType,
             filePath: filePath,
+            fileName: fileName,
             width: width,
             height: height,
             durationSec: durationSec,
@@ -1353,6 +1397,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             required SyncStatus syncStatus,
             required MediaType assetType,
             Value<String?> filePath = const Value.absent(),
+            Value<String?> fileName = const Value.absent(),
             Value<int?> width = const Value.absent(),
             Value<int?> height = const Value.absent(),
             Value<int?> durationSec = const Value.absent(),
@@ -1367,6 +1412,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             syncStatus: syncStatus,
             assetType: assetType,
             filePath: filePath,
+            fileName: fileName,
             width: width,
             height: height,
             durationSec: durationSec,
@@ -1415,6 +1461,11 @@ class $$MediaAssetsTableFilterComposer
 
   ColumnFilters<String> get filePath => $state.composableBuilder(
       column: $state.table.filePath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get fileName => $state.composableBuilder(
+      column: $state.table.fileName,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -1492,6 +1543,11 @@ class $$MediaAssetsTableOrderingComposer
 
   ColumnOrderings<String> get filePath => $state.composableBuilder(
       column: $state.table.filePath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get fileName => $state.composableBuilder(
+      column: $state.table.fileName,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

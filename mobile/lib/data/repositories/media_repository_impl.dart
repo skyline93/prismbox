@@ -1,27 +1,27 @@
 // lib/data/repositories/media_repository_impl.dart
 
 import 'dart:async';
+import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
-import 'package:photo_manager/photo_manager.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import '../../domain/entities/unified_media_entity.dart';
 import '../../domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/local_media_source.dart';
-import 'package:mobile/data/datasources/remote_media_source.dart'; // 为未来云端同步预留
+import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/core/storage/sync_state_service.dart';
 
-/// MediaRepository 的具体实现。
-///
-/// 它的职责是作为领域层和数据层之间的协调者。
-/// 它从一个或多个数据源（本地、远程）获取数据，并将这些数据源特定的模型
-/// （如 `MediaAsset`）转换为领域层统一的实体（`UnifiedMediaEntity`）。
+// [修正] 严格实现接口
 class MediaRepositoryImpl implements MediaRepository {
   final LocalMediaDataSource _localDataSource;
   final RemoteMediaDataSource _cloudDataSource;
   final SyncStateService _syncStateService;
   final MediaAssetDao _mediaAssetDao;
+  String? _mediaStoragePath;
 
   MediaRepositoryImpl({
     required LocalMediaDataSource localDataSource,
@@ -35,24 +35,14 @@ class MediaRepositoryImpl implements MediaRepository {
 
   @override
   Future<void> loadAndIndexLocalMedia() {
-    // 将具体的扫描和索引任务委托给专门的 LocalMediaDataSource。
     return _localDataSource.scanAndIndexLocalMedia();
   }
 
   @override
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream() {
-    // 使用 Drift 强大的 `watch` 功能。每当 `mediaAssets` 表发生变化时，
-    // 这个流就会自动触发并发出最新的数据列表。
-    return _mediaAssetDao.watchAllMediaAssets().map((
-      List<MediaAsset> dbAssets,
-    ) {
-      // **核心映射逻辑**
-      // 在这里，我们将数据层的模型 List<MediaAsset> 转换为领域层的模型 List<UnifiedMediaEntity>。
-      // ViewModel 将只接收到这个转换后的、干净的实体列表。
-      return dbAssets
-          .map((asset) => UnifiedMediaEntity.fromDbModel(asset))
-          .toList();
-    });
+    return _mediaAssetDao.watchAllMediaAssets().map(
+      (dbAssets) => dbAssets.map(UnifiedMediaEntity.fromDbModel).toList(),
+    );
   }
 
   @override
@@ -62,73 +52,52 @@ class MediaRepositoryImpl implements MediaRepository {
       final lastSyncTimestamp = await _syncStateService.getLastSyncTimestamp();
 
       if (lastSyncTimestamp == null) {
-        print("Repository: 执行首次全量同步 (since is null)");
-        // 在全量同步前，清空本地所有与云端相关的记录
-        // 【修正】直接使用 _mediaAssetDao 来访问和操作 mediaAssets 表
-        (_mediaAssetDao.delete(_mediaAssetDao.mediaAssets)).where(
-          (tbl) =>
-              tbl.syncStatus.isNotValue(SyncStatus.localOnlyNotSelected.name),
-        );
-        print("Repository: 已清空旧的云端数据，准备全量写入。");
+        print("Repository: 执行首次全量同步, 清空旧云端数据...");
+        // [修正] 调用新的、封装好的DAO方法，修复 void_result 错误
+        await _mediaAssetDao.deleteAllCloudRelatedAssets();
+        print("Repository: 旧云端数据已清空。");
       } else {
         print("Repository: 执行增量同步，since: $lastSyncTimestamp");
       }
 
-      // 【修正】使用正确的成员变量名 _cloudDataSource
       final MediaChangesResponse changes = await _cloudDataSource.getChanges(
         since: lastSyncTimestamp,
       );
 
-      // 将 'created' 和 'updated' 合并处理
-      final List<MediaResponse> assetsToProcess = [
+      final List<MediaAssetsCompanion> companionsToUpsert = [
         ...changes.created,
         ...changes.updated,
-      ];
+      ].map(_convertMediaResponseToCompanion).toList();
 
-      // 调用辅助方法将 DTO 列表转换为数据库 Companion 列表
-      final List<MediaAssetsCompanion> companionsToUpsert = assetsToProcess
-          .map((res) => _convertMediaResponseToCompanion(res))
-          .toList();
-
-      // 调用 DAO 将所有变更在一个事务中应用
-      // 【修正】直接使用 _mediaAssetDao
       await _mediaAssetDao.applyCloudChanges(
         toUpsert: companionsToUpsert,
         uuidsToDelete: changes.deleted,
       );
 
-      // 同步成功后，更新时间戳
       await _syncStateService.setLastSyncTimestamp(DateTime.now());
-
-      print("Repository: 云端同步成功完成，并已更新同步时间戳。");
+      print("Repository: 云端同步成功完成。");
     } catch (e) {
       print("Repository: 云端同步失败 - $e");
       rethrow;
     }
   }
 
-  /// 私有辅助方法，用于将云端数据模型转换为本地数据库模型。
-  /// 这种转换是 Repository 层的核心职责之一。
   MediaAssetsCompanion _convertMediaResponseToCompanion(
     MediaResponse response,
   ) {
-    // 处理从 String 到 Enum 的转换
-    final assetType = response.itemType.toUpperCase() == AssetType.video
+    final assetType = response.itemType.toUpperCase() == 'VIDEO'
         ? MediaType.video
         : MediaType.image;
 
-    // 从云端拉取的数据，我们默认其状态为 'cloudOnly'。
-    // 如果本地已有文件，后续的 hash 检查和状态更新流程会将其变为 'synced'。
-    // 但对于纯元数据同步，'cloudOnly' 是最安全和正确的初始状态。
-    final status = SyncStatus.cloudOnly;
+    // [修正] 使用 p.basename 安全地从路径中提取文件名
+    // 这假设您的 response.originalPath 字段存在，如果不存在，请替换为实际包含文件名的字段
+    final fileName = p.basename(response.originalFilename);
 
     return MediaAssetsCompanion(
       cloudUuid: Value(response.uuid),
       assetType: Value(assetType),
-      syncStatus: Value(status),
-      // 注意：您的 MediaResponse 模型中没有 width, height, hash 等信息。
-      // 在这个场景下这是可以接受的，因为这些详细信息可以在用户查看单张图片时再去拉取和填充。
-      // 如果列表接口能提供这些信息，可以在这里添加。
+      syncStatus: Value(SyncStatus.cloudOnly),
+      fileName: Value(fileName), // 现在可以正确保存文件名
       createdAt: Value(
         DateTime.tryParse(response.mediaTakenAt ?? response.createdAt) ??
             DateTime.now(),
@@ -137,8 +106,111 @@ class MediaRepositoryImpl implements MediaRepository {
     );
   }
 
+  Future<String> _getMediaStoragePath() async {
+    if (_mediaStoragePath != null) return _mediaStoragePath!;
+    final directory = await getApplicationDocumentsDirectory();
+    final mediaDir = Directory(p.join(directory.path, 'media_files'));
+    if (!await mediaDir.exists()) {
+      await mediaDir.create(recursive: true);
+    }
+    _mediaStoragePath = mediaDir.path;
+    return _mediaStoragePath!;
+  }
+
+  @override
+  Future<void> uploadLocalMedia(UnifiedMediaEntity entity) async {
+    if (entity.filePath == null ||
+        entity.syncStatus != SyncStatus.localOnlyNotSelected) {
+      return;
+    }
+    try {
+      await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.uploading);
+      final file = File(entity.filePath!);
+      final fileBytes = await file.readAsBytes();
+      final hash = sha1.convert(fileBytes).toString();
+      final fileName = p.basename(file.path);
+
+      final response = await uploadMedia(
+        file: fileBytes,
+        hash: hash,
+        itemType: entity.isVideo ? MediaType.video : MediaType.image,
+        originalFilename: fileName,
+      );
+
+      final companion = MediaAssetsCompanion(
+        id: Value(entity.id),
+        cloudUuid: Value(response.uuid),
+        syncStatus: Value(SyncStatus.synced),
+        fileName: Value(fileName),
+        updatedAt: Value(DateTime.now()),
+      );
+      await _mediaAssetDao.updateAsset(companion);
+    } catch (e) {
+      await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.error);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> downloadAndSaveOriginal(UnifiedMediaEntity entity) async {
+    if (entity.cloudUuid == null || entity.syncStatus != SyncStatus.cloudOnly) {
+      return;
+    }
+    try {
+      await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.downloading);
+      final fileBytes = await downloadOrigin(entity.cloudUuid!);
+      final storagePath = await _getMediaStoragePath();
+
+      // [修正] 现在 entity.fileName 是有值的，代码可以正常工作
+      final originalExtension = p.extension(entity.fileName ?? '.jpg');
+      final localPath = p.join(
+        storagePath,
+        '${entity.cloudUuid}$originalExtension',
+      );
+
+      final localFile = File(localPath);
+      await localFile.writeAsBytes(fileBytes);
+
+      final companion = MediaAssetsCompanion(
+        id: Value(entity.id),
+        filePath: Value(localPath),
+        syncStatus: Value(SyncStatus.synced),
+        updatedAt: Value(DateTime.now()),
+      );
+      await _mediaAssetDao.updateAsset(companion);
+    } catch (e) {
+      await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.error);
+      rethrow;
+    }
+  }
+
   @override
   Future<Uint8List> downloadThumbnail(String uuid) async {
-    return await _cloudDataSource.downloadThumbnail(uuid);
+    return _cloudDataSource.downloadThumbnail(uuid);
+  }
+
+  @override
+  Future<Uint8List> downloadPreview(String uuid) async {
+    return _cloudDataSource.downloadPreviewMedia(uuid);
+  }
+
+  @override
+  Future<Uint8List> downloadOrigin(String uuid) async {
+    return _cloudDataSource.downloadOriginalMedia(uuid);
+  }
+
+  @override
+  Future<MediaResponse> uploadMedia({
+    required Uint8List file,
+    required String hash,
+    required MediaType itemType,
+    String? originalFilename,
+  }) async {
+    return _cloudDataSource.uploadMedia(
+      file: file,
+      hash: hash,
+      itemType: itemType,
+      originalFilename: originalFilename,
+    );
   }
 }
