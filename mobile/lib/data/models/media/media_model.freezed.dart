@@ -634,6 +634,8 @@ MediaResponse _$MediaResponseFromJson(Map<String, dynamic> json) {
 mixin _$MediaResponse {
   String get uuid => throw _privateConstructorUsedError;
   String get filename => throw _privateConstructorUsedError;
+  @JsonKey(name: 'original_filename')
+  String get originalFilename => throw _privateConstructorUsedError;
   @JsonKey(name: 'item_type')
   String get itemType => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
@@ -668,6 +670,7 @@ abstract class $MediaResponseCopyWith<$Res> {
   $Res call(
       {String uuid,
       String filename,
+      @JsonKey(name: 'original_filename') String originalFilename,
       @JsonKey(name: 'item_type') String itemType,
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
@@ -694,6 +697,7 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
   $Res call({
     Object? uuid = null,
     Object? filename = null,
+    Object? originalFilename = null,
     Object? itemType = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -710,6 +714,10 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
       filename: null == filename
           ? _value.filename
           : filename // ignore: cast_nullable_to_non_nullable
+              as String,
+      originalFilename: null == originalFilename
+          ? _value.originalFilename
+          : originalFilename // ignore: cast_nullable_to_non_nullable
               as String,
       itemType: null == itemType
           ? _value.itemType
@@ -754,6 +762,7 @@ abstract class _$$MediaResponseImplCopyWith<$Res>
   $Res call(
       {String uuid,
       String filename,
+      @JsonKey(name: 'original_filename') String originalFilename,
       @JsonKey(name: 'item_type') String itemType,
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
@@ -778,6 +787,7 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
   $Res call({
     Object? uuid = null,
     Object? filename = null,
+    Object? originalFilename = null,
     Object? itemType = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -794,6 +804,10 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
       filename: null == filename
           ? _value.filename
           : filename // ignore: cast_nullable_to_non_nullable
+              as String,
+      originalFilename: null == originalFilename
+          ? _value.originalFilename
+          : originalFilename // ignore: cast_nullable_to_non_nullable
               as String,
       itemType: null == itemType
           ? _value.itemType
@@ -833,6 +847,7 @@ class _$MediaResponseImpl implements _MediaResponse {
   const _$MediaResponseImpl(
       {required this.uuid,
       required this.filename,
+      @JsonKey(name: 'original_filename') required this.originalFilename,
       @JsonKey(name: 'item_type') required this.itemType,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
@@ -848,6 +863,9 @@ class _$MediaResponseImpl implements _MediaResponse {
   final String uuid;
   @override
   final String filename;
+  @override
+  @JsonKey(name: 'original_filename')
+  final String originalFilename;
   @override
   @JsonKey(name: 'item_type')
   final String itemType;
@@ -872,7 +890,7 @@ class _$MediaResponseImpl implements _MediaResponse {
 
   @override
   String toString() {
-    return 'MediaResponse(uuid: $uuid, filename: $filename, itemType: $itemType, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
+    return 'MediaResponse(uuid: $uuid, filename: $filename, originalFilename: $originalFilename, itemType: $itemType, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
   }
 
   @override
@@ -883,6 +901,8 @@ class _$MediaResponseImpl implements _MediaResponse {
             (identical(other.uuid, uuid) || other.uuid == uuid) &&
             (identical(other.filename, filename) ||
                 other.filename == filename) &&
+            (identical(other.originalFilename, originalFilename) ||
+                other.originalFilename == originalFilename) &&
             (identical(other.itemType, itemType) ||
                 other.itemType == itemType) &&
             (identical(other.createdAt, createdAt) ||
@@ -905,6 +925,7 @@ class _$MediaResponseImpl implements _MediaResponse {
       runtimeType,
       uuid,
       filename,
+      originalFilename,
       itemType,
       createdAt,
       updatedAt,
@@ -933,6 +954,8 @@ abstract class _MediaResponse implements MediaResponse {
   const factory _MediaResponse(
           {required final String uuid,
           required final String filename,
+          @JsonKey(name: 'original_filename')
+          required final String originalFilename,
           @JsonKey(name: 'item_type') required final String itemType,
           @JsonKey(name: 'created_at') required final String createdAt,
           @JsonKey(name: 'updated_at') required final String updatedAt,
@@ -949,6 +972,9 @@ abstract class _MediaResponse implements MediaResponse {
   String get uuid;
   @override
   String get filename;
+  @override
+  @JsonKey(name: 'original_filename')
+  String get originalFilename;
   @override
   @JsonKey(name: 'item_type')
   String get itemType;

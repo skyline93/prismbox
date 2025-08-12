@@ -59,6 +59,7 @@ class MediaResponse with _$MediaResponse {
   const factory MediaResponse({
     required String uuid,
     required String filename,
+    @JsonKey(name: 'original_filename') required String originalFilename,
     @JsonKey(name: 'item_type') required String itemType,
     @JsonKey(name: 'created_at') required String createdAt,
     @JsonKey(name: 'updated_at') required String updatedAt,

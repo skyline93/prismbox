@@ -74,6 +74,7 @@ _$MediaResponseImpl _$$MediaResponseImplFromJson(Map<String, dynamic> json) =>
     _$MediaResponseImpl(
       uuid: json['uuid'] as String,
       filename: json['filename'] as String,
+      originalFilename: json['original_filename'] as String,
       itemType: json['item_type'] as String,
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String,
@@ -87,6 +88,7 @@ Map<String, dynamic> _$$MediaResponseImplToJson(_$MediaResponseImpl instance) =>
     <String, dynamic>{
       'uuid': instance.uuid,
       'filename': instance.filename,
+      'original_filename': instance.originalFilename,
       'item_type': instance.itemType,
       'created_at': instance.createdAt,
       'updated_at': instance.updatedAt,

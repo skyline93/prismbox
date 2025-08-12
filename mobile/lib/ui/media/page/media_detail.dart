@@ -6,25 +6,21 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/data/datasources/app_database.dart'; // SyncStatus için gerekli
-// import 'package:mobile/providers.dart'; // mediaRepositoryProvider için gerekli
+import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/providers.dart'; // 确保这个导入是正确的
 import 'package:transparent_image/transparent_image.dart';
 import 'package:video_player/video_player.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
-/// ---------------------------------------------------------------------------
-/// **为详情页创建数据提供者 (Provider)**
-///
-/// 这个 Provider 负责异步获取全分辨率的媒体数据。
-/// - 对于本地媒体，它会直接返回一个 File 对象。
-/// - 对于仅云端的媒体，它会调用 repository 的方法下载数据。
-/// ---------------------------------------------------------------------------
 final fullMediaProvider = FutureProvider.family<dynamic, UnifiedMediaEntity>((
   ref,
   entity,
 ) async {
-  // 1. 对于本地资源，直接返回文件对象以获得最佳性能
+  // 1. 对于本地已有文件，直接返回文件对象
   if (entity.filePath != null && entity.filePath!.isNotEmpty) {
     final file = File(entity.filePath!);
     if (await file.exists()) {
@@ -32,24 +28,35 @@ final fullMediaProvider = FutureProvider.family<dynamic, UnifiedMediaEntity>((
     }
   }
 
-  // 2. 对于仅云端的资源，调用 repository 下载完整媒体
+  // 2. 对于仅云端的资源，下载预览图用于显示
   if (entity.syncStatus == SyncStatus.cloudOnly && entity.cloudUuid != null) {
-    // TODO
-    // try {
-    //   final repository = ref.read(mediaRepositoryProvider);
-    //   return await repository.downloadMedia(entity.cloudUuid!);
-    // } catch (e) {
-    //   debugPrint("无法从云端下载完整媒体 for cloudUuid=${entity.cloudUuid}: $e");
-    //   throw Exception('无法下载云端资源: $e');
-    // }
+    try {
+      final repository = ref.read(mediaRepositoryProvider);
+      // 下载预览图字节数据，用于临时显示
+      final previewBytes = await repository.downloadPreview(entity.cloudUuid!);
+
+      // 如果是视频，需要先存为临时文件才能播放
+      if (entity.isVideo) {
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File(p.join(tempDir.path, '${entity.cloudUuid}.mp4'));
+        await tempFile.writeAsBytes(previewBytes);
+        return tempFile;
+      }
+
+      // 如果是图片，直接返回字节数据
+      return previewBytes;
+    } catch (e) {
+      debugPrint("无法从云端下载预览媒体 for cloudUuid=${entity.cloudUuid}: $e");
+      throw Exception('无法下载云端资源: $e');
+    }
   }
 
-  // 3. 如果本地文件丢失或资源不可用，则抛出异常
+  // 3. 如果资源不可用，抛出异常
   throw Exception('媒体资源不可用 for entity id: ${entity.id}');
 });
 
 @RoutePage()
-class MediaDetailPage extends ConsumerWidget {
+class MediaDetailPage extends HookConsumerWidget {
   final List<UnifiedMediaEntity> media;
   final int initialIndex;
 
@@ -61,43 +68,140 @@ class MediaDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pageController = PageController(initialPage: initialIndex);
+    // 使用 Hook 来创建和监听 PageController
+    final pageController = usePageController(initialPage: initialIndex);
+    // 使用 Hook 来追踪当前页面的索引
+    final currentIndex = useState(initialIndex);
+
+    // 使用 useEffect Hook 来添加监听器，并在组件销毁时自动移除
+    useEffect(() {
+      void listener() {
+        if (pageController.page?.round() != currentIndex.value) {
+          currentIndex.value = pageController.page!.round();
+        }
+      }
+
+      pageController.addListener(listener);
+      return () => pageController.removeListener(listener);
+    }, [pageController]);
+
+    // 获取当前正在显示的媒体实体
+    final currentEntity = media[currentIndex.value];
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        // 【修正】使用推荐的常量色值
         backgroundColor: Colors.black54,
         foregroundColor: Colors.white,
         elevation: 0,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarBrightness: Brightness.dark,
         ),
+        actions: [_buildAppBarActions(context, ref, currentEntity)],
       ),
       body: PageView.builder(
         controller: pageController,
         itemCount: media.length,
         itemBuilder: (context, index) {
-          final currentEntity = media[index];
-          if (currentEntity.isVideo) {
-            return MediaVideoViewer(entity: currentEntity);
+          final entity = media[index];
+          // 重要的是，让每个页面监听自己的 fullMediaProvider
+          if (entity.isVideo) {
+            return MediaVideoViewer(entity: entity);
           } else {
-            return MediaImageViewer(entity: currentEntity);
+            return MediaImageViewer(entity: entity);
           }
         },
       ),
     );
   }
+
+  // AppBar 操作按钮的构建逻辑
+  Widget _buildAppBarActions(
+    BuildContext context,
+    WidgetRef ref,
+    UnifiedMediaEntity entity,
+  ) {
+    switch (entity.syncStatus) {
+      case SyncStatus.cloudOnly:
+        return IconButton(
+          icon: const Icon(Icons.cloud_download_outlined),
+          tooltip: '下载到设备',
+          onPressed: () async {
+            try {
+              await ref
+                  .read(mediaRepositoryProvider)
+                  .downloadAndSaveOriginal(entity);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('下载完成!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('下载失败: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        );
+      case SyncStatus.localOnlyNotSelected:
+        return IconButton(
+          icon: const Icon(Icons.cloud_upload_outlined),
+          tooltip: '上传到云端',
+          onPressed: () async {
+            try {
+              await ref.read(mediaRepositoryProvider).uploadLocalMedia(entity);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('上传成功!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('上传失败: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        );
+      case SyncStatus.downloading:
+      case SyncStatus.uploading:
+        return const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2.5,
+            ),
+          ),
+        );
+      case SyncStatus.synced:
+        return const IconButton(
+          icon: Icon(Icons.cloud_done),
+          tooltip: '已同步',
+          onPressed: null, // 禁用按钮
+        );
+      default:
+        return const SizedBox.shrink(); // 其他状态不显示按钮
+    }
+  }
 }
 
-/// 用于显示单张图片的组件
+// 图片查看器 (无改动)
 class MediaImageViewer extends ConsumerWidget {
   final UnifiedMediaEntity entity;
   const MediaImageViewer({super.key, required this.entity});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 监听 fullMediaProvider 的状态，这部分逻辑是正确的
     final mediaAsyncValue = ref.watch(fullMediaProvider(entity));
 
     return InteractiveViewer(
@@ -140,7 +244,7 @@ class MediaImageViewer extends ConsumerWidget {
   }
 }
 
-/// 用于显示和播放单个视频的组件
+// 视频播放器 (无改动)
 class MediaVideoViewer extends ConsumerStatefulWidget {
   final UnifiedMediaEntity entity;
   const MediaVideoViewer({super.key, required this.entity});
@@ -156,42 +260,28 @@ class _MediaVideoViewerState extends ConsumerState<MediaVideoViewer> {
   @override
   void initState() {
     super.initState();
-    // 使用 ref 调用初始化方法，这是推荐的做法
     _initializeController(ref);
   }
 
-  // 【修正】将 WidgetRef 作为参数传入
   Future<void> _initializeController(WidgetRef ref) async {
-    // 【核心修正】直接从 provider 中获取 .future 对象，然后 await 它
-    // 这可以确保我们等待的是异步操作的结果，而不是 AsyncValue 本身
     try {
+      // 这里的逻辑现在可以正确处理下载的临时视频文件了
       final mediaData = await ref.read(fullMediaProvider(widget.entity).future);
-
       if (!mounted) return;
 
       if (mediaData is File) {
-        // 现在 mediaData 是一个正确的 File 对象，不会再报错
         _controller = VideoPlayerController.file(mediaData);
       } else {
-        // 此处的逻辑保持不变，用于处理其他数据类型或错误
-        debugPrint("视频播放暂不支持直接从内存加载，需要实现文件缓存。");
-        throw Exception("不支持从内存播放视频");
+        throw Exception("视频播放器接收到无效的数据类型");
       }
 
       _controller!.setLooping(true);
-      // 将初始化结果赋值给 Future，以便 FutureBuilder 可以监听
       _initializeVideoPlayerFuture = _controller!.initialize();
-      // 刷新UI以显示 FutureBuilder
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     } catch (e) {
       debugPrint("视频控制器初始化失败: $e");
       if (mounted) {
-        // 设置一个失败的 Future 以便 FutureBuilder 显示错误状态
-        setState(() {
-          _initializeVideoPlayerFuture = Future.error(e);
-        });
+        setState(() => _initializeVideoPlayerFuture = Future.error(e));
       }
     }
   }
@@ -209,7 +299,6 @@ class _MediaVideoViewerState extends ConsumerState<MediaVideoViewer> {
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
-
     return FutureBuilder(
       future: _initializeVideoPlayerFuture,
       builder: (context, snapshot) {
@@ -219,13 +308,11 @@ class _MediaVideoViewerState extends ConsumerState<MediaVideoViewer> {
             child: AspectRatio(
               aspectRatio: _controller!.value.aspectRatio,
               child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _controller!.value.isPlaying
-                        ? _controller!.pause()
-                        : _controller!.play();
-                  });
-                },
+                onTap: () => setState(() {
+                  _controller!.value.isPlaying
+                      ? _controller!.pause()
+                      : _controller!.play();
+                }),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
