@@ -27,15 +27,16 @@ const (
 )
 
 type MediaResponse struct {
-	UUID         string             `json:"uuid"`
-	Filename     string             `json:"filename"`
-	ItemType     constant.MediaType `json:"item_type"`
-	CreatedAt    time.Time          `json:"created_at"`
-	MediaTakenAt *time.Time         `json:"media_taken_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	ThumbnailURL string             `json:"thumbnail_url"`
-	PreviewURL   string             `json:"preview_url"`
-	DownloadURL  string             `json:"download_url"`
+	UUID             string             `json:"uuid"`
+	Filename         string             `json:"filename"`
+	OriginalFilename string             `json:"original_filename"`
+	ItemType         constant.MediaType `json:"item_type"`
+	CreatedAt        time.Time          `json:"created_at"`
+	MediaTakenAt     *time.Time         `json:"media_taken_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	ThumbnailURL     string             `json:"thumbnail_url"`
+	PreviewURL       string             `json:"preview_url"`
+	DownloadURL      string             `json:"download_url"`
 }
 
 // CheckHashesRequest 是 /media/check_hashes 接口的请求体
@@ -75,8 +76,8 @@ type MediaHandler struct {
 // @Param        hash formData string true "文件的SHA256哈希值"
 // @Param        item_type formData string true "媒体类型 (IMAGE 或 VIDEO)" Enums(IMAGE, VIDEO)
 // @Param        original_filename formData string false "文件的原始名称"
-// @Success      201  {object}  core.ApiResponse{data=models.Media} "上传成功，后台处理开始"
-// @Success      200  {object}  core.ApiResponse{data=models.Media} "文件已存在（秒传成功）"
+// @Success      201  {object}  core.ApiResponse{data=MediaResponse} "上传成功，后台处理开始"
+// @Success      200  {object}  core.ApiResponse{data=MediaResponse} "文件已存在（秒传成功）"
 // @Failure      400  {object}  core.ApiResponse "请求参数错误、文件上传失败或服务器内部错误"
 // @Security     BearerAuth
 // @Router       /media/upload [post]
@@ -107,7 +108,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 	// 秒传检查：检查当前用户是否已上传过此文件
 	var existingMedia models.Media
 	if err := h.DB.First(&existingMedia, "hash = ? AND user_id = ?", hash, userID).Error; err == nil {
-		core.Success(c, "File already exists for this user", existingMedia)
+		core.Success(c, "File already exists for this user", h.buildMediaResponse(userID, existingMedia))
 		return
 	}
 
@@ -159,8 +160,10 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		go processing.ProcessImage(h.DB, filePath, newUUID)
 	}
 
+	mediaResponse := h.buildMediaResponse(userID, media)
+
 	// 返回成功响应
-	core.Success(c, "Upload successful, processing started", media)
+	core.Success(c, "Upload successful, processing started", mediaResponse)
 }
 
 // GetMedias godoc
@@ -565,15 +568,16 @@ func (h *MediaHandler) buildMediaResponse(userID uint, media models.Media) *Medi
 	}
 
 	resp := &MediaResponse{
-		UUID:         media.UUID,
-		Filename:     media.Filename,
-		ItemType:     media.ItemType,
-		CreatedAt:    media.CreatedAt,
-		MediaTakenAt: media.MediaTakenAt,
-		UpdatedAt:    media.UpdatedAt,
-		ThumbnailURL: thumbnailSignedURL,
-		PreviewURL:   previewSignedURL,
-		DownloadURL:  originalSignedURL,
+		UUID:             media.UUID,
+		Filename:         media.Filename,
+		OriginalFilename: media.OriginalFilename,
+		ItemType:         media.ItemType,
+		CreatedAt:        media.CreatedAt,
+		MediaTakenAt:     media.MediaTakenAt,
+		UpdatedAt:        media.UpdatedAt,
+		ThumbnailURL:     thumbnailSignedURL,
+		PreviewURL:       previewSignedURL,
+		DownloadURL:      originalSignedURL,
 	}
 
 	return resp

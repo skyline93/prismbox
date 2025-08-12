@@ -187,6 +187,8 @@ definitions:
         $ref: '#/definitions/constant.MediaType'
       media_taken_at:
         type: string
+      original_filename:
+        type: string
       preview_url:
         type: string
       thumbnail_url:
@@ -853,12 +855,11 @@ paths:
       - Media
   /media/changes:
     get:
-      description: 根据客户端提供的 `since` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。
+      description: 根据客户端提供的 `since` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。如果 `since` 未提供，则返回所有媒体的全量数据。
       parameters:
-      - description: 客户端本地记录的最新更新时间戳 (ISO 8601 格式)
+      - description: 【可选】客户端本地记录的最新更新时间戳 (ISO 8601 格式)。如果为空，则执行全量同步。
         in: query
         name: since
-        required: true
         type: string
       produces:
       - application/json
@@ -873,12 +874,12 @@ paths:
                   $ref: '#/definitions/handlers.MediaChangesResponse'
               type: object
         "400":
-          description: 时间戳参数缺失或格式错误
+          description: 时间戳格式错误
           schema:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
-      summary: 获取增量变更
+      summary: 获取媒体变更（增量或全量）
       tags:
       - Media
   /media/check_hashes:
@@ -952,7 +953,7 @@ paths:
             - $ref: '#/definitions/core.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Media'
+                  $ref: '#/definitions/handlers.MediaResponse'
               type: object
         "201":
           description: 上传成功，后台处理开始
@@ -961,7 +962,7 @@ paths:
             - $ref: '#/definitions/core.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Media'
+                  $ref: '#/definitions/handlers.MediaResponse'
               type: object
         "400":
           description: 请求参数错误、文件上传失败或服务器内部错误

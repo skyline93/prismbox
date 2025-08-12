@@ -595,21 +595,20 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "根据客户端提供的 ` + "`" + `since` + "`" + ` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。",
+                "description": "根据客户端提供的 ` + "`" + `since` + "`" + ` 时间戳，返回此时间之后所有创建、更新和删除的媒体信息。如果 ` + "`" + `since` + "`" + ` 未提供，则返回所有媒体的全量数据。",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "获取增量变更",
+                "summary": "获取媒体变更（增量或全量）",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "客户端本地记录的最新更新时间戳 (ISO 8601 格式)",
+                        "description": "【可选】客户端本地记录的最新更新时间戳 (ISO 8601 格式)。如果为空，则执行全量同步。",
                         "name": "since",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -632,7 +631,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "时间戳参数缺失或格式错误",
+                        "description": "时间戳格式错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -760,7 +759,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Media"
+                                            "$ref": "#/definitions/handlers.MediaResponse"
                                         }
                                     }
                                 }
@@ -778,7 +777,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Media"
+                                            "$ref": "#/definitions/handlers.MediaResponse"
                                         }
                                     }
                                 }
@@ -1524,6 +1523,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/constant.MediaType"
                 },
                 "media_taken_at": {
+                    "type": "string"
+                },
+                "original_filename": {
                     "type": "string"
                 },
                 "preview_url": {
