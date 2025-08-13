@@ -66,17 +66,13 @@ final mediaViewModelProvider =
     });
 
 /// 定义视图模式的枚举
-enum MediaViewMode {
+enum MediaViewType {
   grid, // 网格视图
   timeline, // 时间线视图
 }
 
-/// 创建一个 StateProvider 来管理当前的视图模式。
-///
-/// StateProvider 是 Riverpod 中最简单的 Provider，非常适合管理简单、可变的 UI 状态。
-/// 我们在这里设置默认视图为 `MediaViewMode.grid`。
-final mediaViewModeProvider = StateProvider<MediaViewMode>(
-  (_) => MediaViewMode.timeline,
+final mediaViewTypeProvider = StateProvider<MediaViewType>(
+  (_) => MediaViewType.timeline,
 );
 
 // ==========================================================================

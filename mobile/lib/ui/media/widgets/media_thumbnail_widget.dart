@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -9,72 +10,152 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/providers.dart';
-import 'package:auto_route/auto_route.dart';
-import 'package:mobile/routing/app_router.dart';
 
-/// ---------------------------------------------------------------------------
-/// **第 1 步: 创建数据提供者 (Provider)**
-///
-/// 我们创建一个 `FutureProvider.family`，它负责异步获取缩略图数据。
-/// - `FutureProvider`：非常适合处理一次性的异步操作，并会自动缓存结果。
-/// - `.family`：允许我们根据传入的参数（这里是 `UnifiedMediaEntity`）创建不同的 Provider 实例。
-///   Riverpod 会根据参数的 `hashCode` 和 `==` 来决定是否复用缓存。
-/// ---------------------------------------------------------------------------
+/// 缩略图缓存提供者 - 用于内存缓存
+/// 包含缓存大小限制和清理机制
+final thumbnailCacheProvider =
+    StateNotifierProvider<ThumbnailCacheNotifier, Map<String, Uint8List>>((
+      ref,
+    ) {
+      return ThumbnailCacheNotifier();
+    });
+
+/// 缩略图缓存管理器
+class ThumbnailCacheNotifier extends StateNotifier<Map<String, Uint8List>> {
+  static const int _maxCacheSize = 100; // 最大缓存100个缩略图
+  static const int _maxMemorySize = 50 * 1024 * 1024; // 最大50MB内存
+
+  ThumbnailCacheNotifier() : super({});
+
+  void addToCache(String key, Uint8List data) {
+    // 检查缓存大小
+    if (state.length >= _maxCacheSize) {
+      _cleanupCache();
+    }
+
+    // 检查内存使用
+    final currentMemoryUsage = _calculateMemoryUsage();
+    if (currentMemoryUsage + data.length > _maxMemorySize) {
+      _cleanupCache();
+    }
+
+    state = {...state, key: data};
+  }
+
+  void _cleanupCache() {
+    // 简单的LRU策略：移除最旧的20%的缓存项
+    final keysToRemove = state.keys.take((state.length * 0.2).round()).toList();
+    final newCache = Map<String, Uint8List>.from(state);
+    for (final key in keysToRemove) {
+      newCache.remove(key);
+    }
+    state = newCache;
+  }
+
+  int _calculateMemoryUsage() {
+    return state.values.fold(0, (sum, data) => sum + data.length);
+  }
+
+  void clearCache() {
+    state = {};
+  }
+}
+
 final thumbnailProvider = FutureProvider.family<Uint8List?, UnifiedMediaEntity>(
   (ref, entity) async {
+    // 检查内存缓存
+    final cache = ref.read(thumbnailCacheProvider);
+    final cacheKey = '${entity.id}_${entity.localId ?? entity.cloudUuid}';
+
+    if (cache.containsKey(cacheKey)) {
+      return cache[cacheKey];
+    }
+
+    Uint8List? thumbnailData;
+
     // 优先尝试通过 photo_manager 从本地相册加载高质量缩略图
     if (entity.localId != null && entity.localId!.isNotEmpty) {
       try {
         final assetEntity = await AssetEntity.fromId(entity.localId!);
         if (assetEntity != null) {
-          // 请求一个合适的尺寸，这个尺寸可以根据UI需求调整
-          final thumbData = await assetEntity.thumbnailDataWithSize(
-            const ThumbnailSize(250, 250), // 尺寸可以适当调大以提高清晰度
+          // 使用默认尺寸，实际尺寸将在UI层根据屏幕密度调整
+          thumbnailData = await assetEntity.thumbnailDataWithSize(
+            const ThumbnailSize(200, 200),
           );
-          if (thumbData != null) {
-            return thumbData;
-          }
         }
       } catch (e) {
-        // 如果 photo_manager 失败（例如，用户拒绝权限或资源已被删除），
-        // 打印日志，然后继续尝试后备方案。
-        debugPrint(
-          "无法通过 photo_manager 加载缩略图 for localId=${entity.localId}: $e",
-        );
+        // 记录具体错误类型，便于调试
+        if (e.toString().contains('permission')) {
+          debugPrint("权限被拒绝，无法访问本地相册: $e");
+        } else if (e.toString().contains('not found')) {
+          debugPrint("本地资源不存在: $e");
+        } else {
+          debugPrint("PhotoManager 加载失败: $e");
+        }
       }
     }
 
     // 后备方案：如果本地资源ID不可用，或 photo_manager 失败，
-    // 尝试直接从文件路径异步读取文件。
-    // 这是完全异步的，不会阻塞UI线程。
-    if (entity.filePath != null && entity.filePath!.isNotEmpty) {
-      final file = File(entity.filePath!);
-      // 使用异步方法检查文件是否存在
-      if (await file.exists()) {
-        // 使用异步方法读取文件内容
-        return await file.readAsBytes();
-      }
-    }
-
-    // 后备方案 2：如果是一个仅云端的资源，则从网络下载缩略图
-    if (entity.syncStatus == SyncStatus.cloudOnly && entity.cloudUuid != null) {
+    // 尝试从云端下载缩略图
+    if (thumbnailData == null &&
+        entity.syncStatus == SyncStatus.cloudOnly &&
+        entity.cloudUuid != null) {
       try {
-        // 从 ref 读取 repository 实例
-        final repository = ref.read(
-          mediaRepositoryProvider,
-        ); // 替换为你的 repository provider
-        // 调用新方法下载数据
-        return await repository.downloadThumbnail(entity.cloudUuid!);
+        final repository = ref.read(mediaRepositoryProvider);
+        thumbnailData = await repository.downloadThumbnail(entity.cloudUuid!);
       } catch (e) {
-        debugPrint("无法从云端加载缩略图 for cloudUuid=${entity.cloudUuid}: $e");
-        // 如果网络请求失败，继续执行到最后返回 null
+        debugPrint("云端缩略图下载失败: $e");
       }
     }
 
-    // 如果所有方法都失败，返回 null，UI 将会显示占位符。
-    return null;
+    // 最后的后备方案：从文件路径读取并压缩
+    if (thumbnailData == null &&
+        entity.filePath != null &&
+        entity.filePath!.isNotEmpty) {
+      try {
+        final file = File(entity.filePath!);
+        if (await file.exists()) {
+          // 读取文件并压缩
+          final originalBytes = await file.readAsBytes();
+          thumbnailData = await _compressImage(originalBytes, 200, 200);
+        }
+      } catch (e) {
+        debugPrint("文件读取失败: $e");
+      }
+    }
+
+    // 如果成功获取到数据，缓存到内存中
+    if (thumbnailData != null) {
+      ref
+          .read(thumbnailCacheProvider.notifier)
+          .addToCache(cacheKey, thumbnailData);
+    }
+
+    return thumbnailData;
   },
 );
+
+/// 图片压缩函数
+Future<Uint8List> _compressImage(
+  Uint8List bytes,
+  int maxWidth,
+  int maxHeight,
+) async {
+  try {
+    final codec = await ui.instantiateImageCodec(
+      bytes,
+      targetWidth: maxWidth,
+      targetHeight: maxHeight,
+    );
+    final frame = await codec.getNextFrame();
+    final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  } catch (e) {
+    debugPrint("图片压缩失败: $e");
+    // 如果压缩失败，返回原始数据
+    return bytes;
+  }
+}
 
 /// ---------------------------------------------------------------------------
 /// **第 2 步: 重构UI组件 (Widget)**
@@ -85,53 +166,38 @@ final thumbnailProvider = FutureProvider.family<Uint8List?, UnifiedMediaEntity>(
 /// ---------------------------------------------------------------------------
 class MediaThumbnailWidget extends ConsumerWidget {
   final UnifiedMediaEntity entity;
-  // 【新增】完整的媒体列表，用于传递给详情页
-  final List<UnifiedMediaEntity> mediaList;
-  // 【新增】当前媒体在列表中的索引
-  // final int index;
+  final int index; // 使用索引而不是完整列表
+  final int totalCount; // 总数量用于调试
+  final VoidCallback? onTap; // 添加点击回调
 
   const MediaThumbnailWidget({
     super.key,
     required this.entity,
-    required this.mediaList,
-    // required this.index,
+    required this.index,
+    required this.totalCount,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 使用 `ref.watch` 来监听 `thumbnailProvider` 的状态。
-    // 当 `Future` 完成、失败或正在加载时，`ref.watch` 会通知此组件重建。
-    // 因为 Provider 有缓存，所以即使多次 `watch` 同一个 `entity`，
-    // 底层的异步操作也只会执行一次。
     final thumbnailAsyncValue = ref.watch(thumbnailProvider(entity));
 
     return GestureDetector(
       onTap: () {
-        // 【核心修正】在这里动态查找实体在列表中的索引
-        // 这确保了无论UI如何布局，我们总能找到正确的起始位置
-        final initialIndex = mediaList.indexOf(entity);
+        // 使用传入的索引，避免 O(n) 的查找操作
+        debugPrint(
+          'Tapped on media id: ${entity.id}, index: $index/$totalCount. Navigating...',
+        );
 
-        // 如果找到了实体（通常情况下总能找到），则导航
-        if (initialIndex != -1) {
-          debugPrint(
-            'Tapped on media id: ${entity.id}, found at index: $initialIndex. Navigating...',
-          );
-          AutoRouter.of(context).push(
-            MediaDetailRoute(
-              media: mediaList,
-              initialIndex: initialIndex, // <-- 使用我们动态计算出的正确索引
-            ),
-          );
+        // 使用回调函数处理导航
+        if (onTap != null) {
+          onTap!();
         } else {
-          // 容错处理：如果因为某些原因实体不在列表中，则不执行任何操作并打印警告
-          debugPrint("警告: 点击的媒体 (id: ${entity.id}) 不在提供的 mediaList 中。");
+          _navigateToDetail(context, index);
         }
       },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(0),
-        // `AsyncValue.when` 是处理异步状态的最佳实践。
-        // 它强制你处理 `data`, `loading`, 和 `error` 三种情况，
-        // 使代码更加健壮和清晰。
+        // borderRadius: BorderRadius.circular(4), // 添加圆角
         child: thumbnailAsyncValue.when(
           data: (thumbnailData) {
             // --- 数据加载成功 ---
@@ -149,6 +215,14 @@ class MediaThumbnailWidget extends ConsumerWidget {
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeOut,
                     child: child,
+                  );
+                },
+                // 添加错误处理
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint("图片显示错误: $error");
+                  return _buildPlaceholder(
+                    icon: Icons.broken_image,
+                    color: Colors.red.shade300,
                   );
                 },
               );
@@ -178,6 +252,17 @@ class MediaThumbnailWidget extends ConsumerWidget {
                 _buildPlaceholder(),
                 // 可以在加载时也显示同步状态
                 _buildSyncStatusIcon(entity.syncStatus),
+                // 添加加载指示器
+                const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
               ],
             );
           },
@@ -198,6 +283,18 @@ class MediaThumbnailWidget extends ConsumerWidget {
             );
           },
         ),
+      ),
+    );
+  }
+
+  // 导航到详情页面的方法
+  void _navigateToDetail(BuildContext context, int index) {
+    // 这个方法需要在父组件中实现，传递完整的媒体列表
+    // 暂时使用一个占位符实现
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('点击了第 $index 个媒体项'),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -252,22 +349,10 @@ class MediaThumbnailWidget extends ConsumerWidget {
     Widget iconWidget;
     switch (status) {
       case SyncStatus.uploading:
+        iconWidget = _buildProgressIcon(Icons.cloud_upload, Colors.blue);
+        break;
       case SyncStatus.downloading:
-        iconWidget = Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.6),
-            shape: BoxShape.circle,
-          ),
-          child: const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.0,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        );
+        iconWidget = _buildProgressIcon(Icons.cloud_download, Colors.green);
         break;
       case SyncStatus.synced:
         iconWidget = _buildIconWithBackground(Icons.cloud_done, Colors.white);
@@ -286,6 +371,32 @@ class MediaThumbnailWidget extends ConsumerWidget {
         break;
     }
     return Positioned(top: 4, right: 4, child: iconWidget);
+  }
+
+  Widget _buildProgressIcon(IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        shape: BoxShape.circle,
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(icon, color: color, size: 12),
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Color.from(alpha: 1.0, red: 1.0, green: 0.0, blue: 0.0),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildIconWithBackground(IconData icon, Color color) {

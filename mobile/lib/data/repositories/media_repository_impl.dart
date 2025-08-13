@@ -1,27 +1,25 @@
-// lib/data/repositories/media_repository_impl.dart
-
 import 'dart:async';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:photo_manager/photo_manager.dart';
 
-import '../../domain/entities/unified_media_entity.dart';
-import '../../domain/repositories/media_repository.dart';
+import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/core/storage/sync_state_service.dart';
 
-// [修正] 严格实现接口
 class MediaRepositoryImpl implements MediaRepository {
   final LocalMediaDataSource _localDataSource;
   final RemoteMediaDataSource _cloudDataSource;
   final SyncStateService _syncStateService;
   final MediaAssetDao _mediaAssetDao;
-  String? _mediaStoragePath;
 
   MediaRepositoryImpl({
     required LocalMediaDataSource localDataSource,
@@ -53,7 +51,6 @@ class MediaRepositoryImpl implements MediaRepository {
 
       if (lastSyncTimestamp == null) {
         print("Repository: 执行首次全量同步, 清空旧云端数据...");
-        // [修正] 调用新的、封装好的DAO方法，修复 void_result 错误
         await _mediaAssetDao.deleteAllCloudRelatedAssets();
         print("Repository: 旧云端数据已清空。");
       } else {
@@ -89,32 +86,19 @@ class MediaRepositoryImpl implements MediaRepository {
         ? MediaType.video
         : MediaType.image;
 
-    // [修正] 使用 p.basename 安全地从路径中提取文件名
-    // 这假设您的 response.originalPath 字段存在，如果不存在，请替换为实际包含文件名的字段
     final fileName = p.basename(response.originalFilename);
 
     return MediaAssetsCompanion(
       cloudUuid: Value(response.uuid),
       assetType: Value(assetType),
       syncStatus: Value(SyncStatus.cloudOnly),
-      fileName: Value(fileName), // 现在可以正确保存文件名
+      fileName: Value(fileName),
       createdAt: Value(
         DateTime.tryParse(response.mediaTakenAt ?? response.createdAt) ??
             DateTime.now(),
       ),
       updatedAt: Value(DateTime.now()),
     );
-  }
-
-  Future<String> _getMediaStoragePath() async {
-    if (_mediaStoragePath != null) return _mediaStoragePath!;
-    final directory = await getApplicationDocumentsDirectory();
-    final mediaDir = Directory(p.join(directory.path, 'media_files'));
-    if (!await mediaDir.exists()) {
-      await mediaDir.create(recursive: true);
-    }
-    _mediaStoragePath = mediaDir.path;
-    return _mediaStoragePath!;
   }
 
   @override
@@ -151,56 +135,84 @@ class MediaRepositoryImpl implements MediaRepository {
     }
   }
 
-  /// 下载原始文件，保存到本地，并返回更新后的实体。
-  ///
-  /// 这个函数现在返回一个 Future<UnifiedMediaEntity>，以便调用者（如 Notifier）
-  /// 可以获取到最新的文件路径和同步状态。
+  // =======================================================================
+  // ⭐️⭐️⭐️  核心修复区域: 重写 downloadAndSaveOriginal 方法  ⭐️⭐️⭐️
+  // =======================================================================
+  @override
   Future<UnifiedMediaEntity> downloadAndSaveOriginal(
     UnifiedMediaEntity entity,
   ) async {
     if (entity.cloudUuid == null || entity.syncStatus != SyncStatus.cloudOnly) {
-      // 如果状态不正确，直接返回原始实体，不执行任何操作。
       return entity;
     }
+
+    File? tempFile;
     try {
-      // 1. 更新数据库状态为 "下载中"
+      // 1. 更新数据库状态为 "下载中"，为UI提供即时反馈
       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.downloading);
-      // 注意：这里最好也 invalidate 一下 provider 列表，让UI可以显示下载中状态
-      // ref.invalidate(mediaListProvider);
 
-      // 2. 下载文件
+      // 2. 下载文件字节
       final fileBytes = await downloadOrigin(entity.cloudUuid!);
-      final storagePath = await _getMediaStoragePath();
 
-      final originalExtension = p.extension(entity.fileName ?? '.jpg');
-      final localPath = p.join(
-        storagePath,
-        '${entity.cloudUuid}$originalExtension',
-      );
+      // 3. 将下载的字节写入一个临时文件
+      // 这是因为 photo_manager 的 saveVideo/saveImage 方法需要一个文件作为输入
+      final tempDir = await getTemporaryDirectory();
+      final fileName = entity.fileName ?? '${entity.cloudUuid}.tmp';
+      tempFile = File(p.join(tempDir.path, fileName));
+      await tempFile.writeAsBytes(fileBytes);
 
-      final localFile = File(localPath);
-      await localFile.writeAsBytes(fileBytes);
+      // 4. ⭐️ 使用 photo_manager 将临时文件保存到系统公共相册中
+      // 这是最关键的一步。成功后，系统会为这个新文件建立索引，我们就能获得它的 `localId`
+      debugPrint("正在将媒体保存到系统相册: ${tempFile.path}");
+      AssetEntity? savedAsset;
+      if (entity.isVideo) {
+        savedAsset = await PhotoManager.editor.saveVideo(
+          tempFile,
+          title: fileName,
+        );
+      } else {
+        // 对于图片，可以直接使用路径
+        savedAsset = await PhotoManager.editor.saveImageWithPath(
+          tempFile.path,
+          title: fileName,
+        );
+      }
+      debugPrint("成功获取到新的 AssetEntity, localId: ${savedAsset.id}");
 
-      // 3. 将新信息更新到数据库
+      // 6. ⭐️ 从新生成的 AssetEntity 获取最终的文件路径
+      final finalFile = await savedAsset.file;
+      if (finalFile == null) {
+        throw Exception('无法从新保存的 AssetEntity 获取文件路径。');
+      }
+
+      // 7. 将包含 localId 和新路径的所有信息更新回本地数据库
       final companion = MediaAssetsCompanion(
         id: Value(entity.id),
-        filePath: Value(localPath),
+        localId: Value(savedAsset.id), // <-- 核心：保存新的 localId
+        filePath: Value(finalFile.path), // <-- 保存系统相册中的实际路径
         syncStatus: Value(SyncStatus.synced),
         updatedAt: Value(DateTime.now()),
       );
       await _mediaAssetDao.updateAsset(companion);
 
-      // 4. ⭐️ 返回一个包含最新信息的新的实体实例
-      // 使用我们刚刚创建的 copyWith 方法，既安全又方便。
+      // 8. 返回一个包含所有最新信息的、完整的实体实例
       return entity.copyWith(
-        filePath: localPath,
+        localId: savedAsset.id, // 更新 localId
+        filePath: finalFile.path, // 更新文件路径
         syncStatus: SyncStatus.synced,
       );
     } catch (e) {
+      debugPrint("下载并保存媒体时出错: $e");
       // 如果出错，更新数据库状态为 "错误"
       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.error);
       // 将异常重新抛出，让 Notifier 的 AsyncValue.guard 能够捕获它
       rethrow;
+    } finally {
+      // 9. 无论成功与否，都尝试删除临时文件，保持清洁
+      if (tempFile != null && await tempFile.exists()) {
+        await tempFile.delete();
+        debugPrint("已清理临时文件: ${tempFile.path}");
+      }
     }
   }
 

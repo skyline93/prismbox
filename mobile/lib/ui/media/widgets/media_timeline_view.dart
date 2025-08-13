@@ -1,10 +1,10 @@
-// lib/ui/media/widgets/media_timeline_view.dart
-
 import 'dart:collection';
 import 'package:flutter/material.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/media/widgets/media_thumbnail_widget.dart';
+import 'package:mobile/routing/app_router.dart';
 
 /// 媒体时间线视图组件
 ///
@@ -43,6 +43,10 @@ class MediaTimelineView extends StatelessWidget {
     final groupedMedia = _groupMediaByDate();
     final dates = groupedMedia.keys.toList();
 
+    // ⭐️ 核心修复 #1: 对分组后的日期Key进行降序排序
+    // b.compareTo(a) 会实现降序排序，确保最新的日期排在最前面。
+    dates.sort((a, b) => b.compareTo(a));
+
     // 使用 ListView.builder 来构建日期分组列表
     return ListView.builder(
       // key 用于帮助 Flutter 识别和区分 Widget，在视图切换时可以提高性能
@@ -51,8 +55,12 @@ class MediaTimelineView extends StatelessWidget {
       itemBuilder: (context, index) {
         final date = dates[index];
         final mediaForDate = groupedMedia[date]!;
+
+        // ⭐️ 核心修复 #2: 对同一天内的照片也进行降序排序
+        // 确保在网格视图中，最新的照片显示在最前面。
+        mediaForDate.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
         // 使用 `intl` 包来格式化日期，使其更友好
-        // 需要在 pubspec.yaml 中添加 `intl` 依赖
         final formattedDate = DateFormat('y年M月d日 EEEE', 'zh_CN').format(date);
 
         return Column(
@@ -80,12 +88,15 @@ class MediaTimelineView extends StatelessWidget {
                 mainAxisSpacing: 2,
               ),
               itemCount: mediaForDate.length,
-              itemBuilder: (context, index) {
-                final mediaEntity = mediaForDate[index];
+              itemBuilder: (context, gridIndex) {
+                // 避免与外部 index 变量名冲突
+                final mediaEntity = mediaForDate[gridIndex];
                 return MediaThumbnailWidget(
                   entity: mediaEntity,
-                  mediaList: media,
-                  // index: index,
+                  // 这里的 index 和 totalCount 应该是相对于当天的列表
+                  index: gridIndex,
+                  totalCount: mediaForDate.length,
+                  onTap: () => _navigateToDetail(context, mediaEntity),
                 );
               },
             ),
@@ -93,5 +104,26 @@ class MediaTimelineView extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _navigateToDetail(BuildContext context, UnifiedMediaEntity entity) {
+    // ⭐️ 优化: 因为我们已经对 mediaForDate 进行了排序，所以我们可以直接
+    // 传递排序后的完整列表，以确保详情页的左右滑动顺序与时间线视图一致。
+
+    // 1. 先对完整的 `media` 列表进行一次最终排序，确保它与时间线视图的显示顺序完全一致
+    final sortedFullMedia = List<UnifiedMediaEntity>.from(media);
+    sortedFullMedia.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // 2. 在排序后的列表中找到当前点击项的索引
+    final globalIndex = sortedFullMedia.indexOf(entity);
+
+    if (globalIndex != -1) {
+      AutoRouter.of(context).push(
+        MediaDetailRoute(
+          media: sortedFullMedia, // 传递排序后的列表
+          initialIndex: globalIndex,
+        ),
+      );
+    }
   }
 }

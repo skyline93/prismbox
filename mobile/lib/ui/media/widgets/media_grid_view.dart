@@ -1,14 +1,19 @@
 // lib/ui/media/widgets/media_grid_view.dart
 
 import 'package:flutter/material.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/media/widgets/media_thumbnail_widget.dart';
+import 'package:mobile/routing/app_router.dart';
 
 /// 媒体网格视图组件
 ///
 /// 这是一个无状态组件，专门负责以固定的网格形式展示媒体列表。
 class MediaGridView extends StatelessWidget {
-  const MediaGridView({super.key, required this.media});
+  const MediaGridView({
+    super.key, 
+    required this.media,
+  });
 
   final List<UnifiedMediaEntity> media;
 
@@ -28,10 +33,20 @@ class MediaGridView extends StatelessWidget {
         final mediaEntity = media[index];
         return MediaThumbnailWidget(
           entity: mediaEntity,
-          mediaList: media,
-          // index: index,
+          index: index,
+          totalCount: media.length,
+          onTap: () => _navigateToDetail(context, index),
         );
       },
+    );
+  }
+
+  void _navigateToDetail(BuildContext context, int index) {
+    AutoRouter.of(context).push(
+      MediaDetailRoute(
+        media: media,
+        initialIndex: index,
+      ),
     );
   }
 }

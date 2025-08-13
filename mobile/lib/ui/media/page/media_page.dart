@@ -3,10 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/providers.dart'; // 确保你的 providers 都在这里
+import 'package:mobile/providers.dart';
 import 'package:mobile/ui/media/widgets/media_grid_view.dart';
 import 'package:mobile/ui/media/widgets/media_timeline_view.dart';
+import 'package:mobile/ui/media/widgets/media_thumbnail_widget.dart';
 import 'package:mobile/ui/media/viewmodels/media_state.dart';
+import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart';
 
 @RoutePage()
 class MediaPage extends HookConsumerWidget {
@@ -14,21 +16,41 @@ class MediaPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 【修改】统一使用 mediaViewModelProvider
     final mediaState = ref.watch(mediaViewModelProvider);
     final viewModel = ref.read(mediaViewModelProvider.notifier);
-    final viewMode = ref.watch(mediaViewModeProvider);
+    final viewMode = ref.watch(mediaViewTypeProvider);
 
-    // 【新增】使用 ref.listen 专门处理一次性事件，如显示 SnackBar
-    // 这比在 build 方法中判断更高效，因为它不会在每次重建时都执行。
+    // 监听云端同步错误状态。
+    // `ref.listen` 用于订阅 `mediaViewModelProvider` 中 `cloudSyncError` 字段的变化。
+    // `select` 方法用于仅关注 `cloudSyncError` 字段，避免不必要的重绘。
+    // 当 `cloudSyncError` 从 `null` 变为非 `null` 值时（即发生错误），会执行回调函数。
     ref.listen<String?>(
       mediaViewModelProvider.select((state) => state.cloudSyncError),
       (previous, newError) {
         if (newError != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(newError),
+              // SnackBar 的内容区域，包含一个错误图标和错误信息文本。
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(newError)),
+                ],
+              ),
+              // SnackBar 的背景颜色使用主题中的错误颜色。
               backgroundColor: Theme.of(context).colorScheme.error,
+              // SnackBar 的操作按钮，允许用户重试云端同步。
+              action: SnackBarAction(
+                label: '重试',
+                textColor: Colors.white,
+                onPressed: () {
+                  // 当用户点击“重试”按钮时，调用 ViewModel 中的 `syncWithCloud` 方法。
+                  viewModel.syncWithCloud();
+                },
+              ),
+              // SnackBar 显示的持续时间。
+              duration: const Duration(seconds: 5),
             ),
           );
         }
@@ -56,31 +78,55 @@ class MediaPage extends HookConsumerWidget {
               ),
             ),
 
-          // 您原有的视图切换按钮保持不变
+          // 缓存管理按钮
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'clear_cache':
+                  ref.read(thumbnailCacheProvider.notifier).clearCache();
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('缓存已清理')));
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'clear_cache',
+                child: Row(
+                  children: [
+                    Icon(Icons.clear_all),
+                    SizedBox(width: 8),
+                    Text('清理缓存'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // 视图切换按钮
           IconButton(
             icon: Icon(
-              viewMode == MediaViewMode.grid
+              viewMode == MediaViewType.grid
                   ? Icons.view_timeline_outlined
                   : Icons.grid_view_outlined,
             ),
             onPressed: () {
-              final notifier = ref.read(mediaViewModeProvider.notifier);
-              notifier.state = viewMode == MediaViewMode.grid
-                  ? MediaViewMode.timeline
-                  : MediaViewMode.grid;
+              final notifier = ref.read(mediaViewTypeProvider.notifier);
+              notifier.state = viewMode == MediaViewType.grid
+                  ? MediaViewType.timeline
+                  : MediaViewType.grid;
             },
           ),
         ],
       ),
-      // 【修改】将 RefreshIndicator 与 ViewModel 连接起来
       body: RefreshIndicator(
         onRefresh: () async {
-          // 当用户执行下拉手势时，直接调用 ViewModel 的 syncWithCloud 方法。
-          print("UI: 用户触发下拉刷新，调用 viewModel.syncWithCloud()");
           await viewModel.syncWithCloud();
         },
         // 将 buildBody 的调用移到这里，并传入 viewMode
-        child: _buildBody(context, ref, mediaState, viewMode),
+        child: _buildBody(context, ref, mediaState, viewMode, viewModel),
       ),
     );
   }
@@ -88,38 +134,66 @@ class MediaPage extends HookConsumerWidget {
   Widget _buildBody(
     BuildContext context,
     WidgetRef ref,
-    MediaState mediaState, // 【修改】参数名统一为 mediaState
-    MediaViewMode viewMode,
+    MediaState mediaState,
+    MediaViewType viewMode,
+    MediaViewModel viewModel,
   ) {
-    // 【修改】场景 1: 初始加载，使用 isInitialLoading 字段
+    // 场景 1: 初始加载
     if (mediaState.isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在加载媒体库...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              '正在加载媒体库...',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '请稍候',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+            ),
           ],
         ),
       );
     }
 
-    // 【修改】场景 2: 发生严重错误（如数据库问题）
+    // 场景 2: 发生严重错误（如数据库问题）
     if (mediaState.error != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Text(
-            '出错了：\n${mediaState.error}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                '出错了：\n${mediaState.error}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  // 重试加载
+                  viewModel.retry();
+                },
+                child: const Text('重试'),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    // 【修改】场景 3: 媒体库为空，提供更友好的交互提示
+    // 场景 3: 媒体库为空，提供更友好的交互提示
     if (mediaState.media.isEmpty) {
       // 使用 LayoutBuilder 和 SingleChildScrollView 确保即使在内容为空时，
       // 用户仍然可以下拉以触发 RefreshIndicator。
@@ -129,13 +203,39 @@ class MediaPage extends HookConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: const Center(
+              child: Center(
                 child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: Text(
-                    '相册为空\n\n下拉以从云端同步',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.photo_library_outlined,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '相册为空',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '下拉以从云端同步',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          viewModel.syncWithCloud();
+                        },
+                        icon: const Icon(Icons.sync),
+                        label: const Text('立即同步'),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -145,11 +245,10 @@ class MediaPage extends HookConsumerWidget {
       );
     }
 
-    // 场景 4: 根据 viewMode 动态渲染对应的视图组件（此部分逻辑不变）
     switch (viewMode) {
-      case MediaViewMode.grid:
+      case MediaViewType.grid:
         return MediaGridView(media: mediaState.media);
-      case MediaViewMode.timeline:
+      case MediaViewType.timeline:
         return MediaTimelineView(media: mediaState.media);
     }
   }

@@ -115,4 +115,27 @@ class MediaViewModel extends StateNotifier<MediaState> {
       );
     }
   }
+
+  /// 重试方法 - 清除错误状态并重新初始化
+  Future<void> retry() async {
+    print("MediaViewModel: 用户触发重试...");
+    
+    // 清除错误状态
+    state = state.copyWith(
+      error: null,
+      cloudSyncError: null,
+      isLoading: true,
+    );
+
+    try {
+      // 重新初始化
+      await _initialize();
+    } catch (e) {
+      print("MediaViewModel: 重试失败: $e");
+      state = state.copyWith(
+        error: "重试失败: $e",
+        isLoading: false,
+      );
+    }
+  }
 }

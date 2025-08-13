@@ -122,7 +122,11 @@ class MediaDetailPage extends HookConsumerWidget {
             imageProvider: MemoryImage(bytes),
             heroTag: entity.id.toString(),
           ),
-          file: (_) => _buildErrorWidget("数据类型错误：应为图片字节"),
+          file: (file) => MediaImageViewer(
+            key: ValueKey("${entity.id}_file"), // 使用不同的key以确保重建
+            imageProvider: FileImage(file),
+            heroTag: entity.id.toString(),
+          ),
         ),
         loading: () => Container(color: Colors.black),
         error: (err, _) => _buildErrorWidget(err.toString()),
