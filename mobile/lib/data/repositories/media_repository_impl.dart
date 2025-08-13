@@ -151,17 +151,27 @@ class MediaRepositoryImpl implements MediaRepository {
     }
   }
 
-  @override
-  Future<void> downloadAndSaveOriginal(UnifiedMediaEntity entity) async {
+  /// 下载原始文件，保存到本地，并返回更新后的实体。
+  ///
+  /// 这个函数现在返回一个 Future<UnifiedMediaEntity>，以便调用者（如 Notifier）
+  /// 可以获取到最新的文件路径和同步状态。
+  Future<UnifiedMediaEntity> downloadAndSaveOriginal(
+    UnifiedMediaEntity entity,
+  ) async {
     if (entity.cloudUuid == null || entity.syncStatus != SyncStatus.cloudOnly) {
-      return;
+      // 如果状态不正确，直接返回原始实体，不执行任何操作。
+      return entity;
     }
     try {
+      // 1. 更新数据库状态为 "下载中"
       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.downloading);
+      // 注意：这里最好也 invalidate 一下 provider 列表，让UI可以显示下载中状态
+      // ref.invalidate(mediaListProvider);
+
+      // 2. 下载文件
       final fileBytes = await downloadOrigin(entity.cloudUuid!);
       final storagePath = await _getMediaStoragePath();
 
-      // [修正] 现在 entity.fileName 是有值的，代码可以正常工作
       final originalExtension = p.extension(entity.fileName ?? '.jpg');
       final localPath = p.join(
         storagePath,
@@ -171,6 +181,7 @@ class MediaRepositoryImpl implements MediaRepository {
       final localFile = File(localPath);
       await localFile.writeAsBytes(fileBytes);
 
+      // 3. 将新信息更新到数据库
       final companion = MediaAssetsCompanion(
         id: Value(entity.id),
         filePath: Value(localPath),
@@ -178,8 +189,17 @@ class MediaRepositoryImpl implements MediaRepository {
         updatedAt: Value(DateTime.now()),
       );
       await _mediaAssetDao.updateAsset(companion);
+
+      // 4. ⭐️ 返回一个包含最新信息的新的实体实例
+      // 使用我们刚刚创建的 copyWith 方法，既安全又方便。
+      return entity.copyWith(
+        filePath: localPath,
+        syncStatus: SyncStatus.synced,
+      );
     } catch (e) {
+      // 如果出错，更新数据库状态为 "错误"
       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.error);
+      // 将异常重新抛出，让 Notifier 的 AsyncValue.guard 能够捕获它
       rethrow;
     }
   }

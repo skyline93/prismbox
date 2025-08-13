@@ -14,7 +14,7 @@ abstract class MediaRepository {
 
   Future<void> uploadLocalMedia(UnifiedMediaEntity entity);
 
-  Future<void> downloadAndSaveOriginal(UnifiedMediaEntity entity);
+  Future<UnifiedMediaEntity> downloadAndSaveOriginal(UnifiedMediaEntity entity);
 
   Future<Uint8List> downloadThumbnail(String uuid);
 
