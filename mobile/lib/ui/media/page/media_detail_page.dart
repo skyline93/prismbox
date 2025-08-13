@@ -105,6 +105,7 @@ class MediaDetailPage extends HookConsumerWidget {
       if (assetEntity != null) {
         // 缓存命中：立即渲染，无任何异步等待，体验最丝滑
         return MediaImageViewer(
+          key: ValueKey(assetEntity.id),
           imageProvider: AssetEntityImageProvider(assetEntity),
           heroTag: assetEntity.id,
         );
@@ -117,6 +118,7 @@ class MediaDetailPage extends HookConsumerWidget {
       return mediaAsyncValue.when(
         data: (mediaData) => mediaData.when(
           bytes: (bytes) => MediaImageViewer(
+            key: ValueKey(entity.id),
             imageProvider: MemoryImage(bytes),
             heroTag: entity.id.toString(),
           ),

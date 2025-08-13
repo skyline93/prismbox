@@ -1,5 +1,6 @@
+// lib/ui/media/viewmodels/media_detail_viewmodel.dart
+
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -7,9 +8,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/data/datasources/app_database.dart';
-import 'package:mobile/providers.dart'; // 全局 Provider
-// import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart'; // mediaViewModelProvider
+import 'package:mobile/providers.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 part 'media_detail_viewmodel.freezed.dart';
 
@@ -36,18 +36,39 @@ class MediaDetailNotifier
   Future<MediaData> build(UnifiedMediaEntity arg) async {
     final entity = arg;
 
-    // 逻辑 A: 从本地文件路径加载
+    // --- 优先级 1: 尝试通过 localId 从系统媒体库加载 (最可靠) ---
+    if (entity.localId != null && entity.localId!.isNotEmpty) {
+      final asset = await AssetEntity.fromId(entity.localId!);
+      if (asset != null) {
+        if (entity.isVideo) {
+          // 使用 photo_manager 获取可访问的 File 对象
+          final file = await asset.file;
+          if (file != null) {
+            return MediaData.file(file);
+          }
+        } else {
+          // 对于图片，获取原始字节
+          final bytes = await asset.originBytes;
+          if (bytes != null) {
+            return MediaData.bytes(bytes);
+          }
+        }
+      }
+      // 如果 asset 为 null 或获取文件/字节失败，则会自然地“掉落”到下一个逻辑
+    }
+
+    // --- 优先级 2: 如果 localId 不可用或失败，回退到使用 filePath ---
+    // (适用于从云端下载到本地私有目录的文件)
     if (entity.filePath != null && entity.filePath!.isNotEmpty) {
       final file = File(entity.filePath!);
       if (await file.exists()) {
         if (entity.isVideo) return MediaData.file(file);
-        // 对于图片，我们直接读取字节，方便后续创建 MemoryImage
         return MediaData.bytes(await file.readAsBytes());
       }
     }
 
-    // 逻辑 B: 从云端下载预览
-    if (entity.syncStatus == SyncStatus.cloudOnly && entity.cloudUuid != null) {
+    // --- 优先级 3: 如果本地完全找不到，则从云端下载预览 ---
+    if (entity.cloudUuid != null) {
       try {
         final repository = ref.read(mediaRepositoryProvider);
         final previewBytes = await repository.downloadPreview(
@@ -55,7 +76,6 @@ class MediaDetailNotifier
         );
 
         if (entity.isVideo) {
-          // 视频需要写入临时文件
           final tempDir = await getTemporaryDirectory();
           final tempFile = File(
             p.join(tempDir.path, '${entity.cloudUuid}_preview.mp4'),
@@ -63,16 +83,15 @@ class MediaDetailNotifier
           await tempFile.writeAsBytes(previewBytes);
           return MediaData.file(tempFile);
         }
-
-        // 图片直接返回字节
         return MediaData.bytes(previewBytes);
       } catch (e) {
         debugPrint("无法从云端下载预览媒体 for cloudUuid=${entity.cloudUuid}: $e");
-        throw Exception('无法下载云端预览资源: $e');
+        throw Exception('本地资源不可用，且从云端下载预览失败: $e');
       }
     }
 
-    // 如果以上条件都不满足，说明资源不可用
+    // 如果以上所有逻辑都失败了（既没有可用的本地文件，也没有 cloudUuid），
+    // 说明资源是真正不可用。
     throw Exception('媒体资源不可用 for entity id: ${entity.id}');
   }
 
