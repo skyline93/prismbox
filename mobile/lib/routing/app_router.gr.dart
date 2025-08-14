@@ -4,7 +4,7 @@
 // AutoRouterGenerator
 // **************************************************************************
 
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, unused_element_parameter
 // coverage:ignore-file
 
 part of 'app_router.dart';
@@ -21,6 +21,17 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AlbumPage(),
       );
     },
+    GalleryRoute.name: (routeData) {
+      final args = routeData.argsAs<GalleryRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GalleryPage(
+          key: args.key,
+          media: args.media,
+          initialIndex: args.initialIndex,
+        ),
+      );
+    },
     LibraryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -31,17 +42,6 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const LoginPage(),
-      );
-    },
-    MediaDetailRoute.name: (routeData) {
-      final args = routeData.argsAs<MediaDetailRouteArgs>();
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: MediaDetailPage(
-          key: args.key,
-          media: args.media,
-          initialIndex: args.initialIndex,
-        ),
       );
     },
     MediaRoute.name: (routeData) {
@@ -75,10 +75,7 @@ abstract class _$AppRouter extends RootStackRouter {
 /// [AlbumPage]
 class AlbumRoute extends PageRouteInfo<void> {
   const AlbumRoute({List<PageRouteInfo>? children})
-      : super(
-          AlbumRoute.name,
-          initialChildren: children,
-        );
+    : super(AlbumRoute.name, initialChildren: children);
 
   static const String name = 'AlbumRoute';
 
@@ -86,59 +83,32 @@ class AlbumRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [LibraryPage]
-class LibraryRoute extends PageRouteInfo<void> {
-  const LibraryRoute({List<PageRouteInfo>? children})
-      : super(
-          LibraryRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'LibraryRoute';
-
-  static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [LoginPage]
-class LoginRoute extends PageRouteInfo<void> {
-  const LoginRoute({List<PageRouteInfo>? children})
-      : super(
-          LoginRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'LoginRoute';
-
-  static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [MediaDetailPage]
-class MediaDetailRoute extends PageRouteInfo<MediaDetailRouteArgs> {
-  MediaDetailRoute({
+/// [GalleryPage]
+class GalleryRoute extends PageRouteInfo<GalleryRouteArgs> {
+  GalleryRoute({
     Key? key,
     required List<UnifiedMediaEntity> media,
     required int initialIndex,
     List<PageRouteInfo>? children,
   }) : super(
-          MediaDetailRoute.name,
-          args: MediaDetailRouteArgs(
-            key: key,
-            media: media,
-            initialIndex: initialIndex,
-          ),
-          initialChildren: children,
-        );
+         GalleryRoute.name,
+         args: GalleryRouteArgs(
+           key: key,
+           media: media,
+           initialIndex: initialIndex,
+         ),
+         initialChildren: children,
+       );
 
-  static const String name = 'MediaDetailRoute';
+  static const String name = 'GalleryRoute';
 
-  static const PageInfo<MediaDetailRouteArgs> page =
-      PageInfo<MediaDetailRouteArgs>(name);
+  static const PageInfo<GalleryRouteArgs> page = PageInfo<GalleryRouteArgs>(
+    name,
+  );
 }
 
-class MediaDetailRouteArgs {
-  const MediaDetailRouteArgs({
+class GalleryRouteArgs {
+  const GalleryRouteArgs({
     this.key,
     required this.media,
     required this.initialIndex,
@@ -152,18 +122,37 @@ class MediaDetailRouteArgs {
 
   @override
   String toString() {
-    return 'MediaDetailRouteArgs{key: $key, media: $media, initialIndex: $initialIndex}';
+    return 'GalleryRouteArgs{key: $key, media: $media, initialIndex: $initialIndex}';
   }
+}
+
+/// generated route for
+/// [LibraryPage]
+class LibraryRoute extends PageRouteInfo<void> {
+  const LibraryRoute({List<PageRouteInfo>? children})
+    : super(LibraryRoute.name, initialChildren: children);
+
+  static const String name = 'LibraryRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [LoginPage]
+class LoginRoute extends PageRouteInfo<void> {
+  const LoginRoute({List<PageRouteInfo>? children})
+    : super(LoginRoute.name, initialChildren: children);
+
+  static const String name = 'LoginRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for
 /// [MediaPage]
 class MediaRoute extends PageRouteInfo<void> {
   const MediaRoute({List<PageRouteInfo>? children})
-      : super(
-          MediaRoute.name,
-          initialChildren: children,
-        );
+    : super(MediaRoute.name, initialChildren: children);
 
   static const String name = 'MediaRoute';
 
@@ -174,10 +163,7 @@ class MediaRoute extends PageRouteInfo<void> {
 /// [NavigationPage]
 class NavigationRoute extends PageRouteInfo<void> {
   const NavigationRoute({List<PageRouteInfo>? children})
-      : super(
-          NavigationRoute.name,
-          initialChildren: children,
-        );
+    : super(NavigationRoute.name, initialChildren: children);
 
   static const String name = 'NavigationRoute';
 
@@ -188,10 +174,7 @@ class NavigationRoute extends PageRouteInfo<void> {
 /// [ServerConfigPage]
 class ServerConfigRoute extends PageRouteInfo<void> {
   const ServerConfigRoute({List<PageRouteInfo>? children})
-      : super(
-          ServerConfigRoute.name,
-          initialChildren: children,
-        );
+    : super(ServerConfigRoute.name, initialChildren: children);
 
   static const String name = 'ServerConfigRoute';
 
@@ -202,10 +185,7 @@ class ServerConfigRoute extends PageRouteInfo<void> {
 /// [SplashPage]
 class SplashRoute extends PageRouteInfo<void> {
   const SplashRoute({List<PageRouteInfo>? children})
-      : super(
-          SplashRoute.name,
-          initialChildren: children,
-        );
+    : super(SplashRoute.name, initialChildren: children);
 
   static const String name = 'SplashRoute';
 

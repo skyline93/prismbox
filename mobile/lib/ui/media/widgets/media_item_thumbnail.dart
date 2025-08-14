@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/ui/photos/widgets/sync_status_icon.dart';
-import 'package:mobile/ui/photos/widgets/media_item_video_overlay.dart';
-import 'package:mobile/ui/photos/widgets/media_item_placeholder.dart';
+import 'package:mobile/ui/media/widgets/sync_status_icon.dart';
+import 'package:mobile/ui/media/widgets/media_item_video_overlay.dart';
+import 'package:mobile/ui/media/widgets/media_item_placeholder.dart';
 
 class MediaItemThumbnail extends StatelessWidget {
   final Uint8List? thumbnailData;

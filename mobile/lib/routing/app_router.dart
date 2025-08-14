@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/ui/main/page/main_navigation_page.dart';
-import 'package:mobile/ui/media/page/media_page.dart';
+import 'package:mobile/ui/media/pages/media_page.dart';
 import 'package:mobile/ui/album/page/album_page.dart';
 import 'package:mobile/ui/library/page/library_page.dart';
 import 'package:mobile/ui/library/page/server_config_page.dart';
 import 'package:mobile/ui/main/page/login_page.dart';
 import 'package:mobile/ui/main/page/splash_page.dart';
 // import 'package:mobile/ui/media/page/media_detail.dart';
-import 'package:mobile/ui/media/page/media_detail_page.dart';
+import 'package:mobile/ui/gallery/pages/gallery_page.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 
 part 'app_router.gr.dart';
@@ -30,7 +30,7 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: LoginRoute.page, path: "/login"),
     AutoRoute(page: NavigationRoute.page, path: "/navigation"),
     AutoRoute(page: MediaRoute.page, path: "/media"),
-    AutoRoute(page: MediaDetailRoute.page, path: '/media-detail'),
+    AutoRoute(page: GalleryRoute.page, path: '/gallery'),
     AutoRoute(page: ServerConfigRoute.page, path: "/server_config"),
     // AutoRoute(page: NavigationRoute.page, path: "/navigation", initial: true),
     // AutoRoute(page: MediaRoute.page, path: "/media"),

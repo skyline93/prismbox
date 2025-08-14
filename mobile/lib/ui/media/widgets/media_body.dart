@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers.dart';
-import 'package:mobile/ui/media/widgets/media_grid_view.dart';
-import 'package:mobile/ui/media/widgets/media_timeline_view.dart';
-import 'package:mobile/ui/photos/widgets/media_body_empty.dart';
-import 'package:mobile/ui/photos/widgets/media_body_error.dart';
+import 'package:mobile/ui/media/widgets/media_body_grid.dart';
+import 'package:mobile/ui/media/widgets/media_body_timeline.dart';
+import 'package:mobile/ui/media/widgets/media_body_empty.dart';
+import 'package:mobile/ui/media/widgets/media_body_error.dart';
 
 class MediaBody extends HookConsumerWidget {
   const MediaBody({super.key});
@@ -44,8 +44,8 @@ class MediaBody extends HookConsumerWidget {
         }
 
         return switch (viewMode) {
-          MediaViewType.grid => MediaGridView(media: media),
-          MediaViewType.timeline => MediaTimelineView(media: media),
+          MediaViewType.grid => MediaGridBody(media: media),
+          MediaViewType.timeline => MediaTimelineBody(media: media),
         };
       },
       error: (error) =>

@@ -18,7 +18,6 @@ class MediaImageViewer extends StatelessWidget {
       minScale: PhotoViewComputedScale.contained,
       maxScale: PhotoViewComputedScale.covered * 2.5,
       heroAttributes: PhotoViewHeroAttributes(tag: heroTag),
-      // 使用一个简单的黑色背景作为加载占位符，以实现无缝切换
       loadingBuilder: (context, event) => Container(color: Colors.black),
       errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
     );

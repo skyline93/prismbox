@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/ui/media/widgets/media_thumbnail_widget.dart';
 import 'package:mobile/routing/app_router.dart';
+import 'package:mobile/ui/media/widgets/media_item.dart';
 
 class MediaGridBody extends StatelessWidget {
   const MediaGridBody({super.key, required this.media});
@@ -21,14 +21,14 @@ class MediaGridBody extends StatelessWidget {
       itemCount: media.length,
       itemBuilder: (context, index) {
         final mediaEntity = media[index];
-        return MediaThumbnailWidget(
+        return MediaItem(
           entity: mediaEntity,
           index: index,
           totalCount: media.length,
           onTap: () => {
             AutoRouter.of(
               context,
-            ).push(MediaDetailRoute(media: media, initialIndex: index)),
+            ).push(GalleryRoute(media: media, initialIndex: index)),
           },
         );
       },

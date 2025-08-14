@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'media_detail_viewmodel.dart';
+part of 'gallery_viewmodel.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -18,18 +18,21 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$MediaData {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
+    required TResult Function(AssetEntity entity) asset,
     required TResult Function(Uint8List bytes) bytes,
     required TResult Function(File file) file,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(AssetEntity entity)? asset,
     TResult? Function(Uint8List bytes)? bytes,
     TResult? Function(File file)? file,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
+    TResult Function(AssetEntity entity)? asset,
     TResult Function(Uint8List bytes)? bytes,
     TResult Function(File file)? file,
     required TResult orElse(),
@@ -37,18 +40,21 @@ mixin _$MediaData {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
+    required TResult Function(_MediaDataAsset value) asset,
     required TResult Function(_MediaDataBytes value) bytes,
     required TResult Function(_MediaDataFile value) file,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_MediaDataAsset value)? asset,
     TResult? Function(_MediaDataBytes value)? bytes,
     TResult? Function(_MediaDataFile value)? file,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
+    TResult Function(_MediaDataAsset value)? asset,
     TResult Function(_MediaDataBytes value)? bytes,
     TResult Function(_MediaDataFile value)? file,
     required TResult orElse(),
@@ -74,6 +80,164 @@ class _$MediaDataCopyWithImpl<$Res, $Val extends MediaData>
 
   /// Create a copy of MediaData
   /// with the given fields replaced by the non-null parameter values.
+}
+
+/// @nodoc
+abstract class _$$MediaDataAssetImplCopyWith<$Res> {
+  factory _$$MediaDataAssetImplCopyWith(_$MediaDataAssetImpl value,
+          $Res Function(_$MediaDataAssetImpl) then) =
+      __$$MediaDataAssetImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({AssetEntity entity});
+}
+
+/// @nodoc
+class __$$MediaDataAssetImplCopyWithImpl<$Res>
+    extends _$MediaDataCopyWithImpl<$Res, _$MediaDataAssetImpl>
+    implements _$$MediaDataAssetImplCopyWith<$Res> {
+  __$$MediaDataAssetImplCopyWithImpl(
+      _$MediaDataAssetImpl _value, $Res Function(_$MediaDataAssetImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of MediaData
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? entity = null,
+  }) {
+    return _then(_$MediaDataAssetImpl(
+      null == entity
+          ? _value.entity
+          : entity // ignore: cast_nullable_to_non_nullable
+              as AssetEntity,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$MediaDataAssetImpl
+    with DiagnosticableTreeMixin
+    implements _MediaDataAsset {
+  const _$MediaDataAssetImpl(this.entity);
+
+  @override
+  final AssetEntity entity;
+
+  @override
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
+    return 'MediaData.asset(entity: $entity)';
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty('type', 'MediaData.asset'))
+      ..add(DiagnosticsProperty('entity', entity));
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$MediaDataAssetImpl &&
+            (identical(other.entity, entity) || other.entity == entity));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, entity);
+
+  /// Create a copy of MediaData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$MediaDataAssetImplCopyWith<_$MediaDataAssetImpl> get copyWith =>
+      __$$MediaDataAssetImplCopyWithImpl<_$MediaDataAssetImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(AssetEntity entity) asset,
+    required TResult Function(Uint8List bytes) bytes,
+    required TResult Function(File file) file,
+  }) {
+    return asset(entity);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(AssetEntity entity)? asset,
+    TResult? Function(Uint8List bytes)? bytes,
+    TResult? Function(File file)? file,
+  }) {
+    return asset?.call(entity);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(AssetEntity entity)? asset,
+    TResult Function(Uint8List bytes)? bytes,
+    TResult Function(File file)? file,
+    required TResult orElse(),
+  }) {
+    if (asset != null) {
+      return asset(entity);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_MediaDataAsset value) asset,
+    required TResult Function(_MediaDataBytes value) bytes,
+    required TResult Function(_MediaDataFile value) file,
+  }) {
+    return asset(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_MediaDataAsset value)? asset,
+    TResult? Function(_MediaDataBytes value)? bytes,
+    TResult? Function(_MediaDataFile value)? file,
+  }) {
+    return asset?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_MediaDataAsset value)? asset,
+    TResult Function(_MediaDataBytes value)? bytes,
+    TResult Function(_MediaDataFile value)? file,
+    required TResult orElse(),
+  }) {
+    if (asset != null) {
+      return asset(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _MediaDataAsset implements MediaData {
+  const factory _MediaDataAsset(final AssetEntity entity) =
+      _$MediaDataAssetImpl;
+
+  AssetEntity get entity;
+
+  /// Create a copy of MediaData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$MediaDataAssetImplCopyWith<_$MediaDataAssetImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -156,6 +320,7 @@ class _$MediaDataBytesImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
+    required TResult Function(AssetEntity entity) asset,
     required TResult Function(Uint8List bytes) bytes,
     required TResult Function(File file) file,
   }) {
@@ -165,6 +330,7 @@ class _$MediaDataBytesImpl
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(AssetEntity entity)? asset,
     TResult? Function(Uint8List bytes)? bytes,
     TResult? Function(File file)? file,
   }) {
@@ -174,6 +340,7 @@ class _$MediaDataBytesImpl
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
+    TResult Function(AssetEntity entity)? asset,
     TResult Function(Uint8List bytes)? bytes,
     TResult Function(File file)? file,
     required TResult orElse(),
@@ -187,6 +354,7 @@ class _$MediaDataBytesImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
+    required TResult Function(_MediaDataAsset value) asset,
     required TResult Function(_MediaDataBytes value) bytes,
     required TResult Function(_MediaDataFile value) file,
   }) {
@@ -196,6 +364,7 @@ class _$MediaDataBytesImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_MediaDataAsset value)? asset,
     TResult? Function(_MediaDataBytes value)? bytes,
     TResult? Function(_MediaDataFile value)? file,
   }) {
@@ -205,6 +374,7 @@ class _$MediaDataBytesImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
+    TResult Function(_MediaDataAsset value)? asset,
     TResult Function(_MediaDataBytes value)? bytes,
     TResult Function(_MediaDataFile value)? file,
     required TResult orElse(),
@@ -306,6 +476,7 @@ class _$MediaDataFileImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
+    required TResult Function(AssetEntity entity) asset,
     required TResult Function(Uint8List bytes) bytes,
     required TResult Function(File file) file,
   }) {
@@ -315,6 +486,7 @@ class _$MediaDataFileImpl
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(AssetEntity entity)? asset,
     TResult? Function(Uint8List bytes)? bytes,
     TResult? Function(File file)? file,
   }) {
@@ -324,6 +496,7 @@ class _$MediaDataFileImpl
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
+    TResult Function(AssetEntity entity)? asset,
     TResult Function(Uint8List bytes)? bytes,
     TResult Function(File file)? file,
     required TResult orElse(),
@@ -337,6 +510,7 @@ class _$MediaDataFileImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
+    required TResult Function(_MediaDataAsset value) asset,
     required TResult Function(_MediaDataBytes value) bytes,
     required TResult Function(_MediaDataFile value) file,
   }) {
@@ -346,6 +520,7 @@ class _$MediaDataFileImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_MediaDataAsset value)? asset,
     TResult? Function(_MediaDataBytes value)? bytes,
     TResult? Function(_MediaDataFile value)? file,
   }) {
@@ -355,6 +530,7 @@ class _$MediaDataFileImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
+    TResult Function(_MediaDataAsset value)? asset,
     TResult Function(_MediaDataBytes value)? bytes,
     TResult Function(_MediaDataFile value)? file,
     required TResult orElse(),
