@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers.dart';
+import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart';
 
 class MediaAppBar extends HookConsumerWidget implements PreferredSizeWidget {
   const MediaAppBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isSyncing = ref.watch(
-      mediaViewModelProvider.select((s) => s.isSyncingWithCloud),
-    );
+    final isSyncing = ref.watch(isSyncingWithCloudProvider);
     final viewMode = ref.watch(mediaViewTypeProvider);
 
     return AppBar(

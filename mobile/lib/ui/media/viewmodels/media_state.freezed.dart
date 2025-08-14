@@ -16,16 +16,49 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$MediaState {
-  bool get isLoading => throw _privateConstructorUsedError;
-  List<UnifiedMediaEntity> get media => throw _privateConstructorUsedError;
-  bool get isSyncingWithCloud => throw _privateConstructorUsedError;
-  String? get error => throw _privateConstructorUsedError;
-  String? get cloudSyncError => throw _privateConstructorUsedError;
-
-  /// Create a copy of MediaState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $MediaStateCopyWith<MediaState> get copyWith =>
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() loading,
+    required TResult Function(List<UnifiedMediaEntity> media) data,
+    required TResult Function(String error) error,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? loading,
+    TResult? Function(List<UnifiedMediaEntity> media)? data,
+    TResult? Function(String error)? error,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? loading,
+    TResult Function(List<UnifiedMediaEntity> media)? data,
+    TResult Function(String error)? error,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Data value) data,
+    required TResult Function(_Error value) error,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Data value)? data,
+    TResult? Function(_Error value)? error,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Data value)? data,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) =>
       throw _privateConstructorUsedError;
 }
 
@@ -34,13 +67,6 @@ abstract class $MediaStateCopyWith<$Res> {
   factory $MediaStateCopyWith(
           MediaState value, $Res Function(MediaState) then) =
       _$MediaStateCopyWithImpl<$Res, MediaState>;
-  @useResult
-  $Res call(
-      {bool isLoading,
-      List<UnifiedMediaEntity> media,
-      bool isSyncingWithCloud,
-      String? error,
-      String? cloudSyncError});
 }
 
 /// @nodoc
@@ -55,62 +81,133 @@ class _$MediaStateCopyWithImpl<$Res, $Val extends MediaState>
 
   /// Create a copy of MediaState
   /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
+}
+
+/// @nodoc
+abstract class _$$LoadingImplCopyWith<$Res> {
+  factory _$$LoadingImplCopyWith(
+          _$LoadingImpl value, $Res Function(_$LoadingImpl) then) =
+      __$$LoadingImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$LoadingImplCopyWithImpl<$Res>
+    extends _$MediaStateCopyWithImpl<$Res, _$LoadingImpl>
+    implements _$$LoadingImplCopyWith<$Res> {
+  __$$LoadingImplCopyWithImpl(
+      _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of MediaState
+  /// with the given fields replaced by the non-null parameter values.
+}
+
+/// @nodoc
+
+class _$LoadingImpl implements _Loading {
+  const _$LoadingImpl();
+
   @override
-  $Res call({
-    Object? isLoading = null,
-    Object? media = null,
-    Object? isSyncingWithCloud = null,
-    Object? error = freezed,
-    Object? cloudSyncError = freezed,
+  String toString() {
+    return 'MediaState.loading()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$LoadingImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() loading,
+    required TResult Function(List<UnifiedMediaEntity> media) data,
+    required TResult Function(String error) error,
   }) {
-    return _then(_value.copyWith(
-      isLoading: null == isLoading
-          ? _value.isLoading
-          : isLoading // ignore: cast_nullable_to_non_nullable
-              as bool,
-      media: null == media
-          ? _value.media
-          : media // ignore: cast_nullable_to_non_nullable
-              as List<UnifiedMediaEntity>,
-      isSyncingWithCloud: null == isSyncingWithCloud
-          ? _value.isSyncingWithCloud
-          : isSyncingWithCloud // ignore: cast_nullable_to_non_nullable
-              as bool,
-      error: freezed == error
-          ? _value.error
-          : error // ignore: cast_nullable_to_non_nullable
-              as String?,
-      cloudSyncError: freezed == cloudSyncError
-          ? _value.cloudSyncError
-          : cloudSyncError // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
+    return loading();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? loading,
+    TResult? Function(List<UnifiedMediaEntity> media)? data,
+    TResult? Function(String error)? error,
+  }) {
+    return loading?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? loading,
+    TResult Function(List<UnifiedMediaEntity> media)? data,
+    TResult Function(String error)? error,
+    required TResult orElse(),
+  }) {
+    if (loading != null) {
+      return loading();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Data value) data,
+    required TResult Function(_Error value) error,
+  }) {
+    return loading(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Data value)? data,
+    TResult? Function(_Error value)? error,
+  }) {
+    return loading?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Data value)? data,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (loading != null) {
+      return loading(this);
+    }
+    return orElse();
   }
 }
 
-/// @nodoc
-abstract class _$$MediaStateImplCopyWith<$Res>
-    implements $MediaStateCopyWith<$Res> {
-  factory _$$MediaStateImplCopyWith(
-          _$MediaStateImpl value, $Res Function(_$MediaStateImpl) then) =
-      __$$MediaStateImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call(
-      {bool isLoading,
-      List<UnifiedMediaEntity> media,
-      bool isSyncingWithCloud,
-      String? error,
-      String? cloudSyncError});
+abstract class _Loading implements MediaState {
+  const factory _Loading() = _$LoadingImpl;
 }
 
 /// @nodoc
-class __$$MediaStateImplCopyWithImpl<$Res>
-    extends _$MediaStateCopyWithImpl<$Res, _$MediaStateImpl>
-    implements _$$MediaStateImplCopyWith<$Res> {
-  __$$MediaStateImplCopyWithImpl(
-      _$MediaStateImpl _value, $Res Function(_$MediaStateImpl) _then)
+abstract class _$$DataImplCopyWith<$Res> {
+  factory _$$DataImplCopyWith(
+          _$DataImpl value, $Res Function(_$DataImpl) then) =
+      __$$DataImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<UnifiedMediaEntity> media});
+}
+
+/// @nodoc
+class __$$DataImplCopyWithImpl<$Res>
+    extends _$MediaStateCopyWithImpl<$Res, _$DataImpl>
+    implements _$$DataImplCopyWith<$Res> {
+  __$$DataImplCopyWithImpl(_$DataImpl _value, $Res Function(_$DataImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of MediaState
@@ -118,50 +215,23 @@ class __$$MediaStateImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? isLoading = null,
     Object? media = null,
-    Object? isSyncingWithCloud = null,
-    Object? error = freezed,
-    Object? cloudSyncError = freezed,
   }) {
-    return _then(_$MediaStateImpl(
-      isLoading: null == isLoading
-          ? _value.isLoading
-          : isLoading // ignore: cast_nullable_to_non_nullable
-              as bool,
+    return _then(_$DataImpl(
       media: null == media
           ? _value._media
           : media // ignore: cast_nullable_to_non_nullable
               as List<UnifiedMediaEntity>,
-      isSyncingWithCloud: null == isSyncingWithCloud
-          ? _value.isSyncingWithCloud
-          : isSyncingWithCloud // ignore: cast_nullable_to_non_nullable
-              as bool,
-      error: freezed == error
-          ? _value.error
-          : error // ignore: cast_nullable_to_non_nullable
-              as String?,
-      cloudSyncError: freezed == cloudSyncError
-          ? _value.cloudSyncError
-          : cloudSyncError // ignore: cast_nullable_to_non_nullable
-              as String?,
     ));
   }
 }
 
 /// @nodoc
 
-class _$MediaStateImpl implements _MediaState {
-  const _$MediaStateImpl(
-      {required this.isLoading,
-      required final List<UnifiedMediaEntity> media,
-      required this.isSyncingWithCloud,
-      this.error,
-      this.cloudSyncError})
+class _$DataImpl implements _Data {
+  const _$DataImpl({required final List<UnifiedMediaEntity> media})
       : _media = media;
 
-  @override
-  final bool isLoading;
   final List<UnifiedMediaEntity> _media;
   @override
   List<UnifiedMediaEntity> get media {
@@ -171,73 +241,254 @@ class _$MediaStateImpl implements _MediaState {
   }
 
   @override
-  final bool isSyncingWithCloud;
-  @override
-  final String? error;
-  @override
-  final String? cloudSyncError;
-
-  @override
   String toString() {
-    return 'MediaState(isLoading: $isLoading, media: $media, isSyncingWithCloud: $isSyncingWithCloud, error: $error, cloudSyncError: $cloudSyncError)';
+    return 'MediaState.data(media: $media)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$MediaStateImpl &&
-            (identical(other.isLoading, isLoading) ||
-                other.isLoading == isLoading) &&
-            const DeepCollectionEquality().equals(other._media, _media) &&
-            (identical(other.isSyncingWithCloud, isSyncingWithCloud) ||
-                other.isSyncingWithCloud == isSyncingWithCloud) &&
-            (identical(other.error, error) || other.error == error) &&
-            (identical(other.cloudSyncError, cloudSyncError) ||
-                other.cloudSyncError == cloudSyncError));
+            other is _$DataImpl &&
+            const DeepCollectionEquality().equals(other._media, _media));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      isLoading,
-      const DeepCollectionEquality().hash(_media),
-      isSyncingWithCloud,
-      error,
-      cloudSyncError);
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_media));
 
   /// Create a copy of MediaState
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$MediaStateImplCopyWith<_$MediaStateImpl> get copyWith =>
-      __$$MediaStateImplCopyWithImpl<_$MediaStateImpl>(this, _$identity);
+  _$$DataImplCopyWith<_$DataImpl> get copyWith =>
+      __$$DataImplCopyWithImpl<_$DataImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() loading,
+    required TResult Function(List<UnifiedMediaEntity> media) data,
+    required TResult Function(String error) error,
+  }) {
+    return data(media);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? loading,
+    TResult? Function(List<UnifiedMediaEntity> media)? data,
+    TResult? Function(String error)? error,
+  }) {
+    return data?.call(media);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? loading,
+    TResult Function(List<UnifiedMediaEntity> media)? data,
+    TResult Function(String error)? error,
+    required TResult orElse(),
+  }) {
+    if (data != null) {
+      return data(media);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Data value) data,
+    required TResult Function(_Error value) error,
+  }) {
+    return data(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Data value)? data,
+    TResult? Function(_Error value)? error,
+  }) {
+    return data?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Data value)? data,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (data != null) {
+      return data(this);
+    }
+    return orElse();
+  }
 }
 
-abstract class _MediaState implements MediaState {
-  const factory _MediaState(
-      {required final bool isLoading,
-      required final List<UnifiedMediaEntity> media,
-      required final bool isSyncingWithCloud,
-      final String? error,
-      final String? cloudSyncError}) = _$MediaStateImpl;
+abstract class _Data implements MediaState {
+  const factory _Data({required final List<UnifiedMediaEntity> media}) =
+      _$DataImpl;
 
-  @override
-  bool get isLoading;
-  @override
   List<UnifiedMediaEntity> get media;
-  @override
-  bool get isSyncingWithCloud;
-  @override
-  String? get error;
-  @override
-  String? get cloudSyncError;
 
   /// Create a copy of MediaState
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$MediaStateImplCopyWith<_$MediaStateImpl> get copyWith =>
+  _$$DataImplCopyWith<_$DataImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ErrorImplCopyWith<$Res> {
+  factory _$$ErrorImplCopyWith(
+          _$ErrorImpl value, $Res Function(_$ErrorImpl) then) =
+      __$$ErrorImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String error});
+}
+
+/// @nodoc
+class __$$ErrorImplCopyWithImpl<$Res>
+    extends _$MediaStateCopyWithImpl<$Res, _$ErrorImpl>
+    implements _$$ErrorImplCopyWith<$Res> {
+  __$$ErrorImplCopyWithImpl(
+      _$ErrorImpl _value, $Res Function(_$ErrorImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of MediaState
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? error = null,
+  }) {
+    return _then(_$ErrorImpl(
+      error: null == error
+          ? _value.error
+          : error // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ErrorImpl implements _Error {
+  const _$ErrorImpl({required this.error});
+
+  @override
+  final String error;
+
+  @override
+  String toString() {
+    return 'MediaState.error(error: $error)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ErrorImpl &&
+            (identical(other.error, error) || other.error == error));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, error);
+
+  /// Create a copy of MediaState
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
+      __$$ErrorImplCopyWithImpl<_$ErrorImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() loading,
+    required TResult Function(List<UnifiedMediaEntity> media) data,
+    required TResult Function(String error) error,
+  }) {
+    return error(this.error);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? loading,
+    TResult? Function(List<UnifiedMediaEntity> media)? data,
+    TResult? Function(String error)? error,
+  }) {
+    return error?.call(this.error);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? loading,
+    TResult Function(List<UnifiedMediaEntity> media)? data,
+    TResult Function(String error)? error,
+    required TResult orElse(),
+  }) {
+    if (error != null) {
+      return error(this.error);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Data value) data,
+    required TResult Function(_Error value) error,
+  }) {
+    return error(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Data value)? data,
+    TResult? Function(_Error value)? error,
+  }) {
+    return error?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Data value)? data,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (error != null) {
+      return error(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Error implements MediaState {
+  const factory _Error({required final String error}) = _$ErrorImpl;
+
+  String get error;
+
+  /// Create a copy of MediaState
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

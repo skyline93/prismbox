@@ -15,8 +15,8 @@ class MediaBody extends HookConsumerWidget {
     final viewModel = ref.read(mediaViewModelProvider.notifier);
     final viewMode = ref.watch(mediaViewTypeProvider);
 
-    if (mediaState.isLoading) {
-      return Center(
+    return mediaState.when(
+      loading: () => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -37,25 +37,19 @@ class MediaBody extends HookConsumerWidget {
             ),
           ],
         ),
-      );
-    }
+      ),
+      data: (media) {
+        if (media.isEmpty) {
+          return EmptyMediaView(onSync: () => viewModel.syncWithCloud());
+        }
 
-    if (mediaState.error != null) {
-      return ErrorMediaView(
-        error: mediaState.error!,
-        onRetry: () => viewModel.retry(),
-      );
-    }
-
-    if (mediaState.media.isEmpty) {
-      return EmptyMediaView(onSync: () => viewModel.syncWithCloud());
-    }
-
-    switch (viewMode) {
-      case MediaViewType.grid:
-        return MediaGridView(media: mediaState.media);
-      case MediaViewType.timeline:
-        return MediaTimelineView(media: mediaState.media);
-    }
+        return switch (viewMode) {
+          MediaViewType.grid => MediaGridView(media: media),
+          MediaViewType.timeline => MediaTimelineView(media: media),
+        };
+      },
+      error: (error) =>
+          ErrorMediaView(error: error, onRetry: () => viewModel.retry()),
+    );
   }
 }
