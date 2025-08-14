@@ -1,12 +1,16 @@
+// lib/ui/media/widgets/media_body_timeline.dart
+
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:mobile/ui/media/widgets/media_item.dart';
 
-class MediaTimelineBody extends StatelessWidget {
+class MediaTimelineBody extends HookConsumerWidget {
   final List<UnifiedMediaEntity> media;
 
   const MediaTimelineBody({super.key, required this.media});
@@ -31,11 +35,14 @@ class MediaTimelineBody extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final groupedMedia = _groupMediaByDate();
-    final dates = groupedMedia.keys.toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    useAutomaticKeepAlive();
 
-    dates.sort((a, b) => b.compareTo(a));
+    final groupedMedia = useMemoized(_groupMediaByDate, [media]);
+
+    final dates = useMemoized(() {
+      return groupedMedia.keys.toList()..sort((a, b) => b.compareTo(a));
+    }, [groupedMedia]);
 
     return ListView.builder(
       key: const PageStorageKey('media_timeline_body'),

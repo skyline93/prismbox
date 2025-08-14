@@ -1,3 +1,5 @@
+// lib/ui/media/widgets/media_body.dart
+
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers.dart';
@@ -43,10 +45,13 @@ class MediaBody extends HookConsumerWidget {
           return EmptyMediaView(onSync: () => viewModel.syncWithCloud());
         }
 
-        return switch (viewMode) {
-          MediaViewType.grid => MediaGridBody(media: media),
-          MediaViewType.timeline => MediaTimelineBody(media: media),
-        };
+        return IndexedStack(
+          index: viewMode.index,
+          children: [
+            MediaGridBody(media: media),
+            MediaTimelineBody(media: media),
+          ],
+        );
       },
       error: (error) =>
           ErrorMediaView(error: error, onRetry: () => viewModel.retry()),
