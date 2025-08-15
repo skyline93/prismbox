@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:injectable/injectable.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 
 part 'app_database.g.dart';
@@ -19,9 +20,21 @@ enum SyncStatus {
   error,
 }
 
-enum JobType { upload, deleteCloud }
+// UPDATED: JobType enum is expanded to handle all sync scenarios.
+enum JobType {
+  UPLOAD,
+  DELETE_CLOUD,
+  DOWNLOAD_ORIGINAL,
+  DOWNLOAD_THUMBNAIL,
+  SYNC_CLOUD_CHANGES,
+  PROCESS_CLOUD_CREATE,
+  PROCESS_CLOUD_DELETE,
+}
 
 enum JobStatus { pending, inProgress, failed }
+
+// ADDED: Network constraint for a job.
+enum NetworkConstraint { any, wifiOnly }
 
 @DataClassName('MediaAsset')
 class MediaAssets extends Table {
@@ -55,6 +68,14 @@ class SyncJobs extends Table {
   TextColumn get errorMessage => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get relatedCloudUuid => text().nullable()();
+
+  // ADDED: Priority for the job. Higher value means higher priority.
+  IntColumn get priority => integer().withDefault(const Constant(0))();
+
+  // ADDED: Network constraint for job execution.
+  TextColumn get networkConstraint => text()
+      .map(const EnumNameConverter(NetworkConstraint.values))
+      .withDefault(Constant(NetworkConstraint.any.name))();
 }
 
 @DataClassName('UserSetting')
@@ -65,6 +86,7 @@ class UserSettings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+@lazySingleton
 @DriftDatabase(
   tables: [MediaAssets, SyncJobs, UserSettings],
   daos: [MediaAssetDao, SyncJobDao],
@@ -72,15 +94,22 @@ class UserSettings extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  // UPDATED: Incremented schema version due to table changes.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
     onUpgrade: (m, from, to) async {
+      // Handles migration from version 1 to 2
       if (from < 2) {
         await m.addColumn(mediaAssets, mediaAssets.fileName);
+      }
+      // Handles migration from version 2 to 3
+      if (from < 3) {
+        await m.addColumn(syncJobs, syncJobs.priority);
+        await m.addColumn(syncJobs, syncJobs.networkConstraint);
       }
     },
   );
@@ -131,7 +160,7 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       final jobs = assetIds.map(
         (id) => SyncJobsCompanion.insert(
           assetId: id,
-          jobType: JobType.upload,
+          jobType: JobType.UPLOAD,
           status: JobStatus.pending,
         ),
       );
@@ -149,7 +178,7 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
           SyncJobsCompanion.insert(
             assetId: assetToDelete.id,
             relatedCloudUuid: Value(assetToDelete.cloudUuid),
-            jobType: JobType.deleteCloud,
+            jobType: JobType.DELETE_CLOUD,
             status: JobStatus.pending,
           ),
         );
@@ -217,11 +246,59 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
 @DriftAccessor(tables: [SyncJobs])
 class SyncJobDao extends DatabaseAccessor<AppDatabase> with _$SyncJobDaoMixin {
   SyncJobDao(super.db);
+
   Future<List<SyncJob>> getPendingJobs() => (select(
     syncJobs,
   )..where((tbl) => tbl.status.equalsValue(JobStatus.pending))).get();
+
+  // ADDED: Fetches the next available job based on priority and creation time.
+  Future<SyncJob?> getNextPendingJob() {
+    final query = select(syncJobs)
+      ..where((tbl) => tbl.status.equalsValue(JobStatus.pending))
+      ..orderBy([
+        (tbl) =>
+            OrderingTerm(expression: tbl.priority, mode: OrderingMode.desc),
+        (tbl) =>
+            OrderingTerm(expression: tbl.createdAt, mode: OrderingMode.asc),
+      ])
+      ..limit(1);
+    return query.getSingleOrNull();
+  }
+
+  // ADDED: A more specific method to update job status and error messages.
+  Future<void> updateJobStatus(
+    int jobId,
+    JobStatus status, {
+    String? errorMessage,
+  }) {
+    final companion = SyncJobsCompanion(
+      status: Value(status),
+      errorMessage: errorMessage != null
+          ? Value(errorMessage)
+          : const Value.absent(),
+    );
+    return (update(
+      syncJobs,
+    )..where((tbl) => tbl.id.equals(jobId))).write(companion);
+  }
+
+  // ADDED: Resets jobs that were stuck in 'inProgress' state for too long.
+  Future<int> resetStaleJobs() {
+    final staleTime = DateTime.now().subtract(const Duration(minutes: 30));
+    final query = update(syncJobs)
+      ..where(
+        (tbl) =>
+            tbl.status.equalsValue(JobStatus.inProgress) &
+            tbl.createdAt.isSmallerThanValue(staleTime),
+      );
+    return query.write(
+      const SyncJobsCompanion(status: Value(JobStatus.pending)),
+    );
+  }
+
   Future<void> updateJob(int jobId, SyncJobsCompanion updates) =>
       (update(syncJobs)..where((tbl) => tbl.id.equals(jobId))).write(updates);
+
   Future<void> deleteJob(int jobId) =>
       (delete(syncJobs)..where((tbl) => tbl.id.equals(jobId))).go();
 }

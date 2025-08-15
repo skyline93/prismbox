@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/auth/auth_notifier.dart';
 import 'package:mobile/routing/app_router.dart';
+import 'package:mobile/providers.dart';
 
 @RoutePage()
 class SplashPage extends ConsumerWidget {

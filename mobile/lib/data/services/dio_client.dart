@@ -1,23 +1,24 @@
-// lib/api/dio_client.dart
+// lib/data/services/dio_client.dart
+
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:synchronized/synchronized.dart'; // 導入 synchronized 套件
+import 'package:synchronized/synchronized.dart';
+import 'package:injectable/injectable.dart';
 import '../models/auth/auth_model.dart';
 import '../../../core/storage/secure_storage_service.dart';
-import 'package:mobile/auth/auth_notifier.dart';
 import 'package:mobile/config/app_config.dart';
 
+@lazySingleton
 class DioClient {
   final Dio dio;
-  final Ref _ref;
+  final SecureStorageService _storage;
+  Function? onAuthFailure;
 
-  // 為 token 刷新操作建立一個鎖
   final Lock _refreshTokenLock = Lock();
   final Dio _tokenDio = Dio();
 
   final String baseUrl = DioClient.getBaseUrl();
 
-  DioClient(this.dio, this._ref) {
+  DioClient(this._storage) : dio = Dio() {
     dio
       ..options.baseUrl = baseUrl
       ..options.connectTimeout = const Duration(milliseconds: 15000)
@@ -32,8 +33,7 @@ class DioClient {
   }
 
   Future<void> _onRequest(options, handler) async {
-    final storage = _ref.read(secureStorageServiceProvider);
-    final accessToken = await storage.getAccessToken();
+    final accessToken = await _storage.getAccessToken();
 
     if (accessToken != null) {
       options.headers['Authorization'] = 'Bearer $accessToken';
@@ -46,27 +46,20 @@ class DioClient {
         !e.requestOptions.path.contains('refresh')) {
       print("接口需要认证");
 
-      // 使用 synchronized 鎖定刷新 token 的區塊
       await _refreshTokenLock.synchronized(() async {
-        // 在鎖定後再次檢查 token，因為可能在等待鎖的過程中，token 已經被其他請求刷新了
-        final storage = _ref.read(secureStorageServiceProvider);
-        final newAccessToken = await storage.getAccessToken();
-
-        // 如果當前的 access token 和請求失敗時的 token 不一樣，說明 token 已經被刷新
+        final newAccessToken = await _storage.getAccessToken();
         final oldAccessToken = e.requestOptions.headers['Authorization']
             ?.replaceAll('Bearer ', '');
-        if (newAccessToken != oldAccessToken) {
-          return; // 直接返回，後續會用新的 token 重試
+
+        if (newAccessToken != null && newAccessToken != oldAccessToken) {
+          return;
         }
 
         await _performTokenRefresh();
       });
 
       try {
-        // 重試原始請求
-        final newAccessToken = await _ref
-            .read(secureStorageServiceProvider)
-            .getAccessToken();
+        final newAccessToken = await _storage.getAccessToken();
         e.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
         final response = await dio.fetch(e.requestOptions);
         return handler.resolve(response);
@@ -75,6 +68,7 @@ class DioClient {
         return handler.reject(err);
       }
     }
+
     print("未知异常>>>>>>>>>>>>>>>>{$e}");
     return handler.next(e);
   }
@@ -87,10 +81,8 @@ class DioClient {
   Future<void> _performTokenRefresh() async {
     print("--> Interceptor: Starting token refresh...");
     try {
-      final storage = _ref.read(secureStorageServiceProvider);
-      final refreshToken = await storage.getRefreshToken();
+      final refreshToken = await _storage.getRefreshToken();
       if (refreshToken == null) {
-        print("No refresh token found");
         throw 'No refresh token found';
       }
 
@@ -100,17 +92,15 @@ class DioClient {
       );
 
       final newData = RefreshTokenSuccessData.fromJson(response.data['data']);
-
-      await storage.saveTokens(
+      await _storage.saveTokens(
         accessToken: newData.accessToken,
         refreshToken: refreshToken,
       );
       print("--> Interceptor: Token refreshed successfully.");
     } catch (e) {
       print("--> Interceptor: Failed to refresh token. Logging out. Error: $e");
-      // 刷新失敗，執行登出
-      await _ref.read(authNotifierProvider.notifier).logout();
-      // 拋出錯誤，以便等待的請求知道刷新失敗了
+
+      onAuthFailure?.call();
       rethrow;
     }
   }

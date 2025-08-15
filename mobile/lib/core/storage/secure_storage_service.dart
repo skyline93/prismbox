@@ -1,11 +1,9 @@
 // lib/core/storage/secure_storage_service.dart
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:injectable/injectable.dart';
 
-final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
-  return SecureStorageService();
-});
 
+@lazySingleton
 class SecureStorageService {
   final _storage = const FlutterSecureStorage();
 

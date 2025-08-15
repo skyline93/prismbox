@@ -1,11 +1,10 @@
-// 媒体服务类 - 封装媒体相关的API调用
+// lib/data/datasources/remote_media_source.dart
+
 import 'package:dio/dio.dart';
 import 'dart:typed_data';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/services/dio_client.dart';
 
-/// 媒体服务类
-/// 提供媒体相关的API接口封装
 class RemoteMediaDataSource {
   final Dio _dio;
   final downloadDio = Dio();
@@ -13,12 +12,6 @@ class RemoteMediaDataSource {
 
   RemoteMediaDataSource(this._dio);
 
-  /// 获取当前用户的媒体列表（分页）
-  ///
-  /// [page] 页码，默认为1
-  /// [limit] 每页数量，默认为100
-  ///
-  /// 返回媒体列表响应数据
   Future<List<MediaResponse>> getMediaList({
     int page = 1,
     int limit = 100,
@@ -40,14 +33,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  /// 上传单个媒体文件
-  ///
-  /// [file] 媒体文件二进制数据
-  /// [hash] 文件的SHA256哈希值
-  /// [itemType] 媒体类型（图片或视频）
-  /// [originalFilename] 原始文件名（可选）
-  ///
-  /// 返回上传后的媒体详细信息
   Future<MediaResponse> uploadMedia({
     required Uint8List file,
     required String hash,
@@ -55,10 +40,8 @@ class RemoteMediaDataSource {
     String? originalFilename,
   }) async {
     try {
-      // 创建FormData
       final formData = FormData();
 
-      // 添加文件
       formData.files.add(
         MapEntry(
           'file',
@@ -71,7 +54,6 @@ class RemoteMediaDataSource {
         ),
       );
 
-      // 添加其他字段
       formData.fields.addAll([
         MapEntry('hash', hash),
         MapEntry('item_type', itemType == MediaType.image ? 'IMAGE' : 'VIDEO'),
@@ -95,11 +77,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  /// 删除指定的媒体文件
-  ///
-  /// [uuid] 媒体文件的UUID
-  ///
-  /// 返回删除成功或失败
   Future<bool> deleteMedia(String uuid) async {
     try {
       final response = await _dio.delete('$baseUrl/media/$uuid');
@@ -114,11 +91,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  /// 下载原始媒体文件
-  ///
-  /// [uuid] 媒体文件的UUID
-  ///
-  /// 返回原始文件二进制数据
   Future<Uint8List> downloadOriginalMedia(String uuid) async {
     final MediaResponse mediaItem;
     try {
@@ -143,11 +115,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  /// 获取预览文件（图片或视频预览）
-  ///
-  /// [uuid] 媒体文件的UUID
-  ///
-  /// 返回预览文件二进制数据
   Future<Uint8List> downloadPreviewMedia(String uuid) async {
     final MediaResponse mediaItem;
     try {
@@ -172,11 +139,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  /// 获取缩略图
-  ///
-  /// [uuid] 媒体文件的UUID
-  ///
-  /// 返回缩略图二进制数据
   Future<Uint8List> downloadThumbnail(String uuid) async {
     final MediaResponse mediaItem;
     try {
@@ -201,11 +163,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  /// 获取媒体详细信息
-  ///
-  /// [uuid] 媒体文件的UUID
-  ///
-  /// 返回媒体详细信息
   Future<MediaResponse> getMediaDetail(String uuid) async {
     try {
       final response = await _dio.get('$baseUrl/media/$uuid');
@@ -236,10 +193,8 @@ class RemoteMediaDataSource {
 
   Future<MediaChangesResponse> getChanges({DateTime? since}) async {
     try {
-      // 准备查询参数
       final Map<String, dynamic> queryParameters = {};
       if (since != null) {
-        // 只保留到秒，去除微秒部分，保证Go后端兼容
         final sinceStr = '${since.toUtc().toIso8601String().split('.').first}Z';
         queryParameters['since'] = sinceStr;
       }
@@ -251,7 +206,6 @@ class RemoteMediaDataSource {
       );
 
       if (response.statusCode == 200) {
-        // 1. 先检查并打印原始响应数据，帮助调试
         final responseData = response.data;
         print('RemoteMediaSource: 收到响应数据: $responseData');
 
@@ -259,10 +213,8 @@ class RemoteMediaDataSource {
           throw Exception('服务器返回了空数据');
         }
 
-        // 2. 确保 data 字段存在且是Map类型
         final data = responseData['data'];
 
-        // 3. 使用安全的类型转换创建响应对象
         return MediaChangesResponse.fromJson(data);
       } else {
         final message = response.data?['message'] ?? '未知错误';
@@ -271,18 +223,11 @@ class RemoteMediaDataSource {
     } on DioException catch (e) {
       throw _handleDioError(e, '获取增量变更失败');
     } catch (e) {
-      // 添加通用错误处理，包含更多上下文信息
       print('RemoteMediaSource: getChanges 发生异常: $e');
       rethrow;
     }
   }
 
-  /// 处理Dio异常
-  ///
-  /// [e] Dio异常对象
-  /// [operation] 操作描述
-  ///
-  /// 返回处理后的异常信息
   Exception _handleDioError(DioException e, String operation) {
     if (e.response != null) {
       final statusCode = e.response?.statusCode;
