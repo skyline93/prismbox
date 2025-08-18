@@ -1,3 +1,5 @@
+// lib/ui/media/widgets/media_item_thumbnail.dart
+
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';

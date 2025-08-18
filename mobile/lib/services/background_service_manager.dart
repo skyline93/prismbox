@@ -64,7 +64,7 @@ class BackgroundServiceManager {
     Workmanager().registerOneOffTask(
       "immediateQueueProcessing-${DateTime.now().millisecondsSinceEpoch}",
       _queueProcessorTask,
-      constraints: Constraints(networkType: NetworkType.connected),
+      // constraints: Constraints(networkType: NetworkType.connected),
     );
     print("[BackgroundServiceManager] 立即“处理任务队列”的作业已触发。");
   }

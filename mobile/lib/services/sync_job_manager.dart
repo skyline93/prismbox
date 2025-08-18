@@ -9,6 +9,7 @@ import 'package:mobile/data/models/media/media_model.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;
 import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/services/background_service_manager.dart';
 
 @lazySingleton
 class SyncJobManager {
@@ -69,6 +70,8 @@ class SyncJobManager {
               ),
             );
         print('[SyncJobManager] 已为新资产 ${asset.id} 创建上传任务。');
+        // [+] 关键修复：立即触发后台任务处理器
+        BackgroundServiceManager.triggerImmediateSync();
       } else {
         print('[SyncJobManager] 已为新资产 ${asset.id} 创建本地记录。');
       }
@@ -88,6 +91,9 @@ class SyncJobManager {
       print('[SyncJobManager] 本地资产 $localId 已被删除，执行乐观删除...');
       // 调用 DAO 中已有的乐观删除逻辑
       await _mediaAssetDao.performOptimisticDelete(assetToDelete);
+
+      // [+] 关键修复：创建删除任务后，立即触发后台任务处理器
+      BackgroundServiceManager.triggerImmediateSync();
     }
   }
 
@@ -138,6 +144,9 @@ class SyncJobManager {
           ),
         );
     print('[SyncJobManager] 已创建检查云端变更的任务。');
+
+    // [+] 关键修复：立即触发后台任务处理器
+    BackgroundServiceManager.triggerImmediateSync();
   }
 
   // =======================================================================
@@ -185,6 +194,9 @@ class SyncJobManager {
             );
       });
       print('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
+
+      // [+] 关键修复：在事务成功后，立即触发后台任务处理器
+      BackgroundServiceManager.triggerImmediateSync();
     } catch (e, s) {
       print('[SyncJobManager] 创建下载任务时出错: $e');
       print(s);
