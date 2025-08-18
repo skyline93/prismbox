@@ -54,17 +54,18 @@ final dioClientProvider = Provider<DioClient>((ref) {
 
 final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
   return MediaRepositoryImpl(
-    localDataSource: ref.watch(localMediaDataSourceProvider),
+    // [-] localDataSource is no longer needed in the repo
     cloudDataSource: getIt<RemoteMediaDataSource>(),
-    syncStateService: ref.watch(syncStateServiceProvider),
+    // [-] syncStateService is removed
     db: getIt<AppDatabase>(),
+    syncJobManager: ref.watch(syncJobManagerProvider), // [+] Add syncJobManager
   );
 });
 
 final mediaViewModelProvider =
     StateNotifierProvider<MediaViewModel, MediaState>((ref) {
       final mediaRepository = ref.watch(mediaRepositoryProvider);
-      return MediaViewModel(mediaRepository, ref);
+      return MediaViewModel(mediaRepository); // [-] Remove the 'ref' argument
     });
 
 enum MediaViewType { grid, timeline }

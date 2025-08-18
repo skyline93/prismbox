@@ -14,6 +14,7 @@ class MediaBody extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaState = ref.watch(mediaViewModelProvider);
+    // [-] viewModel 实例不再需要直接用于触发同步
     final viewModel = ref.read(mediaViewModelProvider.notifier);
     final viewMode = ref.watch(mediaViewTypeProvider);
 
@@ -42,7 +43,14 @@ class MediaBody extends HookConsumerWidget {
       ),
       data: (media) {
         if (media.isEmpty) {
-          return EmptyMediaView(onSync: () => viewModel.syncWithCloud());
+          // [-] 旧的实现: return EmptyMediaView(onSync: () => viewModel.syncWithCloud());
+          // [+] 新的实现:
+          return EmptyMediaView(
+            onSync: () {
+              // 直接使用 syncJobManagerProvider 来创建后台任务
+              ref.read(syncJobManagerProvider).createCloudChangesSyncJob();
+            },
+          );
         }
 
         return IndexedStack(

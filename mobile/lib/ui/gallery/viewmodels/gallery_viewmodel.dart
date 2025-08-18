@@ -11,6 +11,9 @@ import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/providers.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+// [+] 导入 SyncJobManager 以创建任务
+// import 'package:mobile/services/sync_job_manager.dart';
+
 part 'gallery_viewmodel.freezed.dart';
 
 @freezed
@@ -20,6 +23,9 @@ sealed class MediaData with _$MediaData {
   const factory MediaData.file(File file) = _MediaDataFile;
 }
 
+// 注意：这个 Provider 的 FamilyAsyncNotifier 设计可能在重构后不是最优选择，
+// 因为它是一次性的。一个更优的长期方案是也让详情页监听 getUnifiedMediaStream()
+// 中特定 id 的变化。但为了最小化改动，我们先修复当前问题。
 final mediaDetailProvider =
     AsyncNotifierProvider.family<
       MediaDetailNotifier,
@@ -31,6 +37,7 @@ class MediaDetailNotifier
     extends FamilyAsyncNotifier<MediaData, UnifiedMediaEntity> {
   @override
   Future<MediaData> build(UnifiedMediaEntity arg) async {
+    // build 方法的逻辑保持不变，它负责在页面加载时获取最佳可用媒体数据
     final entity = arg;
 
     if (entity.localId != null && entity.localId!.isNotEmpty) {
@@ -79,34 +86,59 @@ class MediaDetailNotifier
     throw Exception('媒体资源不可用 for entity id: ${entity.id}');
   }
 
+  // =======================================================================
+  // [*] 重构 download 方法
+  // =======================================================================
   Future<void> download() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(mediaRepositoryProvider);
-      final updatedEntity = await repository.downloadAndSaveOriginal(arg);
+    // 1. 获取 SyncJobManager
+    final jobManager = ref.read(syncJobManagerProvider);
 
-      ref.invalidate(mediaViewModelProvider);
+    // 2. 调用 repository 中的新方法来创建下载任务
+    // 这个方法会立即返回，不会等待下载完成
+    await jobManager.createDownloadJob(arg);
 
-      return MediaData.file(File(updatedEntity.filePath!));
-    });
+    // 3. (可选) 短暂地将状态置为 loading，以给UI一个即时反馈
+    // 更好的做法是在UI层直接监听数据库中该媒体的状态变化
+    // state = const AsyncValue.loading();
+
+    // 4. (重要) 我们不再等待结果，也不再更新 state。
+    // 下载任务已在后台排队。UI 会通过监听 mediaViewModelProvider
+    // 的数据流自动更新。当下载完成，数据库记录被更新，
+    // mediaViewModelProvider 会推送新的媒体列表，UI自然刷新。
+    // 我们也不再需要手动 invalidate mediaViewModelProvider。
   }
 
+  // =======================================================================
+  // [*] 重构 upload 方法
+  // =======================================================================
   Future<void> upload() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(mediaRepositoryProvider);
-      await repository.uploadLocalMedia(arg);
+    // 注意：在新的架构下，`upload` 很少需要手动调用。
+    // 因为 LocalMediaObserver 会自动为新照片创建上传任务（如果开启了自动备份）。
+    // 这个手动上传功能可以保留，用于用户关闭自动备份时，手动选择上传某些照片。
 
-      ref.invalidate(mediaViewModelProvider);
+    // 1. 获取 SyncJobManager
+    final jobManager = ref.read(syncJobManagerProvider);
 
-      final file = File(arg.filePath!);
-      return arg.isVideo
-          ? MediaData.file(file)
-          : MediaData.bytes(await file.readAsBytes());
-    });
+    // 2. 直接调用 jobManager 来为这个已存在的本地资产创建上传任务
+    // 注意：createUploadJobForNewAsset 内部有防重逻辑，但它是基于 localId 的。
+    // 这里我们需要一个新方法或调整现有方法来处理“为已存在记录创建上传任务”
+    // 为了快速修复，我们假设一个新方法：
+    // await jobManager.createUploadJobForExistingAsset(arg);
+    //
+    // --- 临时解决方案：简化逻辑 ---
+    // 假设 `arg` 是一个 AssetEntity，我们可以复用现有逻辑
+    if (arg.localId != null) {
+      final asset = await AssetEntity.fromId(arg.localId!);
+      if (asset != null) {
+        // isAutoBackupEnabled: true 强制创建上传任务
+        await jobManager.createUploadJobForNewAsset(
+          asset,
+          isAutoBackupEnabled: true,
+        );
+      }
+    }
+
+    // 3. 同样，我们不再等待结果，也不更新 state。
+    // UI 会自动响应数据库的变化。
   }
 }
-
-final assetEntityCacheProvider = StateProvider<Map<String, AssetEntity>>(
-  (ref) => {},
-);

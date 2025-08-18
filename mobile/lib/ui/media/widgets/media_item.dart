@@ -1,5 +1,8 @@
+// lib/ui/media/widgets/media_item.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/data/datasources/app_database.dart'; // [+] Import SyncStatus
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
 import 'package:mobile/ui/media/widgets/media_item_placeholder.dart';
@@ -26,46 +29,77 @@ class MediaItem extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         debugPrint(
-          'Tapped on media id: ${entity.id}, index: $index/$totalCount. Navigating...',
+          'Tapped on media id: ${entity.id}, status: ${entity.syncStatus}. Navigating...',
         );
         if (onTap != null) {
           onTap!();
-        } else {
-          _navigateToDetail(context, index);
         }
       },
       child: ClipRRect(
-        child: thumbnailAsyncValue.when(
-          data: (thumbnailData) =>
-              MediaItemThumbnail(thumbnailData: thumbnailData, entity: entity),
-          loading: () => MediaItemPlaceholder(
-            icon: entity.isVideo ? Icons.videocam : Icons.image,
-            child: const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
+        child: Stack(
+          // [+] Use a Stack to layer the thumbnail and status overlay
+          fit: StackFit.expand,
+          children: [
+            thumbnailAsyncValue.when(
+              data: (thumbnailData) => MediaItemThumbnail(
+                thumbnailData: thumbnailData,
+                entity: entity,
               ),
+              loading: () => MediaItemPlaceholder(
+                icon: entity.isVideo ? Icons.videocam : Icons.image,
+              ),
+              error: (error, stackTrace) {
+                debugPrint("缩略图加载失败 for entityId=${entity.id}: $error");
+                return const MediaItemPlaceholder(icon: Icons.broken_image);
+              },
             ),
-          ),
-          error: (error, stackTrace) {
-            debugPrint("缩略图加载失败 for entityId=${entity.id}: $error");
-            return const MediaItemPlaceholder(icon: Icons.broken_image);
-          },
+            // [+] Add the sync status overlay
+            _buildSyncStatusOverlay(entity.syncStatus),
+          ],
         ),
       ),
     );
   }
 
-  void _navigateToDetail(BuildContext context, int index) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('点击了第 $index 个媒体项'),
-        duration: const Duration(seconds: 1),
-      ),
+  /// [+] Helper widget to build the status overlay based on SyncStatus.
+  Widget _buildSyncStatusOverlay(SyncStatus status) {
+    Widget? content;
+    switch (status) {
+      case SyncStatus.uploading:
+        content = const Icon(
+          Icons.cloud_upload_outlined,
+          color: Colors.white,
+          size: 20,
+        );
+        break;
+      case SyncStatus.downloading:
+        content = const Icon(
+          Icons.cloud_download_outlined,
+          color: Colors.white,
+          size: 20,
+        );
+        break;
+      case SyncStatus.error:
+        content = const Icon(
+          Icons.error_outline,
+          color: Colors.redAccent,
+          size: 20,
+        );
+        break;
+      case SyncStatus.synced:
+      case SyncStatus.localOnlyNotSelected:
+      case SyncStatus.cloudOnly:
+        // No overlay for these states
+        break;
+    }
+
+    if (content == null) {
+      return const SizedBox.shrink(); // Return an empty widget if no overlay is needed
+    }
+
+    return Container(
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.3)),
+      child: Center(child: content),
     );
   }
 }

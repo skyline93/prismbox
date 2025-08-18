@@ -8,6 +8,7 @@ import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;
+import 'package:mobile/domain/entities/unified_media_entity.dart';
 
 @lazySingleton
 class SyncJobManager {
@@ -137,6 +138,59 @@ class SyncJobManager {
           ),
         );
     print('[SyncJobManager] 已创建检查云端变更的任务。');
+  }
+
+  // =======================================================================
+  // [+] 新增方法：创建下载原始文件的任务
+  // =======================================================================
+  /// 为一个云端媒体实体创建下载任务。
+  /// 此方法会立即将媒体状态更新为 `downloading` 以便 UI 及时响应，
+  /// 然后将实际的下载工作放入后台任务队列。
+  Future<void> createDownloadJob(UnifiedMediaEntity entity) async {
+    // 1. 检查是否已有待处理的下载任务，防止用户重复点击
+    final existingJob =
+        await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
+              (tbl) =>
+                  tbl.assetId.equals(entity.id) &
+                  tbl.jobType.equalsValue(JobType.DOWNLOAD_ORIGINAL) &
+                  tbl.status.equalsValue(JobStatus.pending),
+            ))
+            .getSingleOrNull();
+
+    if (existingJob != null) {
+      print('[SyncJobManager] 资产 ${entity.id} 已存在待处理的下载任务，跳过。');
+      return;
+    }
+
+    try {
+      // 2. 使用事务确保原子性操作：先更新UI状态，再创建任务
+      await _db.transaction(() async {
+        // 2.1. 立即更新数据库中该资产的状态为 "下载中"
+        // UI 会通过数据流立即收到这个变化，并显示下载中状态
+        await _mediaAssetDao.updateAssetStatus(
+          entity.id,
+          SyncStatus.downloading,
+        );
+
+        // 2.2. 创建一个高优先级的下载任务
+        await _syncJobDao
+            .into(_syncJobDao.syncJobs)
+            .insert(
+              SyncJobsCompanion.insert(
+                assetId: entity.id,
+                jobType: JobType.DOWNLOAD_ORIGINAL,
+                status: JobStatus.pending,
+                priority: Value(10), // 用户主动触发的操作，优先级设高一些
+              ),
+            );
+      });
+      print('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
+    } catch (e, s) {
+      print('[SyncJobManager] 创建下载任务时出错: $e');
+      print(s);
+      // 如果出错，回滚状态，避免UI卡在 "下载中"
+      await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.cloudOnly);
+    }
   }
 
   /// 将 AssetEntity 转换为用于数据库插入的 MediaAssetsCompanion。

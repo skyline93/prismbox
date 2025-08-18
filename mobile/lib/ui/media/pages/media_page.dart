@@ -6,7 +6,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers.dart';
 import 'package:mobile/ui/media/widgets/media_bar_top.dart';
 import 'package:mobile/ui/media/widgets/media_body.dart';
-import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart';
 
 @RoutePage()
 class MediaPage extends HookConsumerWidget {
@@ -14,36 +13,21 @@ class MediaPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final viewModel = ref.read(mediaViewModelProvider.notifier);
+    // [-] The reference to the viewModel is no longer needed here.
+    // final viewModel = ref.read(mediaViewModelProvider.notifier);
 
-    ref.listen<String?>(cloudSyncErrorProvider, (previous, newError) {
-      if (newError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text(newError)),
-              ],
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            action: SnackBarAction(
-              label: '重试',
-              textColor: Colors.white,
-              onPressed: () => viewModel.syncWithCloud(),
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    });
+    // [-] The entire ref.listen block for cloudSyncErrorProvider is removed.
+    // Global sync errors are a thing of the past. Errors are now per-item.
 
     return Scaffold(
       appBar: const MediaAppBar(),
       body: RefreshIndicator(
         onRefresh: () async {
-          await viewModel.syncWithCloud();
+          // [+] The new onRefresh behavior.
+          // This creates a high-priority job to check for cloud changes.
+          // It's a "fire and forget" call. The UI does not wait or block.
+          final jobManager = ref.read(syncJobManagerProvider);
+          await jobManager.createCloudChangesSyncJob();
         },
         child: const MediaBody(),
       ),
