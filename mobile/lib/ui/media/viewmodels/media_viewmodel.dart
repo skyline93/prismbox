@@ -39,8 +39,8 @@ class MediaViewModel extends StateNotifier<MediaState> {
     _listenToMediaStream();
 
     try {
-      await _mediaRepository.loadAndIndexLocalMedia();
-      syncWithCloud();
+      // await _mediaRepository.loadAndIndexLocalMedia();
+      // syncWithCloud();
     } catch (e) {
       state = MediaState.error(error: "初始化失败: $e");
     }

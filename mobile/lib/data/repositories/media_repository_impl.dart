@@ -33,10 +33,10 @@ class MediaRepositoryImpl implements MediaRepository {
        _syncStateService = syncStateService,
        _mediaAssetDao = db.mediaAssetDao;
 
-  @override
-  Future<void> loadAndIndexLocalMedia() {
-    return _localDataSource.scanAndIndexLocalMedia();
-  }
+  // @override
+  // Future<void> loadAndIndexLocalMedia() {
+  //   return _localDataSource.scanAndIndexLocalMedia();
+  // }
 
   @override
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream() {

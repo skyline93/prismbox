@@ -6,7 +6,7 @@ import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 
 abstract class MediaRepository {
-  Future<void> loadAndIndexLocalMedia();
+  // Future<void> loadAndIndexLocalMedia();
 
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream();
 

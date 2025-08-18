@@ -5,12 +5,16 @@ import 'package:mobile/routing/app_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mobile/services/background_service_manager.dart';
 import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/services/local_media_observer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await configureDependencies();
   await initializeDateFormatting('zh_CN', null);
+
+  // 启动本地相册监听
+  getIt<LocalMediaObserver>().startObserving();
 
   await BackgroundServiceManager.initialize();
   await BackgroundServiceManager.registerPeriodicSync();

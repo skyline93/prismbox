@@ -18,15 +18,19 @@ import 'package:mobile/auth/auth_state.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/services/auth_service.dart';
 import 'package:mobile/data/services/server_check_service.dart';
+import 'package:mobile/services/sync_job_manager.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   return getIt<AppDatabase>();
 });
 
+final syncJobManagerProvider = Provider<SyncJobManager>((ref) {
+  return getIt<SyncJobManager>();
+});
+
 /// 本地媒体数据源的提供者
 final localMediaDataSourceProvider = Provider<LocalMediaDataSource>((ref) {
-  final db = ref.watch(databaseProvider);
-  return LocalMediaDataSource(db);
+  return getIt<LocalMediaDataSource>();
 });
 
 final remoteMediaSourceProvider = Provider<RemoteMediaDataSource>((ref) {
