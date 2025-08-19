@@ -80,7 +80,7 @@ class LocalMediaObserver {
       if (asset != null) {
         print('[LocalMediaObserver] 正在处理新增资产: ${asset.id}');
         // TODO: 从用户设置中读取是否开启自动备份
-        const bool isAutoBackupEnabled = true; // 假设默认为 true
+        const bool isAutoBackupEnabled = false; // 假设默认为 false
         await _syncJobManager.createUploadJobForNewAsset(
           asset,
           isAutoBackupEnabled: isAutoBackupEnabled,

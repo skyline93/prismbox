@@ -51,8 +51,6 @@ class SyncJobProcessor {
         case JobType.SYNC_CLOUD_CHANGES:
           await _handleSyncCloudChangesJob(job);
           break;
-
-        // [+] 2. 添加 DOWNLOAD_ORIGINAL 的处理分支
         case JobType.DOWNLOAD_ORIGINAL:
           await _handleDownloadOriginalJob(job);
           break;
@@ -67,7 +65,6 @@ class SyncJobProcessor {
           await _syncJobDao.deleteJob(job.id);
       }
       log('成功处理任务 #${job.id}', name: 'SyncJobProcessor');
-      // 注意：任务成功后，应该在各自的处理函数内部删除job，这里不再统一删除
     } catch (e, stacktrace) {
       log(
         '处理任务 #${job.id} 失败',
