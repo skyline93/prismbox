@@ -7,18 +7,19 @@ import 'package:mobile/ui/media/widgets/media_body_grid.dart';
 import 'package:mobile/ui/media/widgets/media_body_timeline.dart';
 import 'package:mobile/ui/media/widgets/media_body_empty.dart';
 import 'package:mobile/ui/media/widgets/media_body_error.dart';
+import 'package:mobile/domain/entities/unified_media_entity.dart';
 
 class MediaBody extends HookConsumerWidget {
   const MediaBody({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mediaState = ref.watch(mediaViewModelProvider);
-    // [-] viewModel 实例不再需要直接用于触发同步
-    final viewModel = ref.read(mediaViewModelProvider.notifier);
+    final AsyncValue<List<UnifiedMediaEntity>> mediaAsyncValue = ref.watch(
+      mediaStreamProvider,
+    );
     final viewMode = ref.watch(mediaViewTypeProvider);
 
-    return mediaState.when(
+    return mediaAsyncValue.when(
       loading: () => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -41,13 +42,10 @@ class MediaBody extends HookConsumerWidget {
           ],
         ),
       ),
-      data: (media) {
-        if (media.isEmpty) {
-          // [-] 旧的实现: return EmptyMediaView(onSync: () => viewModel.syncWithCloud());
-          // [+] 新的实现:
+      data: (mediaList) {
+        if (mediaList.isEmpty) {
           return EmptyMediaView(
             onSync: () {
-              // 直接使用 syncJobManagerProvider 来创建后台任务
               ref.read(syncJobManagerProvider).createCloudChangesSyncJob();
             },
           );
@@ -56,13 +54,15 @@ class MediaBody extends HookConsumerWidget {
         return IndexedStack(
           index: viewMode.index,
           children: [
-            MediaGridBody(media: media),
-            MediaTimelineBody(media: media),
+            MediaGridBody(media: mediaList),
+            MediaTimelineBody(media: mediaList),
           ],
         );
       },
-      error: (error) =>
-          ErrorMediaView(error: error, onRetry: () => viewModel.retry()),
+      error: (err, stack) => ErrorMediaView(
+        error: err.toString(),
+        onRetry: () => ref.invalidate(mediaStreamProvider),
+      ),
     );
   }
 }

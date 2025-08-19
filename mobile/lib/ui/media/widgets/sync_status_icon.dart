@@ -1,3 +1,5 @@
+// lib/ui/media/widgets/sync_status_icon.dart
+
 import 'package:flutter/material.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 
@@ -20,7 +22,6 @@ class SyncStatusIcon extends StatelessWidget {
       case SyncStatus.error:
         return _buildIconWithBackground(Icons.error_outline, Colors.redAccent);
       case SyncStatus.localOnlyNotSelected:
-        // 如果此状态不需要显示任何内容，返回一个空的 SizedBox
         return const SizedBox.shrink();
     }
   }

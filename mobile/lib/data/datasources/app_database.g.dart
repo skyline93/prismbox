@@ -668,9 +668,9 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
       const VerificationMeta('assetId');
   @override
   late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
-      'asset_id', aliasedName, false,
+      'asset_id', aliasedName, true,
       type: DriftSqlType.int,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'REFERENCES media_assets (id) ON DELETE CASCADE'));
   static const VerificationMeta _jobTypeMeta =
@@ -762,8 +762,6 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
     if (data.containsKey('asset_id')) {
       context.handle(_assetIdMeta,
           assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
-    } else if (isInserting) {
-      context.missing(_assetIdMeta);
     }
     context.handle(_jobTypeMeta, const VerificationResult.success());
     context.handle(_statusMeta, const VerificationResult.success());
@@ -804,7 +802,7 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id']),
       jobType: $SyncJobsTable.$converterjobType.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}job_type'])!),
@@ -843,7 +841,7 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
 
 class SyncJob extends DataClass implements Insertable<SyncJob> {
   final int id;
-  final int assetId;
+  final int? assetId;
   final JobType jobType;
   final JobStatus status;
   final int attempts;
@@ -854,7 +852,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
   final NetworkConstraint networkConstraint;
   const SyncJob(
       {required this.id,
-      required this.assetId,
+      this.assetId,
       required this.jobType,
       required this.status,
       required this.attempts,
@@ -867,7 +865,9 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['asset_id'] = Variable<int>(assetId);
+    if (!nullToAbsent || assetId != null) {
+      map['asset_id'] = Variable<int>(assetId);
+    }
     {
       map['job_type'] =
           Variable<String>($SyncJobsTable.$converterjobType.toSql(jobType));
@@ -895,7 +895,9 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
   SyncJobsCompanion toCompanion(bool nullToAbsent) {
     return SyncJobsCompanion(
       id: Value(id),
-      assetId: Value(assetId),
+      assetId: assetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetId),
       jobType: Value(jobType),
       status: Value(status),
       attempts: Value(attempts),
@@ -916,7 +918,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SyncJob(
       id: serializer.fromJson<int>(json['id']),
-      assetId: serializer.fromJson<int>(json['assetId']),
+      assetId: serializer.fromJson<int?>(json['assetId']),
       jobType: $SyncJobsTable.$converterjobType
           .fromJson(serializer.fromJson<String>(json['jobType'])),
       status: $SyncJobsTable.$converterstatus
@@ -935,7 +937,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'assetId': serializer.toJson<int>(assetId),
+      'assetId': serializer.toJson<int?>(assetId),
       'jobType': serializer
           .toJson<String>($SyncJobsTable.$converterjobType.toJson(jobType)),
       'status': serializer
@@ -952,7 +954,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
 
   SyncJob copyWith(
           {int? id,
-          int? assetId,
+          Value<int?> assetId = const Value.absent(),
           JobType? jobType,
           JobStatus? status,
           int? attempts,
@@ -963,7 +965,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
           NetworkConstraint? networkConstraint}) =>
       SyncJob(
         id: id ?? this.id,
-        assetId: assetId ?? this.assetId,
+        assetId: assetId.present ? assetId.value : this.assetId,
         jobType: jobType ?? this.jobType,
         status: status ?? this.status,
         attempts: attempts ?? this.attempts,
@@ -1035,7 +1037,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
 
 class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
   final Value<int> id;
-  final Value<int> assetId;
+  final Value<int?> assetId;
   final Value<JobType> jobType;
   final Value<JobStatus> status;
   final Value<int> attempts;
@@ -1058,7 +1060,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
   });
   SyncJobsCompanion.insert({
     this.id = const Value.absent(),
-    required int assetId,
+    this.assetId = const Value.absent(),
     required JobType jobType,
     required JobStatus status,
     this.attempts = const Value.absent(),
@@ -1067,8 +1069,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
     this.relatedCloudUuid = const Value.absent(),
     this.priority = const Value.absent(),
     this.networkConstraint = const Value.absent(),
-  })  : assetId = Value(assetId),
-        jobType = Value(jobType),
+  })  : jobType = Value(jobType),
         status = Value(status);
   static Insertable<SyncJob> custom({
     Expression<int>? id,
@@ -1098,7 +1099,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
 
   SyncJobsCompanion copyWith(
       {Value<int>? id,
-      Value<int>? assetId,
+      Value<int?>? assetId,
       Value<JobType>? jobType,
       Value<JobStatus>? status,
       Value<int>? attempts,
@@ -1666,7 +1667,7 @@ class $$MediaAssetsTableOrderingComposer
 
 typedef $$SyncJobsTableCreateCompanionBuilder = SyncJobsCompanion Function({
   Value<int> id,
-  required int assetId,
+  Value<int?> assetId,
   required JobType jobType,
   required JobStatus status,
   Value<int> attempts,
@@ -1678,7 +1679,7 @@ typedef $$SyncJobsTableCreateCompanionBuilder = SyncJobsCompanion Function({
 });
 typedef $$SyncJobsTableUpdateCompanionBuilder = SyncJobsCompanion Function({
   Value<int> id,
-  Value<int> assetId,
+  Value<int?> assetId,
   Value<JobType> jobType,
   Value<JobStatus> status,
   Value<int> attempts,
@@ -1707,7 +1708,7 @@ class $$SyncJobsTableTableManager extends RootTableManager<
               $$SyncJobsTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
-            Value<int> assetId = const Value.absent(),
+            Value<int?> assetId = const Value.absent(),
             Value<JobType> jobType = const Value.absent(),
             Value<JobStatus> status = const Value.absent(),
             Value<int> attempts = const Value.absent(),
@@ -1731,7 +1732,7 @@ class $$SyncJobsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
-            required int assetId,
+            Value<int?> assetId = const Value.absent(),
             required JobType jobType,
             required JobStatus status,
             Value<int> attempts = const Value.absent(),

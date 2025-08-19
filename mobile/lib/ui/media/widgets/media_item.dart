@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/data/datasources/app_database.dart'; // [+] Import SyncStatus
+import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
 import 'package:mobile/ui/media/widgets/media_item_placeholder.dart';
@@ -37,7 +37,6 @@ class MediaItem extends ConsumerWidget {
       },
       child: ClipRRect(
         child: Stack(
-          // [+] Use a Stack to layer the thumbnail and status overlay
           fit: StackFit.expand,
           children: [
             thumbnailAsyncValue.when(
@@ -53,7 +52,6 @@ class MediaItem extends ConsumerWidget {
                 return const MediaItemPlaceholder(icon: Icons.broken_image);
               },
             ),
-            // [+] Add the sync status overlay
             _buildSyncStatusOverlay(entity.syncStatus),
           ],
         ),
@@ -61,7 +59,6 @@ class MediaItem extends ConsumerWidget {
     );
   }
 
-  /// [+] Helper widget to build the status overlay based on SyncStatus.
   Widget _buildSyncStatusOverlay(SyncStatus status) {
     Widget? content;
     switch (status) {
@@ -89,12 +86,11 @@ class MediaItem extends ConsumerWidget {
       case SyncStatus.synced:
       case SyncStatus.localOnlyNotSelected:
       case SyncStatus.cloudOnly:
-        // No overlay for these states
         break;
     }
 
     if (content == null) {
-      return const SizedBox.shrink(); // Return an empty widget if no overlay is needed
+      return const SizedBox.shrink();
     }
 
     return Container(

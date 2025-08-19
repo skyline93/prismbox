@@ -13,19 +13,10 @@ class MediaPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // [-] The reference to the viewModel is no longer needed here.
-    // final viewModel = ref.read(mediaViewModelProvider.notifier);
-
-    // [-] The entire ref.listen block for cloudSyncErrorProvider is removed.
-    // Global sync errors are a thing of the past. Errors are now per-item.
-
     return Scaffold(
       appBar: const MediaAppBar(),
       body: RefreshIndicator(
         onRefresh: () async {
-          // [+] The new onRefresh behavior.
-          // This creates a high-priority job to check for cloud changes.
-          // It's a "fire and forget" call. The UI does not wait or block.
           final jobManager = ref.read(syncJobManagerProvider);
           await jobManager.createCloudChangesSyncJob();
         },

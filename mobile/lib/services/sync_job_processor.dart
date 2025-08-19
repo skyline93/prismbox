@@ -1,3 +1,5 @@
+// lib/services/sync_job_processor.dart
+
 import 'dart:io';
 import 'dart:developer';
 import 'package:drift/drift.dart';
@@ -5,7 +7,6 @@ import 'package:injectable/injectable.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/models/media/media_model.dart';
-// [+] 1. 添加必要的导入
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -42,16 +43,16 @@ class SyncJobProcessor {
 
     try {
       switch (job.jobType) {
-        case JobType.UPLOAD:
+        case JobType.upload:
           await _handleUploadJob(job);
           break;
-        case JobType.DELETE_CLOUD:
+        case JobType.deleteCloud:
           await _handleDeleteCloudJob(job);
           break;
-        case JobType.SYNC_CLOUD_CHANGES:
+        case JobType.syncCloudChanges:
           await _handleSyncCloudChangesJob(job);
           break;
-        case JobType.DOWNLOAD_ORIGINAL:
+        case JobType.downloadOriginal:
           await _handleDownloadOriginalJob(job);
           break;
 
@@ -61,7 +62,6 @@ class SyncJobProcessor {
             name: 'SyncJobProcessor',
             level: 900,
           );
-          // 对于未实现的任务，我们直接删除，防止队列阻塞
           await _syncJobDao.deleteJob(job.id);
       }
       log('成功处理任务 #${job.id}', name: 'SyncJobProcessor');
@@ -82,12 +82,15 @@ class SyncJobProcessor {
     return true;
   }
 
-  // [+] 3. 实现完整的下载处理逻辑
   Future<void> _handleDownloadOriginalJob(SyncJob job) async {
-    // 3.1. 获取资产信息
+    final assetId = job.assetId;
+    if (assetId == null) {
+      throw Exception('任务 #${job.id} (downloadOriginal) 缺少必需的 assetId。');
+    }
+
     final asset = await (_mediaAssetDao.select(
       _mediaAssetDao.mediaAssets,
-    )..where((tbl) => tbl.id.equals(job.assetId))).getSingleOrNull();
+    )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
 
     if (asset == null) {
       throw Exception('任务 #${job.id} 对应的资产不存在。');
@@ -96,40 +99,41 @@ class SyncJobProcessor {
       throw Exception('资产 #${asset.id} 缺少 cloudUuid，无法下载。');
     }
 
-    // 3.2. 调用 API 下载文件
     log('开始下载资产: ${asset.cloudUuid}', name: 'SyncJobProcessor');
     final fileBytes = await remoteApi.downloadOriginalMedia(asset.cloudUuid!);
 
-    // 3.3. 确定保存路径并保存文件
     final documentsDir = await getApplicationDocumentsDirectory();
-    // 使用 cloudUuid 和原始文件名确保路径唯一且易于识别
     final fileName = asset.fileName ?? asset.cloudUuid!;
     final filePath = p.join(documentsDir.path, 'media', fileName);
 
-    // 确保目录存在
     final file = File(filePath);
     await file.parent.create(recursive: true);
     await file.writeAsBytes(fileBytes);
     log('文件已保存至: $filePath', name: 'SyncJobProcessor');
 
-    // 3.4. 更新数据库记录
     await _mediaAssetDao.updateAsset(
       MediaAssetsCompanion(
         id: Value(asset.id),
-        filePath: Value(filePath), // 更新文件路径
-        syncStatus: const Value(SyncStatus.synced), // 更新状态为已同步（本地和云端一致）
+        filePath: Value(filePath),
+        syncStatus: const Value(SyncStatus.synced),
+        updatedAt: Value(DateTime.now()),
       ),
     );
     log('数据库记录 #${asset.id} 已更新。', name: 'SyncJobProcessor');
 
-    // 3.5. 删除已完成的任务
     await _syncJobDao.deleteJob(job.id);
   }
 
   Future<void> _handleUploadJob(SyncJob job) async {
+    final assetId = job.assetId;
+    if (assetId == null) {
+      throw Exception('任务 #${job.id} (upload) 缺少必需的 assetId。');
+    }
+
     final asset = await (_mediaAssetDao.select(
       _mediaAssetDao.mediaAssets,
-    )..where((tbl) => tbl.id.equals(job.assetId))).getSingleOrNull();
+    )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
+
     if (asset == null || asset.filePath == null) {
       throw Exception('任务 #${job.id} 对应的资产不存在或没有文件路径。');
     }
@@ -149,13 +153,12 @@ class SyncJobProcessor {
     }
     final fileBytes = await file.readAsBytes();
 
-    // 假设您有一个方法来获取哈希值
     final String dummyHash =
         "dummy_hash_${DateTime.now().millisecondsSinceEpoch}";
 
     final MediaResponse cloudMedia = await remoteApi.uploadMedia(
       file: fileBytes,
-      hash: asset.contentHash ?? dummyHash, // 使用一个临时的hash
+      hash: asset.contentHash ?? dummyHash,
       itemType: asset.assetType,
       originalFilename: asset.fileName,
     );
@@ -165,6 +168,7 @@ class SyncJobProcessor {
         id: Value(asset.id),
         cloudUuid: Value(cloudMedia.uuid),
         syncStatus: const Value(SyncStatus.synced),
+        updatedAt: Value(DateTime.now()),
       ),
     );
 

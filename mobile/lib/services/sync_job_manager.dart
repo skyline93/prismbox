@@ -1,6 +1,7 @@
 // lib/services/sync_job_manager.dart
 
 import 'dart:io';
+import 'dart:developer';
 
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
@@ -41,7 +42,7 @@ class SyncJobManager {
       // 2. 将 AssetEntity 转换为数据库实体
       final companion = await _assetEntityToCompanion(asset);
       if (companion == null) {
-        print('[SyncJobManager] 无法处理资产 ${asset.id}，跳过。');
+        log('[SyncJobManager] 无法处理资产 ${asset.id}，跳过。');
         return;
       }
 
@@ -63,21 +64,19 @@ class SyncJobManager {
             .into(_syncJobDao.syncJobs)
             .insert(
               SyncJobsCompanion.insert(
-                assetId: newDbId,
-                jobType: JobType.UPLOAD,
+                assetId: Value(newDbId),
+                jobType: JobType.upload,
                 status: JobStatus.pending,
                 priority: Value(1), // 新增上传任务优先级较高
               ),
             );
-        print('[SyncJobManager] 已为新资产 ${asset.id} 创建上传任务。');
-        // [+] 关键修复：立即触发后台任务处理器
+        log('[SyncJobManager] 已为新资产 ${asset.id} 创建上传任务。');
         BackgroundServiceManager.triggerImmediateSync();
       } else {
-        print('[SyncJobManager] 已为新资产 ${asset.id} 创建本地记录。');
+        log('[SyncJobManager] 已为新资产 ${asset.id} 创建本地记录。');
       }
     } catch (e, s) {
-      print('[SyncJobManager] 创建上传任务时出错: $e');
-      print(s);
+      log('[SyncJobManager] 创建上传任务时出错', error: e, stackTrace: s);
     }
   }
 
@@ -88,8 +87,7 @@ class SyncJobManager {
     )..where((tbl) => tbl.localId.equals(localId))).getSingleOrNull();
 
     if (assetToDelete != null) {
-      print('[SyncJobManager] 本地资产 $localId 已被删除，执行乐观删除...');
-      // 调用 DAO 中已有的乐观删除逻辑
+      log('[SyncJobManager] 本地资产 $localId 已被删除，执行乐观删除...');
       await _mediaAssetDao.performOptimisticDelete(assetToDelete);
 
       // [+] 关键修复：创建删除任务后，立即触发后台任务处理器
@@ -104,46 +102,26 @@ class SyncJobManager {
     final existingJob =
         await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
               (tbl) =>
-                  tbl.jobType.equalsValue(JobType.SYNC_CLOUD_CHANGES) &
+                  tbl.jobType.equalsValue(JobType.syncCloudChanges) &
                   tbl.status.equalsValue(JobStatus.pending),
             ))
             .getSingleOrNull();
 
     if (existingJob != null) {
-      print('[SyncJobManager] 已存在待处理的云端同步任务，跳过创建。');
+      log('[SyncJobManager] 已存在待处理的云端同步任务，跳过创建。');
       return;
     }
-
-    // --- 关键架构注意点 ---
-    // 当前 SyncJobs.assetId 是一个指向 MediaAssets.id 的非空外键。
-    // 而 SYNC_CLOUD_CHANGES 任务本身不与任何特定资产关联。
-    // 为了满足外键约束，我们插入一个特殊的“虚拟”资产。
-    // **长期建议**: 修改 SyncJobs 表，允许 assetId 为 NULL，这样更符合逻辑。
-    // 在此之前，我们使用以下 workaround：
-    final virtualAssetId = await _mediaAssetDao
-        .into(_mediaAssetDao.mediaAssets)
-        .insert(
-          MediaAssetsCompanion.insert(
-            syncStatus: SyncStatus.synced, // 表示它不是一个真实的用户媒体
-            assetType: MediaType.image,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            fileName: Value('__VIRTUAL_SYNC_ASSET__'),
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
 
     await _syncJobDao
         .into(_syncJobDao.syncJobs)
         .insert(
           SyncJobsCompanion.insert(
-            assetId: virtualAssetId,
-            jobType: JobType.SYNC_CLOUD_CHANGES,
+            jobType: JobType.syncCloudChanges,
             status: JobStatus.pending,
             priority: Value(priority),
           ),
         );
-    print('[SyncJobManager] 已创建检查云端变更的任务。');
+    log('[SyncJobManager] 已创建检查云端变更的任务。');
 
     // [+] 关键修复：立即触发后台任务处理器
     BackgroundServiceManager.triggerImmediateSync();
@@ -161,13 +139,13 @@ class SyncJobManager {
         await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
               (tbl) =>
                   tbl.assetId.equals(entity.id) &
-                  tbl.jobType.equalsValue(JobType.DOWNLOAD_ORIGINAL) &
+                  tbl.jobType.equalsValue(JobType.downloadOriginal) &
                   tbl.status.equalsValue(JobStatus.pending),
             ))
             .getSingleOrNull();
 
     if (existingJob != null) {
-      print('[SyncJobManager] 资产 ${entity.id} 已存在待处理的下载任务，跳过。');
+      log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的下载任务，跳过。');
       return;
     }
 
@@ -186,21 +164,19 @@ class SyncJobManager {
             .into(_syncJobDao.syncJobs)
             .insert(
               SyncJobsCompanion.insert(
-                assetId: entity.id,
-                jobType: JobType.DOWNLOAD_ORIGINAL,
+                assetId: Value(entity.id),
+                jobType: JobType.downloadOriginal,
                 status: JobStatus.pending,
                 priority: Value(10), // 用户主动触发的操作，优先级设高一些
               ),
             );
       });
-      print('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
+      log('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
 
       // [+] 关键修复：在事务成功后，立即触发后台任务处理器
       BackgroundServiceManager.triggerImmediateSync();
     } catch (e, s) {
-      print('[SyncJobManager] 创建下载任务时出错: $e');
-      print(s);
-      // 如果出错，回滚状态，避免UI卡在 "下载中"
+      log('[SyncJobManager] 创建下载任务时出错', error: e, stackTrace: s);
       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.cloudOnly);
     }
   }
@@ -212,12 +188,12 @@ class SyncJobManager {
   ) async {
     final File? file = await asset.file;
     if (file == null) {
-      print("[SyncJobManager] 警告: 无法获取资产文件路径: ${asset.id}");
+      log("[SyncJobManager] 警告: 无法获取资产文件路径: ${asset.id}");
       return null;
     }
     return MediaAssetsCompanion.insert(
       localId: Value(asset.id),
-      syncStatus: SyncStatus.localOnlyNotSelected, // 初始状态
+      syncStatus: SyncStatus.localOnlyNotSelected,
       assetType: asset.type == AssetType.video
           ? MediaType.video
           : MediaType.image,

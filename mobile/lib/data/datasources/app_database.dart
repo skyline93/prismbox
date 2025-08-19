@@ -1,12 +1,12 @@
 // lib/data/datasources/app_database.dart
 
 import 'dart:io';
+import 'dart:developer';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:injectable/injectable.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 
 part 'app_database.g.dart';
@@ -20,20 +20,18 @@ enum SyncStatus {
   error,
 }
 
-// UPDATED: JobType enum is expanded to handle all sync scenarios.
 enum JobType {
-  UPLOAD,
-  DELETE_CLOUD,
-  DOWNLOAD_ORIGINAL,
-  DOWNLOAD_THUMBNAIL,
-  SYNC_CLOUD_CHANGES,
-  PROCESS_CLOUD_CREATE,
-  PROCESS_CLOUD_DELETE,
+  upload,
+  deleteCloud,
+  downloadOriginal,
+  downloadThumbnail,
+  syncCloudChanges,
+  processCloudCreate,
+  processCloudDelete,
 }
 
 enum JobStatus { pending, inProgress, failed }
 
-// ADDED: Network constraint for a job.
 enum NetworkConstraint { any, wifiOnly }
 
 @DataClassName('MediaAsset')
@@ -58,8 +56,11 @@ class MediaAssets extends Table {
 @DataClassName('SyncJob')
 class SyncJobs extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get assetId =>
-      integer().references(MediaAssets, #id, onDelete: KeyAction.cascade)();
+  IntColumn get assetId => integer().nullable().references(
+    MediaAssets,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   TextColumn get jobType =>
       text().map(const EnumNameConverter(JobType.values))();
   TextColumn get status =>
@@ -86,17 +87,20 @@ class UserSettings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@lazySingleton
+// @lazySingleton
 @DriftDatabase(
   tables: [MediaAssets, SyncJobs, UserSettings],
   daos: [MediaAssetDao, SyncJobDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase(QueryExecutor e) : super(e);
 
-  // UPDATED: Incremented schema version due to table changes.
+  factory AppDatabase.forInjectable() {
+    return AppDatabase(_openConnection());
+  }
+
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +115,7 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(syncJobs, syncJobs.priority);
         await m.addColumn(syncJobs, syncJobs.networkConstraint);
       }
+      if (from < 4) {}
     },
   );
 }
@@ -159,8 +164,8 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       );
       final jobs = assetIds.map(
         (id) => SyncJobsCompanion.insert(
-          assetId: id,
-          jobType: JobType.UPLOAD,
+          assetId: Value(id),
+          jobType: JobType.upload,
           status: JobStatus.pending,
         ),
       );
@@ -176,9 +181,9 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       if (assetToDelete.cloudUuid != null) {
         await into(syncJobs).insert(
           SyncJobsCompanion.insert(
-            assetId: assetToDelete.id,
+            assetId: Value(assetToDelete.id),
             relatedCloudUuid: Value(assetToDelete.cloudUuid),
-            jobType: JobType.DELETE_CLOUD,
+            jobType: JobType.deleteCloud,
             status: JobStatus.pending,
           ),
         );
@@ -201,15 +206,18 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     required List<MediaAssetsCompanion> toUpsert,
     required List<String> uuidsToDelete,
   }) async {
-    print("开始应用云端变更，执行非破坏性合并...");
-    print("待处理: ${toUpsert.length} 条, 待删除: ${uuidsToDelete.length} 条。");
+    log("开始应用云端变更，执行非破坏性合并...", name: 'MediaAssetDao');
+    log(
+      "待处理: ${toUpsert.length} 条, 待删除: ${uuidsToDelete.length} 条。",
+      name: 'MediaAssetDao',
+    );
 
     return transaction(() async {
       if (uuidsToDelete.isNotEmpty) {
         await (delete(
           mediaAssets,
         )..where((tbl) => tbl.cloudUuid.isIn(uuidsToDelete))).go();
-        print("成功删除了 ${uuidsToDelete.length} 条云端指定的记录。");
+        log("成功删除了 ${uuidsToDelete.length} 条云端指定的记录。", name: 'MediaAssetDao');
       }
 
       if (toUpsert.isNotEmpty) {
@@ -234,10 +242,13 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
               skippedUpdates++;
             }
           } else {
-            print("警告: 跳过一个没有有效 cloudUuid 的云端资产。");
+            log("警告: 跳过一个没有有效 cloudUuid 的云端资产。", name: 'MediaAssetDao');
           }
         }
-        print("处理完成：新增 $newInserts 条云端记录，跳过 $skippedUpdates 条已有记录的更新。");
+        log(
+          "处理完成：新增 $newInserts 条云端记录，跳过 $skippedUpdates 条已有记录的更新。",
+          name: 'MediaAssetDao',
+        );
       }
     });
   }
@@ -251,7 +262,6 @@ class SyncJobDao extends DatabaseAccessor<AppDatabase> with _$SyncJobDaoMixin {
     syncJobs,
   )..where((tbl) => tbl.status.equalsValue(JobStatus.pending))).get();
 
-  // ADDED: Fetches the next available job based on priority and creation time.
   Future<SyncJob?> getNextPendingJob() {
     final query = select(syncJobs)
       ..where((tbl) => tbl.status.equalsValue(JobStatus.pending))
@@ -265,7 +275,6 @@ class SyncJobDao extends DatabaseAccessor<AppDatabase> with _$SyncJobDaoMixin {
     return query.getSingleOrNull();
   }
 
-  // ADDED: A more specific method to update job status and error messages.
   Future<void> updateJobStatus(
     int jobId,
     JobStatus status, {
@@ -282,7 +291,6 @@ class SyncJobDao extends DatabaseAccessor<AppDatabase> with _$SyncJobDaoMixin {
     )..where((tbl) => tbl.id.equals(jobId))).write(companion);
   }
 
-  // ADDED: Resets jobs that were stuck in 'inProgress' state for too long.
   Future<int> resetStaleJobs() {
     final staleTime = DateTime.now().subtract(const Duration(minutes: 30));
     final query = update(syncJobs)
@@ -307,6 +315,12 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'media_library.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (database) {
+        // 开启 WAL 模式
+        database.execute('PRAGMA journal_mode = WAL;');
+      },
+    );
   });
 }

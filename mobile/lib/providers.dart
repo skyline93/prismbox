@@ -4,10 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/data/datasources/app_database.dart';
-import 'package:mobile/ui/media/viewmodels/media_state.dart';
 import 'data/repositories/media_repository_impl.dart';
 import 'domain/repositories/media_repository.dart';
-import 'package:mobile/ui/media/viewmodels/media_viewmodel.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/core/storage/sync_state_service.dart';
@@ -19,6 +17,7 @@ import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/services/auth_service.dart';
 import 'package:mobile/data/services/server_check_service.dart';
 import 'package:mobile/services/sync_job_manager.dart';
+import 'package:mobile/domain/entities/unified_media_entity.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   return getIt<AppDatabase>();
@@ -62,12 +61,6 @@ final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
   );
 });
 
-final mediaViewModelProvider =
-    StateNotifierProvider<MediaViewModel, MediaState>((ref) {
-      final mediaRepository = ref.watch(mediaRepositoryProvider);
-      return MediaViewModel(mediaRepository); // [-] Remove the 'ref' argument
-    });
-
 enum MediaViewType { grid, timeline }
 
 final mediaViewTypeProvider = StateProvider<MediaViewType>(
@@ -92,4 +85,9 @@ final authServiceProvider = Provider<AuthService>((ref) {
 final serverCheckServiceProvider = Provider<ServerCheckService>((ref) {
   final dio = ref.watch(dioClientProvider).dio;
   return ServerCheckService(dio);
+});
+
+final mediaStreamProvider = StreamProvider<List<UnifiedMediaEntity>>((ref) {
+  final mediaRepository = ref.watch(mediaRepositoryProvider);
+  return mediaRepository.getUnifiedMediaStream();
 });
