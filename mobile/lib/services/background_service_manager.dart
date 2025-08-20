@@ -14,7 +14,9 @@ const String _queueProcessorTask = "com.album.queueProcessor";
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    final db = AppDatabase();
+    final db = await connect();
+
+    // final db = AppDatabase();
     final secStor = SecureStorageService();
     final dioClient = DioClient(secStor);
 

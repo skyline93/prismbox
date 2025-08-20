@@ -41,7 +41,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i65.SecureStorageService>(
         () => _i65.SecureStorageService());
-    gh.lazySingleton<_i630.AppDatabase>(() => _i630.AppDatabase());
     gh.lazySingleton<_i305.DioClient>(
         () => _i305.DioClient(gh<_i65.SecureStorageService>()));
     gh.lazySingleton<_i987.SyncJobManager>(

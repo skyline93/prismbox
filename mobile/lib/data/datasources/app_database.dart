@@ -2,13 +2,15 @@
 
 import 'dart:io';
 import 'dart:developer';
+import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:mobile/data/models/media/media_model.dart';
-import 'package:injectable/injectable.dart';
+// import 'package:injectable/injectable.dart';
+import 'package:drift/isolate.dart';
 
 part 'app_database.g.dart';
 
@@ -88,39 +90,45 @@ class UserSettings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-
-@lazySingleton
+// @lazySingleton
 @DriftDatabase(
   tables: [MediaAssets, SyncJobs, UserSettings],
   daos: [MediaAssetDao, SyncJobDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase(super.e);
 
   @override
   int get schemaVersion => 4;
 
-  static LazyDatabase _openConnection() {
-    return LazyDatabase(() async {
+  static DatabaseConnection _openConnection() {
+    // 1. 创建一个 Future，它将异步地执行所有设置并返回一个 DatabaseConnection
+    final future = Future<DatabaseConnection>(() async {
       final dbFolder = await getApplicationDocumentsDirectory();
       final dbPath = p.join(dbFolder.path, 'media_library.sqlite');
-      print("==========> dbPath: $dbPath");
-
+      log("==========> dbPath: $dbPath");
       final file = File(dbPath);
-      return NativeDatabase.createInBackground(
+
+      // 2. 创建底层的执行器 (QueryExecutor)
+      final executor = NativeDatabase(
         file,
         setup: (database) {
-          // 开启 WAL 模式以支持更好的并发和跨进程访问
           database.execute('PRAGMA journal_mode = WAL;');
           database.execute('PRAGMA synchronous = NORMAL;');
           database.execute('PRAGMA cache_size = 10000;');
           database.execute('PRAGMA temp_store = memory;');
-          database.execute('PRAGMA mmap_size = 268435456;'); // 256MB
+          database.execute('PRAGMA mmap_size = 268435456;');
         },
       );
-    });
-  }
 
+      // 3. 将执行器包装在 DatabaseConnection 中并返回。
+      //    这是我之前所有回答中都遗漏的关键步骤。
+      return DatabaseConnection.fromExecutor(executor);
+    });
+
+    // 4. 将这个类型完全正确的 Future<DatabaseConnection> 传递给 delayed 构造函数
+    return DatabaseConnection.delayed(future);
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -138,6 +146,31 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {}
     },
   );
+}
+
+DriftIsolate? _driftIsolate;
+Future<DriftIsolate>? _isolateFuture;
+
+Future<DriftIsolate> _getIsolate() async {
+  if (_driftIsolate != null) return _driftIsolate!;
+  if (_isolateFuture != null) return _isolateFuture!;
+
+  final completer = Completer<DriftIsolate>();
+  _isolateFuture = completer.future;
+
+  final isolate = await DriftIsolate.spawn(() => AppDatabase._openConnection());
+
+  _driftIsolate = isolate;
+  completer.complete(isolate);
+  _isolateFuture = null;
+
+  return isolate;
+}
+
+Future<AppDatabase> connect() async {
+  final isolate = await _getIsolate();
+  final connection = await isolate.connect();
+  return AppDatabase(connection);
 }
 
 @DriftAccessor(tables: [MediaAssets, SyncJobs])
@@ -272,7 +305,6 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       }
     });
   }
-
 }
 
 @DriftAccessor(tables: [SyncJobs])

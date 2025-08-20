@@ -14,7 +14,9 @@ import 'package:mobile/data/datasources/app_database.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await configureDependencies();
+  final db = await connect();
+
+  await configureDependencies(db);
   await initializeDateFormatting('zh_CN', null);
 
   // 启动本地相册监听
@@ -23,8 +25,7 @@ void main() async {
   await BackgroundServiceManager.initialize();
   await BackgroundServiceManager.registerPeriodicSync();
 
-
- // 仅在调试模式下启动 Storage Inspector
+  // 仅在调试模式下启动 Storage Inspector
   if (kDebugMode) {
     // 1. 创建 Storage Inspector 驱动
     final driver = StorageServerDriver(
@@ -37,7 +38,7 @@ void main() async {
     // 2. 创建 Drift 数据库的服务器实例
     final driftServer = DriftSQLDatabaseServer(
       id: 'album_drift_database', // 服务器的唯一ID
-      name: 'Album Drift DB',   // 在IDE中显示的名称
+      name: 'Album Drift DB', // 在IDE中显示的名称
       database: db, // 传入你的 Drift 数据库实例
     );
 
@@ -46,7 +47,7 @@ void main() async {
 
     // 4. 启动驱动服务
     await driver.start();
-    
+
     // 你可以在控制台打印端口号，虽然通常不需要，因为 IDE 会自动发现
     print('Storage Inspector server running on port ${driver.port}');
   }
