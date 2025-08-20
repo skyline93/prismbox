@@ -17,55 +17,63 @@ class MediaBody extends HookConsumerWidget {
     final AsyncValue<List<UnifiedMediaEntity>> mediaAsyncValue = ref.watch(
       mediaStreamProvider,
     );
+
     mediaAsyncValue.whenData((media) {
-      print("媒体流更新: ${media.map((e) => '${e.id}:${e.syncStatus}').toList()}");
+      debugPrint(
+        "媒体流更新: ${media.map((e) => '${e.id}:${e.syncStatus}').toList()}",
+      );
     });
 
     final viewMode = ref.watch(mediaViewTypeProvider);
 
-    return mediaAsyncValue.when(
-      loading: () => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              '正在加载媒体库...',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '请稍候',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
-            ),
-          ],
-        ),
-      ),
-      data: (mediaList) {
-        if (mediaList.isEmpty) {
-          return EmptyMediaView(
-            onSync: () {
-              ref.read(syncJobManagerProvider).createCloudChangesSyncJob();
-            },
-          );
-        }
-
-        return IndexedStack(
-          index: viewMode.index,
-          children: [
-            MediaGridBody(media: mediaList),
-            MediaTimelineBody(media: mediaList),
-          ],
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(mediaStreamProvider);
       },
-      error: (err, stack) => ErrorMediaView(
-        error: err.toString(),
-        onRetry: () => ref.invalidate(mediaStreamProvider),
+      child: mediaAsyncValue.when(
+        loading: () => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                '正在加载媒体库...',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '请稍候',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ),
+        data: (mediaList) {
+          if (mediaList.isEmpty) {
+            return EmptyMediaView(
+              onSync: () {
+                ref.read(syncJobManagerProvider).createCloudChangesSyncJob();
+              },
+            );
+          }
+
+          return IndexedStack(
+            index: viewMode.index,
+            children: [
+              MediaGridBody(media: mediaList),
+              MediaTimelineBody(media: mediaList),
+            ],
+          );
+        },
+        error: (err, stack) => ErrorMediaView(
+          error: err.toString(),
+          onRetry: () => ref.invalidate(mediaStreamProvider),
+        ),
       ),
     );
   }

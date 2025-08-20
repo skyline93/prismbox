@@ -101,21 +101,25 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 4;
 
   static LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(dbFolder.path, 'media_library.sqlite');
-    print("==========> dbPath: $dbPath");
+    return LazyDatabase(() async {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final dbPath = p.join(dbFolder.path, 'media_library.sqlite');
+      print("==========> dbPath: $dbPath");
 
-    final file = File(dbPath);
-    return NativeDatabase.createInBackground(
-      file,
-      setup: (database) {
-        // 开启 WAL 模式
-        database.execute('PRAGMA journal_mode = WAL;');
-      },
-    );
-  });
-}
+      final file = File(dbPath);
+      return NativeDatabase.createInBackground(
+        file,
+        setup: (database) {
+          // 开启 WAL 模式以支持更好的并发和跨进程访问
+          database.execute('PRAGMA journal_mode = WAL;');
+          database.execute('PRAGMA synchronous = NORMAL;');
+          database.execute('PRAGMA cache_size = 10000;');
+          database.execute('PRAGMA temp_store = memory;');
+          database.execute('PRAGMA mmap_size = 268435456;'); // 256MB
+        },
+      );
+    });
+  }
 
 
   @override
@@ -268,6 +272,7 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       }
     });
   }
+
 }
 
 @DriftAccessor(tables: [SyncJobs])
