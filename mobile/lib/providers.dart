@@ -2,7 +2,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'data/repositories/media_repository_impl.dart';
 import 'domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';

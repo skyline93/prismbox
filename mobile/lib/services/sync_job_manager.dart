@@ -5,7 +5,8 @@ import 'dart:developer';
 
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
-import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;

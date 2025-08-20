@@ -18,12 +18,6 @@ class MediaBody extends HookConsumerWidget {
       mediaStreamProvider,
     );
 
-    mediaAsyncValue.whenData((media) {
-      debugPrint(
-        "媒体流更新: ${media.map((e) => '${e.id}:${e.syncStatus}').toList()}",
-      );
-    });
-
     final viewMode = ref.watch(mediaViewTypeProvider);
 
     return RefreshIndicator(

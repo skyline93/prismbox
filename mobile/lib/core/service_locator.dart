@@ -2,7 +2,7 @@
 
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
-import 'package:mobile/data/datasources/app_database.dart';
+// import 'package:mobile/data/datasources/app_database.dart';
 
 import 'service_locator.config.dart';
 
@@ -13,12 +13,4 @@ final getIt = GetIt.instance;
   preferRelativeImports: true, // 使用相对路径
   asExtension: true, // 作为 getIt 的扩展方法生成
 )
-// Future<void> configureDependencies() async => getIt.init();
-Future<void> configureDependencies(AppDatabase db) async {
-  // +++ 手动注册数据库单例
-  getIt.registerSingleton<AppDatabase>(db);
-
-  // 运行 injectable 生成的代码
-  // $initGetIt(getIt);
-  getIt.init();
-}
+Future<void> configureDependencies() async => getIt.init();

@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
-import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 
 class MediaRepositoryImpl implements MediaRepository {

@@ -4,7 +4,7 @@ import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/services/sync_job_processor.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/datasources/local_db/connection.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 

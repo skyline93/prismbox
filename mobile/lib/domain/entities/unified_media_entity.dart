@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 
 part 'unified_media_entity.freezed.dart';

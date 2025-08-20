@@ -9,14 +9,15 @@ import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/services/local_media_observer.dart';
 import 'package:storage_inspector/storage_inspector.dart';
 import 'package:drift_local_storage_inspector/drift_local_storage_inspector.dart';
-import 'package:mobile/data/datasources/app_database.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'package:mobile/data/datasources/local_db/connection.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final db = await connect();
+  await initializeDatabaseIsolate();
 
-  await configureDependencies(db);
+  await configureDependencies();
   await initializeDateFormatting('zh_CN', null);
 
   // 启动本地相册监听
