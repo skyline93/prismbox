@@ -4,7 +4,7 @@
 // AutoRouterGenerator
 // **************************************************************************
 
-// ignore_for_file: type=lint, unused_element_parameter
+// ignore_for_file: type=lint
 // coverage:ignore-file
 
 part of 'app_router.dart';
@@ -75,7 +75,10 @@ abstract class _$AppRouter extends RootStackRouter {
 /// [AlbumPage]
 class AlbumRoute extends PageRouteInfo<void> {
   const AlbumRoute({List<PageRouteInfo>? children})
-    : super(AlbumRoute.name, initialChildren: children);
+      : super(
+          AlbumRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'AlbumRoute';
 
@@ -91,20 +94,19 @@ class GalleryRoute extends PageRouteInfo<GalleryRouteArgs> {
     required int initialIndex,
     List<PageRouteInfo>? children,
   }) : super(
-         GalleryRoute.name,
-         args: GalleryRouteArgs(
-           key: key,
-           media: media,
-           initialIndex: initialIndex,
-         ),
-         initialChildren: children,
-       );
+          GalleryRoute.name,
+          args: GalleryRouteArgs(
+            key: key,
+            media: media,
+            initialIndex: initialIndex,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'GalleryRoute';
 
-  static const PageInfo<GalleryRouteArgs> page = PageInfo<GalleryRouteArgs>(
-    name,
-  );
+  static const PageInfo<GalleryRouteArgs> page =
+      PageInfo<GalleryRouteArgs>(name);
 }
 
 class GalleryRouteArgs {
@@ -130,7 +132,10 @@ class GalleryRouteArgs {
 /// [LibraryPage]
 class LibraryRoute extends PageRouteInfo<void> {
   const LibraryRoute({List<PageRouteInfo>? children})
-    : super(LibraryRoute.name, initialChildren: children);
+      : super(
+          LibraryRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'LibraryRoute';
 
@@ -141,7 +146,10 @@ class LibraryRoute extends PageRouteInfo<void> {
 /// [LoginPage]
 class LoginRoute extends PageRouteInfo<void> {
   const LoginRoute({List<PageRouteInfo>? children})
-    : super(LoginRoute.name, initialChildren: children);
+      : super(
+          LoginRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'LoginRoute';
 
@@ -152,7 +160,10 @@ class LoginRoute extends PageRouteInfo<void> {
 /// [MediaPage]
 class MediaRoute extends PageRouteInfo<void> {
   const MediaRoute({List<PageRouteInfo>? children})
-    : super(MediaRoute.name, initialChildren: children);
+      : super(
+          MediaRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MediaRoute';
 
@@ -163,7 +174,10 @@ class MediaRoute extends PageRouteInfo<void> {
 /// [NavigationPage]
 class NavigationRoute extends PageRouteInfo<void> {
   const NavigationRoute({List<PageRouteInfo>? children})
-    : super(NavigationRoute.name, initialChildren: children);
+      : super(
+          NavigationRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'NavigationRoute';
 
@@ -174,7 +188,10 @@ class NavigationRoute extends PageRouteInfo<void> {
 /// [ServerConfigPage]
 class ServerConfigRoute extends PageRouteInfo<void> {
   const ServerConfigRoute({List<PageRouteInfo>? children})
-    : super(ServerConfigRoute.name, initialChildren: children);
+      : super(
+          ServerConfigRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'ServerConfigRoute';
 
@@ -185,7 +202,10 @@ class ServerConfigRoute extends PageRouteInfo<void> {
 /// [SplashPage]
 class SplashRoute extends PageRouteInfo<void> {
   const SplashRoute({List<PageRouteInfo>? children})
-    : super(SplashRoute.name, initialChildren: children);
+      : super(
+          SplashRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'SplashRoute';
 

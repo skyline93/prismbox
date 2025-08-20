@@ -2,12 +2,14 @@
 
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:injectable/injectable.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 
+@LazySingleton(as: MediaRepository)
 class MediaRepositoryImpl implements MediaRepository {
   final RemoteMediaDataSource _cloudDataSource;
   final MediaAssetDao _mediaAssetDao;
@@ -23,11 +25,9 @@ class MediaRepositoryImpl implements MediaRepository {
 
   @override
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream() {
-    return _mediaAssetDao.watchAllMediaAssets().map(
-      (dbAssets) {
-        return dbAssets.map(UnifiedMediaEntity.fromDbModel).toList();
-        },
-    );
+    return _mediaAssetDao.watchAllMediaAssets().map((dbAssets) {
+      return dbAssets.map(UnifiedMediaEntity.fromDbModel).toList();
+    });
   }
 
   @override
@@ -43,5 +43,12 @@ class MediaRepositoryImpl implements MediaRepository {
   @override
   Future<Uint8List> downloadPreview(String uuid) async {
     return _cloudDataSource.downloadPreviewMedia(uuid);
+  }
+
+  @override
+  Future<Set<String>> getAllSyncedLocalAssetIds() async {
+    final idsList = await _mediaAssetDao.getAllLocalAssetIds();
+    // 转换为 Set 以便进行高效的差集运算
+    return idsList.toSet();
   }
 }
