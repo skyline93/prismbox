@@ -2,7 +2,6 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'data/repositories/media_repository_impl.dart';
 import 'domain/repositories/media_repository.dart';
@@ -19,21 +18,8 @@ import 'package:mobile/data/services/server_check_service.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 
-final databaseProvider = Provider<AppDatabase>((ref) {
-  return getIt<AppDatabase>();
-});
-
 final syncJobManagerProvider = Provider<SyncJobManager>((ref) {
   return getIt<SyncJobManager>();
-});
-
-/// 本地媒体数据源的提供者
-final localMediaDataSourceProvider = Provider<LocalMediaDataSource>((ref) {
-  return getIt<LocalMediaDataSource>();
-});
-
-final remoteMediaSourceProvider = Provider<RemoteMediaDataSource>((ref) {
-  return getIt<RemoteMediaDataSource>();
 });
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
@@ -52,12 +38,11 @@ final dioClientProvider = Provider<DioClient>((ref) {
 });
 
 final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
+  print("[mediaRepositoryProvider] 初始化repo=================================");
   return MediaRepositoryImpl(
-    // [-] localDataSource is no longer needed in the repo
     cloudDataSource: getIt<RemoteMediaDataSource>(),
-    // [-] syncStateService is removed
     db: getIt<AppDatabase>(),
-    syncJobManager: ref.watch(syncJobManagerProvider), // [+] Add syncJobManager
+    syncJobManager: ref.read(syncJobManagerProvider),
   );
 });
 

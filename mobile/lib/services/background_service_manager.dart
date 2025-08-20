@@ -1,43 +1,26 @@
 // lib/services/background_service_manager.dart
 
+import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/services/sync_job_manager.dart';
-import 'package:mobile/services/sync_job_processor.dart'; // This import is now correctly used.
+import 'package:mobile/services/sync_job_processor.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:mobile/core/service_locator.dart';
-import 'package:drift/drift.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:drift/native.dart';
-import 'dart:io';
 import 'package:mobile/data/datasources/app_database.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
-// import 'package:injectable/injectable.dart';
+import 'package:mobile/core/storage/secure_storage_service.dart';
 
 const String _periodicSyncTask = "com.album.periodicCloudSync";
 const String _queueProcessorTask = "com.album.queueProcessor";
 
-LazyDatabase _openBackgroundConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'media_library.sqlite'));
-    return NativeDatabase.createInBackground(
-      file,
-      setup: (database) {
-        // 开启 WAL 模式
-        database.execute('PRAGMA journal_mode = WAL;');
-      },
-    );
-  });
-}
-
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    await configureDependencies();
+    final db = AppDatabase();
+    final secStor = SecureStorageService();
+    final dioClient = DioClient(secStor);
 
-    final db = AppDatabase(_openBackgroundConnection());
-    final remoteApi = getIt<RemoteMediaDataSource>();
+    final remoteApi = RemoteMediaDataSource(dioClient.dio);
     final processor = SyncJobProcessor(db: db, remoteApi: remoteApi);
+    final jobManager = SyncJobManager(db);
 
     print("[BackgroundService] 后台任务触发: $task");
 
@@ -45,7 +28,6 @@ void callbackDispatcher() {
       // 根据任务名称执行不同逻辑
       switch (task) {
         case _periodicSyncTask:
-          final jobManager = getIt<SyncJobManager>();
           await jobManager.createCloudChangesSyncJob();
           print("[BackgroundService] 已成功创建云端同步检查任务。");
           break;

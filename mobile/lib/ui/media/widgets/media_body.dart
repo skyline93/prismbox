@@ -17,6 +17,10 @@ class MediaBody extends HookConsumerWidget {
     final AsyncValue<List<UnifiedMediaEntity>> mediaAsyncValue = ref.watch(
       mediaStreamProvider,
     );
+    mediaAsyncValue.whenData((media) {
+      print("媒体流更新: ${media.map((e) => '${e.id}:${e.syncStatus}').toList()}");
+    });
+
     final viewMode = ref.watch(mediaViewTypeProvider);
 
     return mediaAsyncValue.when(

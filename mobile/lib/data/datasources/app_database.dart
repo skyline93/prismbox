@@ -8,6 +8,7 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:mobile/data/models/media/media_model.dart';
+import 'package:injectable/injectable.dart';
 
 part 'app_database.g.dart';
 
@@ -87,20 +88,35 @@ class UserSettings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-// @lazySingleton
+
+@lazySingleton
 @DriftDatabase(
   tables: [MediaAssets, SyncJobs, UserSettings],
   daos: [MediaAssetDao, SyncJobDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor e) : super(e);
-
-  factory AppDatabase.forInjectable() {
-    return AppDatabase(_openConnection());
-  }
+  AppDatabase() : super(_openConnection());
 
   @override
   int get schemaVersion => 4;
+
+  static LazyDatabase _openConnection() {
+  return LazyDatabase(() async {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final dbPath = p.join(dbFolder.path, 'media_library.sqlite');
+    print("==========> dbPath: $dbPath");
+
+    final file = File(dbPath);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (database) {
+        // 开启 WAL 模式
+        database.execute('PRAGMA journal_mode = WAL;');
+      },
+    );
+  });
+}
+
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -309,18 +325,4 @@ class SyncJobDao extends DatabaseAccessor<AppDatabase> with _$SyncJobDaoMixin {
 
   Future<void> deleteJob(int jobId) =>
       (delete(syncJobs)..where((tbl) => tbl.id.equals(jobId))).go();
-}
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'media_library.sqlite'));
-    return NativeDatabase.createInBackground(
-      file,
-      setup: (database) {
-        // 开启 WAL 模式
-        database.execute('PRAGMA journal_mode = WAL;');
-      },
-    );
-  });
 }
