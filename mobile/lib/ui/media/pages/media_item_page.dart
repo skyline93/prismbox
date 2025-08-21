@@ -1,3 +1,5 @@
+// lib/ui/media/pages/media_item_page.dart
+
 import 'package:flutter/material.dart';
 
 import 'package:mobile/domain/entities/unified_media_entity.dart';
@@ -11,7 +13,6 @@ class MediaItemPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 逻辑分发中心：根据类型渲染不同的内容 Widget
     if (entity.isVideo) {
       return VideoContent(entity: entity);
     } else {

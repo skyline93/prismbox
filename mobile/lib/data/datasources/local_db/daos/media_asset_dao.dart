@@ -7,18 +7,13 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     with _$MediaAssetDaoMixin {
   MediaAssetDao(super.db);
 
-  // --- 新增的方法 ---
-  /// 高效地查询数据库中所有非空的本地资产ID。
-  /// 使用 selectOnly 可以避免加载整个 MediaAsset 对象，从而提升性能。
   Future<List<String>> getAllLocalAssetIds() {
     final query = selectOnly(mediaAssets)
       ..addColumns([mediaAssets.localId])
       ..where(mediaAssets.localId.isNotNull());
 
-    // 将查询结果映射为 String 列表
     return query.map((row) => row.read(mediaAssets.localId)!).get();
   }
-  // --- 新增结束 ---
 
   Stream<List<MediaAsset>> watchAllMediaAssets() => select(mediaAssets).watch();
 
@@ -145,6 +140,25 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
           name: 'MediaAssetDao',
         );
       }
+    });
+  }
+
+  Future<void> createUploadJobForExistingAsset(int assetId) async {
+    return transaction(() async {
+      // 1. 将资产状态更新为“正在上传”
+      await (update(mediaAssets)..where((tbl) => tbl.id.equals(assetId))).write(
+        const MediaAssetsCompanion(syncStatus: Value(SyncStatus.uploading)),
+      );
+
+      // 2. 创建一个新的上传作业
+      await into(syncJobs).insert(
+        SyncJobsCompanion.insert(
+          assetId: Value(assetId),
+          jobType: JobType.upload,
+          status: JobStatus.pending,
+          priority: Value(10), // 手动任务赋予更高优先级
+        ),
+      );
     });
   }
 }

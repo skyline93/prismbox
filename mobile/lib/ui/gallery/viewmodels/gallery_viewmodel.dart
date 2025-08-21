@@ -109,36 +109,16 @@ class MediaDetailNotifier
   }
 
   // =======================================================================
-  // [*] 重构 upload 方法
+  // [*] 重构 upload 方法 (这是需要修改的地方)
   // =======================================================================
   Future<void> upload() async {
-    // 注意：在新的架构下，`upload` 很少需要手动调用。
-    // 因为 LocalMediaObserver 会自动为新照片创建上传任务（如果开启了自动备份）。
-    // 这个手动上传功能可以保留，用于用户关闭自动备份时，手动选择上传某些照片。
-
     // 1. 获取 SyncJobManager
     final jobManager = ref.read(syncJobManagerProvider);
 
-    // 2. 直接调用 jobManager 来为这个已存在的本地资产创建上传任务
-    // 注意：createUploadJobForNewAsset 内部有防重逻辑，但它是基于 localId 的。
-    // 这里我们需要一个新方法或调整现有方法来处理“为已存在记录创建上传任务”
-    // 为了快速修复，我们假设一个新方法：
-    // await jobManager.createUploadJobForExistingAsset(arg);
-    //
-    // --- 临时解决方案：简化逻辑 ---
-    // 假设 `arg` 是一个 AssetEntity，我们可以复用现有逻辑
-    if (arg.localId != null) {
-      final asset = await AssetEntity.fromId(arg.localId!);
-      if (asset != null) {
-        // isAutoBackupEnabled: true 强制创建上传任务
-        await jobManager.createUploadJobForNewAsset(
-          asset,
-          isAutoBackupEnabled: true,
-        );
-      }
-    }
+    // 2. 调用为“已存在资产”设计的全新方法
+    await jobManager.createUploadJobForExistingAsset(arg);
 
-    // 3. 同样，我们不再等待结果，也不更新 state。
-    // UI 会自动响应数据库的变化。
+    // 3. 完成！无需任何其他操作。
+    // UI 会通过监听数据库的数据流自动更新状态。
   }
 }

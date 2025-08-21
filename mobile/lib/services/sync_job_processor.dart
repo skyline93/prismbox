@@ -10,6 +10,7 @@ import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:crypto/crypto.dart';
 
 @injectable
 class SyncJobProcessor {
@@ -154,12 +155,21 @@ class SyncJobProcessor {
     }
     final fileBytes = await file.readAsBytes();
 
-    final String dummyHash =
-        "dummy_hash_${DateTime.now().millisecondsSinceEpoch}";
+    // 2. 计算真实的 SHA256 哈希值
+    final String realHash = sha256.convert(fileBytes).toString();
+
+    // 3. 将 MediaType 枚举转换为后端期望的字符串
+    final String itemTypeString = asset.assetType == MediaType.video
+        ? 'VIDEO'
+        : 'IMAGE';
+
+    log(
+      '准备上传: hash=$realHash, type=$itemTypeString, filename=${asset.fileName}',
+    );
 
     final MediaResponse cloudMedia = await remoteApi.uploadMedia(
       file: fileBytes,
-      hash: asset.contentHash ?? dummyHash,
+      hash: realHash,
       itemType: asset.assetType,
       originalFilename: asset.fileName,
     );
@@ -168,6 +178,7 @@ class SyncJobProcessor {
       MediaAssetsCompanion(
         id: Value(asset.id),
         cloudUuid: Value(cloudMedia.uuid),
+        contentHash: Value(realHash),
         syncStatus: const Value(SyncStatus.synced),
         updatedAt: Value(DateTime.now()),
       ),

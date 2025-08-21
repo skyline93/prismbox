@@ -16,7 +16,6 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     final db = await connect();
 
-    // final db = AppDatabase();
     final secStor = SecureStorageService();
     final dioClient = DioClient(secStor);
 
@@ -27,7 +26,6 @@ void callbackDispatcher() {
     print("[BackgroundService] 后台任务触发: $task");
 
     try {
-      // 根据任务名称执行不同逻辑
       switch (task) {
         case _periodicSyncTask:
           await jobManager.createCloudChangesSyncJob();
@@ -35,8 +33,6 @@ void callbackDispatcher() {
           break;
 
         case _queueProcessorTask:
-          // FIXED: Corrected the typo from SyncJobGProcessor to SyncJobProcessor
-          // final processor = getIt<SyncJobProcessor>();
           await processor.processNextJob();
           break;
 
@@ -58,7 +54,6 @@ void callbackDispatcher() {
 
 class BackgroundServiceManager {
   static Future<void> initialize() async {
-    // FIXED: Removed the deprecated 'isInDebugMode' parameter
     await Workmanager().initialize(callbackDispatcher);
   }
 

@@ -182,4 +182,42 @@ class SyncJobManager {
       updatedAt: DateTime.now(),
     );
   }
+
+  // [+] 新增方法：为已存在的本地资产创建上传任务
+  Future<void> createUploadJobForExistingAsset(
+    UnifiedMediaEntity entity,
+  ) async {
+    // 1. 检查是否已有待处理的任务（上传或下载），避免重复
+    final existingJob =
+        await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
+              (tbl) =>
+                  tbl.assetId.equals(entity.id) &
+                  (tbl.jobType.equalsValue(JobType.upload) |
+                      tbl.jobType.equalsValue(JobType.downloadOriginal)) &
+                  (tbl.status.equalsValue(JobStatus.pending) |
+                      tbl.status.equalsValue(JobStatus.inProgress)),
+            ))
+            .getSingleOrNull();
+
+    if (existingJob != null) {
+      log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的同步任务，跳过创建。');
+      return;
+    }
+
+    try {
+      // 2. 调用 DAO 的新方法来原子地更新状态并创建任务
+      await _mediaAssetDao.createUploadJobForExistingAsset(entity.id);
+      log('[SyncJobManager] 已为资产 ${entity.id} 创建手动上传任务。');
+
+      // 3. 触发后台服务立即处理任务队列
+      BackgroundServiceManager.triggerImmediateSync();
+    } catch (e, s) {
+      log('[SyncJobManager] 创建手动上传任务时出错', error: e, stackTrace: s);
+      // 如果失败，将状态恢复，避免UI卡在“上传中”
+      await _mediaAssetDao.updateAssetStatus(
+        entity.id,
+        SyncStatus.localOnlyNotSelected,
+      );
+    }
+  }
 }
