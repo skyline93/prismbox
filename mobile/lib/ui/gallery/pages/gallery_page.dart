@@ -9,6 +9,7 @@ import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/ui/gallery/viewmodels/gallery_viewmodel.dart';
 import 'package:mobile/ui/gallery/pages/gallery_item_page.dart';
+import 'package:mobile/providers.dart';
 
 @RoutePage()
 class GalleryPage extends HookConsumerWidget {
@@ -26,6 +27,7 @@ class GalleryPage extends HookConsumerWidget {
     final pageController = usePageController(initialPage: initialIndex);
     final currentIndex = useState(initialIndex);
     final currentEntity = media[currentIndex.value];
+    final asyncCurrentEntity = ref.watch(mediaEntityProvider(currentEntity.id));
 
     useEffect(() {
       void listener() {
@@ -55,7 +57,28 @@ class GalleryPage extends HookConsumerWidget {
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarBrightness: Brightness.dark,
         ),
-        actions: [_buildAppBarActions(context, ref, currentEntity)],
+        actions: [
+          asyncCurrentEntity.when(
+            data: (entity) => _buildAppBarActions(context, ref, entity),
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              ),
+            ),
+            error: (err, stack) => const IconButton(
+              icon: Icon(Icons.error_outline, color: Colors.red),
+              tooltip: '加载状态失败',
+              onPressed: null,
+            ),
+          ),
+          // _buildAppBarActions(context, ref, currentEntity)
+        ],
       ),
       body: PageView.builder(
         controller: pageController,
@@ -93,17 +116,24 @@ class GalleryPage extends HookConsumerWidget {
     WidgetRef ref,
     UnifiedMediaEntity entity,
   ) {
-    final mediaState = ref.watch(mediaDetailProvider(entity));
-
-    if (mediaState.isLoading && !mediaState.isRefreshing) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 2.5,
+    Widget buildInProgressIndicator(String tooltip, {required IconData icon}) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Tooltip(
+          message: tooltip,
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+                Icon(icon, color: Colors.white, size: 16),
+              ],
+            ),
           ),
         ),
       );
@@ -114,24 +144,34 @@ class GalleryPage extends HookConsumerWidget {
         return IconButton(
           icon: const Icon(Icons.cloud_download_outlined),
           tooltip: '下载到设备',
-          onPressed: () =>
-              ref.read(mediaDetailProvider(entity).notifier).download(),
+          onPressed: () {
+            ref.read(mediaDetailProvider(entity).notifier).download();
+          },
         );
+      case SyncStatus.downloading:
+        return buildInProgressIndicator('下载中...', icon: Icons.download);
       case SyncStatus.localOnlyNotSelected:
         return IconButton(
           icon: const Icon(Icons.cloud_upload_outlined),
           tooltip: '上传到云端',
-          onPressed: () =>
-              ref.read(mediaDetailProvider(entity).notifier).upload(),
+          onPressed: () {
+            ref.read(mediaDetailProvider(entity).notifier).upload();
+          },
         );
+      case SyncStatus.uploading:
+        return buildInProgressIndicator('上传中...', icon: Icons.upload);
       case SyncStatus.synced:
         return const IconButton(
           icon: Icon(Icons.cloud_done),
           tooltip: '已同步',
           onPressed: null,
         );
-      default:
-        return const SizedBox.shrink();
+      case SyncStatus.error:
+        return const IconButton(
+          icon: Icon(Icons.error_outline, color: Colors.red),
+          tooltip: '同步失败',
+          onPressed: null,
+        );
     }
   }
 }

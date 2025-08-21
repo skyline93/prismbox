@@ -1,3 +1,5 @@
+// lib/data/datasources/local_db/enums.dart
+
 enum SyncStatus {
   localOnlyNotSelected,
   uploading,

@@ -1,3 +1,5 @@
+// lib/domain/entities/unified_media_entity.dart
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';

@@ -145,20 +145,30 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> createUploadJobForExistingAsset(int assetId) async {
     return transaction(() async {
-      // 1. 将资产状态更新为“正在上传”
       await (update(mediaAssets)..where((tbl) => tbl.id.equals(assetId))).write(
         const MediaAssetsCompanion(syncStatus: Value(SyncStatus.uploading)),
       );
 
-      // 2. 创建一个新的上传作业
       await into(syncJobs).insert(
         SyncJobsCompanion.insert(
           assetId: Value(assetId),
           jobType: JobType.upload,
           status: JobStatus.pending,
-          priority: Value(10), // 手动任务赋予更高优先级
+          priority: Value(10),
         ),
       );
     });
+  }
+
+  Future<void> updateMediaAsset(int id, MediaAssetsCompanion companion) {
+    return (update(
+      mediaAssets,
+    )..where((tbl) => tbl.id.equals(id))).write(companion);
+  }
+
+  Stream<MediaAsset> watchMediaAssetById(int id) {
+    return (select(
+      mediaAssets,
+    )..where((tbl) => tbl.id.equals(id))).watchSingle();
   }
 }

@@ -76,3 +76,11 @@ final mediaStreamProvider = StreamProvider<List<UnifiedMediaEntity>>((ref) {
   final mediaRepository = ref.watch(mediaRepositoryProvider);
   return mediaRepository.getUnifiedMediaStream();
 });
+
+final mediaEntityProvider = StreamProvider.family<UnifiedMediaEntity, int>((
+  ref,
+  id,
+) {
+  final repository = ref.watch(mediaRepositoryProvider);
+  return repository.watchMediaEntity(id);
+});

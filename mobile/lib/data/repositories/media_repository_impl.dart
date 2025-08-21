@@ -3,11 +3,13 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
+import 'package:drift/drift.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/sync_job_manager.dart';
+import 'package:mobile/data/datasources/local_db/enums.dart';
 
 @LazySingleton(as: MediaRepository)
 class MediaRepositoryImpl implements MediaRepository {
@@ -49,5 +51,26 @@ class MediaRepositoryImpl implements MediaRepository {
   Future<Set<String>> getAllSyncedLocalAssetIds() async {
     final idsList = await _mediaAssetDao.getAllLocalAssetIds();
     return idsList.toSet();
+  }
+
+  @override
+  Future<void> updateMediaStatus(
+    UnifiedMediaEntity entity,
+    SyncStatus newStatus,
+  ) async {
+    // 使用 Drift 的 Companion 对象来更新特定字段
+    final companion = MediaAssetsCompanion(
+      syncStatus: Value(newStatus), // 设置要更新的状态
+    );
+
+    // 调用 DAO 的更新方法，通过 id 定位到要更新的记录
+    return _mediaAssetDao.updateMediaAsset(entity.id, companion);
+  }
+
+  @override
+  Stream<UnifiedMediaEntity> watchMediaEntity(int id) {
+    return _mediaAssetDao
+        .watchMediaAssetById(id)
+        .map((dbAsset) => UnifiedMediaEntity.fromDbModel(dbAsset));
   }
 }
