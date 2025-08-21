@@ -48,7 +48,6 @@ class MediaRepositoryImpl implements MediaRepository {
   @override
   Future<Set<String>> getAllSyncedLocalAssetIds() async {
     final idsList = await _mediaAssetDao.getAllLocalAssetIds();
-    // 转换为 Set 以便进行高效的差集运算
     return idsList.toSet();
   }
 }

@@ -4,20 +4,19 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
-import 'package:mobile/domain/repositories/media_repository.dart'; // 1. 引入 Repository
+import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 @lazySingleton
 class LocalMediaObserver {
   final SyncJobManager _syncJobManager;
-  final MediaRepository _mediaRepository; // 2. 添加 Repository 依赖
+  final MediaRepository _mediaRepository;
   bool _isObserving = false;
 
   Set<String> _knownAssetIds = {};
   bool _isProcessingChanges = false;
 
-  // 3. 修改构造函数以接收 Repository
   LocalMediaObserver(this._syncJobManager, this._mediaRepository);
 
   void startObserving() async {
@@ -33,7 +32,6 @@ class LocalMediaObserver {
 
     _isObserving = true;
 
-    // 4. 执行对账并开始监听
     await _reconcileAndStartListening();
 
     if (kDebugMode) {
@@ -51,11 +49,9 @@ class LocalMediaObserver {
     }
   }
 
-  /// 执行启动时对账，然后设置实时监听
   Future<void> _reconcileAndStartListening() async {
     if (kDebugMode) print('[LocalMediaObserver] 开始执行启动时对账...');
 
-    // 1. 获取设备上的所有资产ID
     final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
       type: RequestType.common,
     );
@@ -74,14 +70,11 @@ class LocalMediaObserver {
     if (kDebugMode)
       print('[LocalMediaObserver] 设备上发现 ${deviceAssetIds.length} 个资产。');
 
-    // 2. 从数据库获取所有已知的资产ID
     final Set<String> dbAssetIds = await _mediaRepository
         .getAllSyncedLocalAssetIds();
     if (kDebugMode)
       print('[LocalMediaObserver] 数据库中已知 ${dbAssetIds.length} 个资产。');
 
-    // 3. 对比差异
-    // 新增的：在设备上，但不在数据库里
     final Set<String> newIds = deviceAssetIds.difference(dbAssetIds);
     if (newIds.isNotEmpty) {
       if (kDebugMode)
@@ -91,7 +84,6 @@ class LocalMediaObserver {
       }
     }
 
-    // 删除的：在数据库里，但不在设备上
     final Set<String> deletedIds = dbAssetIds.difference(deviceAssetIds);
     if (deletedIds.isNotEmpty) {
       if (kDebugMode)
@@ -107,10 +99,8 @@ class LocalMediaObserver {
       print('[LocalMediaObserver] [启动检查] 本地相册与数据库记录一致，无需操作。');
     }
 
-    // 4. 对账完成后，用设备上的最新列表作为实时监听的基准
     _knownAssetIds = deviceAssetIds;
 
-    // 5. 开始实时监听未来的变化
     PhotoManager.addChangeCallback(_handleChanges);
     PhotoManager.startChangeNotify();
   }

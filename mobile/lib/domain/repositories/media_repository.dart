@@ -9,9 +9,8 @@ abstract class MediaRepository {
   Future<void> createDownloadJob(UnifiedMediaEntity entity);
 
   Future<Uint8List> downloadThumbnail(String uuid);
+
   Future<Uint8List> downloadPreview(String uuid);
 
-  /// 获取数据库中存储的所有本地资产的 ID。
-  /// 这些是应用认为已经处理过或已知的资产。
   Future<Set<String>> getAllSyncedLocalAssetIds();
 }
