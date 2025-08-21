@@ -1,26 +1,102 @@
 // lib/services/local_media_observer.dart
 
 import 'dart:async';
+import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
+import 'package:flutter_isolate/flutter_isolate.dart';
+import 'package:mobile/core/storage/sync_state_service.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'dart:collection';
+
+class _ReconciliationResult {
+  final Set<String> newIds;
+  final Set<String> deletedIds;
+
+  _ReconciliationResult({required this.newIds, required this.deletedIds});
+
+  Map<String, dynamic> toJson() => {
+    'newIds': newIds.toList(),
+    'deletedIds': deletedIds.toList(),
+  };
+
+  factory _ReconciliationResult.fromJson(Map<String, dynamic> json) =>
+      _ReconciliationResult(
+        newIds: (json['newIds'] as List).cast<String>().toSet(),
+        deletedIds: (json['deletedIds'] as List).cast<String>().toSet(),
+      );
+}
+
+@pragma('vm:entry-point')
+Future<void> _reconcileInBackground(Map<String, dynamic> context) async {
+  final SendPort port = context['port'];
+  final Set<String> dbAssetIds = (context['dbAssetIds'] as List)
+      .cast<String>()
+      .toSet();
+
+  final Set<String> deviceAssetIds = {};
+  try {
+    final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
+      type: RequestType.common,
+    );
+
+    for (final path in paths) {
+      final int count = await path.assetCountAsync;
+      if (count == 0) continue;
+
+      const int pageSize = 200;
+      final int pageCount = (count / pageSize).ceil();
+
+      for (int i = 0; i < pageCount; i++) {
+        final List<AssetEntity> assets = await path.getAssetListPaged(
+          page: i,
+          size: pageSize,
+        );
+        for (final asset in assets) {
+          deviceAssetIds.add(asset.id);
+        }
+      }
+    }
+  } catch (e, s) {
+    if (kDebugMode) {
+      print('[BackgroundReconcile] 在后台扫描设备资产时出错: $e');
+      print(s);
+    }
+    port.send(_ReconciliationResult(newIds: {}, deletedIds: {}).toJson());
+    return;
+  }
+
+  final Set<String> newIds = deviceAssetIds.difference(dbAssetIds);
+  final Set<String> deletedIds = dbAssetIds.difference(deviceAssetIds);
+
+  final result = _ReconciliationResult(newIds: newIds, deletedIds: deletedIds);
+  port.send(result.toJson());
+}
 
 @lazySingleton
 class LocalMediaObserver {
   final SyncJobManager _syncJobManager;
   final MediaRepository _mediaRepository;
+  final SyncStateService _syncStateService;
+
   bool _isObserving = false;
-
-  Set<String> _knownAssetIds = {};
   bool _isProcessingChanges = false;
+  FlutterIsolate? _reconciliationIsolate;
+  AssetProcessor? _assetProcessor;
 
-  LocalMediaObserver(this._syncJobManager, this._mediaRepository);
+  LocalMediaObserver(
+    this._syncJobManager,
+    this._mediaRepository,
+    this._syncStateService,
+  );
 
   void startObserving() async {
-    if (_isObserving) return;
+    if (_isObserving) {
+      return;
+    }
 
     final ps = await PhotoManager.requestPermissionExtend();
     if (!ps.isAuth) {
@@ -29,6 +105,11 @@ class LocalMediaObserver {
       }
       return;
     }
+
+    _assetProcessor = AssetProcessor(
+      processFunction: _processNewAsset,
+      workerCount: 4, // 核心参数：同时运行4个worker。可以根据设备性能调整 (3-5是个安全范围)
+    );
 
     _isObserving = true;
 
@@ -40,85 +121,139 @@ class LocalMediaObserver {
   }
 
   void stopObserving() {
-    if (!_isObserving) return;
+    if (!_isObserving) {
+      return;
+    }
     PhotoManager.removeChangeCallback(_handleChanges);
     PhotoManager.stopChangeNotify();
+
+    _assetProcessor?.dispose();
+    _reconciliationIsolate?.kill();
+    _reconciliationIsolate = null;
     _isObserving = false;
     if (kDebugMode) {
       print('[LocalMediaObserver] 已停止本地相册变更监听。');
     }
   }
 
-  Future<void> _reconcileAndStartListening() async {
-    if (kDebugMode) print('[LocalMediaObserver] 开始执行启动时对账...');
+  // CORE MODIFICATION: Process items sequentially inside a batch to prevent memory spikes.
+  Future<void> _processInBatches<T>(
+    Iterable<T> items,
+    Future<void> Function(T item) processFunction, {
+    int batchSize = 50,
+  }) async {
+    final itemList = items.toList();
+    for (int i = 0; i < itemList.length; i += batchSize) {
+      final end = (i + batchSize < itemList.length)
+          ? i + batchSize
+          : itemList.length;
+      final batch = itemList.sublist(i, end);
 
-    final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
-      type: RequestType.common,
-    );
-    final Set<String> deviceAssetIds = {};
-    for (final path in paths) {
-      final int count = await path.assetCountAsync;
-      if (count == 0) continue;
-      final List<AssetEntity> assets = await path.getAssetListRange(
-        start: 0,
-        end: count,
-      );
-      for (final asset in assets) {
-        deviceAssetIds.add(asset.id);
+      // IMPORTANT: Changed from Future.wait to a sequential for loop.
+      for (final item in batch) {
+        // Process one item at a time, awaiting its completion before starting the next.
+        await processFunction(item);
       }
-    }
-    if (kDebugMode)
-      print('[LocalMediaObserver] 设备上发现 ${deviceAssetIds.length} 个资产。');
 
+      // Yield to the event loop after each batch to keep the UI responsive.
+      await Future.delayed(Duration.zero);
+    }
+  }
+
+  Future<void> _reconcileAndStartListening() async {
+    if (kDebugMode) {
+      print('[LocalMediaObserver] 开始执行启动时对账...');
+    }
     final Set<String> dbAssetIds = await _mediaRepository
         .getAllSyncedLocalAssetIds();
-    if (kDebugMode)
+    if (kDebugMode) {
       print('[LocalMediaObserver] 数据库中已知 ${dbAssetIds.length} 个资产。');
-
-    final Set<String> newIds = deviceAssetIds.difference(dbAssetIds);
-    if (newIds.isNotEmpty) {
-      if (kDebugMode)
-        print('[LocalMediaObserver] [启动检查] 发现 ${newIds.length} 个新增资产，正在处理...');
-      for (final String id in newIds) {
-        _processNewAsset(id);
-      }
     }
 
-    final Set<String> deletedIds = dbAssetIds.difference(deviceAssetIds);
-    if (deletedIds.isNotEmpty) {
-      if (kDebugMode)
+    if (kDebugMode) {
+      print('[LocalMediaObserver] 正在将设备扫描任务分派到后台 Isolate...');
+    }
+
+    final completer = Completer<_ReconciliationResult>();
+    final receivePort = ReceivePort();
+
+    receivePort.listen((message) {
+      if (message is Map<String, dynamic>) {
+        completer.complete(_ReconciliationResult.fromJson(message));
+      }
+      receivePort.close();
+    });
+
+    final params = {
+      'port': receivePort.sendPort,
+      'dbAssetIds': dbAssetIds.toList(),
+    };
+
+    _reconciliationIsolate = await FlutterIsolate.spawn(
+      _reconcileInBackground,
+      params,
+    );
+
+    final result = await completer.future;
+    _reconciliationIsolate = null;
+
+    if (kDebugMode) {
+      print('[LocalMediaObserver] 后台对账任务完成。');
+    }
+
+    if (result.newIds.isNotEmpty) {
+      if (kDebugMode) {
         print(
-          '[LocalMediaObserver] [启动检查] 发现 ${deletedIds.length} 个已删除资产，正在处理...',
+          '[LocalMediaObserver] [启动检查] 发现 ${result.newIds.length} 个新增资产，正在分批处理...',
         );
-      for (final String id in deletedIds) {
-        _syncJobManager.handleLocalAssetDeletion(id);
       }
+      // await _processInBatches(result.newIds, _processNewAsset);
+      _assetProcessor?.addAll(result.newIds);
     }
 
-    if (newIds.isEmpty && deletedIds.isEmpty && kDebugMode) {
+    if (result.deletedIds.isNotEmpty) {
+      if (kDebugMode) {
+        print(
+          '[LocalMediaObserver] [启动检查] 发现 ${result.deletedIds.length} 个已删除资产，正在分批处理...',
+        );
+      }
+      await _processInBatches(
+        result.deletedIds,
+        _syncJobManager.handleLocalAssetDeletion,
+      );
+    }
+
+    if (result.newIds.isEmpty && result.deletedIds.isEmpty && kDebugMode) {
       print('[LocalMediaObserver] [启动检查] 本地相册与数据库记录一致，无需操作。');
     }
-
-    _knownAssetIds = deviceAssetIds;
+    await _syncStateService.setLastSyncTimestamp(DateTime.now());
+    if (kDebugMode) {
+      print('[LocalMediaObserver] 已更新最后同步时间戳。');
+    }
 
     PhotoManager.addChangeCallback(_handleChanges);
     PhotoManager.startChangeNotify();
   }
 
   void _handleChanges(MethodCall call) {
-    if (kDebugMode) print('[LocalMediaObserver] 检测到相册变更通知！方法: ${call.method}');
+    if (kDebugMode) {
+      print('[LocalMediaObserver] 检测到相册变更通知！方法: ${call.method}');
+    }
     if (_isProcessingChanges) {
-      if (kDebugMode) print('[LocalMediaObserver] 正在处理上一次变更，本次通知已忽略。');
+      if (kDebugMode) {
+        print('[LocalMediaObserver] 正在处理上一次变更，本次通知已忽略。');
+      }
       return;
     }
     _isProcessingChanges = true;
     Timer.run(() async {
       try {
-        bool processed = await _tryProcessWithMethodCall(call);
+        final bool processed = await _tryProcessWithMethodCall(call);
         if (!processed) {
-          if (kDebugMode)
+          if (kDebugMode) {
             print('[LocalMediaObserver] MethodCall 未提供详细信息，启动完整的差异对比。');
-          await _diffAndProcessChanges();
+          }
+          await _reconcileAndStartListening();
         }
       } finally {
         _isProcessingChanges = false;
@@ -127,61 +262,50 @@ class LocalMediaObserver {
   }
 
   Future<bool> _tryProcessWithMethodCall(MethodCall call) async {
-    if (call.method != 'onNotify') return false;
+    if (call.method != 'onNotify') {
+      return false;
+    }
     final Map? args = call.arguments as Map?;
-    if (args == null) return false;
+    if (args == null) {
+      return false;
+    }
     final createdIds = (args['create'] as List? ?? []).cast<String>();
     final deletedIds = (args['delete'] as List? ?? []).cast<String>();
-    if (createdIds.isEmpty && deletedIds.isEmpty) return false;
+    if (createdIds.isEmpty && deletedIds.isEmpty) {
+      return false;
+    }
+
     if (createdIds.isNotEmpty) {
-      if (kDebugMode)
+      if (kDebugMode) {
         print(
           '[LocalMediaObserver] 从 MethodCall 解析到 ${createdIds.length} 个新增资产。',
         );
-      createdIds.forEach(_processNewAsset);
+      }
+      // await _processInBatches(createdIds, _processNewAsset);
+      _assetProcessor?.addAll(createdIds);
     }
     if (deletedIds.isNotEmpty) {
-      if (kDebugMode)
+      if (kDebugMode) {
         print(
           '[LocalMediaObserver] 从 MethodCall 解析到 ${deletedIds.length} 个删除资产。',
         );
-      deletedIds.forEach(_syncJobManager.handleLocalAssetDeletion);
-    }
-    _knownAssetIds.addAll(createdIds);
-    _knownAssetIds.removeAll(deletedIds);
-    return true;
-  }
-
-  Future<void> _diffAndProcessChanges() async {
-    final paths = await PhotoManager.getAssetPathList(type: RequestType.common);
-    final latestAssetIds = <String>{};
-    for (final path in paths) {
-      final count = await path.assetCountAsync;
-      if (count > 0) {
-        final assets = await path.getAssetListRange(start: 0, end: count);
-        assets.forEach((asset) => latestAssetIds.add(asset.id));
       }
+      await _processInBatches(
+        deletedIds,
+        _syncJobManager.handleLocalAssetDeletion,
+      );
     }
-    final createdIds = latestAssetIds.difference(_knownAssetIds);
-    if (createdIds.isNotEmpty) {
-      if (kDebugMode)
-        print('[LocalMediaObserver] 通过对比发现 ${createdIds.length} 个新增资产。');
-      createdIds.forEach(_processNewAsset);
-    }
-    final deletedIds = _knownAssetIds.difference(latestAssetIds);
-    if (deletedIds.isNotEmpty) {
-      if (kDebugMode)
-        print('[LocalMediaObserver] 通过对比发现 ${deletedIds.length} 个删除资产。');
-      deletedIds.forEach(_syncJobManager.handleLocalAssetDeletion);
-    }
-    _knownAssetIds = latestAssetIds;
+
+    return true;
   }
 
   Future<void> _processNewAsset(String id) async {
     try {
       final asset = await AssetEntity.fromId(id);
       if (asset != null) {
-        if (kDebugMode) print('[LocalMediaObserver] 正在处理新增资产: ${asset.id}');
+        if (kDebugMode) {
+          print('[LocalMediaObserver] 正在处理新增资产: ${asset.id}');
+        }
         await _syncJobManager.createUploadJobForNewAsset(
           asset,
           isAutoBackupEnabled: false,
@@ -193,5 +317,68 @@ class LocalMediaObserver {
         print(s);
       }
     }
+  }
+}
+
+// 生产者-消费者模型实现的工作池
+class AssetProcessor {
+  final Future<void> Function(String id) processFunction;
+  final int workerCount;
+  final Queue<String> _queue = Queue<String>();
+  final List<Future<void>> _workers = [];
+  bool _isDisposed = false;
+
+  AssetProcessor({required this.processFunction, this.workerCount = 4}) {
+    _start();
+  }
+
+  // 启动固定数量的 worker
+  void _start() {
+    for (int i = 0; i < workerCount; i++) {
+      _workers.add(_runWorker(i));
+    }
+  }
+
+  // 添加一个任务到队列
+  void add(String id) {
+    _queue.add(id);
+  }
+
+  // 添加一堆任务到队列
+  void addAll(Iterable<String> ids) {
+    _queue.addAll(ids);
+  }
+
+  // 每个 worker 的工作循环
+  Future<void> _runWorker(int workerId) async {
+    if (kDebugMode) {
+      print('[AssetProcessor] Worker $workerId started.');
+    }
+    while (!_isDisposed) {
+      if (_queue.isNotEmpty) {
+        final String assetId = _queue.removeFirst();
+        try {
+          await processFunction(assetId);
+        } catch (e, s) {
+          if (kDebugMode) {
+            print(
+              '[AssetProcessor] Worker $workerId failed to process $assetId: $e',
+            );
+            print(s);
+          }
+        }
+      } else {
+        // 队列为空时，等待一小段时间再检查，避免CPU空转
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+    if (kDebugMode) {
+      print('[AssetProcessor] Worker $workerId stopped.');
+    }
+  }
+
+  // 停止所有 worker
+  void dispose() {
+    _isDisposed = true;
   }
 }

@@ -64,6 +64,7 @@ dependencies:
   injectable: ^2.5.1
   storage_inspector: ^0.4.0
   drift_local_storage_inspector: ^0.7.0
+  flutter_isolate: ^2.1.0
 
 dev_dependencies:
   flutter_test:

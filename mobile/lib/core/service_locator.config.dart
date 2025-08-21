@@ -25,6 +25,7 @@ import '../services/sync_job_processor.dart' as _i642;
 import 'database_module.dart' as _i384;
 import 'injectable_modules.dart' as _i129;
 import 'storage/secure_storage_service.dart' as _i65;
+import 'storage/sync_state_service.dart' as _i518;
 
 extension GetItInjectableX on _i174.GetIt {
 // initializes the registration of main-scope dependencies inside of GetIt
@@ -49,6 +50,8 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i65.SecureStorageService>(
         () => _i65.SecureStorageService());
+    gh.lazySingleton<_i518.SyncStateService>(
+        () => _i518.SyncStateService(gh<_i460.SharedPreferences>()));
     gh.lazySingleton<_i987.SyncJobManager>(
         () => _i987.SyncJobManager(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i305.DioClient>(
@@ -74,6 +77,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i538.LocalMediaObserver>(() => _i538.LocalMediaObserver(
           gh<_i987.SyncJobManager>(),
           gh<_i442.MediaRepository>(),
+          gh<_i518.SyncStateService>(),
         ));
     return this;
   }

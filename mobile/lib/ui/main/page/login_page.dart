@@ -12,13 +12,10 @@ class LoginPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final usernameController = useTextEditingController(
-      text: 'admin',
-    ); // 预填方便测试
+    final usernameController = useTextEditingController(text: 'admin');
     final passwordController = useTextEditingController(text: '12345678');
     final authState = ref.watch(authNotifierProvider);
 
-    // 监听状态，用于导航和显示错误提示
     ref.listen(authNotifierProvider, (previous, next) {
       next.maybeWhen(
         authenticated: () => {

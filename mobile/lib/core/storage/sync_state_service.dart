@@ -1,7 +1,9 @@
 // lib/core/storage/sync_state_service.dart
 
+import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+@LazySingleton()
 class SyncStateService {
   final SharedPreferences _prefs;
 
