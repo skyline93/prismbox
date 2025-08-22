@@ -191,4 +191,65 @@ class MediaRepositoryImpl implements MediaRepository {
       return UnifiedMediaEntity.fromAssetEntity(asset);
     }
   }
+
+  @override
+  Stream<List<UnifiedMediaEntity>> watchMediaFromAlbum(
+    String albumId,
+    AlbumSource source,
+  ) async* {
+    switch (source) {
+      case AlbumSource.local:
+        // 1. [一次性操作] 首先，从设备获取相册内所有媒体的权威列表 (AssetEntity)
+        final List<AssetEntity> localAssets = await _localMediaSource
+            .getMediaFromAlbum(albumId);
+
+        if (localAssets.isEmpty) {
+          yield []; // 如果相册为空，立即产生一个空列表并结束流
+          return;
+        }
+
+        // 2. 提取所有 localId
+        final List<String> localAssetIds = localAssets
+            .map((a) => a.id)
+            .toList();
+
+        // 3. [持续监听] 使用上一步创建的 DAO 方法来监听数据库中与这些 localId 匹配的所有资源
+        final Stream<List<MediaAsset>> dbAssetsStream = _mediaAssetDao
+            .watchAssetsByLocalIds(localAssetIds);
+
+        // 4. 使用 await for 循环来处理来自数据库的每一个更新
+        await for (final dbAssets in dbAssetsStream) {
+          // [解释] 每当数据库中的任何相关照片状态改变时，下面的代码都会重新执行
+
+          // a. 将数据库结果转换为一个易于查找的 Map
+          final Map<String, MediaAsset> dbAssetsMap = {
+            for (var dbAsset in dbAssets) dbAsset.localId!: dbAsset,
+          };
+
+          // b. 再次遍历权威的设备列表 (localAssets)，并与最新的数据库状态进行合并
+          final unifiedList = localAssets.map((asset) {
+            final MediaAsset? correspondingDbAsset = dbAssetsMap[asset.id];
+
+            if (correspondingDbAsset != null) {
+              // 数据库中存在：使用数据库的权威状态
+              return UnifiedMediaEntity.fromDbModel(
+                correspondingDbAsset,
+              ).copyWith(assetEntity: asset);
+            } else {
+              // 数据库中不存在：这是一个仅存在于本地的全新资源
+              return UnifiedMediaEntity.fromAssetEntity(asset);
+            }
+          }).toList();
+
+          // c. `yield` 关键字将合并后的最新列表作为新事件推送到流中
+          yield unifiedList;
+        }
+        break;
+
+      case AlbumSource.remote:
+        throw UnimplementedError(
+          'Remote album streaming is not yet implemented.',
+        );
+    }
+  }
 }

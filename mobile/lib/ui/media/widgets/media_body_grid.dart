@@ -19,6 +19,7 @@ class MediaGridBody extends HookConsumerWidget {
 
     return GridView.builder(
       key: const PageStorageKey('media_grid_body'),
+      padding: const EdgeInsets.symmetric(horizontal: 2),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         crossAxisSpacing: 2,

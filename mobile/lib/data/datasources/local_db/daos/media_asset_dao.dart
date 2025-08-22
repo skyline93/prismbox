@@ -181,4 +181,10 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       mediaAssets,
     )..where((tbl) => tbl.localId.equals(id))).getSingleOrNull();
   }
+
+  Stream<List<MediaAsset>> watchAssetsByLocalIds(List<String> ids) {
+    if (ids.isEmpty) return Stream.value([]); // [优化] 处理空列表，返回一个空的流
+    final query = select(mediaAssets)..where((tbl) => tbl.localId.isIn(ids));
+    return query.watch();
+  }
 }

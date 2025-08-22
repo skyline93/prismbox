@@ -7,7 +7,7 @@ class AppConfig {
 class ApiConfig {
   const ApiConfig();
 
-  static const String defaultServerAddr = 'http://10.168.1.201:18090';
+  static const String defaultServerAddr = 'http://47.107.63.140:18080';
   // static const String defaultServerAddr = 'http://10.0.2.2:8080';
   static const String apiVersion = 'v1';
 

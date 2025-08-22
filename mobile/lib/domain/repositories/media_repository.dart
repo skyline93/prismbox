@@ -28,4 +28,9 @@ abstract class MediaRepository {
   Future<Uint8List?> getThumbnailForLocalAsset(String id);
 
   Future<UnifiedMediaEntity?> getCoverForAlbum(UnifiedAlbumEntity album);
+
+  Stream<List<UnifiedMediaEntity>> watchMediaFromAlbum(
+    String albumId,
+    AlbumSource source,
+  );
 }
