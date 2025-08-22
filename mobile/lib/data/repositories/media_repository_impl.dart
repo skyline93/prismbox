@@ -9,20 +9,28 @@ import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/sync_job_manager.dart';
+import 'package:mobile/data/datasources/local_media_source.dart';
+import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 @LazySingleton(as: MediaRepository)
 class MediaRepositoryImpl implements MediaRepository {
   final RemoteMediaDataSource _cloudDataSource;
   final MediaAssetDao _mediaAssetDao;
   final SyncJobManager _syncJobManager;
+  final AlbumDao _albumDao;
+  final LocalMediaDataSource _localMediaSource;
 
   MediaRepositoryImpl({
     required RemoteMediaDataSource cloudDataSource,
     required AppDatabase db,
     required SyncJobManager syncJobManager,
+    required LocalMediaDataSource localMediaSource,
   }) : _cloudDataSource = cloudDataSource,
        _mediaAssetDao = db.mediaAssetDao,
+       _albumDao = db.albumDao, // 新增：从 db 中获取 albumDao
+       _localMediaSource = localMediaSource, // 新增
        _syncJobManager = syncJobManager;
 
   @override
@@ -54,23 +62,133 @@ class MediaRepositoryImpl implements MediaRepository {
   }
 
   @override
-  Future<void> updateMediaStatus(
-    UnifiedMediaEntity entity,
-    SyncStatus newStatus,
-  ) async {
-    // 使用 Drift 的 Companion 对象来更新特定字段
-    final companion = MediaAssetsCompanion(
-      syncStatus: Value(newStatus), // 设置要更新的状态
-    );
-
-    // 调用 DAO 的更新方法，通过 id 定位到要更新的记录
-    return _mediaAssetDao.updateMediaAsset(entity.id, companion);
-  }
-
-  @override
   Stream<UnifiedMediaEntity> watchMediaEntity(int id) {
     return _mediaAssetDao
         .watchMediaAssetById(id)
         .map((dbAsset) => UnifiedMediaEntity.fromDbModel(dbAsset));
+  }
+
+  @override
+  Stream<List<UnifiedAlbumEntity>> watchAlbums() {
+    // 1. 直接调用 AlbumDao 的 watch 方法来监听数据库中的相册表
+    return _albumDao.watchAllAlbums().map((dbAlbums) {
+      // 2. 将数据库模型流 (List<Album>) 映射并转换为业务实体流 (List<UnifiedAlbumEntity>)
+      return dbAlbums
+          .map(
+            (dbAlbum) => UnifiedAlbumEntity(
+              id: dbAlbum.id,
+              name: dbAlbum.name,
+              assetCount: dbAlbum.assetCount,
+              source: dbAlbum.source,
+              thumbnailId: dbAlbum.thumbnailId,
+            ),
+          )
+          .toList();
+    });
+  }
+
+  @override
+  Future<List<UnifiedMediaEntity>> getMediaFromAlbum(
+    String albumId,
+    AlbumSource source,
+  ) async {
+    switch (source) {
+      case AlbumSource.local:
+        // 1. 从设备获取相册内容的权威清单 (AssetEntity 列表)
+        final List<AssetEntity> localAssets = await _localMediaSource
+            .getMediaFromAlbum(albumId);
+
+        if (localAssets.isEmpty) {
+          return [];
+        }
+
+        // 2. 提取所有 localId，准备查询我们的数据库
+        final List<String> localAssetIds = localAssets
+            .map((a) => a.id)
+            .toList();
+
+        // 3. 使用新创建的 DAO 方法，一次性查询出所有已知的媒体资源
+        final List<MediaAsset> dbAssets = await _mediaAssetDao
+            .getAssetsByLocalIds(localAssetIds);
+
+        // 4. 为了快速查找，将数据库结果转换为一个 Map
+        //    Key: localId, Value: MediaAsset (数据库模型)
+        final Map<String, MediaAsset> dbAssetsMap = {
+          for (var dbAsset in dbAssets) dbAsset.localId!: dbAsset,
+        };
+
+        // 5. 遍历权威清单 (localAssets)，并智能地创建 UnifiedMediaEntity
+        return localAssets.map((asset) {
+          final MediaAsset? correspondingDbAsset = dbAssetsMap[asset.id];
+
+          if (correspondingDbAsset != null) {
+            // **情况 A: 数据库中已存在此资源**
+            // 我们以数据库中的信息为基础创建实体，因为它包含正确的状态。
+            // 然后使用 .copyWith 将临时的 AssetEntity 附加回去，供UI层使用。
+            return UnifiedMediaEntity.fromDbModel(
+              correspondingDbAsset,
+            ).copyWith(assetEntity: asset);
+          } else {
+            // **情况 B: 数据库中不存在此资源**
+            // 这是一个全新的、我们应用从未见过的资源。
+            // 我们使用 fromAssetEntity 工厂方法创建一个临时的、未同步状态的实体。
+            return UnifiedMediaEntity.fromAssetEntity(asset);
+          }
+        }).toList();
+
+      case AlbumSource.remote:
+        throw UnimplementedError(
+          'Remote album fetching is not yet implemented.',
+        );
+    }
+  }
+
+  @override
+  Future<Uint8List?> getThumbnailForLocalAsset(String id) {
+    // 将调用委托给 LocalMediaSource，它直接与 photo_manager 交互
+    return _localMediaSource.getThumbnail(assetId: id);
+  }
+
+  // [新增] 实现获取相册封面的方法
+  @override
+  Future<UnifiedMediaEntity?> getCoverForAlbum(UnifiedAlbumEntity album) async {
+    switch (album.source) {
+      case AlbumSource.local:
+        // 1. 调用数据源层获取最新的 AssetEntity
+        final AssetEntity? latestAsset = await _localMediaSource
+            .getLatestAssetFromAlbum(album.id);
+
+        if (latestAsset == null) {
+          return null; // 相册为空
+        }
+
+        // 2. 复用我们的智能合并逻辑，检查这张照片是否已在数据库中
+        return _createUnifiedEntityFromAsset(latestAsset);
+
+      case AlbumSource.remote:
+        // TODO: 实现获取云端相册封面的逻辑
+        // 例如：final remoteCover = await _cloudDataSource.getAlbumCover(album.id);
+        // return UnifiedMediaEntity.fromRemoteDto(remoteCover);
+        throw UnimplementedError(
+          'Remote album cover fetching is not yet implemented.',
+        );
+    }
+  }
+
+  // [新增] 提取私有辅助方法以避免代码重复
+  // 这个方法封装了我们之前实现的“智能合并”逻辑
+  Future<UnifiedMediaEntity> _createUnifiedEntityFromAsset(
+    AssetEntity asset,
+  ) async {
+    final dbAsset = await _mediaAssetDao.getAssetByLocalId(
+      asset.id,
+    ); // 假设你有这个单查方法
+    if (dbAsset != null) {
+      return UnifiedMediaEntity.fromDbModel(
+        dbAsset,
+      ).copyWith(assetEntity: asset);
+    } else {
+      return UnifiedMediaEntity.fromAssetEntity(asset);
+    }
   }
 }

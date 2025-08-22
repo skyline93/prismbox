@@ -1,3 +1,5 @@
+// lib/routing/app_router.dart
+
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +10,10 @@ import 'package:mobile/ui/library/page/library_page.dart';
 import 'package:mobile/ui/library/page/server_config_page.dart';
 import 'package:mobile/ui/main/page/login_page.dart';
 import 'package:mobile/ui/main/page/splash_page.dart';
-// import 'package:mobile/ui/media/page/media_detail.dart';
 import 'package:mobile/ui/gallery/pages/gallery_page.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/ui/album/page/album_detail_page.dart';
 
 part 'app_router.gr.dart';
 
@@ -32,9 +35,7 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: MediaRoute.page, path: "/media"),
     AutoRoute(page: GalleryRoute.page, path: '/gallery'),
     AutoRoute(page: ServerConfigRoute.page, path: "/server_config"),
-    // AutoRoute(page: NavigationRoute.page, path: "/navigation", initial: true),
-    // AutoRoute(page: MediaRoute.page, path: "/media"),
-    // AutoRoute(page: AlbumRoute.page, path: "/album"),
-    // AutoRoute(page: LibraryRoute.page, path: "/library"),
+    AutoRoute(page: AlbumRoute.page, path: "/albums"),
+    AutoRoute(page: AlbumDetailRoute.page, path: "/album-detail"),
   ];
 }

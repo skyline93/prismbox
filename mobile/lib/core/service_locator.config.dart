@@ -19,6 +19,7 @@ import '../data/datasources/remote_media_source.dart' as _i527;
 import '../data/repositories/media_repository_impl.dart' as _i74;
 import '../data/services/dio_client.dart' as _i305;
 import '../domain/repositories/media_repository.dart' as _i442;
+import '../services/album_sync_service.dart' as _i166;
 import '../services/local_media_observer.dart' as _i538;
 import '../services/sync_job_manager.dart' as _i987;
 import '../services/sync_job_processor.dart' as _i642;
@@ -54,6 +55,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i518.SyncStateService(gh<_i460.SharedPreferences>()));
     gh.lazySingleton<_i987.SyncJobManager>(
         () => _i987.SyncJobManager(gh<_i669.AppDatabase>()));
+    gh.lazySingleton<_i166.AlbumSyncService>(
+        () => _i166.AlbumSyncService(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i305.DioClient>(
         () => _i305.DioClient(gh<_i65.SecureStorageService>()));
     gh.lazySingleton<_i290.LocalMediaDataSource>(
@@ -65,19 +68,21 @@ extension GetItInjectableX on _i174.GetIt {
         () => injectableModule.getDio(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(
         () => injectableModule.getRemoteMediaSource(gh<_i361.Dio>()));
-    gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
-          db: gh<_i669.AppDatabase>(),
-          remoteApi: gh<_i527.RemoteMediaDataSource>(),
-        ));
     gh.lazySingleton<_i442.MediaRepository>(() => _i74.MediaRepositoryImpl(
           cloudDataSource: gh<_i527.RemoteMediaDataSource>(),
           db: gh<_i669.AppDatabase>(),
           syncJobManager: gh<_i987.SyncJobManager>(),
+          localMediaSource: gh<_i290.LocalMediaDataSource>(),
+        ));
+    gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
+          db: gh<_i669.AppDatabase>(),
+          remoteApi: gh<_i527.RemoteMediaDataSource>(),
         ));
     gh.lazySingleton<_i538.LocalMediaObserver>(() => _i538.LocalMediaObserver(
           gh<_i987.SyncJobManager>(),
           gh<_i442.MediaRepository>(),
           gh<_i518.SyncStateService>(),
+          gh<_i166.AlbumSyncService>(),
         ));
     return this;
   }

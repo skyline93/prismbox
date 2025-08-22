@@ -1,16 +1,19 @@
 // lib/data/datasources/local_media_source.dart
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:injectable/injectable.dart';
+import 'package:logging/logging.dart';
 
 @lazySingleton
 class LocalMediaDataSource {
   final MediaAssetDao _mediaAssetDao;
   final SyncJobManager _syncJobManager;
+  final _log = Logger('LocalMediaDataSource');
 
   LocalMediaDataSource(AppDatabase db, this._syncJobManager)
     : _mediaAssetDao = db.mediaAssetDao;
@@ -65,5 +68,66 @@ class LocalMediaDataSource {
       }
     }
     print("[InitialScan] 首次扫描完成，发现了 $newAssetsFound 个新媒体文件。");
+  }
+
+  Future<List<AssetEntity>> getMediaFromAlbum(String albumId) async {
+    try {
+      // 1. 使用 fromId 方法精确查找指定ID的相册
+      final AssetPathEntity album = await AssetPathEntity.fromId(albumId);
+
+      // 2. 获取该相册下的所有媒体资源
+      //    为了性能，这里也采用分页加载的方式
+      final List<AssetEntity> assets = [];
+      final int totalCount = await album.assetCountAsync;
+      const int pageSize = 200; // 可以根据需要调整分页大小
+      final int pageCount = (totalCount / pageSize).ceil();
+
+      for (int i = 0; i < pageCount; i++) {
+        final List<AssetEntity> pagedAssets = await album.getAssetListPaged(
+          page: i,
+          size: pageSize,
+        );
+        assets.addAll(pagedAssets);
+      }
+      _log.info(
+        'Successfully fetched ${assets.length} assets from album: ${album.name} ($albumId)',
+      );
+      return assets;
+    } catch (e, st) {
+      _log.severe('Failed to get media from album $albumId.', e, st);
+      // 返回空列表表示加载失败或相册不存在
+      return [];
+    }
+  }
+
+  Future<Uint8List?> getThumbnail({
+    required String assetId,
+    int width = 200,
+    int height = 200,
+  }) async {
+    final asset = await AssetEntity.fromId(assetId);
+    if (asset == null) return null;
+    final data = await asset.thumbnailDataWithSize(
+      ThumbnailSize(width, height),
+    );
+    return data;
+  }
+
+  Future<AssetEntity?> getLatestAssetFromAlbum(String albumId) async {
+    try {
+      final AssetPathEntity album = await AssetPathEntity.fromId(albumId);
+      // 只获取范围从 0 到 1 的资源，即最新的一张
+      final List<AssetEntity> assets = await album.getAssetListRange(
+        start: 0,
+        end: 1,
+      );
+      if (assets.isNotEmpty) {
+        return assets.first;
+      }
+      return null; // 相册为空
+    } catch (e) {
+      print('Error getting latest asset from album $albumId: $e');
+      return null;
+    }
   }
 }

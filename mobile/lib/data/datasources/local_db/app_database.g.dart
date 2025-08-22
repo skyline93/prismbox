@@ -1370,20 +1370,349 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   }
 }
 
+class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, Album> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AlbumsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _assetCountMeta =
+      const VerificationMeta('assetCount');
+  @override
+  late final GeneratedColumn<int> assetCount = GeneratedColumn<int>(
+      'asset_count', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumnWithTypeConverter<AlbumSource, int> source =
+      GeneratedColumn<int>('source', aliasedName, false,
+              type: DriftSqlType.int, requiredDuringInsert: true)
+          .withConverter<AlbumSource>($AlbumsTable.$convertersource);
+  static const VerificationMeta _thumbnailIdMeta =
+      const VerificationMeta('thumbnailId');
+  @override
+  late final GeneratedColumn<String> thumbnailId = GeneratedColumn<String>(
+      'thumbnail_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, assetCount, source, thumbnailId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'albums';
+  @override
+  VerificationContext validateIntegrity(Insertable<Album> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('asset_count')) {
+      context.handle(
+          _assetCountMeta,
+          assetCount.isAcceptableOrUnknown(
+              data['asset_count']!, _assetCountMeta));
+    } else if (isInserting) {
+      context.missing(_assetCountMeta);
+    }
+    context.handle(_sourceMeta, const VerificationResult.success());
+    if (data.containsKey('thumbnail_id')) {
+      context.handle(
+          _thumbnailIdMeta,
+          thumbnailId.isAcceptableOrUnknown(
+              data['thumbnail_id']!, _thumbnailIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Album map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Album(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      assetCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_count'])!,
+      source: $AlbumsTable.$convertersource.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}source'])!),
+      thumbnailId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}thumbnail_id']),
+    );
+  }
+
+  @override
+  $AlbumsTable createAlias(String alias) {
+    return $AlbumsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<AlbumSource, int, int> $convertersource =
+      const EnumIndexConverter<AlbumSource>(AlbumSource.values);
+}
+
+class Album extends DataClass implements Insertable<Album> {
+  /// 相册ID (主键, 文本类型)
+  final String id;
+
+  /// 相册名称
+  final String name;
+
+  /// 相册包含的媒体数量
+  final int assetCount;
+
+  /// 相册来源 (本地或云端)
+  final AlbumSource source;
+
+  /// 封面媒体的ID (可空)
+  final String? thumbnailId;
+  const Album(
+      {required this.id,
+      required this.name,
+      required this.assetCount,
+      required this.source,
+      this.thumbnailId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['asset_count'] = Variable<int>(assetCount);
+    {
+      map['source'] =
+          Variable<int>($AlbumsTable.$convertersource.toSql(source));
+    }
+    if (!nullToAbsent || thumbnailId != null) {
+      map['thumbnail_id'] = Variable<String>(thumbnailId);
+    }
+    return map;
+  }
+
+  AlbumsCompanion toCompanion(bool nullToAbsent) {
+    return AlbumsCompanion(
+      id: Value(id),
+      name: Value(name),
+      assetCount: Value(assetCount),
+      source: Value(source),
+      thumbnailId: thumbnailId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbnailId),
+    );
+  }
+
+  factory Album.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Album(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      assetCount: serializer.fromJson<int>(json['assetCount']),
+      source: $AlbumsTable.$convertersource
+          .fromJson(serializer.fromJson<int>(json['source'])),
+      thumbnailId: serializer.fromJson<String?>(json['thumbnailId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'assetCount': serializer.toJson<int>(assetCount),
+      'source':
+          serializer.toJson<int>($AlbumsTable.$convertersource.toJson(source)),
+      'thumbnailId': serializer.toJson<String?>(thumbnailId),
+    };
+  }
+
+  Album copyWith(
+          {String? id,
+          String? name,
+          int? assetCount,
+          AlbumSource? source,
+          Value<String?> thumbnailId = const Value.absent()}) =>
+      Album(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        assetCount: assetCount ?? this.assetCount,
+        source: source ?? this.source,
+        thumbnailId: thumbnailId.present ? thumbnailId.value : this.thumbnailId,
+      );
+  Album copyWithCompanion(AlbumsCompanion data) {
+    return Album(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      assetCount:
+          data.assetCount.present ? data.assetCount.value : this.assetCount,
+      source: data.source.present ? data.source.value : this.source,
+      thumbnailId:
+          data.thumbnailId.present ? data.thumbnailId.value : this.thumbnailId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Album(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('assetCount: $assetCount, ')
+          ..write('source: $source, ')
+          ..write('thumbnailId: $thumbnailId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, assetCount, source, thumbnailId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Album &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.assetCount == this.assetCount &&
+          other.source == this.source &&
+          other.thumbnailId == this.thumbnailId);
+}
+
+class AlbumsCompanion extends UpdateCompanion<Album> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<int> assetCount;
+  final Value<AlbumSource> source;
+  final Value<String?> thumbnailId;
+  final Value<int> rowid;
+  const AlbumsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.assetCount = const Value.absent(),
+    this.source = const Value.absent(),
+    this.thumbnailId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AlbumsCompanion.insert({
+    required String id,
+    required String name,
+    required int assetCount,
+    required AlbumSource source,
+    this.thumbnailId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        assetCount = Value(assetCount),
+        source = Value(source);
+  static Insertable<Album> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? assetCount,
+    Expression<int>? source,
+    Expression<String>? thumbnailId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (assetCount != null) 'asset_count': assetCount,
+      if (source != null) 'source': source,
+      if (thumbnailId != null) 'thumbnail_id': thumbnailId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AlbumsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<int>? assetCount,
+      Value<AlbumSource>? source,
+      Value<String?>? thumbnailId,
+      Value<int>? rowid}) {
+    return AlbumsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      assetCount: assetCount ?? this.assetCount,
+      source: source ?? this.source,
+      thumbnailId: thumbnailId ?? this.thumbnailId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (assetCount.present) {
+      map['asset_count'] = Variable<int>(assetCount.value);
+    }
+    if (source.present) {
+      map['source'] =
+          Variable<int>($AlbumsTable.$convertersource.toSql(source.value));
+    }
+    if (thumbnailId.present) {
+      map['thumbnail_id'] = Variable<String>(thumbnailId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlbumsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('assetCount: $assetCount, ')
+          ..write('source: $source, ')
+          ..write('thumbnailId: $thumbnailId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $MediaAssetsTable mediaAssets = $MediaAssetsTable(this);
   late final $SyncJobsTable syncJobs = $SyncJobsTable(this);
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
+  late final $AlbumsTable albums = $AlbumsTable(this);
   late final MediaAssetDao mediaAssetDao = MediaAssetDao(this as AppDatabase);
   late final SyncJobDao syncJobDao = SyncJobDao(this as AppDatabase);
+  late final AlbumDao albumDao = AlbumDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [mediaAssets, syncJobs, userSettings];
+      [mediaAssets, syncJobs, userSettings, albums];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
         [
@@ -1965,6 +2294,134 @@ class $$UserSettingsTableOrderingComposer
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
+typedef $$AlbumsTableCreateCompanionBuilder = AlbumsCompanion Function({
+  required String id,
+  required String name,
+  required int assetCount,
+  required AlbumSource source,
+  Value<String?> thumbnailId,
+  Value<int> rowid,
+});
+typedef $$AlbumsTableUpdateCompanionBuilder = AlbumsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<int> assetCount,
+  Value<AlbumSource> source,
+  Value<String?> thumbnailId,
+  Value<int> rowid,
+});
+
+class $$AlbumsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AlbumsTable,
+    Album,
+    $$AlbumsTableFilterComposer,
+    $$AlbumsTableOrderingComposer,
+    $$AlbumsTableCreateCompanionBuilder,
+    $$AlbumsTableUpdateCompanionBuilder> {
+  $$AlbumsTableTableManager(_$AppDatabase db, $AlbumsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$AlbumsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$AlbumsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<int> assetCount = const Value.absent(),
+            Value<AlbumSource> source = const Value.absent(),
+            Value<String?> thumbnailId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AlbumsCompanion(
+            id: id,
+            name: name,
+            assetCount: assetCount,
+            source: source,
+            thumbnailId: thumbnailId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required int assetCount,
+            required AlbumSource source,
+            Value<String?> thumbnailId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AlbumsCompanion.insert(
+            id: id,
+            name: name,
+            assetCount: assetCount,
+            source: source,
+            thumbnailId: thumbnailId,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$AlbumsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get assetCount => $state.composableBuilder(
+      column: $state.table.assetCount,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AlbumSource, AlbumSource, int> get source =>
+      $state.composableBuilder(
+          column: $state.table.source,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get thumbnailId => $state.composableBuilder(
+      column: $state.table.thumbnailId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$AlbumsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get assetCount => $state.composableBuilder(
+      column: $state.table.assetCount,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get source => $state.composableBuilder(
+      column: $state.table.source,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get thumbnailId => $state.composableBuilder(
+      column: $state.table.thumbnailId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
@@ -1974,6 +2431,8 @@ class $AppDatabaseManager {
       $$SyncJobsTableTableManager(_db, _db.syncJobs);
   $$UserSettingsTableTableManager get userSettings =>
       $$UserSettingsTableTableManager(_db, _db.userSettings);
+  $$AlbumsTableTableManager get albums =>
+      $$AlbumsTableTableManager(_db, _db.albums);
 }
 
 mixin _$MediaAssetDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -1983,4 +2442,7 @@ mixin _$MediaAssetDaoMixin on DatabaseAccessor<AppDatabase> {
 mixin _$SyncJobDaoMixin on DatabaseAccessor<AppDatabase> {
   $MediaAssetsTable get mediaAssets => attachedDatabase.mediaAssets;
   $SyncJobsTable get syncJobs => attachedDatabase.syncJobs;
+}
+mixin _$AlbumDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AlbumsTable get albums => attachedDatabase.albums;
 }

@@ -9,20 +9,23 @@ import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/data/datasources/local_db/tables/media_assets.dart';
 import 'package:mobile/data/datasources/local_db/tables/sync_jobs.dart';
 import 'package:mobile/data/datasources/local_db/tables/user_settings.dart';
+import 'package:mobile/data/datasources/local_db/tables/albums.dart';
 
 part 'daos/media_asset_dao.dart';
 part 'daos/sync_job_dao.dart';
+part 'daos/album_dao.dart';
+
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [MediaAssets, SyncJobs, UserSettings],
-  daos: [MediaAssetDao, SyncJobDao],
+  tables: [MediaAssets, SyncJobs, UserSettings, Albums],
+  daos: [MediaAssetDao, SyncJobDao, AlbumDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -38,6 +41,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(syncJobs, syncJobs.networkConstraint);
       }
       if (from < 4) {}
+      if (from < 5) {
+        await m.createTable(albums);
+      }
     },
   );
 }

@@ -43,6 +43,37 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
     );
   }
 
+  factory UnifiedMediaEntity.fromAssetEntity(AssetEntity asset) {
+    // 将 photo_manager 的 AssetType 转换为我们自己的 MediaType
+    final MediaType type = asset.type == AssetType.video
+        ? MediaType.video
+        : MediaType.image;
+
+    return UnifiedMediaEntity(
+      // 重要: 当从 AssetEntity 直接创建时，它尚未进入我们的数据库，
+      // 所以我们给它一个临时的 id (例如 0 或 -1)，表示它是一个“瞬时”对象。
+      // 这个 id 不应该被用于任何持久化操作。
+      id: 0,
+
+      // 这个实体只存在于本地，且尚未同步，所以状态是 localOnlyNotSelected
+      syncStatus: SyncStatus.localOnlyNotSelected,
+
+      // 填充来自 AssetEntity 的字段
+      localId: asset.id,
+      assetType: type,
+      fileName: asset.title,
+      width: asset.width,
+      height: asset.height,
+      durationSec: asset.duration,
+      createdAt: asset.createDateTime,
+
+      // 关键: 将原始的 AssetEntity 附加到我们的实体上。
+      // 这允许UI层在需要时直接访问它来获取缩略图或原始文件，
+      // 而无需再次查询 photo_manager。
+      assetEntity: asset,
+    );
+  }
+
   bool get isVideo => assetType == MediaType.video;
 
   DateTime get creationDate => createdAt;

@@ -171,4 +171,14 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       mediaAssets,
     )..where((tbl) => tbl.id.equals(id))).watchSingle();
   }
+
+  Future<List<MediaAsset>> getAssetsByLocalIds(List<String> ids) {
+    return (select(mediaAssets)..where((tbl) => tbl.localId.isIn(ids))).get();
+  }
+
+  Future<MediaAsset?> getAssetByLocalId(String id) {
+    return (select(
+      mediaAssets,
+    )..where((tbl) => tbl.localId.equals(id))).getSingleOrNull();
+  }
 }

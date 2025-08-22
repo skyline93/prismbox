@@ -1,8 +1,9 @@
 // lib/domain/repositories/media_repository.dart
 
 import 'dart:typed_data';
-import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/domain/entities/unified_album_entity.dart';
 
 abstract class MediaRepository {
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream();
@@ -15,10 +16,16 @@ abstract class MediaRepository {
 
   Future<Set<String>> getAllSyncedLocalAssetIds();
 
-  Future<void> updateMediaStatus(
-    UnifiedMediaEntity entity,
-    SyncStatus newStatus,
+  Stream<UnifiedMediaEntity> watchMediaEntity(int id);
+
+  Stream<List<UnifiedAlbumEntity>> watchAlbums();
+
+  Future<List<UnifiedMediaEntity>> getMediaFromAlbum(
+    String albumId,
+    AlbumSource source,
   );
 
-  Stream<UnifiedMediaEntity> watchMediaEntity(int id);
+  Future<Uint8List?> getThumbnailForLocalAsset(String id);
+
+  Future<UnifiedMediaEntity?> getCoverForAlbum(UnifiedAlbumEntity album);
 }

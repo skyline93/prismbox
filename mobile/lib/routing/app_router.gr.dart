@@ -15,6 +15,18 @@ abstract class _$AppRouter extends RootStackRouter {
 
   @override
   final Map<String, PageFactory> pagesMap = {
+    AlbumDetailRoute.name: (routeData) {
+      final args = routeData.argsAs<AlbumDetailRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AlbumDetailPage(
+          key: args.key,
+          albumId: args.albumId,
+          albumSource: args.albumSource,
+          albumName: args.albumName,
+        ),
+      );
+    },
     AlbumRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -69,6 +81,54 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
   };
+}
+
+/// generated route for
+/// [AlbumDetailPage]
+class AlbumDetailRoute extends PageRouteInfo<AlbumDetailRouteArgs> {
+  AlbumDetailRoute({
+    Key? key,
+    required String albumId,
+    required AlbumSource albumSource,
+    required String albumName,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AlbumDetailRoute.name,
+          args: AlbumDetailRouteArgs(
+            key: key,
+            albumId: albumId,
+            albumSource: albumSource,
+            albumName: albumName,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'AlbumDetailRoute';
+
+  static const PageInfo<AlbumDetailRouteArgs> page =
+      PageInfo<AlbumDetailRouteArgs>(name);
+}
+
+class AlbumDetailRouteArgs {
+  const AlbumDetailRouteArgs({
+    this.key,
+    required this.albumId,
+    required this.albumSource,
+    required this.albumName,
+  });
+
+  final Key? key;
+
+  final String albumId;
+
+  final AlbumSource albumSource;
+
+  final String albumName;
+
+  @override
+  String toString() {
+    return 'AlbumDetailRouteArgs{key: $key, albumId: $albumId, albumSource: $albumSource, albumName: $albumName}';
+  }
 }
 
 /// generated route for

@@ -11,22 +11,52 @@ import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'dart:collection';
+import 'package:mobile/services/album_sync_service.dart';
+
+class AlbumData {
+  final String id;
+  final String name;
+  final int assetCount;
+
+  AlbumData({required this.id, required this.name, required this.assetCount});
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'assetCount': assetCount,
+  };
+
+  factory AlbumData.fromJson(Map<String, dynamic> json) => AlbumData(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    assetCount: json['assetCount'] as int,
+  );
+}
 
 class _ReconciliationResult {
   final Set<String> newIds;
   final Set<String> deletedIds;
+  final List<AlbumData> albums;
 
-  _ReconciliationResult({required this.newIds, required this.deletedIds});
+  _ReconciliationResult({
+    required this.newIds,
+    required this.deletedIds,
+    required this.albums,
+  });
 
   Map<String, dynamic> toJson() => {
     'newIds': newIds.toList(),
     'deletedIds': deletedIds.toList(),
+    'albums': albums.map((a) => a.toJson()).toList(),
   };
 
   factory _ReconciliationResult.fromJson(Map<String, dynamic> json) =>
       _ReconciliationResult(
         newIds: (json['newIds'] as List).cast<String>().toSet(),
         deletedIds: (json['deletedIds'] as List).cast<String>().toSet(),
+        albums: (json['albums'] as List)
+            .map((e) => AlbumData.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 
@@ -38,6 +68,7 @@ Future<void> _reconcileInBackground(Map<String, dynamic> context) async {
       .toSet();
 
   final Set<String> deviceAssetIds = {};
+  final List<Map<String, dynamic>> albumListJson = [];
   try {
     final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
       type: RequestType.common,
@@ -45,6 +76,16 @@ Future<void> _reconcileInBackground(Map<String, dynamic> context) async {
 
     for (final path in paths) {
       final int count = await path.assetCountAsync;
+
+      if (count > 0 || path.isAll) {
+        // 即使是空相册也可能需要显示
+        albumListJson.add({
+          'id': path.id,
+          'name': path.name,
+          'assetCount': count,
+        });
+      }
+
       if (count == 0) continue;
 
       const int pageSize = 200;
@@ -65,15 +106,20 @@ Future<void> _reconcileInBackground(Map<String, dynamic> context) async {
       print('[BackgroundReconcile] 在后台扫描设备资产时出错: $e');
       print(s);
     }
-    port.send(_ReconciliationResult(newIds: {}, deletedIds: {}).toJson());
+    port.send(
+      _ReconciliationResult(newIds: {}, deletedIds: {}, albums: []).toJson(),
+    );
     return;
   }
 
   final Set<String> newIds = deviceAssetIds.difference(dbAssetIds);
   final Set<String> deletedIds = dbAssetIds.difference(deviceAssetIds);
 
-  final result = _ReconciliationResult(newIds: newIds, deletedIds: deletedIds);
-  port.send(result.toJson());
+  port.send({
+    'newIds': newIds.toList(),
+    'deletedIds': deletedIds.toList(),
+    'albums': albumListJson,
+  });
 }
 
 @lazySingleton
@@ -81,6 +127,7 @@ class LocalMediaObserver {
   final SyncJobManager _syncJobManager;
   final MediaRepository _mediaRepository;
   final SyncStateService _syncStateService;
+  final AlbumSyncService _albumSyncService;
 
   bool _isObserving = false;
   bool _isProcessingChanges = false;
@@ -91,6 +138,7 @@ class LocalMediaObserver {
     this._syncJobManager,
     this._mediaRepository,
     this._syncStateService,
+    this._albumSyncService,
   );
 
   void startObserving() async {
@@ -136,7 +184,6 @@ class LocalMediaObserver {
     }
   }
 
-  // CORE MODIFICATION: Process items sequentially inside a batch to prevent memory spikes.
   Future<void> _processInBatches<T>(
     Iterable<T> items,
     Future<void> Function(T item) processFunction, {
@@ -149,13 +196,10 @@ class LocalMediaObserver {
           : itemList.length;
       final batch = itemList.sublist(i, end);
 
-      // IMPORTANT: Changed from Future.wait to a sequential for loop.
       for (final item in batch) {
-        // Process one item at a time, awaiting its completion before starting the next.
         await processFunction(item);
       }
 
-      // Yield to the event loop after each batch to keep the UI responsive.
       await Future.delayed(Duration.zero);
     }
   }
@@ -201,13 +245,16 @@ class LocalMediaObserver {
       print('[LocalMediaObserver] 后台对账任务完成。');
     }
 
+    // [修改点 2] 在处理资产之前或之后，调用相册同步服务
+    // 将从后台 Isolate 获取到的相册数据传递给同步服务
+    await _albumSyncService.syncAlbums(localAlbums: result.albums);
+
     if (result.newIds.isNotEmpty) {
       if (kDebugMode) {
         print(
           '[LocalMediaObserver] [启动检查] 发现 ${result.newIds.length} 个新增资产，正在分批处理...',
         );
       }
-      // await _processInBatches(result.newIds, _processNewAsset);
       _assetProcessor?.addAll(result.newIds);
     }
 
@@ -281,7 +328,6 @@ class LocalMediaObserver {
           '[LocalMediaObserver] 从 MethodCall 解析到 ${createdIds.length} 个新增资产。',
         );
       }
-      // await _processInBatches(createdIds, _processNewAsset);
       _assetProcessor?.addAll(createdIds);
     }
     if (deletedIds.isNotEmpty) {
@@ -320,7 +366,6 @@ class LocalMediaObserver {
   }
 }
 
-// 生产者-消费者模型实现的工作池
 class AssetProcessor {
   final Future<void> Function(String id) processFunction;
   final int workerCount;
@@ -332,24 +377,20 @@ class AssetProcessor {
     _start();
   }
 
-  // 启动固定数量的 worker
   void _start() {
     for (int i = 0; i < workerCount; i++) {
       _workers.add(_runWorker(i));
     }
   }
 
-  // 添加一个任务到队列
   void add(String id) {
     _queue.add(id);
   }
 
-  // 添加一堆任务到队列
   void addAll(Iterable<String> ids) {
     _queue.addAll(ids);
   }
 
-  // 每个 worker 的工作循环
   Future<void> _runWorker(int workerId) async {
     if (kDebugMode) {
       print('[AssetProcessor] Worker $workerId started.');
@@ -368,7 +409,6 @@ class AssetProcessor {
           }
         }
       } else {
-        // 队列为空时，等待一小段时间再检查，避免CPU空转
         await Future.delayed(const Duration(milliseconds: 500));
       }
     }
@@ -377,7 +417,6 @@ class AssetProcessor {
     }
   }
 
-  // 停止所有 worker
   void dispose() {
     _isDisposed = true;
   }

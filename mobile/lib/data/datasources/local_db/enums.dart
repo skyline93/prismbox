@@ -22,3 +22,5 @@ enum JobType {
 enum JobStatus { pending, inProgress, failed }
 
 enum NetworkConstraint { any, wifiOnly }
+
+enum AlbumSource { local, remote }
