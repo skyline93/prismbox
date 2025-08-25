@@ -1,11 +1,12 @@
-// lib/core/storage/secure_storage_service.dart
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:drift/drift.dart' hide isNull; // 导入 Drift 以使用 Value()
 import 'package:injectable/injectable.dart';
-
+import 'package:mobile/data/datasources/local_db/app_database.dart'; // 导入以使用 UserSettingDao
 
 @lazySingleton
 class SecureStorageService {
-  final _storage = const FlutterSecureStorage();
+  // 1. 移除 flutter_secure_storage，改为依赖注入 UserSettingDao
+  final AppDatabase _db;
+  SecureStorageService(this._db);
 
   static const _accessTokenKey = 'album_access_token';
   static const _refreshTokenKey = 'album_refresh_token';
@@ -14,15 +15,30 @@ class SecureStorageService {
     required String accessToken,
     required String refreshToken,
   }) async {
-    await _storage.write(key: _accessTokenKey, value: accessToken);
-    await _storage.write(key: _refreshTokenKey, value: refreshToken);
+    // 2. 使用 DAO 的 upsert 方法保存 tokens
+    await _db.userSettingDao.upsertSetting(
+      UserSettingsCompanion(
+        key: const Value(_accessTokenKey),
+        value: Value(accessToken),
+      ),
+    );
+    await _db.userSettingDao.upsertSetting(
+      UserSettingsCompanion(
+        key: const Value(_refreshTokenKey),
+        value: Value(refreshToken),
+      ),
+    );
   }
 
-  Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);
-  Future<String?> getRefreshToken() => _storage.read(key: _refreshTokenKey);
+  // 3. 使用 DAO 的 get 方法读取 token
+  Future<String?> getAccessToken() =>
+      _db.userSettingDao.getSetting(_accessTokenKey);
+  Future<String?> getRefreshToken() =>
+      _db.userSettingDao.getSetting(_refreshTokenKey);
 
   Future<void> clearTokens() async {
-    await _storage.delete(key: _accessTokenKey);
-    await _storage.delete(key: _refreshTokenKey);
+    // 4. 使用 DAO 的 delete 方法删除 tokens
+    await _db.userSettingDao.deleteSetting(_accessTokenKey);
+    await _db.userSettingDao.deleteSetting(_refreshTokenKey);
   }
 }

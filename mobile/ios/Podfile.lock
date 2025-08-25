@@ -2,8 +2,6 @@ PODS:
   - Flutter (1.0.0)
   - flutter_isolate (0.0.1):
     - Flutter
-  - flutter_secure_storage (6.0.0):
-    - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -47,7 +45,6 @@ PODS:
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_isolate (from `.symlinks/plugins/flutter_isolate/ios`)
-  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - photo_manager (from `.symlinks/plugins/photo_manager/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -64,8 +61,6 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_isolate:
     :path: ".symlinks/plugins/flutter_isolate/ios"
-  flutter_secure_storage:
-    :path: ".symlinks/plugins/flutter_secure_storage/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   photo_manager:
@@ -82,7 +77,6 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_isolate: ca1a284bbb8dcfeb26c4764794e0206f58ffa984
-  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   photo_manager: 1d80ae07a89a67dfbcae95953a1e5a24af7c3e62
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7

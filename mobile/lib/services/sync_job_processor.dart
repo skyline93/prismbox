@@ -69,7 +69,7 @@ class SyncJobProcessor {
       log('成功处理任务 #${job.id}', name: 'SyncJobProcessor');
     } catch (e, stacktrace) {
       log(
-        '处理任务 #${job.id} 失败',
+        '处理任务 #${job.id} 失败, stacktrace: $stacktrace',
         name: 'SyncJobProcessor',
         error: e,
         stackTrace: stacktrace,

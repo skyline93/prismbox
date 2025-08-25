@@ -1707,6 +1707,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final MediaAssetDao mediaAssetDao = MediaAssetDao(this as AppDatabase);
   late final SyncJobDao syncJobDao = SyncJobDao(this as AppDatabase);
   late final AlbumDao albumDao = AlbumDao(this as AppDatabase);
+  late final UserSettingDao userSettingDao =
+      UserSettingDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2445,4 +2447,7 @@ mixin _$SyncJobDaoMixin on DatabaseAccessor<AppDatabase> {
 }
 mixin _$AlbumDaoMixin on DatabaseAccessor<AppDatabase> {
   $AlbumsTable get albums => attachedDatabase.albums;
+}
+mixin _$UserSettingDaoMixin on DatabaseAccessor<AppDatabase> {
+  $UserSettingsTable get userSettings => attachedDatabase.userSettings;
 }

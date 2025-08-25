@@ -59,7 +59,7 @@ final mediaViewTypeProvider = StateProvider<MediaViewType>(
 );
 
 final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
-  return SecureStorageService();
+  return SecureStorageService(getIt<AppDatabase>());
 });
 
 final syncStateServiceProvider = Provider<SyncStateService>((ref) {

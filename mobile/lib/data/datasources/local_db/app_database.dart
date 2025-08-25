@@ -14,12 +14,13 @@ import 'package:mobile/data/datasources/local_db/tables/albums.dart';
 part 'daos/media_asset_dao.dart';
 part 'daos/sync_job_dao.dart';
 part 'daos/album_dao.dart';
+part 'daos/user_settings_dao.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
   tables: [MediaAssets, SyncJobs, UserSettings, Albums],
-  daos: [MediaAssetDao, SyncJobDao, AlbumDao],
+  daos: [MediaAssetDao, SyncJobDao, AlbumDao, UserSettingDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);

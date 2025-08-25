@@ -16,7 +16,7 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     final db = await connect();
 
-    final secStor = SecureStorageService();
+    final secStor = SecureStorageService(db);
     final dioClient = DioClient(secStor);
 
     final remoteApi = RemoteMediaDataSource(dioClient.dio);
@@ -69,7 +69,7 @@ class BackgroundServiceManager {
 
   static void triggerImmediateSync() {
     Workmanager().registerOneOffTask(
-      "immediateQueueProcessing-${DateTime.now().millisecondsSinceEpoch}",
+      _queueProcessorTask,
       _queueProcessorTask,
       // constraints: Constraints(networkType: NetworkType.connected),
     );

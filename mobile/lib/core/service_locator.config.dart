@@ -49,14 +49,14 @@ extension GetItInjectableX on _i174.GetIt {
       () => databaseModule.database,
       preResolve: true,
     );
-    gh.lazySingleton<_i65.SecureStorageService>(
-        () => _i65.SecureStorageService());
     gh.lazySingleton<_i518.SyncStateService>(
         () => _i518.SyncStateService(gh<_i460.SharedPreferences>()));
-    gh.lazySingleton<_i987.SyncJobManager>(
-        () => _i987.SyncJobManager(gh<_i669.AppDatabase>()));
+    gh.lazySingleton<_i65.SecureStorageService>(
+        () => _i65.SecureStorageService(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i166.AlbumSyncService>(
         () => _i166.AlbumSyncService(gh<_i669.AppDatabase>()));
+    gh.lazySingleton<_i987.SyncJobManager>(
+        () => _i987.SyncJobManager(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i305.DioClient>(
         () => _i305.DioClient(gh<_i65.SecureStorageService>()));
     gh.lazySingleton<_i290.LocalMediaDataSource>(
