@@ -22,4 +22,6 @@ class SyncJobs extends Table {
   TextColumn get networkConstraint => text()
       .map(const EnumNameConverter(NetworkConstraint.values))
       .withDefault(Constant(NetworkConstraint.any.name))();
+
+  TextColumn get payload => text().withDefault(const Constant('{}'))();
 }

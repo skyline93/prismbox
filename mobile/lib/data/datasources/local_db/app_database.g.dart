@@ -733,6 +733,14 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
               defaultValue: Constant(NetworkConstraint.any.name))
           .withConverter<NetworkConstraint>(
               $SyncJobsTable.$converternetworkConstraint);
+  static const VerificationMeta _payloadMeta =
+      const VerificationMeta('payload');
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+      'payload', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('{}'));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -744,7 +752,8 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
         createdAt,
         relatedCloudUuid,
         priority,
-        networkConstraint
+        networkConstraint,
+        payload
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -790,6 +799,10 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
           priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
     }
     context.handle(_networkConstraintMeta, const VerificationResult.success());
+    if (data.containsKey('payload')) {
+      context.handle(_payloadMeta,
+          payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
+    }
     return context;
   }
 
@@ -822,6 +835,8 @@ class $SyncJobsTable extends SyncJobs with TableInfo<$SyncJobsTable, SyncJob> {
       networkConstraint: $SyncJobsTable.$converternetworkConstraint.fromSql(
           attachedDatabase.typeMapping.read(DriftSqlType.string,
               data['${effectivePrefix}network_constraint'])!),
+      payload: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payload'])!,
     );
   }
 
@@ -850,6 +865,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
   final String? relatedCloudUuid;
   final int priority;
   final NetworkConstraint networkConstraint;
+  final String payload;
   const SyncJob(
       {required this.id,
       this.assetId,
@@ -860,7 +876,8 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
       required this.createdAt,
       this.relatedCloudUuid,
       required this.priority,
-      required this.networkConstraint});
+      required this.networkConstraint,
+      required this.payload});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -889,6 +906,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
       map['network_constraint'] = Variable<String>(
           $SyncJobsTable.$converternetworkConstraint.toSql(networkConstraint));
     }
+    map['payload'] = Variable<String>(payload);
     return map;
   }
 
@@ -910,6 +928,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
           : Value(relatedCloudUuid),
       priority: Value(priority),
       networkConstraint: Value(networkConstraint),
+      payload: Value(payload),
     );
   }
 
@@ -930,6 +949,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
       priority: serializer.fromJson<int>(json['priority']),
       networkConstraint: $SyncJobsTable.$converternetworkConstraint
           .fromJson(serializer.fromJson<String>(json['networkConstraint'])),
+      payload: serializer.fromJson<String>(json['payload']),
     );
   }
   @override
@@ -949,6 +969,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
       'priority': serializer.toJson<int>(priority),
       'networkConstraint': serializer.toJson<String>(
           $SyncJobsTable.$converternetworkConstraint.toJson(networkConstraint)),
+      'payload': serializer.toJson<String>(payload),
     };
   }
 
@@ -962,7 +983,8 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
           DateTime? createdAt,
           Value<String?> relatedCloudUuid = const Value.absent(),
           int? priority,
-          NetworkConstraint? networkConstraint}) =>
+          NetworkConstraint? networkConstraint,
+          String? payload}) =>
       SyncJob(
         id: id ?? this.id,
         assetId: assetId.present ? assetId.value : this.assetId,
@@ -977,6 +999,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
             : this.relatedCloudUuid,
         priority: priority ?? this.priority,
         networkConstraint: networkConstraint ?? this.networkConstraint,
+        payload: payload ?? this.payload,
       );
   SyncJob copyWithCompanion(SyncJobsCompanion data) {
     return SyncJob(
@@ -996,6 +1019,7 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
       networkConstraint: data.networkConstraint.present
           ? data.networkConstraint.value
           : this.networkConstraint,
+      payload: data.payload.present ? data.payload.value : this.payload,
     );
   }
 
@@ -1011,14 +1035,25 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
           ..write('createdAt: $createdAt, ')
           ..write('relatedCloudUuid: $relatedCloudUuid, ')
           ..write('priority: $priority, ')
-          ..write('networkConstraint: $networkConstraint')
+          ..write('networkConstraint: $networkConstraint, ')
+          ..write('payload: $payload')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, assetId, jobType, status, attempts,
-      errorMessage, createdAt, relatedCloudUuid, priority, networkConstraint);
+  int get hashCode => Object.hash(
+      id,
+      assetId,
+      jobType,
+      status,
+      attempts,
+      errorMessage,
+      createdAt,
+      relatedCloudUuid,
+      priority,
+      networkConstraint,
+      payload);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1032,7 +1067,8 @@ class SyncJob extends DataClass implements Insertable<SyncJob> {
           other.createdAt == this.createdAt &&
           other.relatedCloudUuid == this.relatedCloudUuid &&
           other.priority == this.priority &&
-          other.networkConstraint == this.networkConstraint);
+          other.networkConstraint == this.networkConstraint &&
+          other.payload == this.payload);
 }
 
 class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
@@ -1046,6 +1082,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
   final Value<String?> relatedCloudUuid;
   final Value<int> priority;
   final Value<NetworkConstraint> networkConstraint;
+  final Value<String> payload;
   const SyncJobsCompanion({
     this.id = const Value.absent(),
     this.assetId = const Value.absent(),
@@ -1057,6 +1094,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
     this.relatedCloudUuid = const Value.absent(),
     this.priority = const Value.absent(),
     this.networkConstraint = const Value.absent(),
+    this.payload = const Value.absent(),
   });
   SyncJobsCompanion.insert({
     this.id = const Value.absent(),
@@ -1069,6 +1107,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
     this.relatedCloudUuid = const Value.absent(),
     this.priority = const Value.absent(),
     this.networkConstraint = const Value.absent(),
+    this.payload = const Value.absent(),
   })  : jobType = Value(jobType),
         status = Value(status);
   static Insertable<SyncJob> custom({
@@ -1082,6 +1121,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
     Expression<String>? relatedCloudUuid,
     Expression<int>? priority,
     Expression<String>? networkConstraint,
+    Expression<String>? payload,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1094,6 +1134,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
       if (relatedCloudUuid != null) 'related_cloud_uuid': relatedCloudUuid,
       if (priority != null) 'priority': priority,
       if (networkConstraint != null) 'network_constraint': networkConstraint,
+      if (payload != null) 'payload': payload,
     });
   }
 
@@ -1107,7 +1148,8 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
       Value<DateTime>? createdAt,
       Value<String?>? relatedCloudUuid,
       Value<int>? priority,
-      Value<NetworkConstraint>? networkConstraint}) {
+      Value<NetworkConstraint>? networkConstraint,
+      Value<String>? payload}) {
     return SyncJobsCompanion(
       id: id ?? this.id,
       assetId: assetId ?? this.assetId,
@@ -1119,6 +1161,7 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
       relatedCloudUuid: relatedCloudUuid ?? this.relatedCloudUuid,
       priority: priority ?? this.priority,
       networkConstraint: networkConstraint ?? this.networkConstraint,
+      payload: payload ?? this.payload,
     );
   }
 
@@ -1159,6 +1202,9 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
           .$converternetworkConstraint
           .toSql(networkConstraint.value));
     }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
     return map;
   }
 
@@ -1174,7 +1220,8 @@ class SyncJobsCompanion extends UpdateCompanion<SyncJob> {
           ..write('createdAt: $createdAt, ')
           ..write('relatedCloudUuid: $relatedCloudUuid, ')
           ..write('priority: $priority, ')
-          ..write('networkConstraint: $networkConstraint')
+          ..write('networkConstraint: $networkConstraint, ')
+          ..write('payload: $payload')
           ..write(')'))
         .toString();
   }
@@ -2007,6 +2054,7 @@ typedef $$SyncJobsTableCreateCompanionBuilder = SyncJobsCompanion Function({
   Value<String?> relatedCloudUuid,
   Value<int> priority,
   Value<NetworkConstraint> networkConstraint,
+  Value<String> payload,
 });
 typedef $$SyncJobsTableUpdateCompanionBuilder = SyncJobsCompanion Function({
   Value<int> id,
@@ -2019,6 +2067,7 @@ typedef $$SyncJobsTableUpdateCompanionBuilder = SyncJobsCompanion Function({
   Value<String?> relatedCloudUuid,
   Value<int> priority,
   Value<NetworkConstraint> networkConstraint,
+  Value<String> payload,
 });
 
 class $$SyncJobsTableTableManager extends RootTableManager<
@@ -2048,6 +2097,7 @@ class $$SyncJobsTableTableManager extends RootTableManager<
             Value<String?> relatedCloudUuid = const Value.absent(),
             Value<int> priority = const Value.absent(),
             Value<NetworkConstraint> networkConstraint = const Value.absent(),
+            Value<String> payload = const Value.absent(),
           }) =>
               SyncJobsCompanion(
             id: id,
@@ -2060,6 +2110,7 @@ class $$SyncJobsTableTableManager extends RootTableManager<
             relatedCloudUuid: relatedCloudUuid,
             priority: priority,
             networkConstraint: networkConstraint,
+            payload: payload,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -2072,6 +2123,7 @@ class $$SyncJobsTableTableManager extends RootTableManager<
             Value<String?> relatedCloudUuid = const Value.absent(),
             Value<int> priority = const Value.absent(),
             Value<NetworkConstraint> networkConstraint = const Value.absent(),
+            Value<String> payload = const Value.absent(),
           }) =>
               SyncJobsCompanion.insert(
             id: id,
@@ -2084,6 +2136,7 @@ class $$SyncJobsTableTableManager extends RootTableManager<
             relatedCloudUuid: relatedCloudUuid,
             priority: priority,
             networkConstraint: networkConstraint,
+            payload: payload,
           ),
         ));
 }
@@ -2141,6 +2194,11 @@ class $$SyncJobsTableFilterComposer
           builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
               column,
               joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get payload => $state.composableBuilder(
+      column: $state.table.payload,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
 
   $$MediaAssetsTableFilterComposer get assetId {
     final $$MediaAssetsTableFilterComposer composer = $state.composerBuilder(
@@ -2200,6 +2258,11 @@ class $$SyncJobsTableOrderingComposer
 
   ColumnOrderings<String> get networkConstraint => $state.composableBuilder(
       column: $state.table.networkConstraint,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get payload => $state.composableBuilder(
+      column: $state.table.payload,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

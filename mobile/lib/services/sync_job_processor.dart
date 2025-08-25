@@ -8,9 +8,8 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/models/media/media_model.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:crypto/crypto.dart';
+import 'dart:convert';
 
 @injectable
 class SyncJobProcessor {
@@ -90,6 +89,15 @@ class SyncJobProcessor {
       throw Exception('任务 #${job.id} (downloadOriginal) 缺少必需的 assetId。');
     }
 
+    // [+] 从 payload 解析参数
+    final payload = jsonDecode(job.payload);
+    final String? cloudUuid = payload['cloudUuid'];
+    final String? destinationPath = payload['destinationPath'];
+
+    if (cloudUuid == null || destinationPath == null) {
+      throw Exception('任务 #${job.id} 的 payload 无效。');
+    }
+
     final asset = await (_mediaAssetDao.select(
       _mediaAssetDao.mediaAssets,
     )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
@@ -104,19 +112,15 @@ class SyncJobProcessor {
     log('开始下载资产: ${asset.cloudUuid}', name: 'SyncJobProcessor');
     final fileBytes = await remoteApi.downloadOriginalMedia(asset.cloudUuid!);
 
-    final documentsDir = await getApplicationDocumentsDirectory();
-    final fileName = asset.fileName ?? asset.cloudUuid!;
-    final filePath = p.join(documentsDir.path, 'media', fileName);
-
-    final file = File(filePath);
+    final file = File(destinationPath);
     await file.parent.create(recursive: true);
     await file.writeAsBytes(fileBytes);
-    log('文件已保存至: $filePath', name: 'SyncJobProcessor');
+    log('文件已保存至: $destinationPath', name: 'SyncJobProcessor');
 
     await _mediaAssetDao.updateAsset(
       MediaAssetsCompanion(
         id: Value(asset.id),
-        filePath: Value(filePath),
+        filePath: Value(destinationPath),
         syncStatus: const Value(SyncStatus.synced),
         updatedAt: Value(DateTime.now()),
       ),
@@ -132,6 +136,10 @@ class SyncJobProcessor {
       throw Exception('任务 #${job.id} (upload) 缺少必需的 assetId。');
     }
 
+    // [+] 从 payload 解析参数
+    final payload = jsonDecode(job.payload);
+    final String filePath = payload['filePath'];
+
     final asset = await (_mediaAssetDao.select(
       _mediaAssetDao.mediaAssets,
     )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
@@ -145,10 +153,9 @@ class SyncJobProcessor {
     //   throw Exception('资产 #${asset.id} 缺少 contentHash，无法上传。');
     // }
 
-    final file = File(asset.filePath!);
+    final file = File(filePath);
     if (!await file.exists()) {
-      // 如果文件不存在，可能已被用户删除，应将任务标记为失败或直接删除
-      log('上传失败：文件 ${asset.filePath} 不存在。', name: 'SyncJobProcessor');
+      log('上传失败：文件 $filePath 不存在。', name: 'SyncJobProcessor');
       await _mediaAssetDao.updateAssetStatus(asset.id, SyncStatus.error);
       await _syncJobDao.deleteJob(job.id);
       return;

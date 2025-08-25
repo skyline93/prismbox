@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'dart:developer';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
@@ -12,6 +13,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/services/background_service_manager.dart';
+import 'package:path_provider/path_provider.dart';
 
 @lazySingleton
 class SyncJobManager {
@@ -56,6 +58,8 @@ class SyncJobManager {
       );
 
       if (isAutoBackupEnabled) {
+        final payload = jsonEncode({'filePath': companion.filePath.value});
+
         await _syncJobDao
             .into(_syncJobDao.syncJobs)
             .insert(
@@ -64,6 +68,7 @@ class SyncJobManager {
                 jobType: JobType.upload,
                 status: JobStatus.pending,
                 priority: Value(1),
+                payload: Value(payload),
               ),
             );
         log('[SyncJobManager] 已为新资产 ${asset.id} 创建上传任务。');
@@ -133,6 +138,15 @@ class SyncJobManager {
     }
 
     try {
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final fileName = entity.fileName ?? entity.cloudUuid!;
+      final destinationPath = p.join(documentsDir.path, 'media', fileName);
+
+      final payload = jsonEncode({
+        'destinationPath': destinationPath,
+        'cloudUuid': entity.cloudUuid,
+      });
+
       await _db.transaction(() async {
         await _mediaAssetDao.updateAssetStatus(
           entity.id,
@@ -147,6 +161,7 @@ class SyncJobManager {
                 jobType: JobType.downloadOriginal,
                 status: JobStatus.pending,
                 priority: Value(10),
+                payload: Value(payload),
               ),
             );
       });
@@ -204,9 +219,30 @@ class SyncJobManager {
       return;
     }
 
+    // [+] 确保文件路径存在
+    if (entity.filePath == null) {
+      log('[SyncJobManager] 资产 ${entity.id} 缺少文件路径，无法创建上传任务。');
+      return;
+    }
+
+    // [+] 准备 payload
+    final payload = jsonEncode({'filePath': entity.filePath});
+
     try {
-      // 2. 调用 DAO 的新方法来原子地更新状态并创建任务
-      await _mediaAssetDao.createUploadJobForExistingAsset(entity.id);
+      await _db.transaction(() async {
+        await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.uploading);
+        await _syncJobDao
+            .into(_syncJobDao.syncJobs)
+            .insert(
+              SyncJobsCompanion.insert(
+                assetId: Value(entity.id),
+                jobType: JobType.upload,
+                status: JobStatus.pending,
+                priority: Value(10),
+                payload: Value(payload), // [+] 存储 payload
+              ),
+            );
+      });
       log('[SyncJobManager] 已为资产 ${entity.id} 创建手动上传任务。');
 
       // 3. 触发后台服务立即处理任务队列
