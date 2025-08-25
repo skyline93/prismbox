@@ -61,6 +61,7 @@ class MediaResponse with _$MediaResponse {
     required String filename,
     @JsonKey(name: 'original_filename') required String originalFilename,
     @JsonKey(name: 'item_type') required String itemType,
+    @JsonKey(name: 'hash') required String hash,
     @JsonKey(name: 'created_at') required String createdAt,
     @JsonKey(name: 'updated_at') required String updatedAt,
     @JsonKey(name: 'media_taken_at') String? mediaTakenAt,

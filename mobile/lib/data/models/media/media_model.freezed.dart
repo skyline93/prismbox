@@ -638,6 +638,8 @@ mixin _$MediaResponse {
   String get originalFilename => throw _privateConstructorUsedError;
   @JsonKey(name: 'item_type')
   String get itemType => throw _privateConstructorUsedError;
+  @JsonKey(name: 'hash')
+  String get hash => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   String get createdAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'updated_at')
@@ -672,6 +674,7 @@ abstract class $MediaResponseCopyWith<$Res> {
       String filename,
       @JsonKey(name: 'original_filename') String originalFilename,
       @JsonKey(name: 'item_type') String itemType,
+      @JsonKey(name: 'hash') String hash,
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
       @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
@@ -699,6 +702,7 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
     Object? filename = null,
     Object? originalFilename = null,
     Object? itemType = null,
+    Object? hash = null,
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? mediaTakenAt = freezed,
@@ -722,6 +726,10 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
       itemType: null == itemType
           ? _value.itemType
           : itemType // ignore: cast_nullable_to_non_nullable
+              as String,
+      hash: null == hash
+          ? _value.hash
+          : hash // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -764,6 +772,7 @@ abstract class _$$MediaResponseImplCopyWith<$Res>
       String filename,
       @JsonKey(name: 'original_filename') String originalFilename,
       @JsonKey(name: 'item_type') String itemType,
+      @JsonKey(name: 'hash') String hash,
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
       @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
@@ -789,6 +798,7 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
     Object? filename = null,
     Object? originalFilename = null,
     Object? itemType = null,
+    Object? hash = null,
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? mediaTakenAt = freezed,
@@ -812,6 +822,10 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
       itemType: null == itemType
           ? _value.itemType
           : itemType // ignore: cast_nullable_to_non_nullable
+              as String,
+      hash: null == hash
+          ? _value.hash
+          : hash // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -849,6 +863,7 @@ class _$MediaResponseImpl implements _MediaResponse {
       required this.filename,
       @JsonKey(name: 'original_filename') required this.originalFilename,
       @JsonKey(name: 'item_type') required this.itemType,
+      @JsonKey(name: 'hash') required this.hash,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       @JsonKey(name: 'media_taken_at') this.mediaTakenAt,
@@ -870,6 +885,9 @@ class _$MediaResponseImpl implements _MediaResponse {
   @JsonKey(name: 'item_type')
   final String itemType;
   @override
+  @JsonKey(name: 'hash')
+  final String hash;
+  @override
   @JsonKey(name: 'created_at')
   final String createdAt;
   @override
@@ -890,7 +908,7 @@ class _$MediaResponseImpl implements _MediaResponse {
 
   @override
   String toString() {
-    return 'MediaResponse(uuid: $uuid, filename: $filename, originalFilename: $originalFilename, itemType: $itemType, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
+    return 'MediaResponse(uuid: $uuid, filename: $filename, originalFilename: $originalFilename, itemType: $itemType, hash: $hash, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
   }
 
   @override
@@ -905,6 +923,7 @@ class _$MediaResponseImpl implements _MediaResponse {
                 other.originalFilename == originalFilename) &&
             (identical(other.itemType, itemType) ||
                 other.itemType == itemType) &&
+            (identical(other.hash, hash) || other.hash == hash) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -927,6 +946,7 @@ class _$MediaResponseImpl implements _MediaResponse {
       filename,
       originalFilename,
       itemType,
+      hash,
       createdAt,
       updatedAt,
       mediaTakenAt,
@@ -957,6 +977,7 @@ abstract class _MediaResponse implements MediaResponse {
           @JsonKey(name: 'original_filename')
           required final String originalFilename,
           @JsonKey(name: 'item_type') required final String itemType,
+          @JsonKey(name: 'hash') required final String hash,
           @JsonKey(name: 'created_at') required final String createdAt,
           @JsonKey(name: 'updated_at') required final String updatedAt,
           @JsonKey(name: 'media_taken_at') final String? mediaTakenAt,
@@ -978,6 +999,9 @@ abstract class _MediaResponse implements MediaResponse {
   @override
   @JsonKey(name: 'item_type')
   String get itemType;
+  @override
+  @JsonKey(name: 'hash')
+  String get hash;
   @override
   @JsonKey(name: 'created_at')
   String get createdAt;

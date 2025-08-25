@@ -220,6 +220,7 @@ class SyncJobProcessor {
                 ? MediaType.image
                 : MediaType.video,
           ),
+          contentHash: Value(media.hash),
           createdAt: Value(DateTime.parse(media.createdAt)),
           updatedAt: Value(DateTime.parse(media.updatedAt)),
           syncStatus: const Value(SyncStatus.cloudOnly),

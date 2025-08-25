@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:developer';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
@@ -36,7 +37,53 @@ class SyncJobManager {
       )..where((tbl) => tbl.localId.equals(asset.id))).getSingleOrNull();
 
       if (existingAsset != null) {
-        // 如果资产已存在，无需任何操作
+        // 如果资产已存在，检查是否需要补录哈希值
+        if (existingAsset.contentHash == null) {
+          final contentHash = await _calculateFileHash(asset);
+          log('[SyncJobManager] 为已存在的资产 ${asset.id} 补录哈希值。');
+
+          final companion = MediaAssetsCompanion(
+            id: Value(existingAsset.id),
+            contentHash: Value(contentHash),
+          );
+
+          // 使用 update 而不是 updateMediaAsset 以避免不必要的 updatedAt 更新
+          await (_mediaAssetDao.update(
+            _mediaAssetDao.mediaAssets,
+          )..where((tbl) => tbl.id.equals(existingAsset.id))).write(companion);
+        }
+        // 资产已处理，无需任何操作
+        return;
+      }
+
+      final contentHash = await _calculateFileHash(asset);
+      if (contentHash == null) {
+        log('[SyncJobManager] 无法计算资产 ${asset.id} 的哈希值!!!!!!');
+        return;
+      }
+
+      // 3. 检查哈希值是否已存在（处理重复文件）
+      final duplicateAsset = await (_mediaAssetDao.select(
+        _mediaAssetDao.mediaAssets,
+      )..where((tbl) => tbl.contentHash.equals(contentHash))).getSingleOrNull();
+
+      if (duplicateAsset != null) {
+        log(
+          '[SyncJobManager] 检测到重复内容 (哈希: $contentHash)，将本地资产 ${asset.id} 关联到现有记录 ${duplicateAsset.id}。',
+        );
+        // 将新的 localId 和 filePath 关联到已存在的记录上
+        var companion = MediaAssetsCompanion(
+          id: Value(duplicateAsset.id),
+          localId: Value(asset.id),
+        );
+
+        if (duplicateAsset.syncStatus == SyncStatus.cloudOnly) {
+          companion = companion.copyWith(syncStatus: Value(SyncStatus.synced));
+        }
+
+        await (_mediaAssetDao.update(
+          _mediaAssetDao.mediaAssets,
+        )..where((tbl) => tbl.id.equals(duplicateAsset.id))).write(companion);
         return;
       }
 
@@ -49,6 +96,7 @@ class SyncJobManager {
 
       final newDbId = await _mediaAssetDao.insertMediaAsset(
         companion.copyWith(
+          contentHash: Value(contentHash),
           syncStatus: Value(
             isAutoBackupEnabled
                 ? SyncStatus.uploading
@@ -79,6 +127,18 @@ class SyncJobManager {
     } catch (e, s) {
       log('[SyncJobManager] 创建上传任务时出错', error: e, stackTrace: s);
     }
+  }
+
+  Future<String?> _calculateFileHash(AssetEntity asset) async {
+    final File? file = await asset.file;
+    if (file == null) {
+      log('[SyncJobManager] 无法获取资产文件: ${asset.id}，跳过。');
+      return null;
+    }
+
+    final stream = file.openRead();
+    final hash = await sha256.bind(stream).first;
+    return hash.toString();
   }
 
   Future<void> handleLocalAssetDeletion(String localId) async {
@@ -198,7 +258,6 @@ class SyncJobManager {
     );
   }
 
-  // [+] 新增方法：为已存在的本地资产创建上传任务
   Future<void> createUploadJobForExistingAsset(
     UnifiedMediaEntity entity,
   ) async {
