@@ -31,6 +31,7 @@ type MediaResponse struct {
 	Filename         string             `json:"filename"`
 	OriginalFilename string             `json:"original_filename"`
 	ItemType         constant.MediaType `json:"item_type"`
+	Hash             string             `json:"hash"`
 	CreatedAt        time.Time          `json:"created_at"`
 	MediaTakenAt     *time.Time         `json:"media_taken_at"`
 	UpdatedAt        time.Time          `json:"updated_at"`
@@ -572,6 +573,7 @@ func (h *MediaHandler) buildMediaResponse(userID uint, media models.Media) *Medi
 		Filename:         media.Filename,
 		OriginalFilename: media.OriginalFilename,
 		ItemType:         media.ItemType,
+		Hash:             media.Hash,
 		CreatedAt:        media.CreatedAt,
 		MediaTakenAt:     media.MediaTakenAt,
 		UpdatedAt:        media.UpdatedAt,
