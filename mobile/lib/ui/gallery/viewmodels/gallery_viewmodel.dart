@@ -80,12 +80,12 @@ class MediaDetailNotifier
   }
 
   Future<void> download() async {
-    final jobManager = ref.read(syncJobManagerProvider);
-    await jobManager.createDownloadJob(arg);
+    final repo = ref.read(mediaRepositoryProvider);
+    await repo.createDownloadJob(arg);
   }
 
   Future<void> upload() async {
-    final jobManager = ref.read(syncJobManagerProvider);
-    await jobManager.createUploadJobForExistingAsset(arg);
+    final repo = ref.read(mediaRepositoryProvider);
+    await repo.createUploadJobForExistingAsset(arg);
   }
 }

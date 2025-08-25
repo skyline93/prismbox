@@ -252,4 +252,9 @@ class MediaRepositoryImpl implements MediaRepository {
         );
     }
   }
+
+  @override
+  Future<void> createUploadJobForExistingAsset(UnifiedMediaEntity entity) {
+    return _syncJobManager.createUploadJobForExistingAsset(entity);
+  }
 }

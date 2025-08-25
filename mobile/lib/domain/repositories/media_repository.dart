@@ -10,6 +10,8 @@ abstract class MediaRepository {
 
   Future<void> createDownloadJob(UnifiedMediaEntity entity);
 
+  Future<void> createUploadJobForExistingAsset(UnifiedMediaEntity entity);
+
   Future<Uint8List> downloadThumbnail(String uuid);
 
   Future<Uint8List> downloadPreview(String uuid);
