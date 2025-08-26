@@ -14,7 +14,6 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/services/background_service_manager.dart';
-import 'package:path_provider/path_provider.dart';
 
 @lazySingleton
 class SyncJobManager {
@@ -198,15 +197,6 @@ class SyncJobManager {
     }
 
     try {
-      final documentsDir = await getApplicationDocumentsDirectory();
-      final fileName = entity.fileName ?? entity.cloudUuid!;
-      final destinationPath = p.join(documentsDir.path, 'media', fileName);
-
-      final payload = jsonEncode({
-        'destinationPath': destinationPath,
-        'cloudUuid': entity.cloudUuid,
-      });
-
       await _db.transaction(() async {
         await _mediaAssetDao.updateAssetStatus(
           entity.id,
@@ -221,7 +211,6 @@ class SyncJobManager {
                 jobType: JobType.downloadOriginal,
                 status: JobStatus.pending,
                 priority: Value(10),
-                payload: Value(payload),
               ),
             );
       });
