@@ -148,12 +148,34 @@ class GalleryPage extends HookConsumerWidget {
             ref.read(mediaDetailProvider(entity).notifier).download();
           },
         );
+      case SyncStatus.downloadFailed:
+        return IconButton(
+          icon: const Icon(
+            Icons.cloud_download_outlined,
+            color: Colors.orangeAccent,
+          ),
+          tooltip: '下载失败，点击重试',
+          onPressed: () {
+            ref.read(mediaDetailProvider(entity).notifier).download();
+          },
+        );
       case SyncStatus.downloading:
         return buildInProgressIndicator('下载中...', icon: Icons.download);
       case SyncStatus.localOnlyNotSelected:
         return IconButton(
           icon: const Icon(Icons.cloud_upload_outlined),
           tooltip: '上传到云端',
+          onPressed: () {
+            ref.read(mediaDetailProvider(entity).notifier).upload();
+          },
+        );
+      case SyncStatus.uploadFailed:
+        return IconButton(
+          icon: const Icon(
+            Icons.cloud_upload_outlined,
+            color: Colors.orangeAccent,
+          ),
+          tooltip: '上传失败，点击重试',
           onPressed: () {
             ref.read(mediaDetailProvider(entity).notifier).upload();
           },

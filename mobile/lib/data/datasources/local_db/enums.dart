@@ -7,6 +7,8 @@ enum SyncStatus {
   cloudOnly,
   downloading,
   error,
+  uploadFailed,
+  downloadFailed,
 }
 
 enum JobType {

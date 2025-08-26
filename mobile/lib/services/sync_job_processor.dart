@@ -76,11 +76,30 @@ class SyncJobProcessor {
         stackTrace: stacktrace,
         level: 1000,
       );
-      await _syncJobDao.updateJobStatus(
-        job.id,
-        JobStatus.failed,
-        errorMessage: e.toString(),
-      );
+
+      if (job.assetId != null) {
+        SyncStatus? newStatus;
+        switch (job.jobType) {
+          case JobType.upload:
+            newStatus = SyncStatus.uploadFailed;
+            break;
+          case JobType.downloadOriginal:
+            newStatus = SyncStatus.downloadFailed;
+            break;
+          default:
+            break;
+        }
+
+        if (newStatus != null) {
+          log(
+            '任务 #${job.id} 失败，将资产 ${job.assetId} 的状态更新为 $newStatus',
+            name: 'SyncJobProcessor',
+          );
+          await _mediaAssetDao.updateAssetStatus(job.assetId!, newStatus);
+        }
+      }
+
+      await _syncJobDao.deleteJob(job.id);
     }
     return true;
   }

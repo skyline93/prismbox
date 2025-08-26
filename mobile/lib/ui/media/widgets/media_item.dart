@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
 import 'package:mobile/ui/media/widgets/media_item_placeholder.dart';
@@ -52,50 +51,9 @@ class MediaItem extends ConsumerWidget {
                 return const MediaItemPlaceholder(icon: Icons.broken_image);
               },
             ),
-            _buildSyncStatusOverlay(entity.syncStatus),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSyncStatusOverlay(SyncStatus status) {
-    Widget? content;
-    switch (status) {
-      case SyncStatus.uploading:
-        content = const Icon(
-          Icons.cloud_upload_outlined,
-          color: Colors.white,
-          size: 20,
-        );
-        break;
-      case SyncStatus.downloading:
-        content = const Icon(
-          Icons.cloud_download_outlined,
-          color: Colors.white,
-          size: 20,
-        );
-        break;
-      case SyncStatus.error:
-        content = const Icon(
-          Icons.error_outline,
-          color: Colors.redAccent,
-          size: 20,
-        );
-        break;
-      case SyncStatus.synced:
-      case SyncStatus.localOnlyNotSelected:
-      case SyncStatus.cloudOnly:
-        break;
-    }
-
-    if (content == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.3)),
-      child: Center(child: content),
     );
   }
 }

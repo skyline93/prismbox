@@ -19,6 +19,16 @@ class SyncStatusIcon extends StatelessWidget {
         return _buildIconWithBackground(Icons.cloud_done, Colors.white);
       case SyncStatus.cloudOnly:
         return _buildIconWithBackground(Icons.cloud_queue, Colors.white);
+      case SyncStatus.uploadFailed:
+        return _buildIconWithBackground(
+          Icons.cloud_upload,
+          Colors.orangeAccent,
+        );
+      case SyncStatus.downloadFailed:
+        return _buildIconWithBackground(
+          Icons.cloud_download,
+          Colors.orangeAccent,
+        );
       case SyncStatus.error:
         return _buildIconWithBackground(Icons.error_outline, Colors.redAccent);
       case SyncStatus.localOnlyNotSelected:
