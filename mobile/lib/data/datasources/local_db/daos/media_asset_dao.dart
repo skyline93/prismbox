@@ -96,50 +96,83 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     required List<MediaAssetsCompanion> toUpsert,
     required List<String> uuidsToDelete,
   }) async {
-    log("开始应用云端变更，执行非破坏性合并...", name: 'MediaAssetDao');
+    log("开始应用云端变更，执行智能合并...", name: 'MediaAssetDao');
     log(
       "待处理: ${toUpsert.length} 条, 待删除: ${uuidsToDelete.length} 条。",
       name: 'MediaAssetDao',
     );
 
-    return transaction(() async {
+    await transaction(() async {
+      // 步骤 1: 处理云端要求删除的记录
       if (uuidsToDelete.isNotEmpty) {
-        await (delete(
+        final count = await (delete(
           mediaAssets,
         )..where((tbl) => tbl.cloudUuid.isIn(uuidsToDelete))).go();
-        log("成功删除了 ${uuidsToDelete.length} 条云端指定的记录。", name: 'MediaAssetDao');
+        log("成功删除了 $count 条云端指定的记录。", name: 'MediaAssetDao');
       }
 
-      if (toUpsert.isNotEmpty) {
-        int newInserts = 0;
-        int skippedUpdates = 0;
+      // 步骤 2: 处理需要新增或更新的记录
+      if (toUpsert.isEmpty) return;
 
-        for (final companion in toUpsert) {
-          final cloudUuidValue = companion.cloudUuid.value;
+      int updatedByHash = 0;
+      int newInserts = 0;
+      int skipped = 0;
 
-          if (cloudUuidValue != null && cloudUuidValue.isNotEmpty) {
-            final existingAsset =
-                await (select(mediaAssets)
-                      ..where((tbl) => tbl.cloudUuid.equals(cloudUuidValue)))
-                    .getSingleOrNull();
+      for (final companion in toUpsert) {
+        final contentHashValue = companion.contentHash.value;
+        final cloudUuidValue = companion.cloudUuid.value;
 
-            if (existingAsset == null) {
-              await into(
-                mediaAssets,
-              ).insert(companion, mode: InsertMode.insertOrIgnore);
-              newInserts++;
-            } else {
-              skippedUpdates++;
-            }
+        // 基本校验
+        if (contentHashValue == null || cloudUuidValue == null) {
+          log(
+            "警告: 跳过一个没有有效 contentHash 或 cloudUuid 的云端资产。",
+            name: 'MediaAssetDao',
+          );
+          skipped++;
+          continue;
+        }
+
+        // 步骤 2.1: 明确地检查 contentHash 是否已存在
+        final existingAssetByHash =
+            await (select(mediaAssets)
+                  ..where((tbl) => tbl.contentHash.equals(contentHashValue)))
+                .getSingleOrNull();
+
+        if (existingAssetByHash != null) {
+          // 决策: 存在匹配的 Hash -> 执行更新
+          // 我们将云端的数据（如 cloudUuid）同步到这条本地记录上，并标记为已同步。
+          await (update(
+            mediaAssets,
+          )..where((tbl) => tbl.contentHash.equals(contentHashValue))).write(
+            companion.copyWith(
+              syncStatus: const Value(SyncStatus.synced),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+          updatedByHash++;
+        } else {
+          // 决策: 不存在匹配的 Hash -> 执行插入
+          // 在插入前，为保险起见，再次检查 cloudUuid 是否已存在，防止意外的重复。
+          final existingAssetByUuid =
+              await (select(mediaAssets)
+                    ..where((tbl) => tbl.cloudUuid.equals(cloudUuidValue)))
+                  .getSingleOrNull();
+
+          if (existingAssetByUuid == null) {
+            // 确认是全新记录，执行插入
+            await into(mediaAssets).insert(companion);
+            newInserts++;
           } else {
-            log("警告: 跳过一个没有有效 cloudUuid 的云端资产。", name: 'MediaAssetDao');
+            // Uuid 已存在，但 Hash 不同。这是异常情况，跳过。
+            skipped++;
           }
         }
-        log(
-          "处理完成：新增 $newInserts 条云端记录，跳过 $skippedUpdates 条已有记录的更新。",
-          name: 'MediaAssetDao',
-        );
       }
+
+      log(
+        "处理完成：通过哈希匹配更新 $updatedByHash 条记录，新增 $newInserts 条云端记录，跳过 $skipped 条记录。",
+        name: 'MediaAssetDao',
+      );
     });
   }
 
