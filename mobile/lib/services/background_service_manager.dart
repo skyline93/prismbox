@@ -1,4 +1,8 @@
 // lib/services/background_service_manager.dart
+import 'dart:ui';
+import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:path_provider_foundation/path_provider_foundation.dart';
 
 import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/services/sync_job_manager.dart';
@@ -14,6 +18,17 @@ const String _queueProcessorTask = "com.album.queueProcessor";
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    final token = RootIsolateToken.instance;
+    if (token == null) {
+      print('[BackgroundService] Fatal: Could not get RootIsolateToken.');
+      return false;
+    }
+    BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+    DartPluginRegistrant.ensureInitialized();
+    if (Platform.isIOS) {
+      PathProviderFoundation.registerWith();
+    }
+
     final db = await connect();
 
     final secStor = SecureStorageService(db);
