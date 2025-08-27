@@ -138,7 +138,8 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
                   ..where((tbl) => tbl.contentHash.equals(contentHashValue)))
                 .getSingleOrNull();
 
-        if (existingAssetByHash != null) {
+        if (existingAssetByHash != null &&
+            existingAssetByHash.syncStatus == SyncStatus.localOnlyNotSelected) {
           // 决策: 存在匹配的 Hash -> 执行更新
           // 我们将云端的数据（如 cloudUuid）同步到这条本地记录上，并标记为已同步。
           await (update(
