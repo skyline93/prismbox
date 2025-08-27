@@ -13,8 +13,12 @@ class MediaAppBar extends HookConsumerWidget implements PreferredSizeWidget {
     final isSelecting = selectionState.isSelecting;
     final selectedCount = selectionState.selectedItems.length;
 
+    // 选择模式下的 AppBar
     if (isSelecting) {
+      // [修改] AppBar 现在是透明的，并且没有操作按钮
       return AppBar(
+        backgroundColor: Colors.transparent, // 背景透明
+        elevation: 0, // 移除阴影
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () {
@@ -22,29 +26,10 @@ class MediaAppBar extends HookConsumerWidget implements PreferredSizeWidget {
           },
         ),
         title: Text('已选择 $selectedCount 项'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: selectedCount > 0
-                ? () {
-                    // TODO: 在这里添加分享逻辑
-                    debugPrint('分享 ${selectedCount} 个项目');
-                  }
-                : null, // 如果没有选中项，则禁用按钮
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: selectedCount > 0
-                ? () {
-                    // TODO: 在这里添加删除逻辑
-                    debugPrint('删除 ${selectedCount} 个项目');
-                  }
-                : null,
-          ),
-        ],
       );
     }
 
+    // 默认状态下的 AppBar
     final viewMode = ref.watch(mediaViewTypeProvider);
 
     return AppBar(
