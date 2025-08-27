@@ -184,7 +184,7 @@ class GalleryPage extends HookConsumerWidget {
         return buildInProgressIndicator('上传中...', icon: Icons.upload);
       case SyncStatus.synced:
         return const IconButton(
-          icon: Icon(Icons.cloud_done),
+          icon: Icon(Icons.cloud_done, color: Colors.white),
           tooltip: '已同步',
           onPressed: null,
         );
