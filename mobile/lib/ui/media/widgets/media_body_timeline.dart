@@ -6,13 +6,14 @@ import 'package:intl/intl.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/providers.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:mobile/ui/media/widgets/media_item.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:mobile/ui/media/widgets/draggable_scrollbar_custom.dart';
 import 'package:collection/collection.dart';
 
-// 视图模型定义 (保持不变)
+// 视图模型定义
 sealed class TimelineItem {}
 
 class DateTitleItem extends TimelineItem {
@@ -32,7 +33,7 @@ class MediaTimelineBody extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Hooks 和数据处理逻辑 (保持不变)
+    // Hooks 和数据处理逻辑
     useAutomaticKeepAlive();
     final itemScrollController = useMemoized(() => ItemScrollController());
     final itemPositionsListener = useMemoized(
@@ -81,14 +82,11 @@ class MediaTimelineBody extends HookConsumerWidget {
       scrollStateListener: (scrolling) {},
       backgroundColor: Theme.of(context).primaryColor,
       heightScrollThumb: 48.0,
-
-      // *** 关键修改 1: 提供自定义的 BoxConstraints ***
-      // 我们设置了最小宽度，但没有设置最大宽度，允许标签容器自由伸展以适应内容
       labelConstraints: const BoxConstraints(minWidth: 90.0, maxHeight: 28.0),
-
       labelTextBuilder: (itemIndex) {
-        if (itemIndex >= indexToDateMap.length || itemIndex < 0)
+        if (itemIndex >= indexToDateMap.length || itemIndex < 0) {
           return const Text('');
+        }
         final fullDate = indexToDateMap[itemIndex] ?? '';
         if (fullDate.isEmpty) return const Text('');
 
@@ -100,14 +98,11 @@ class MediaTimelineBody extends HookConsumerWidget {
 
         return Text(
           monthLabel,
-          // *** 关键修改 2: 强制单行显示 ***
-          // softWrap: false 和 maxLines: 1 确保文本不会换行
           softWrap: false,
           maxLines: 1,
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            // 我们不再需要设置一个过小的字体大小了
           ),
         );
       },
@@ -147,8 +142,8 @@ class MediaTimelineBody extends HookConsumerWidget {
   }
 }
 
-// _TimelineMediaRow Widget (保持不变)
-class _TimelineMediaRow extends StatelessWidget {
+// _TimelineMediaRow Widget: 修改为 ConsumerWidget 以便访问 provider
+class _TimelineMediaRow extends ConsumerWidget {
   final List<UnifiedMediaEntity> mediaForRow;
   final double itemSize;
   final int globalStartIndex;
@@ -162,9 +157,15 @@ class _TimelineMediaRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const crossAxisCount = 4;
     const spacing = 2.0;
+
+    // 监听选择模式，以决定 onTap 的行为
+    final isSelecting = ref.watch(
+      selectionProvider.select((s) => s.isSelecting),
+    );
+
     return Row(
       children: List.generate(crossAxisCount, (index) {
         if (index >= mediaForRow.length) {
@@ -181,9 +182,29 @@ class _TimelineMediaRow extends StatelessWidget {
               entity: mediaEntity,
               index: globalIndex,
               totalCount: sortedFullMedia.length,
-              onTap: () => AutoRouter.of(context).push(
-                GalleryRoute(media: sortedFullMedia, initialIndex: globalIndex),
-              ),
+              onTap: () {
+                final notifier = ref.read(selectionProvider.notifier);
+                if (isSelecting) {
+                  // 在选择模式下，点击是切换选择
+                  notifier.toggleItem(mediaEntity);
+                } else {
+                  // 否则，是打开画廊
+                  AutoRouter.of(context).push(
+                    GalleryRoute(
+                      media: sortedFullMedia,
+                      initialIndex: globalIndex,
+                    ),
+                  );
+                }
+              },
+              // 将长按功能移到这里，用于启动选择模式
+              onLongPress: () {
+                if (!isSelecting) {
+                  ref
+                      .read(selectionProvider.notifier)
+                      .startSelection(mediaEntity);
+                }
+              },
             ),
           ),
         );

@@ -1,6 +1,5 @@
 // lib/providers.dart
 
-import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:mobile/data/datasources/local_db/app_database.dart';
@@ -116,25 +115,72 @@ final albumDetailViewModelProvider = StateNotifierProvider.autoDispose
       );
     });
 
-final thumbnailProvider = FutureProvider.autoDispose
-    .family<Uint8List?, UnifiedMediaEntity>((ref, entity) async {
-      final mediaRepository = ref.watch(mediaRepositoryProvider);
-
-      // 如果实体本身就有关联的 AssetEntity (来自本地相册)，直接用它
-      if (entity.assetEntity != null && entity.localId != null) {
-        return mediaRepository.getThumbnailForLocalAsset(entity.localId!);
-      }
-      // 如果是云端资源
-      if (entity.cloudUuid != null) {
-        return mediaRepository.downloadThumbnail(entity.cloudUuid!);
-      }
-
-      // 无法获取缩略图
-      return null;
-    });
-
 final albumCoverProvider = FutureProvider.autoDispose
     .family<UnifiedMediaEntity?, UnifiedAlbumEntity>((ref, album) {
       final mediaRepository = ref.watch(mediaRepositoryProvider);
       return mediaRepository.getCoverForAlbum(album);
+    });
+
+// --- 新增：选择状态管理的 Provider ---
+class SelectionState {
+  final bool isSelecting;
+  final Set<UnifiedMediaEntity> selectedItems;
+
+  SelectionState({this.isSelecting = false, this.selectedItems = const {}});
+
+  SelectionState copyWith({
+    bool? isSelecting,
+    Set<UnifiedMediaEntity>? selectedItems,
+  }) {
+    return SelectionState(
+      isSelecting: isSelecting ?? this.isSelecting,
+      selectedItems: selectedItems ?? this.selectedItems,
+    );
+  }
+}
+
+class SelectionNotifier extends StateNotifier<SelectionState> {
+  SelectionNotifier() : super(SelectionState());
+
+  /// [正确添加回来] 明确地开始选择模式，通常由长按触发。
+  void startSelection(UnifiedMediaEntity initialItem) {
+    if (state.isSelecting) return;
+    state = SelectionState(isSelecting: true, selectedItems: {initialItem});
+  }
+
+  /// 用于同步来自 drag_select_grid_view 的选择状态。
+  void setSelection(bool isSelecting, Set<UnifiedMediaEntity> items) {
+    state = SelectionState(isSelecting: isSelecting, selectedItems: items);
+  }
+
+  /// 切换单个项目的选中状态，通常由点击触发。
+  void toggleItem(UnifiedMediaEntity item) {
+    // 如果不在选择模式下，则不执行任何操作。
+    // 启动选择必须通过 startSelection 或 setSelection 来完成。
+    if (!state.isSelecting) return;
+
+    final newSelectedItems = Set<UnifiedMediaEntity>.from(state.selectedItems);
+    if (newSelectedItems.contains(item)) {
+      newSelectedItems.remove(item);
+    } else {
+      newSelectedItems.add(item);
+    }
+
+    // 如果取消选择后列表为空，则自动退出选择模式
+    if (newSelectedItems.isEmpty) {
+      state = SelectionState(isSelecting: false, selectedItems: {});
+    } else {
+      state = state.copyWith(selectedItems: newSelectedItems);
+    }
+  }
+
+  /// 清除所有选择并退出选择模式。
+  void clearSelection() {
+    state = SelectionState();
+  }
+}
+
+final selectionProvider =
+    StateNotifierProvider<SelectionNotifier, SelectionState>((ref) {
+      return SelectionNotifier();
     });

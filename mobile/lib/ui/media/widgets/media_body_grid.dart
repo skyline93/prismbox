@@ -1,132 +1,73 @@
-// lib/ui/media/widgets/media_grid_body.dart
-
+// lib/ui/media/widgets/media_body_grid.dart
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/providers.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:mobile/ui/media/widgets/media_item.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:mobile/ui/media/widgets/draggable_scrollbar_custom.dart';
+import 'package:drag_select_grid_view/drag_select_grid_view.dart';
 
 class MediaGridBody extends HookConsumerWidget {
-  const MediaGridBody({super.key, required this.media});
-
   final List<UnifiedMediaEntity> media;
+  const MediaGridBody({super.key, required this.media});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     useAutomaticKeepAlive();
-    final itemScrollController = useMemoized(() => ItemScrollController());
-    final itemPositionsListener = useMemoized(
-      () => ItemPositionsListener.create(),
-    );
+    final sortedMedia = useMemoized(() {
+      return List<UnifiedMediaEntity>.from(media)
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }, [media]);
 
-    // --- 布局计算 ---
-    const crossAxisCount = 4;
-    // 计算每个网格单元的精确尺寸（宽度和高度）
-    final itemSize = MediaQuery.of(context).size.width / crossAxisCount;
-    // 计算总行数
-    final rowCount = (media.length / crossAxisCount).ceil();
+    final controller = useMemoized(() => DragSelectGridViewController());
 
-    return DraggableScrollbar.semicircle(
-      controller: itemScrollController,
-      itemPositionsListener: itemPositionsListener,
-      scrollStateListener: (scrolling) {},
-      backgroundColor: Theme.of(context).primaryColor,
-      heightScrollThumb: 48.0,
-      labelConstraints: const BoxConstraints(minWidth: 90.0, maxHeight: 28.0),
-      labelTextBuilder: (rowIndex) {
-        if (media.isEmpty) {
-          return const Text('');
-        }
-        // 根据行号计算出该行第一个媒体资源的索引
-        final firstItemIndex = (rowIndex * crossAxisCount).clamp(
-          0,
-          media.length - 1,
-        );
-        final currentItem = media[firstItemIndex];
-        final formattedDate = DateFormat.yMMMM(
-          'zh_CN',
-        ).format(currentItem.createdAt);
+    useEffect(() {
+      void listener() {
+        final selection = controller.value;
+        final selectedItems = selection.selectedIndexes
+            .map((i) => sortedMedia[i])
+            .toSet();
 
-        return Text(
-          formattedDate,
-          softWrap: false,
-          maxLines: 1,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        ref
+            .read(selectionProvider.notifier)
+            .setSelection(selection.isSelecting, selectedItems);
+      }
+
+      controller.addListener(listener);
+      return () => controller.removeListener(listener);
+    }, [controller, sortedMedia]);
+
+    return DragSelectGridView(
+      key: const PageStorageKey('media_grid_body_selectable'),
+      // [错误修正] 将参数 `controller` 修改为正确的 `dragSelectController`
+      gridController: controller,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 2.0,
+        mainAxisSpacing: 2.0,
+      ),
+      itemCount: sortedMedia.length,
+      itemBuilder: (context, index, selected) {
+        final entity = sortedMedia[index];
+        return MediaItem(
+          entity: entity,
+          index: index,
+          totalCount: sortedMedia.length,
+          onTap: () {
+            final isSelecting = ref.read(selectionProvider).isSelecting;
+            if (isSelecting) {
+              ref.read(selectionProvider.notifier).toggleItem(entity);
+            } else {
+              AutoRouter.of(
+                context,
+              ).push(GalleryRoute(media: sortedMedia, initialIndex: index));
+            }
+          },
+          // onLongPress 由 DragSelectGridView 自动处理，无需提供
         );
       },
-      child: ScrollablePositionedList.builder(
-        key: const PageStorageKey('media_grid_body'),
-        itemScrollController: itemScrollController,
-        itemPositionsListener: itemPositionsListener,
-        itemCount: rowCount,
-        itemBuilder: (context, rowIndex) {
-          // 关键：为每一行提供固定的高度，确保滚动条计算精确
-          return SizedBox(
-            height: itemSize,
-            child: _MediaRowWidget(
-              rowIndex: rowIndex,
-              media: media,
-              itemSize: itemSize,
-              crossAxisCount: crossAxisCount,
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// 用于构建一行的辅助 Widget，使代码更清晰
-class _MediaRowWidget extends StatelessWidget {
-  final int rowIndex;
-  final List<UnifiedMediaEntity> media;
-  final double itemSize;
-  final int crossAxisCount;
-
-  const _MediaRowWidget({
-    required this.rowIndex,
-    required this.media,
-    required this.itemSize,
-    required this.crossAxisCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const spacing = 2.0;
-
-    return Row(
-      children: List.generate(crossAxisCount, (colIndex) {
-        final index = rowIndex * crossAxisCount + colIndex;
-        if (index >= media.length) {
-          // 如果行末有空位，用空盒子填充
-          return SizedBox(width: itemSize);
-        }
-
-        final mediaEntity = media[index];
-        return SizedBox(
-          width: itemSize,
-          height: itemSize,
-          child: Padding(
-            padding: const EdgeInsets.all(spacing / 2),
-            child: MediaItem(
-              entity: mediaEntity,
-              index: index,
-              totalCount: media.length,
-              onTap: () => AutoRouter.of(
-                context,
-              ).push(GalleryRoute(media: media, initialIndex: index)),
-            ),
-          ),
-        );
-      }),
     );
   }
 }

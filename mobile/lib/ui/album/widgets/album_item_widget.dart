@@ -6,6 +6,7 @@ import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/providers.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
 
 class AlbumItemWidget extends ConsumerWidget {
   const AlbumItemWidget({super.key, required this.album, required this.onTap});
