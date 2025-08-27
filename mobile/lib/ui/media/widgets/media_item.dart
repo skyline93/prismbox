@@ -31,7 +31,7 @@ class MediaItem extends ConsumerWidget {
     final isSelecting = selectionState.isSelecting;
     final isSelected = selectionState.selectedItems.contains(entity);
 
-    const double shrinkPadding = 3.0;
+    const double shrinkPadding = 6.0;
 
     return GestureDetector(
       onTap: onTap,
@@ -56,12 +56,12 @@ class MediaItem extends ConsumerWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 100),
             curve: Curves.easeInOut,
-            padding: isSelecting
+            padding: isSelected
                 ? const EdgeInsets.all(shrinkPadding)
                 : EdgeInsets.zero,
             child: ClipRRect(
-              borderRadius: isSelecting
-                  ? BorderRadius.circular(6.0)
+              borderRadius: isSelected
+                  ? BorderRadius.circular(12.0)
                   : BorderRadius.zero,
               child: Stack(
                 fit: StackFit.expand,
@@ -82,17 +82,6 @@ class MediaItem extends ConsumerWidget {
                       );
                     },
                   ),
-
-                  // 图片上的半透明颜色遮罩
-                  if (isSelecting)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.white.withOpacity(0.2)
-                            : Colors.black.withOpacity(0.4),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -101,14 +90,32 @@ class MediaItem extends ConsumerWidget {
           // 第三层：固定位置的复选框 (只在选择模式下显示)
           if (isSelecting)
             Positioned(
-              top: 4,
-              left: 4,
+              top: 2,
+              left: 2,
               child: isSelected
-                  ? const Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 6)],
+                  // [修改]：当选中时，显示一个由蓝色圆圈和白色勾组成的自定义图标
+                  ? Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        // 使用一个标准的蓝色，接近 Google Blue
+                        color: Color(0xFF4285F4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black54,
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white, // 勾的颜色为纯白色
+                        size: 14, // 图标大小略小于背景圆圈
+                      ),
                     )
+                  // 未选中时的样式保持不变
                   : Container(
                       width: 20,
                       height: 20,
