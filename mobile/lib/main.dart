@@ -6,7 +6,7 @@ import 'package:mobile/routing/app_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mobile/services/background_service_manager.dart';
 import 'package:mobile/core/service_locator.dart';
-// import 'package:mobile/services/local_media_observer.dart';
+import 'package:mobile/services/local_media_observer.dart';
 import 'package:storage_inspector/storage_inspector.dart';
 import 'package:drift_local_storage_inspector/drift_local_storage_inspector.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
@@ -20,7 +20,7 @@ void main() async {
   await configureDependencies();
   await initializeDateFormatting('zh_CN', null);
 
-  // getIt<LocalMediaObserver>().startObserving();
+  getIt<LocalMediaObserver>().startObserving();
 
   await BackgroundServiceManager.initialize();
   await BackgroundServiceManager.registerPeriodicSync();
