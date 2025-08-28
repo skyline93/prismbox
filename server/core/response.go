@@ -1,3 +1,4 @@
+// core/response.go
 package core
 
 import (

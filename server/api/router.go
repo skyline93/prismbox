@@ -1,9 +1,12 @@
+// api/router.go
+
 package api
 
 import (
 	"server/auth"
 	"server/core"
 	"server/handlers"
+	"server/handlers/group"
 	"server/routing"
 	"server/urlsigner"
 	"time"
@@ -69,6 +72,8 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		URLBuilder:       urlBuilder,
 	}
 
+	groupHandler := &group.GroupHandler{DB: db}
+
 	r.GET("/ping", func(ctx *gin.Context) { ctx.JSON(200, "pong") })
 
 	r.GET("/s/:share_token", publicHandler.GetSharedResource)
@@ -110,6 +115,28 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 				albumRoutes.POST("/:uuid/items", albumHandler.AddItemsToAlbum)
 				albumRoutes.DELETE("/:uuid", albumHandler.DeleteAlbum)
 			}
+
+			groupRoutes := protected.Group("/groups")
+			{
+				groupRoutes.POST("", groupHandler.CreateGroup)
+				groupRoutes.GET("", groupHandler.GetMyGroups)
+
+				groupRoutes.POST("/join", groupHandler.JoinGroup)
+
+				groupRoutes.GET("/:uuid", groupHandler.GetGroupDetails)
+				groupRoutes.PUT("/:uuid", groupHandler.UpdateGroup)
+
+				groupRoutes.POST("/:uuid/media", groupHandler.ShareMediaToGroup)
+				groupRoutes.GET("/:uuid/media", groupHandler.GetGroupFeed)
+
+				groupRoutes.GET("/:uuid/members", groupHandler.GetGroupMembers)
+				groupRoutes.POST("/:uuid/members/invite", groupHandler.CreateInvite)
+			}
+
+			protected.POST("/group-media/:groupMediaId/comments", groupHandler.AddComment)
+			protected.GET("/group-media/:groupMediaId/comments", groupHandler.GetComments)
+			protected.DELETE("/group-media/:groupMediaId", groupHandler.RemoveMediaFromGroup)
+			protected.DELETE("/comments/:commentId", groupHandler.DeleteComment)
 
 			shareRoutes := protected.Group("/shares")
 			{

@@ -1,3 +1,5 @@
+// database/database.go
+
 package database
 
 import (
@@ -67,6 +69,12 @@ func ConnectAndMigrate(cfg *core.DBConfig) (*gorm.DB, error) {
 		&models.Album{},
 		&models.RefreshToken{},
 		&models.Share{},
+
+		&models.Group{},
+		&models.GroupMember{},
+		&models.GroupMedia{},
+		&models.GroupInvite{},
+		&models.Comment{},
 	)
 	if err != nil {
 		log.Printf("Failed to auto migrate database: %v", err)

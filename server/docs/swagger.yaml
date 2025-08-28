@@ -110,6 +110,101 @@ definitions:
       message:
         type: string
     type: object
+  group.CommentResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      user:
+        $ref: '#/definitions/group.UserInfo'
+    type: object
+  group.CreateCommentInput:
+    properties:
+      content:
+        type: string
+    required:
+    - content
+    type: object
+  group.CreateGroupInput:
+    properties:
+      description:
+        example: 2025年的家庭旅行
+        type: string
+      name:
+        example: 巴厘岛假日
+        type: string
+    required:
+    - name
+    type: object
+  group.GroupFeedItemResponse:
+    properties:
+      caption:
+        type: string
+      group_media_id:
+        type: integer
+      media_details:
+        $ref: '#/definitions/models.Media'
+      shared_at:
+        type: string
+      uploader:
+        $ref: '#/definitions/group.UploaderInfo'
+    type: object
+  group.GroupMemberResponse:
+    properties:
+      joined_at:
+        type: string
+      role:
+        $ref: '#/definitions/models.GroupRole'
+      user_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  group.JoinGroupInput:
+    properties:
+      code:
+        example: A7B3D9K1
+        type: string
+    required:
+    - code
+    type: object
+  group.ShareMediaInput:
+    properties:
+      caption:
+        type: string
+      media_uuids:
+        items:
+          type: string
+        type: array
+    required:
+    - media_uuids
+    type: object
+  group.UpdateGroupInput:
+    properties:
+      description:
+        example: 2025年最棒的家庭旅行
+        type: string
+      name:
+        example: 巴厘岛假日 updated
+        type: string
+    type: object
+  group.UploaderInfo:
+    properties:
+      user_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  group.UserInfo:
+    properties:
+      user_id:
+        type: integer
+      username:
+        type: string
+    type: object
   handlers.AddItemsToAlbumInput:
     properties:
       media_uuids:
@@ -243,6 +338,72 @@ definitions:
       uuid:
         type: string
     type: object
+  models.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      group_media_id:
+        type: integer
+      id:
+        type: integer
+      updated_at:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: 预加载评论者信息
+      user_id:
+        type: integer
+    type: object
+  models.Group:
+    properties:
+      cover_media_uuid:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      owner_id:
+        type: integer
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  models.GroupInvite:
+    properties:
+      code:
+        type: string
+      created_at:
+        type: string
+      created_by_id:
+        type: integer
+      expires_at:
+        type: string
+      group_id:
+        type: integer
+      id:
+        type: integer
+      usage_limit:
+        description: 0 表示无限制
+        type: integer
+    type: object
+  models.GroupRole:
+    enum:
+    - owner
+    - admin
+    - member
+    type: string
+    x-enum-varnames:
+    - RoleOwner
+    - RoleAdmin
+    - RoleMember
   models.Media:
     properties:
       aperture:
@@ -260,7 +421,6 @@ definitions:
       filename:
         type: string
       hash:
-        description: 联合唯一索引
         type: string
       height:
         type: integer
@@ -287,7 +447,6 @@ definitions:
       updated_at:
         type: string
       user_id:
-        description: '❗ 核心改动: 关联用户'
         type: integer
       uuid:
         type: string
@@ -342,7 +501,7 @@ info:
   description: |-
     一个用于上传、管理和浏览照片与视频的后端服务 API。
     该 API 支持用户认证、多媒体处理、相册管理，并提供标准化的响应格式。
-  title: 媒体管理 API
+  title: Album API
   version: "1.0"
 paths:
   /albums:
@@ -650,6 +809,506 @@ paths:
       summary: 注册新用户
       tags:
       - Authentication
+  /comments/{commentId}:
+    delete:
+      description: 删除一条评论，仅限评论发布者或圈主/管理员操作
+      parameters:
+      - description: 评论的ID
+        in: path
+        name: commentId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 评论删除成功
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 删除评论
+      tags:
+      - Groups
+  /group-media/{groupMediaId}:
+    delete:
+      description: 从圈子中移除一张照片，仅限照片上传者或圈主/管理员操作
+      parameters:
+      - description: 圈子媒体的ID (group_media_id)
+        in: path
+        name: groupMediaId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 照片移除成功
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 从圈子移除照片
+      tags:
+      - Groups
+  /group-media/{groupMediaId}/comments:
+    get:
+      description: 获取圈子中某个媒体的所有评论
+      parameters:
+      - description: 圈子媒体的ID (group_media_id)
+        in: path
+        name: groupMediaId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取评论列表成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/group.CommentResponse'
+                  type: array
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作（非圈子成员）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取评论列表
+      tags:
+      - Groups
+    post:
+      consumes:
+      - application/json
+      description: 为圈子中的某个媒体添加一条评论
+      parameters:
+      - description: 圈子媒体的ID (group_media_id)
+        in: path
+        name: groupMediaId
+        required: true
+        type: integer
+      - description: 评论内容
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/group.CreateCommentInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 评论成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Comment'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作（非圈子成员）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 添加评论
+      tags:
+      - Groups
+  /groups:
+    get:
+      description: 获取当前用户加入的所有圈子列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取圈子列表
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Group'
+                  type: array
+              type: object
+        "400":
+          description: 数据库错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取我加入的圈子列表
+      tags:
+      - Groups
+    post:
+      consumes:
+      - application/json
+      description: 为当前登录的用户创建一个新的圈子，创建者自动成为“所有者”
+      parameters:
+      - description: 圈子信息
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/group.CreateGroupInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 圈子创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Group'
+              type: object
+        "400":
+          description: 请求参数错误或服务器内部错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 创建新圈子
+      tags:
+      - Groups
+  /groups/{uuid}:
+    get:
+      description: 获取单个圈子的详细信息，前提是当前用户是该圈子成员
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取圈子详情
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Group'
+              type: object
+        "400":
+          description: 圈子未找到或无权限
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取圈子详情
+      tags:
+      - Groups
+    put:
+      consumes:
+      - application/json
+      description: 更新圈子名称或描述，仅限圈主或管理员操作
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 要更新的圈子信息
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/group.UpdateGroupInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 圈子信息更新成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Group'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 更新圈子信息
+      tags:
+      - Groups
+  /groups/{uuid}/leave:
+    post:
+      description: 当前用户主动退出一个圈子，圈主无法退出
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功退出圈子
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "400":
+          description: 圈主无法退出
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 退出圈子
+      tags:
+      - Groups
+  /groups/{uuid}/media:
+    get:
+      description: 分页获取圈子中的媒体分享，按分享时间倒序排列
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取Feed流
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/group.GroupFeedItemResponse'
+                  type: array
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作（非圈子成员）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取圈子 Feed 流
+      tags:
+      - Groups
+    post:
+      consumes:
+      - application/json
+      description: 将当前用户拥有的一个或多个媒体分享到指定的圈子
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 要分享的媒体UUID列表和可选的说明
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/group.ShareMediaInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 媒体分享成功
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "400":
+          description: 请求参数错误、照片未找到等
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作（非圈子成员）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 分享媒体到圈子
+      tags:
+      - Groups
+  /groups/{uuid}/members:
+    get:
+      description: 获取指定圈子的所有成员及其角色
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取成员列表
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/group.GroupMemberResponse'
+                  type: array
+              type: object
+        "400":
+          description: 圈子未找到或无权限
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取圈子成员列表
+      tags:
+      - Groups
+  /groups/{uuid}/members/{userId}:
+    delete:
+      description: 从圈子中移除一个成员，仅限圈主或管理员操作
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 要移除的用户ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成员移除成功
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 移除成员
+      tags:
+      - Groups
+  /groups/{uuid}/members/invite:
+    post:
+      description: 为指定的圈子创建一个有时效性的邀请码，仅限圈主或管理员操作。
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 邀请码创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GroupInvite'
+              type: object
+        "400":
+          description: 圈子未找到
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "403":
+          description: 无权限操作
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 创建邀请码
+      tags:
+      - Groups
+  /groups/join:
+    post:
+      consumes:
+      - application/json
+      description: 使用一个有效的邀请码加入对应的圈子
+      parameters:
+      - description: 邀请码
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/group.JoinGroupInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功加入圈子
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Group'
+              type: object
+        "400":
+          description: 邀请码无效、已过期或用户已是成员
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 使用邀请码加入圈子
+      tags:
+      - Groups
   /media:
     get:
       description: 获取当前用户的所有媒体列表（分页）
@@ -1111,3 +1770,5 @@ tags:
   name: Shares
 - description: 获取共享资源
   name: Public
+- description: 圈子与群组管理
+  name: Groups

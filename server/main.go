@@ -10,7 +10,7 @@ import (
 	"server/processing"
 )
 
-// @title           媒体管理 API
+// @title           Album API
 // @version         1.0
 // @description     一个用于上传、管理和浏览照片与视频的后端服务 API。
 // @description     该 API 支持用户认证、多媒体处理、相册管理，并提供标准化的响应格式。
@@ -29,6 +29,9 @@ import (
 
 // @tag.name		Public
 // @tag.description	获取共享资源
+
+// @tag.name		Groups
+// @tag.description	圈子与群组管理
 
 // @host      localhost:8080
 // @BasePath  /api/v1

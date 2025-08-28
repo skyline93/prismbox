@@ -1,3 +1,5 @@
+// models/models.go
+
 package models
 
 import (
@@ -14,32 +16,30 @@ type User struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 	Username  string         `gorm:"type:varchar(100);uniqueIndex" json:"username"`
 	Email     string         `gorm:"type:varchar(255);uniqueIndex" json:"email"`
-	Password  string         `json:"-"` // 从不将密码暴露在JSON中
+	Password  string         `json:"-"`
 }
 
-// RefreshToken 用于存储用户的刷新令牌，这是新添加的模型
 type RefreshToken struct {
 	ID        uint `gorm:"primarykey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 
-	UserID    uint   `gorm:"not null;index"`
-	User      User   // 关联用户
+	UserID    uint `gorm:"not null;index"`
+	User      User
 	Token     string `gorm:"type:varchar(512);uniqueIndex;not null"`
 	ExpiresAt time.Time
 	IsRevoked bool `gorm:"default:false"`
 }
 
-// --- Media 模型升级: 添加 UserID ---
 type Media struct {
 	ID               uint                      `gorm:"primarykey" json:"id"`
 	CreatedAt        time.Time                 `json:"created_at"`
 	UpdatedAt        time.Time                 `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt            `gorm:"index" json:"-"`
 	UUID             string                    `gorm:"type:varchar(36);uniqueIndex" json:"uuid"`
-	UserID           uint                      `gorm:"index" json:"user_id"`                             // ❗ 核心改动: 关联用户
-	Hash             string                    `gorm:"uniqueIndex:idx_user_hash,priority:2" json:"hash"` // 联合唯一索引
+	UserID           uint                      `gorm:"index" json:"user_id"`
+	Hash             string                    `gorm:"uniqueIndex:idx_user_hash,priority:2" json:"hash"`
 	ItemType         constant.MediaType        `json:"item_type"`
 	OriginalFilename string                    `json:"original_filename"`
 	Filename         string                    `json:"filename"`
@@ -59,7 +59,6 @@ type Media struct {
 	ProcessingStatus constant.ProcessingStatus `json:"processing_status"`
 }
 
-// --- Album 模型升级: 添加 UserID ---
 type Album struct {
 	ID             uint           `gorm:"primarykey" json:"id"`
 	CreatedAt      time.Time      `json:"created_at"`
