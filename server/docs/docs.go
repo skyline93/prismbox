@@ -1519,6 +1519,9 @@ const docTemplate = `{
                 "filename": {
                     "type": "string"
                 },
+                "hash": {
+                    "type": "string"
+                },
                 "item_type": {
                     "$ref": "#/definitions/constant.MediaType"
                 },
