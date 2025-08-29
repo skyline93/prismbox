@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:mobile/providers.dart'; // 1. 引入我们创建的全局 Provider
+import 'package:mobile/providers.dart';
 import 'package:mobile/ui/media/pages/media_page.dart';
 import 'package:mobile/ui/album/page/album_page.dart';
 import 'package:mobile/ui/library/page/library_page.dart';
+import 'package:mobile/ui/group/pages/group_list_page.dart';
 
 @RoutePage()
 class NavigationPage extends HookConsumerWidget {
@@ -23,7 +24,7 @@ class NavigationPage extends HookConsumerWidget {
       selectionProvider.select((s) => s.isSelecting),
     );
 
-    final pages = [const MediaPage(), const AlbumPage(), const LibraryPage()];
+    final pages = [const MediaPage(), const GroupListPage(), const AlbumPage(), const LibraryPage()];
 
     return Scaffold(
       body: IndexedStack(index: currentIndex.value, children: pages),
@@ -40,6 +41,11 @@ class NavigationPage extends HookConsumerWidget {
                 NavigationDestination(
                   icon: Icon(Icons.photo_library),
                   label: '照片',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.people_outline),
+                  selectedIcon: Icon(Icons.people),
+                  label: '圈子',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.photo_album),

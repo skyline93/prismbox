@@ -33,6 +33,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AlbumPage(),
       );
     },
+    CreateGroupRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const CreateGroupPage(),
+      );
+    },
     GalleryRoute.name: (routeData) {
       final args = routeData.argsAs<GalleryRouteArgs>();
       return AutoRoutePage<dynamic>(
@@ -41,6 +47,37 @@ abstract class _$AppRouter extends RootStackRouter {
           key: args.key,
           media: args.media,
           initialIndex: args.initialIndex,
+        ),
+      );
+    },
+    GroupFeedRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<GroupFeedRouteArgs>(
+          orElse: () => GroupFeedRouteArgs(uuid: pathParams.getString('uuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupFeedPage(
+          key: args.key,
+          uuid: args.uuid,
+        ),
+      );
+    },
+    GroupListRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const GroupListPage(),
+      );
+    },
+    GroupMembersRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<GroupMembersRouteArgs>(
+          orElse: () =>
+              GroupMembersRouteArgs(uuid: pathParams.getString('uuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupMembersPage(
+          key: args.key,
+          uuid: args.uuid,
         ),
       );
     },
@@ -146,6 +183,20 @@ class AlbumRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [CreateGroupPage]
+class CreateGroupRoute extends PageRouteInfo<void> {
+  const CreateGroupRoute({List<PageRouteInfo>? children})
+      : super(
+          CreateGroupRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'CreateGroupRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [GalleryPage]
 class GalleryRoute extends PageRouteInfo<GalleryRouteArgs> {
   GalleryRoute({
@@ -185,6 +236,98 @@ class GalleryRouteArgs {
   @override
   String toString() {
     return 'GalleryRouteArgs{key: $key, media: $media, initialIndex: $initialIndex}';
+  }
+}
+
+/// generated route for
+/// [GroupFeedPage]
+class GroupFeedRoute extends PageRouteInfo<GroupFeedRouteArgs> {
+  GroupFeedRoute({
+    Key? key,
+    required String uuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupFeedRoute.name,
+          args: GroupFeedRouteArgs(
+            key: key,
+            uuid: uuid,
+          ),
+          rawPathParams: {'uuid': uuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupFeedRoute';
+
+  static const PageInfo<GroupFeedRouteArgs> page =
+      PageInfo<GroupFeedRouteArgs>(name);
+}
+
+class GroupFeedRouteArgs {
+  const GroupFeedRouteArgs({
+    this.key,
+    required this.uuid,
+  });
+
+  final Key? key;
+
+  final String uuid;
+
+  @override
+  String toString() {
+    return 'GroupFeedRouteArgs{key: $key, uuid: $uuid}';
+  }
+}
+
+/// generated route for
+/// [GroupListPage]
+class GroupListRoute extends PageRouteInfo<void> {
+  const GroupListRoute({List<PageRouteInfo>? children})
+      : super(
+          GroupListRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupListRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [GroupMembersPage]
+class GroupMembersRoute extends PageRouteInfo<GroupMembersRouteArgs> {
+  GroupMembersRoute({
+    Key? key,
+    required String uuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupMembersRoute.name,
+          args: GroupMembersRouteArgs(
+            key: key,
+            uuid: uuid,
+          ),
+          rawPathParams: {'uuid': uuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupMembersRoute';
+
+  static const PageInfo<GroupMembersRouteArgs> page =
+      PageInfo<GroupMembersRouteArgs>(name);
+}
+
+class GroupMembersRouteArgs {
+  const GroupMembersRouteArgs({
+    this.key,
+    required this.uuid,
+  });
+
+  final Key? key;
+
+  final String uuid;
+
+  @override
+  String toString() {
+    return 'GroupMembersRouteArgs{key: $key, uuid: $uuid}';
   }
 }
 

@@ -16,8 +16,11 @@ import 'package:shared_preferences/shared_preferences.dart' as _i460;
 import '../data/datasources/local_db/app_database.dart' as _i669;
 import '../data/datasources/local_media_source.dart' as _i290;
 import '../data/datasources/remote_media_source.dart' as _i527;
+import '../data/repositories/group_repository_impl.dart' as _i875;
 import '../data/repositories/media_repository_impl.dart' as _i74;
 import '../data/services/dio_client.dart' as _i305;
+import '../data/services/group_api_service.dart' as _i470;
+import '../domain/repositories/group_repository.dart' as _i957;
 import '../domain/repositories/media_repository.dart' as _i442;
 import '../services/album_sync_service.dart' as _i166;
 import '../services/local_media_observer.dart' as _i538;
@@ -68,12 +71,16 @@ extension GetItInjectableX on _i174.GetIt {
         () => injectableModule.getDio(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(
         () => injectableModule.getRemoteMediaSource(gh<_i361.Dio>()));
+    gh.lazySingleton<_i470.GroupApiService>(
+        () => _i470.GroupApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i442.MediaRepository>(() => _i74.MediaRepositoryImpl(
           cloudDataSource: gh<_i527.RemoteMediaDataSource>(),
           db: gh<_i669.AppDatabase>(),
           syncJobManager: gh<_i987.SyncJobManager>(),
           localMediaSource: gh<_i290.LocalMediaDataSource>(),
         ));
+    gh.lazySingleton<_i957.GroupRepository>(
+        () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
     gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
           db: gh<_i669.AppDatabase>(),
           remoteApi: gh<_i527.RemoteMediaDataSource>(),

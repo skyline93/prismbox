@@ -1,0 +1,52 @@
+// lib/group_providers.dart
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/core/service_locator.dart'; // 导入 getIt 服务定位器
+import 'package:mobile/data/models/group/group_models.dart';
+import 'package:mobile/domain/repositories/group_repository.dart';
+import 'package:mobile/ui/group/viewmodels/group_feed_viewmodel.dart';
+import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
+
+// 1. Repository Provider
+// 职责：作为 Riverpod 与 GetIt/Injectable 依赖注入框架之间的桥梁。
+// 它简单地从 getIt 容器中获取已注册的 GroupRepository 单例，
+// 以便在 Riverpod 的生态系统中使用。
+final groupRepositoryProvider = Provider<GroupRepository>(
+  (ref) => getIt<GroupRepository>(),
+);
+
+// 2. 获取圈子列表的 Provider
+// 类型：FutureProvider
+// 职责：异步获取当前用户加入的所有圈子列表。
+// 适用场景：非常适合一次性获取且不常变化的列表数据。
+// 特性：`.autoDispose` 会在没有任何监听者时自动销毁状态，节省内存。
+final groupListProvider = FutureProvider.autoDispose<List<GroupModel>>((ref) {
+  // `ref.watch` 会监听 `groupRepositoryProvider`。如果未来 repository 有变化，
+  // 这个 Provider 会自动重新执行。
+  final groupRepository = ref.watch(groupRepositoryProvider);
+  return groupRepository.fetchMyGroups();
+});
+
+// 3. 获取圈子成员列表的 Provider
+// 类型：FutureProvider.family
+// 职责：根据传入的圈子 UUID，异步获取该圈子的成员列表。
+// 适用场景：当异步 Provider 需要一个外部参数来执行其逻辑时。
+// 补全：已移除占位符，现在会调用真实的 repository 方法。
+final groupMembersProvider = FutureProvider.autoDispose
+    .family<List<GroupMemberModel>, String>((ref, String groupUuid) {
+  final groupRepository = ref.watch(groupRepositoryProvider);
+  // 核心修正：现在这个调用是有效的，因为它匹配了接口中新定义的方法签名
+  return groupRepository.fetchMembers(groupUuid: groupUuid);
+});
+
+
+// 4. 圈子 Feed 流的 ViewModel Provider
+// 类型：StateNotifierProvider.family
+// 职责：管理特定圈子 Feed 页面的复杂状态，包括分页加载、错误处理和刷新。
+// 适用场景：当状态不是一个简单的 Future，而是需要包含业务逻辑、可以被用户交互改变的复杂对象时。
+final groupFeedViewModelProvider = StateNotifierProvider.autoDispose
+    .family<GroupFeedViewModel, GroupFeedState, String>((ref, String groupUuid) {
+  final groupRepository = ref.watch(groupRepositoryProvider);
+  // 创建 ViewModel 实例，并将所需的 repository 和 groupUuid 传递进去。
+  return GroupFeedViewModel(groupRepository, groupUuid);
+});

@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'auth_state.dart';
+part of 'group_feed_state.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -15,31 +15,32 @@ final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
-mixin _$AuthState {
+mixin _$GroupFeedState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() unauthenticated,
     required TResult Function() loading,
-    required TResult Function() authenticated,
+    required TResult Function(
+            List<GroupMediaModel> mediaItems, bool hasReachedMax)
+        loaded,
     required TResult Function(String message) error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? unauthenticated,
     TResult? Function()? loading,
-    TResult? Function()? authenticated,
+    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult? Function(String message)? error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? unauthenticated,
     TResult Function()? loading,
-    TResult Function()? authenticated,
+    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) =>
@@ -47,27 +48,24 @@ mixin _$AuthState {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Loading value) loading,
-    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Loaded value) loaded,
     required TResult Function(_Error value) error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Loading value)? loading,
-    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Loaded value)? loaded,
     TResult? Function(_Error value)? error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Loading value)? loading,
-    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Loaded value)? loaded,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) =>
@@ -75,15 +73,16 @@ mixin _$AuthState {
 }
 
 /// @nodoc
-abstract class $AuthStateCopyWith<$Res> {
-  factory $AuthStateCopyWith(AuthState value, $Res Function(AuthState) then) =
-      _$AuthStateCopyWithImpl<$Res, AuthState>;
+abstract class $GroupFeedStateCopyWith<$Res> {
+  factory $GroupFeedStateCopyWith(
+          GroupFeedState value, $Res Function(GroupFeedState) then) =
+      _$GroupFeedStateCopyWithImpl<$Res, GroupFeedState>;
 }
 
 /// @nodoc
-class _$AuthStateCopyWithImpl<$Res, $Val extends AuthState>
-    implements $AuthStateCopyWith<$Res> {
-  _$AuthStateCopyWithImpl(this._value, this._then);
+class _$GroupFeedStateCopyWithImpl<$Res, $Val extends GroupFeedState>
+    implements $GroupFeedStateCopyWith<$Res> {
+  _$GroupFeedStateCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -100,7 +99,7 @@ abstract class _$$InitialImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$InitialImplCopyWithImpl<$Res>
-    extends _$AuthStateCopyWithImpl<$Res, _$InitialImpl>
+    extends _$GroupFeedStateCopyWithImpl<$Res, _$InitialImpl>
     implements _$$InitialImplCopyWith<$Res> {
   __$$InitialImplCopyWithImpl(
       _$InitialImpl _value, $Res Function(_$InitialImpl) _then)
@@ -109,18 +108,12 @@ class __$$InitialImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
+class _$InitialImpl implements _Initial {
   const _$InitialImpl();
 
   @override
-  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AuthState.initial()';
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty('type', 'AuthState.initial'));
+  String toString() {
+    return 'GroupFeedState.initial()';
   }
 
   @override
@@ -136,9 +129,10 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() unauthenticated,
     required TResult Function() loading,
-    required TResult Function() authenticated,
+    required TResult Function(
+            List<GroupMediaModel> mediaItems, bool hasReachedMax)
+        loaded,
     required TResult Function(String message) error,
   }) {
     return initial();
@@ -148,9 +142,9 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? unauthenticated,
     TResult? Function()? loading,
-    TResult? Function()? authenticated,
+    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
     return initial?.call();
@@ -160,9 +154,9 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? unauthenticated,
     TResult Function()? loading,
-    TResult Function()? authenticated,
+    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -176,9 +170,8 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Loading value) loading,
-    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Loaded value) loaded,
     required TResult Function(_Error value) error,
   }) {
     return initial(this);
@@ -188,9 +181,8 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Loading value)? loading,
-    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Loaded value)? loaded,
     TResult? Function(_Error value)? error,
   }) {
     return initial?.call(this);
@@ -200,9 +192,8 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Loading value)? loading,
-    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Loaded value)? loaded,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
@@ -213,136 +204,8 @@ class _$InitialImpl with DiagnosticableTreeMixin implements _Initial {
   }
 }
 
-abstract class _Initial implements AuthState {
+abstract class _Initial implements GroupFeedState {
   const factory _Initial() = _$InitialImpl;
-}
-
-/// @nodoc
-abstract class _$$UnauthenticatedImplCopyWith<$Res> {
-  factory _$$UnauthenticatedImplCopyWith(_$UnauthenticatedImpl value,
-          $Res Function(_$UnauthenticatedImpl) then) =
-      __$$UnauthenticatedImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$UnauthenticatedImplCopyWithImpl<$Res>
-    extends _$AuthStateCopyWithImpl<$Res, _$UnauthenticatedImpl>
-    implements _$$UnauthenticatedImplCopyWith<$Res> {
-  __$$UnauthenticatedImplCopyWithImpl(
-      _$UnauthenticatedImpl _value, $Res Function(_$UnauthenticatedImpl) _then)
-      : super(_value, _then);
-}
-
-/// @nodoc
-
-class _$UnauthenticatedImpl
-    with DiagnosticableTreeMixin
-    implements _Unauthenticated {
-  const _$UnauthenticatedImpl();
-
-  @override
-  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AuthState.unauthenticated()';
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty('type', 'AuthState.unauthenticated'));
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$UnauthenticatedImpl);
-  }
-
-  @override
-  int get hashCode => runtimeType.hashCode;
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() unauthenticated,
-    required TResult Function() loading,
-    required TResult Function() authenticated,
-    required TResult Function(String message) error,
-  }) {
-    return unauthenticated();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? unauthenticated,
-    TResult? Function()? loading,
-    TResult? Function()? authenticated,
-    TResult? Function(String message)? error,
-  }) {
-    return unauthenticated?.call();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? unauthenticated,
-    TResult Function()? loading,
-    TResult Function()? authenticated,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (unauthenticated != null) {
-      return unauthenticated();
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Unauthenticated value) unauthenticated,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Authenticated value) authenticated,
-    required TResult Function(_Error value) error,
-  }) {
-    return unauthenticated(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Unauthenticated value)? unauthenticated,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Authenticated value)? authenticated,
-    TResult? Function(_Error value)? error,
-  }) {
-    return unauthenticated?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Unauthenticated value)? unauthenticated,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Authenticated value)? authenticated,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (unauthenticated != null) {
-      return unauthenticated(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _Unauthenticated implements AuthState {
-  const factory _Unauthenticated() = _$UnauthenticatedImpl;
 }
 
 /// @nodoc
@@ -354,7 +217,7 @@ abstract class _$$LoadingImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$LoadingImplCopyWithImpl<$Res>
-    extends _$AuthStateCopyWithImpl<$Res, _$LoadingImpl>
+    extends _$GroupFeedStateCopyWithImpl<$Res, _$LoadingImpl>
     implements _$$LoadingImplCopyWith<$Res> {
   __$$LoadingImplCopyWithImpl(
       _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
@@ -363,18 +226,12 @@ class __$$LoadingImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
+class _$LoadingImpl implements _Loading {
   const _$LoadingImpl();
 
   @override
-  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AuthState.loading()';
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty('type', 'AuthState.loading'));
+  String toString() {
+    return 'GroupFeedState.loading()';
   }
 
   @override
@@ -390,9 +247,10 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() unauthenticated,
     required TResult Function() loading,
-    required TResult Function() authenticated,
+    required TResult Function(
+            List<GroupMediaModel> mediaItems, bool hasReachedMax)
+        loaded,
     required TResult Function(String message) error,
   }) {
     return loading();
@@ -402,9 +260,9 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? unauthenticated,
     TResult? Function()? loading,
-    TResult? Function()? authenticated,
+    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
     return loading?.call();
@@ -414,9 +272,9 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? unauthenticated,
     TResult Function()? loading,
-    TResult Function()? authenticated,
+    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -430,9 +288,8 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Loading value) loading,
-    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Loaded value) loaded,
     required TResult Function(_Error value) error,
   }) {
     return loading(this);
@@ -442,9 +299,8 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Loading value)? loading,
-    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Loaded value)? loaded,
     TResult? Function(_Error value)? error,
   }) {
     return loading?.call(this);
@@ -454,9 +310,8 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Loading value)? loading,
-    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Loaded value)? loaded,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
@@ -467,89 +322,129 @@ class _$LoadingImpl with DiagnosticableTreeMixin implements _Loading {
   }
 }
 
-abstract class _Loading implements AuthState {
+abstract class _Loading implements GroupFeedState {
   const factory _Loading() = _$LoadingImpl;
 }
 
 /// @nodoc
-abstract class _$$AuthenticatedImplCopyWith<$Res> {
-  factory _$$AuthenticatedImplCopyWith(
-          _$AuthenticatedImpl value, $Res Function(_$AuthenticatedImpl) then) =
-      __$$AuthenticatedImplCopyWithImpl<$Res>;
+abstract class _$$LoadedImplCopyWith<$Res> {
+  factory _$$LoadedImplCopyWith(
+          _$LoadedImpl value, $Res Function(_$LoadedImpl) then) =
+      __$$LoadedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<GroupMediaModel> mediaItems, bool hasReachedMax});
 }
 
 /// @nodoc
-class __$$AuthenticatedImplCopyWithImpl<$Res>
-    extends _$AuthStateCopyWithImpl<$Res, _$AuthenticatedImpl>
-    implements _$$AuthenticatedImplCopyWith<$Res> {
-  __$$AuthenticatedImplCopyWithImpl(
-      _$AuthenticatedImpl _value, $Res Function(_$AuthenticatedImpl) _then)
+class __$$LoadedImplCopyWithImpl<$Res>
+    extends _$GroupFeedStateCopyWithImpl<$Res, _$LoadedImpl>
+    implements _$$LoadedImplCopyWith<$Res> {
+  __$$LoadedImplCopyWithImpl(
+      _$LoadedImpl _value, $Res Function(_$LoadedImpl) _then)
       : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? mediaItems = null,
+    Object? hasReachedMax = null,
+  }) {
+    return _then(_$LoadedImpl(
+      mediaItems: null == mediaItems
+          ? _value._mediaItems
+          : mediaItems // ignore: cast_nullable_to_non_nullable
+              as List<GroupMediaModel>,
+      hasReachedMax: null == hasReachedMax
+          ? _value.hasReachedMax
+          : hasReachedMax // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
+  }
 }
 
 /// @nodoc
 
-class _$AuthenticatedImpl
-    with DiagnosticableTreeMixin
-    implements _Authenticated {
-  const _$AuthenticatedImpl();
+class _$LoadedImpl implements _Loaded {
+  const _$LoadedImpl(
+      {required final List<GroupMediaModel> mediaItems,
+      this.hasReachedMax = false})
+      : _mediaItems = mediaItems;
 
+  final List<GroupMediaModel> _mediaItems;
   @override
-  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AuthState.authenticated()';
+  List<GroupMediaModel> get mediaItems {
+    if (_mediaItems is EqualUnmodifiableListView) return _mediaItems;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_mediaItems);
   }
 
   @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty('type', 'AuthState.authenticated'));
+  @JsonKey()
+  final bool hasReachedMax;
+
+  @override
+  String toString() {
+    return 'GroupFeedState.loaded(mediaItems: $mediaItems, hasReachedMax: $hasReachedMax)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$AuthenticatedImpl);
+        (other.runtimeType == runtimeType &&
+            other is _$LoadedImpl &&
+            const DeepCollectionEquality()
+                .equals(other._mediaItems, _mediaItems) &&
+            (identical(other.hasReachedMax, hasReachedMax) ||
+                other.hasReachedMax == hasReachedMax));
   }
 
   @override
-  int get hashCode => runtimeType.hashCode;
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_mediaItems), hasReachedMax);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
+      __$$LoadedImplCopyWithImpl<_$LoadedImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() unauthenticated,
     required TResult Function() loading,
-    required TResult Function() authenticated,
+    required TResult Function(
+            List<GroupMediaModel> mediaItems, bool hasReachedMax)
+        loaded,
     required TResult Function(String message) error,
   }) {
-    return authenticated();
+    return loaded(mediaItems, hasReachedMax);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? unauthenticated,
     TResult? Function()? loading,
-    TResult? Function()? authenticated,
+    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
-    return authenticated?.call();
+    return loaded?.call(mediaItems, hasReachedMax);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? unauthenticated,
     TResult Function()? loading,
-    TResult Function()? authenticated,
+    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
-    if (authenticated != null) {
-      return authenticated();
+    if (loaded != null) {
+      return loaded(mediaItems, hasReachedMax);
     }
     return orElse();
   }
@@ -558,45 +453,50 @@ class _$AuthenticatedImpl
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Loading value) loading,
-    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Loaded value) loaded,
     required TResult Function(_Error value) error,
   }) {
-    return authenticated(this);
+    return loaded(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Loading value)? loading,
-    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Loaded value)? loaded,
     TResult? Function(_Error value)? error,
   }) {
-    return authenticated?.call(this);
+    return loaded?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Loading value)? loading,
-    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Loaded value)? loaded,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
-    if (authenticated != null) {
-      return authenticated(this);
+    if (loaded != null) {
+      return loaded(this);
     }
     return orElse();
   }
 }
 
-abstract class _Authenticated implements AuthState {
-  const factory _Authenticated() = _$AuthenticatedImpl;
+abstract class _Loaded implements GroupFeedState {
+  const factory _Loaded(
+      {required final List<GroupMediaModel> mediaItems,
+      final bool hasReachedMax}) = _$LoadedImpl;
+
+  List<GroupMediaModel> get mediaItems;
+  bool get hasReachedMax;
+  @JsonKey(ignore: true)
+  _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -610,7 +510,7 @@ abstract class _$$ErrorImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$ErrorImplCopyWithImpl<$Res>
-    extends _$AuthStateCopyWithImpl<$Res, _$ErrorImpl>
+    extends _$GroupFeedStateCopyWithImpl<$Res, _$ErrorImpl>
     implements _$$ErrorImplCopyWith<$Res> {
   __$$ErrorImplCopyWithImpl(
       _$ErrorImpl _value, $Res Function(_$ErrorImpl) _then)
@@ -632,23 +532,15 @@ class __$$ErrorImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
+class _$ErrorImpl implements _Error {
   const _$ErrorImpl(this.message);
 
   @override
   final String message;
 
   @override
-  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AuthState.error(message: $message)';
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties
-      ..add(DiagnosticsProperty('type', 'AuthState.error'))
-      ..add(DiagnosticsProperty('message', message));
+  String toString() {
+    return 'GroupFeedState.error(message: $message)';
   }
 
   @override
@@ -672,9 +564,10 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function() unauthenticated,
     required TResult Function() loading,
-    required TResult Function() authenticated,
+    required TResult Function(
+            List<GroupMediaModel> mediaItems, bool hasReachedMax)
+        loaded,
     required TResult Function(String message) error,
   }) {
     return error(message);
@@ -684,9 +577,9 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function()? unauthenticated,
     TResult? Function()? loading,
-    TResult? Function()? authenticated,
+    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
     return error?.call(message);
@@ -696,9 +589,9 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function()? unauthenticated,
     TResult Function()? loading,
-    TResult Function()? authenticated,
+    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -712,9 +605,8 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
-    required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Loading value) loading,
-    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Loaded value) loaded,
     required TResult Function(_Error value) error,
   }) {
     return error(this);
@@ -724,9 +616,8 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
-    TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Loading value)? loading,
-    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Loaded value)? loaded,
     TResult? Function(_Error value)? error,
   }) {
     return error?.call(this);
@@ -736,9 +627,8 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
-    TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Loading value)? loading,
-    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Loaded value)? loaded,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
@@ -749,7 +639,7 @@ class _$ErrorImpl with DiagnosticableTreeMixin implements _Error {
   }
 }
 
-abstract class _Error implements AuthState {
+abstract class _Error implements GroupFeedState {
   const factory _Error(final String message) = _$ErrorImpl;
 
   String get message;
