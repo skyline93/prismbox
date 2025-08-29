@@ -5,6 +5,7 @@ package group
 
 import (
 	"server/core"
+	"server/handlers"
 	"server/models"
 	"strconv"
 
@@ -140,12 +141,24 @@ func (h *GroupHandler) GetGroupFeed(c *gin.Context) {
 		mediaUUIDs[i] = gm.MediaUUID
 	}
 
-	mediaDetailsMap := make(map[string]models.Media)
+	mediaDetailsMap := make(map[string]handlers.MediaResponse)
 	if len(mediaUUIDs) > 0 {
 		var mediaList []models.Media
 		h.DB.Where("uuid IN ?", mediaUUIDs).Find(&mediaList)
 		for _, m := range mediaList {
-			mediaDetailsMap[m.UUID] = m
+			mediaDetailsMap[m.UUID] = handlers.MediaResponse{
+				UUID:             m.UUID,
+				Filename:         m.Filename,
+				OriginalFilename: m.OriginalFilename,
+				ItemType:         m.ItemType,
+				Hash:             m.Hash,
+				CreatedAt:        m.CreatedAt,
+				MediaTakenAt:     m.MediaTakenAt,
+				UpdatedAt:        m.UpdatedAt,
+				ThumbnailURL:     "http://localhost:8080/media/" + m.UUID + "/thumbnail", // TODO
+				PreviewURL:       "http://localhost:8080/media/" + m.UUID + "/preview",
+				DownloadURL:      "http://localhost:8080/media/" + m.UUID + "/original",
+			}
 		}
 	}
 

@@ -1,5 +1,6 @@
 // lib/data/repositories/media_repository_impl.dart
 
+import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
@@ -13,6 +14,7 @@ import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:mobile/data/models/media/media_model.dart';
 
 @LazySingleton(as: MediaRepository)
 class MediaRepositoryImpl implements MediaRepository {
@@ -256,5 +258,28 @@ class MediaRepositoryImpl implements MediaRepository {
   @override
   Future<void> createUploadJobForExistingAsset(UnifiedMediaEntity entity) {
     return _syncJobManager.createUploadJobForExistingAsset(entity);
+  }
+
+ @override
+  Future<List<String>> uploadAssets(List<AssetEntity> assets) async {
+    final List<String> newUuids = [];
+    for (final asset in assets) {
+      final File? file = await asset.file;
+      if (file != null) {
+        // 1. 从 photo_manager 的 AssetType 映射到我们自己的 MediaType
+        final MediaType mediaType;
+        if (asset.type == AssetType.video) {
+          mediaType = MediaType.video;
+        } else {
+          // 将所有非视频类型（如图片、Live Photo）都视为图片
+          mediaType = MediaType.image;
+        }
+
+        // 2. 调用修正后的方法，传入文件和类型
+        final String newUuid = await _cloudDataSource.uploadFile(file, mediaType);
+        newUuids.add(newUuid);
+      }
+    }
+    return newUuids;
   }
 }

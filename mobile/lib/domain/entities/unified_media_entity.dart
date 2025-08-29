@@ -74,6 +74,49 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
     );
   }
 
+ factory UnifiedMediaEntity.fromRemoteMedia(MediaResponse remoteMedia) {
+    /// 一个辅助函数，用于解析后端返回的 "HH:MM:SS.ms" 格式的时长字符串。
+    int _parseDuration(String? durationStr) {
+      if (durationStr == null || durationStr.isEmpty) return 0;
+      try {
+        final parts = durationStr.split(':');
+        if (parts.length != 3) return 0;
+        
+        final secondsAndMs = parts[2].split('.');
+        final hours = int.parse(parts[0]);
+        final minutes = int.parse(parts[1]);
+        final seconds = int.parse(secondsAndMs[0]);
+        
+        return (hours * 3600) + (minutes * 60) + seconds;
+      } catch (e) {
+        // debugPrint("Error parsing duration from remote: $durationStr");
+        return 0;
+      }
+    }
+
+    return UnifiedMediaEntity(
+      // 这个实体并非来自本地数据库，因此 id 设为 0
+      id: 0,
+      // 它完全同步自云端
+      syncStatus: SyncStatus.synced,
+      // 它没有对应的本地资源
+      localId: null,
+      assetEntity: null,
+      filePath: null,
+
+      // 从 remoteMedia 对象映射字段
+      cloudUuid: remoteMedia.uuid,
+      assetType: remoteMedia.itemType == 'VIDEO'
+          ? MediaType.video
+          : MediaType.image,
+      fileName: remoteMedia.filename,
+      width: 0,
+      height: 0,
+      durationSec: _parseDuration("0"),
+      createdAt: DateTime.parse(remoteMedia.createdAt),
+    );
+  }
+
   bool get isVideo => assetType == MediaType.video;
 
   DateTime get creationDate => createdAt;

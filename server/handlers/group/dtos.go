@@ -4,6 +4,7 @@
 package group
 
 import (
+	"server/handlers"
 	"server/models"
 	"time"
 )
@@ -43,11 +44,11 @@ type ShareMediaInput struct {
 
 // GroupFeedItemResponse 定义了圈子 Feed 流中单个媒体项的响应结构
 type GroupFeedItemResponse struct {
-	GroupMediaID uint         `json:"group_media_id"`
-	Caption      string       `json:"caption"`
-	SharedAt     time.Time    `json:"shared_at"`
-	Uploader     UploaderInfo `json:"uploader"`
-	MediaDetails models.Media `json:"media_details"`
+	GroupMediaID uint                   `json:"group_media_id"`
+	Caption      string                 `json:"caption"`
+	SharedAt     time.Time              `json:"shared_at"`
+	Uploader     UploaderInfo           `json:"uploader"`
+	MediaDetails handlers.MediaResponse `json:"media_details"`
 }
 
 // UploaderInfo 嵌套在 GroupFeedItemResponse 中，用于表示上传者信息
@@ -73,4 +74,24 @@ type CommentResponse struct {
 type UserInfo struct {
 	UserID   uint   `json:"user_id"`
 	Username string `json:"username"`
+}
+
+// GroupDetailResponse 定义了获取圈子详情时的响应结构
+// 它包含了圈子的基础信息，并附加了当前请求者的上下文信息（如角色）
+type GroupDetailResponse struct {
+	// 继承自 models.Group 的字段
+	UUID           string    `json:"uuid"`
+	Name           string    `json:"name"`
+	Description    string    `json:"description"`
+	CoverMediaUUID string    `json:"cover_media_uuid"`
+	OwnerID        uint      `json:"owner_id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+
+	// 动态聚合的字段
+	MemberCount int64 `json:"member_count"` // 成员总数
+
+	// 针对当前请求者的上下文信息
+	CurrentUserID   uint             `json:"current_user_id"`
+	CurrentUserRole models.GroupRole `json:"current_user_role"`
 }

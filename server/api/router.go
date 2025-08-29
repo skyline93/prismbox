@@ -122,6 +122,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 				groupRoutes.GET("", groupHandler.GetMyGroups)
 
 				groupRoutes.POST("/join", groupHandler.JoinGroup)
+				groupRoutes.POST("/:uuid/leave", groupHandler.LeaveGroup)
 
 				groupRoutes.GET("/:uuid", groupHandler.GetGroupDetails)
 				groupRoutes.PUT("/:uuid", groupHandler.UpdateGroup)
@@ -131,6 +132,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 
 				groupRoutes.GET("/:uuid/members", groupHandler.GetGroupMembers)
 				groupRoutes.POST("/:uuid/members/invite", groupHandler.CreateInvite)
+				groupRoutes.DELETE("/:uuid/members/:userId", groupHandler.RemoveMember)
 			}
 
 			protected.POST("/group-media/:groupMediaId/comments", groupHandler.AddComment)

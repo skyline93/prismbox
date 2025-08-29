@@ -12,17 +12,19 @@ import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
 import 'package:mobile/ui/media/widgets/media_item_placeholder.dart';
 import 'package:mobile/ui/media/widgets/media_item_thumbnail.dart';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:mobile/routing/app_router.dart';
+
 class GroupMediaGridItem extends ConsumerWidget {
   final GroupMediaModel groupMedia;
-  final VoidCallback? onTap;
+  // final VoidCallback? onTap;
 
   const GroupMediaGridItem({
     super.key,
     required this.groupMedia,
-    this.onTap,
+    // this.onTap,
   });
 
-  // 辅助函数保持不变，它能安全处理 null
   int _parseDuration(String? duration) {
     if (duration == null) return 0;
     try {
@@ -52,8 +54,8 @@ class GroupMediaGridItem extends ConsumerWidget {
       fileName: remoteMedia.filename,
       width: null,
       height: null,
-      durationSec: _parseDuration(null), 
-      
+      durationSec: _parseDuration(null),
+
       createdAt: DateTime.parse(remoteMedia.createdAt),
       assetEntity: null,
     );
@@ -61,7 +63,10 @@ class GroupMediaGridItem extends ConsumerWidget {
     final thumbnailAsyncValue = ref.watch(thumbnailProvider(mediaEntity));
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        // 使用 AutoRouter 导航到 MediaItemPage，并传递完整的 groupMedia 对象
+        AutoRouter.of(context).push(MediaItemRoute(groupMedia: groupMedia));
+      },
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -76,9 +81,7 @@ class GroupMediaGridItem extends ConsumerWidget {
             ),
             error: (error, stackTrace) {
               debugPrint("Group media thumbnail error: $error");
-              return const MediaItemPlaceholder(
-                icon: Icons.broken_image,
-              );
+              return const MediaItemPlaceholder(icon: Icons.broken_image);
             },
           ),
 
@@ -99,10 +102,11 @@ class GroupMediaGridItem extends ConsumerWidget {
               child: Text(
                 groupMedia.uploader.username,
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    shadows: [Shadow(blurRadius: 2, color: Colors.black54)]),
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  shadows: [Shadow(blurRadius: 2, color: Colors.black54)],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

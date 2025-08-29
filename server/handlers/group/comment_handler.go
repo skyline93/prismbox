@@ -4,11 +4,13 @@
 package group
 
 import (
+	"errors"
 	"server/core"
 	"server/models"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // AddComment godoc
@@ -29,6 +31,16 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 	groupMediaID, err := strconv.ParseUint(c.Param("groupMediaId"), 10, 64)
 	if err != nil {
 		core.Error(c, "Invalid group media ID")
+		return
+	}
+
+	var user models.User
+	if err := h.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			core.Error(c, "User not found")
+			return
+		}
+		core.Error(c, "Database error")
 		return
 	}
 
@@ -57,7 +69,17 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 		return
 	}
 
-	core.Success(c, "Comment added successfully", comment)
+	resp := &CommentResponse{
+		ID:        comment.ID,
+		CreatedAt: comment.CreatedAt,
+		Content:   comment.Content,
+		User: UserInfo{
+			UserID:   userID,
+			Username: user.Username,
+		},
+	}
+
+	core.Success(c, "Comment added successfully", resp)
 }
 
 // GetComments godoc
@@ -88,7 +110,7 @@ func (h *GroupHandler) GetComments(c *gin.Context) {
 	var comments []models.Comment
 	err = h.DB.Where("group_media_id = ?", groupMediaID).
 		Preload("User"). // 预加载用户信息
-		Order("created_at asc").
+		Order("created_at desc").
 		Find(&comments).Error
 	if err != nil {
 		core.Error(c, "Failed to fetch comments")

@@ -101,11 +101,11 @@ func (h *GroupHandler) GetMyGroups(c *gin.Context) {
 
 // GetGroupDetails godoc
 // @Summary      获取圈子详情
-// @Description  获取单个圈子的详细信息，前提是当前用户是该圈子成员
+// @Description  获取单个圈子的详细信息，并包含当前用户的角色信息
 // @Tags         Groups
 // @Produce      json
 // @Param        uuid path string true "圈子的UUID" format(uuid)
-// @Success      200  {object}  core.ApiResponse{data=models.Group} "成功获取圈子详情"
+// @Success      200  {object}  core.ApiResponse{data=group.GroupDetailResponse} "成功获取圈子详情"
 // @Failure      400  {object}  core.ApiResponse "圈子未找到或无权限"
 // @Security     BearerAuth
 // @Router       /groups/{uuid} [get]
@@ -113,20 +113,44 @@ func (h *GroupHandler) GetGroupDetails(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	groupUUID := c.Param("uuid")
 
-	// 权限校验：确保用户是圈子成员
-	// Using a helper method from group_helpers.go
-	if _, err := h.getUserRoleInGroup(groupUUID, userID); err != nil {
+	// --- 修改开始 ---
+
+	// 1. 权限校验：确保用户是圈子成员，并获取其角色
+	role, err := h.getUserRoleInGroup(groupUUID, userID)
+	if err != nil {
 		core.Error(c, "Group not found or permission denied")
 		return
 	}
 
+	// 2. 获取圈子基础信息
 	var group models.Group
 	if err := h.DB.First(&group, "uuid = ?", groupUUID).Error; err != nil {
-		core.Error(c, "Group not found") // 理论上不会发生，因为上面已经校验过
+		core.Error(c, "Group not found")
 		return
 	}
 
-	core.Success(c, "Group details retrieved successfully", group)
+	// 3. (可选但推荐) 获取圈子成员总数
+	var memberCount int64
+	h.DB.Model(&models.GroupMember{}).Where("group_id = ?", group.ID).Count(&memberCount)
+
+	// 4. 构建专门的响应 DTO
+	response := GroupDetailResponse{
+		UUID:            group.UUID,
+		Name:            group.Name,
+		Description:     group.Description,
+		CoverMediaUUID:  group.CoverMediaUUID,
+		OwnerID:         group.OwnerID,
+		CreatedAt:       group.CreatedAt,
+		UpdatedAt:       group.UpdatedAt,
+		MemberCount:     memberCount,
+		CurrentUserID:   userID, // 附加上下文信息：当前用户ID
+		CurrentUserRole: role,   // 附加上下文信息：当前用户角色
+	}
+
+	// 5. 返回构建好的 DTO
+	core.Success(c, "Group details retrieved successfully", response)
+
+	// --- 修改结束 ---
 }
 
 // UpdateGroup godoc

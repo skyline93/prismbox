@@ -16,6 +16,9 @@ _$GroupModelImpl _$$GroupModelImplFromJson(Map<String, dynamic> json) =>
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String,
       memberCount: (json['memberCount'] as num?)?.toInt(),
+      currentUserId: (json['current_user_id'] as num?)?.toInt(),
+      currentUserRole:
+          $enumDecodeNullable(_$GroupRoleEnumMap, json['current_user_role']),
     );
 
 Map<String, dynamic> _$$GroupModelImplToJson(_$GroupModelImpl instance) =>
@@ -28,7 +31,15 @@ Map<String, dynamic> _$$GroupModelImplToJson(_$GroupModelImpl instance) =>
       'created_at': instance.createdAt,
       'updated_at': instance.updatedAt,
       'memberCount': instance.memberCount,
+      'current_user_id': instance.currentUserId,
+      'current_user_role': _$GroupRoleEnumMap[instance.currentUserRole],
     };
+
+const _$GroupRoleEnumMap = {
+  GroupRole.owner: 'owner',
+  GroupRole.admin: 'admin',
+  GroupRole.member: 'member',
+};
 
 _$GroupMemberModelImpl _$$GroupMemberModelImplFromJson(
         Map<String, dynamic> json) =>
@@ -50,30 +61,22 @@ Map<String, dynamic> _$$GroupMemberModelImplToJson(
       'joined_at': instance.joinedAt,
     };
 
-const _$GroupRoleEnumMap = {
-  GroupRole.owner: 'owner',
-  GroupRole.admin: 'admin',
-  GroupRole.member: 'member',
-};
-
 _$UploaderInfoImpl _$$UploaderInfoImplFromJson(Map<String, dynamic> json) =>
     _$UploaderInfoImpl(
       userId: (json['user_id'] as num).toInt(),
       username: json['username'] as String,
-      avatarUrl: json['avatar_url'] as String?,
     );
 
 Map<String, dynamic> _$$UploaderInfoImplToJson(_$UploaderInfoImpl instance) =>
     <String, dynamic>{
       'user_id': instance.userId,
       'username': instance.username,
-      'avatar_url': instance.avatarUrl,
     };
 
 _$GroupMediaModelImpl _$$GroupMediaModelImplFromJson(
         Map<String, dynamic> json) =>
     _$GroupMediaModelImpl(
-      id: (json['id'] as num).toInt(),
+      group_media_id: (json['group_media_id'] as num).toInt(),
       caption: json['caption'] as String?,
       sharedAt: json['shared_at'] as String,
       uploader: UploaderInfo.fromJson(json['uploader'] as Map<String, dynamic>),
@@ -84,7 +87,7 @@ _$GroupMediaModelImpl _$$GroupMediaModelImplFromJson(
 Map<String, dynamic> _$$GroupMediaModelImplToJson(
         _$GroupMediaModelImpl instance) =>
     <String, dynamic>{
-      'id': instance.id,
+      'group_media_id': instance.group_media_id,
       'caption': instance.caption,
       'shared_at': instance.sharedAt,
       'uploader': instance.uploader,
@@ -105,4 +108,20 @@ Map<String, dynamic> _$$CommentModelImplToJson(_$CommentModelImpl instance) =>
       'content': instance.content,
       'created_at': instance.createdAt,
       'user': instance.user,
+    };
+
+_$InviteCodeModelImpl _$$InviteCodeModelImplFromJson(
+        Map<String, dynamic> json) =>
+    _$InviteCodeModelImpl(
+      code: json['code'] as String,
+      expiresAt: json['expires_at'] as String?,
+      usageLimit: (json['usage_limit'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$$InviteCodeModelImplToJson(
+        _$InviteCodeModelImpl instance) =>
+    <String, dynamic>{
+      'code': instance.code,
+      'expires_at': instance.expiresAt,
+      'usage_limit': instance.usageLimit,
     };

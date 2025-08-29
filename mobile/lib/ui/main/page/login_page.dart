@@ -12,7 +12,7 @@ class LoginPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final usernameController = useTextEditingController(text: 'admin');
+    final usernameController = useTextEditingController(text: '');
     final passwordController = useTextEditingController(text: '12345678');
     final authState = ref.watch(authNotifierProvider);
 

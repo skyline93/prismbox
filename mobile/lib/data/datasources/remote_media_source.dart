@@ -1,7 +1,9 @@
 // lib/data/datasources/remote_media_source.dart
 
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/services/dio_client.dart';
 
@@ -225,6 +227,48 @@ class RemoteMediaDataSource {
     } catch (e) {
       print('RemoteMediaSource: getChanges 发生异常: $e');
       rethrow;
+    }
+  }
+
+  /// 接收一个 [File] 对象和它的 [MediaType]，将其上传到服务器。
+  ///
+  /// 这个方法适用于交互式上传，它会先计算文件哈希值，再将其与文件内容一起上传。
+  /// 成功后，它会解析服务器的响应并返回新创建媒体的 UUID。
+  Future<String> uploadFile(File file, MediaType itemType) async {
+    try {
+      final fileName = file.path.split('/').last;
+
+      // 1. 读取文件内容为字节流
+      final Uint8List fileBytes = await file.readAsBytes();
+
+      // 2. 计算文件的 SHA256 哈希值
+      final String hash = sha256.convert(fileBytes).toString();
+
+      // 3. 构建 FormData，这次要包含计算出的 hash
+      final formData = FormData.fromMap({
+        // 注意：这里我们使用 MultipartFile.fromBytes，因为我们已经读取了文件内容
+        'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
+        'item_type': itemType == MediaType.image ? 'IMAGE' : 'VIDEO',
+        'original_filename': fileName,
+        'hash': hash, // <-- **关键修改：在这里添加 hash 字段**
+      });
+
+      final response = await _dio.post(
+        '$baseUrl/media/upload',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+
+      // 201 Created 也是 POST 请求成功的常见状态码
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // 假设响应体结构为 { "data": { ... media object ... } }
+        final mediaResponse = MediaResponse.fromJson(response.data['data']);
+        return mediaResponse.uuid;
+      } else {
+        throw Exception('上传媒体失败: ${response.data?['message']}');
+      }
+    } on DioException catch (e) {
+      throw _handleDioError(e, '上传媒体');
     }
   }
 

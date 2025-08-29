@@ -894,7 +894,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取单个圈子的详细信息，前提是当前用户是该圈子成员",
+                "description": "获取单个圈子的详细信息，并包含当前用户的角色信息",
                 "produces": [
                     "application/json"
                 ],
@@ -924,7 +924,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Group"
+                                            "$ref": "#/definitions/group.GroupDetailResponse"
                                         }
                                     }
                                 }
@@ -2279,6 +2279,44 @@ const docTemplate = `{
                 }
             }
         },
+        "group.GroupDetailResponse": {
+            "type": "object",
+            "properties": {
+                "cover_media_uuid": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "current_user_id": {
+                    "description": "针对当前请求者的上下文信息",
+                    "type": "integer"
+                },
+                "current_user_role": {
+                    "$ref": "#/definitions/models.GroupRole"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "member_count": {
+                    "description": "动态聚合的字段",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "description": "继承自 models.Group 的字段",
+                    "type": "string"
+                }
+            }
+        },
         "group.GroupFeedItemResponse": {
             "type": "object",
             "properties": {
@@ -2289,7 +2327,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "media_details": {
-                    "$ref": "#/definitions/models.Media"
+                    "$ref": "#/definitions/handlers.MediaResponse"
                 },
                 "shared_at": {
                     "type": "string"

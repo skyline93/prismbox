@@ -24,7 +24,12 @@ class NavigationPage extends HookConsumerWidget {
       selectionProvider.select((s) => s.isSelecting),
     );
 
-    final pages = [const MediaPage(), const GroupListPage(), const AlbumPage(), const LibraryPage()];
+    final pages = [
+      const MediaPage(),
+      const AlbumPage(),
+      const GroupListPage(),
+      const LibraryPage(),
+    ];
 
     return Scaffold(
       body: IndexedStack(index: currentIndex.value, children: pages),
@@ -43,14 +48,10 @@ class NavigationPage extends HookConsumerWidget {
                   label: '照片',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.people_outline),
-                  selectedIcon: Icon(Icons.people),
-                  label: '圈子',
-                ),
-                NavigationDestination(
                   icon: Icon(Icons.photo_album),
                   label: '相册',
                 ),
+                NavigationDestination(icon: Icon(Icons.people), label: '圈子'),
                 NavigationDestination(icon: Icon(Icons.person), label: '我的'),
               ],
             ),

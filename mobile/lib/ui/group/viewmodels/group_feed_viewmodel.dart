@@ -15,12 +15,7 @@ class GroupFeedViewModel extends StateNotifier<GroupFeedState> {
     fetchFirstPage();
   }
 
-  // 核心修正：添加 refresh 方法
-  // RefreshIndicator 需要一个返回 Future 的 onRefresh 回调。
-  // 这个方法正好满足要求。
   Future<void> refresh() async {
-    // 刷新操作的逻辑与获取第一页的逻辑完全相同。
-    // 我们重置页码、清空列表并获取最新数据。
     await fetchFirstPage();
   }
 

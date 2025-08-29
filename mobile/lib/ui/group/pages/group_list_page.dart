@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/routing/app_router.dart';
-// 假设你的圈子相关Provider在此
 import 'package:mobile/group_providers.dart';
 import 'package:mobile/ui/group/widgets/group_list_item.dart';
 
@@ -32,13 +31,13 @@ class GroupListPage extends ConsumerWidget {
               child: const Text('取消'),
             ),
             FilledButton(
-              onPressed: () {
+              onPressed: () async {
                 final code = codeController.text.trim();
                 if (code.isNotEmpty) {
-                  // TODO: 调用加入圈子的逻辑
-                  // ref.read(groupRepositoryProvider).joinGroup(code);
+                  final groupRepository = ref.read(groupRepositoryProvider);
+                  await groupRepository.joinGroup(code);
+                  // ignore: use_build_context_synchronously
                   Navigator.of(context).pop();
-                  // 可以在成功后刷新列表
                   // ignore: unused_result
                   ref.refresh(groupListProvider);
                 }
@@ -91,7 +90,9 @@ class GroupListPage extends ConsumerWidget {
                 return GroupListItemWidget(
                   group: group,
                   onTap: () {
-                    AutoRouter.of(context).push(GroupFeedRoute(uuid: group.uuid));
+                    AutoRouter.of(
+                      context,
+                    ).push(GroupFeedRoute(uuid: group.uuid));
                   },
                 );
               },

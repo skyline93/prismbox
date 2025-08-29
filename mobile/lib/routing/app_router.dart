@@ -19,6 +19,10 @@ import 'package:mobile/ui/group/pages/group_list_page.dart';
 import 'package:mobile/ui/group/pages/create_group_page.dart';
 import 'package:mobile/ui/group/pages/group_feed_page.dart';
 import 'package:mobile/ui/group/pages/group_members_page.dart';
+import 'package:mobile/ui/media/pages/media_item_page.dart';
+import 'package:mobile/ui/group/pages/group_settings_page.dart';
+
+import 'package:mobile/data/models/group/group_models.dart';
 
 part 'app_router.gr.dart';
 
@@ -45,10 +49,9 @@ class AppRouter extends _$AppRouter {
 
     AutoRoute(page: GroupListRoute.page, path: "/groups"),
     AutoRoute(page: CreateGroupRoute.page, path: "/groups/create"),
-    AutoRoute(
-            page: GroupFeedRoute.page, path: "/groups/:uuid"),
-    AutoRoute(
-            page: GroupMembersRoute.page,
-            path: "/groups/:uuid/members"),
+    AutoRoute(page: GroupFeedRoute.page, path: "/groups/:uuid"),
+    AutoRoute(page: GroupMembersRoute.page, path: "/groups/:uuid/members"),
+    AutoRoute(page: GroupSettingsRoute.page, path: "/groups/:uuid/settings"),
+    AutoRoute(page: MediaItemRoute.page, path: '/media-item'),
   ];
 }

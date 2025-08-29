@@ -30,9 +30,16 @@ mixin _$GroupModel {
   @JsonKey(name: 'created_at')
   String get createdAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'updated_at')
-  String get updatedAt =>
-      throw _privateConstructorUsedError; // 聚合信息，例如成员数，可以由后端提供
-  int? get memberCount => throw _privateConstructorUsedError;
+  String get updatedAt => throw _privateConstructorUsedError; // 聚合信息
+  int? get memberCount => throw _privateConstructorUsedError; // === M4 新增字段 ===
+// 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+  /// 当前登录用户在此圈子中的 User ID
+  @JsonKey(name: 'current_user_id')
+  int? get currentUserId => throw _privateConstructorUsedError;
+
+  /// 当前登录用户在此圈子中的角色
+  @JsonKey(name: 'current_user_role')
+  GroupRole? get currentUserRole => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -54,7 +61,9 @@ abstract class $GroupModelCopyWith<$Res> {
       @JsonKey(name: 'owner_id') int ownerId,
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
-      int? memberCount});
+      int? memberCount,
+      @JsonKey(name: 'current_user_id') int? currentUserId,
+      @JsonKey(name: 'current_user_role') GroupRole? currentUserRole});
 }
 
 /// @nodoc
@@ -78,6 +87,8 @@ class _$GroupModelCopyWithImpl<$Res, $Val extends GroupModel>
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? memberCount = freezed,
+    Object? currentUserId = freezed,
+    Object? currentUserRole = freezed,
   }) {
     return _then(_value.copyWith(
       uuid: null == uuid
@@ -112,6 +123,14 @@ class _$GroupModelCopyWithImpl<$Res, $Val extends GroupModel>
           ? _value.memberCount
           : memberCount // ignore: cast_nullable_to_non_nullable
               as int?,
+      currentUserId: freezed == currentUserId
+          ? _value.currentUserId
+          : currentUserId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      currentUserRole: freezed == currentUserRole
+          ? _value.currentUserRole
+          : currentUserRole // ignore: cast_nullable_to_non_nullable
+              as GroupRole?,
     ) as $Val);
   }
 }
@@ -132,7 +151,9 @@ abstract class _$$GroupModelImplCopyWith<$Res>
       @JsonKey(name: 'owner_id') int ownerId,
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
-      int? memberCount});
+      int? memberCount,
+      @JsonKey(name: 'current_user_id') int? currentUserId,
+      @JsonKey(name: 'current_user_role') GroupRole? currentUserRole});
 }
 
 /// @nodoc
@@ -154,6 +175,8 @@ class __$$GroupModelImplCopyWithImpl<$Res>
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? memberCount = freezed,
+    Object? currentUserId = freezed,
+    Object? currentUserRole = freezed,
   }) {
     return _then(_$GroupModelImpl(
       uuid: null == uuid
@@ -188,6 +211,14 @@ class __$$GroupModelImplCopyWithImpl<$Res>
           ? _value.memberCount
           : memberCount // ignore: cast_nullable_to_non_nullable
               as int?,
+      currentUserId: freezed == currentUserId
+          ? _value.currentUserId
+          : currentUserId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      currentUserRole: freezed == currentUserRole
+          ? _value.currentUserRole
+          : currentUserRole // ignore: cast_nullable_to_non_nullable
+              as GroupRole?,
     ));
   }
 }
@@ -203,7 +234,9 @@ class _$GroupModelImpl implements _GroupModel {
       @JsonKey(name: 'owner_id') required this.ownerId,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
-      this.memberCount});
+      this.memberCount,
+      @JsonKey(name: 'current_user_id') this.currentUserId,
+      @JsonKey(name: 'current_user_role') this.currentUserRole});
 
   factory _$GroupModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$GroupModelImplFromJson(json);
@@ -226,13 +259,24 @@ class _$GroupModelImpl implements _GroupModel {
   @override
   @JsonKey(name: 'updated_at')
   final String updatedAt;
-// 聚合信息，例如成员数，可以由后端提供
+// 聚合信息
   @override
   final int? memberCount;
+// === M4 新增字段 ===
+// 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+  /// 当前登录用户在此圈子中的 User ID
+  @override
+  @JsonKey(name: 'current_user_id')
+  final int? currentUserId;
+
+  /// 当前登录用户在此圈子中的角色
+  @override
+  @JsonKey(name: 'current_user_role')
+  final GroupRole? currentUserRole;
 
   @override
   String toString() {
-    return 'GroupModel(uuid: $uuid, name: $name, description: $description, coverMediaUuid: $coverMediaUuid, ownerId: $ownerId, createdAt: $createdAt, updatedAt: $updatedAt, memberCount: $memberCount)';
+    return 'GroupModel(uuid: $uuid, name: $name, description: $description, coverMediaUuid: $coverMediaUuid, ownerId: $ownerId, createdAt: $createdAt, updatedAt: $updatedAt, memberCount: $memberCount, currentUserId: $currentUserId, currentUserRole: $currentUserRole)';
   }
 
   @override
@@ -252,13 +296,27 @@ class _$GroupModelImpl implements _GroupModel {
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             (identical(other.memberCount, memberCount) ||
-                other.memberCount == memberCount));
+                other.memberCount == memberCount) &&
+            (identical(other.currentUserId, currentUserId) ||
+                other.currentUserId == currentUserId) &&
+            (identical(other.currentUserRole, currentUserRole) ||
+                other.currentUserRole == currentUserRole));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, uuid, name, description,
-      coverMediaUuid, ownerId, createdAt, updatedAt, memberCount);
+  int get hashCode => Object.hash(
+      runtimeType,
+      uuid,
+      name,
+      description,
+      coverMediaUuid,
+      ownerId,
+      createdAt,
+      updatedAt,
+      memberCount,
+      currentUserId,
+      currentUserRole);
 
   @JsonKey(ignore: true)
   @override
@@ -283,7 +341,10 @@ abstract class _GroupModel implements GroupModel {
       @JsonKey(name: 'owner_id') required final int ownerId,
       @JsonKey(name: 'created_at') required final String createdAt,
       @JsonKey(name: 'updated_at') required final String updatedAt,
-      final int? memberCount}) = _$GroupModelImpl;
+      final int? memberCount,
+      @JsonKey(name: 'current_user_id') final int? currentUserId,
+      @JsonKey(name: 'current_user_role')
+      final GroupRole? currentUserRole}) = _$GroupModelImpl;
 
   factory _GroupModel.fromJson(Map<String, dynamic> json) =
       _$GroupModelImpl.fromJson;
@@ -306,8 +367,18 @@ abstract class _GroupModel implements GroupModel {
   @override
   @JsonKey(name: 'updated_at')
   String get updatedAt;
-  @override // 聚合信息，例如成员数，可以由后端提供
+  @override // 聚合信息
   int? get memberCount;
+  @override // === M4 新增字段 ===
+// 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+  /// 当前登录用户在此圈子中的 User ID
+  @JsonKey(name: 'current_user_id')
+  int? get currentUserId;
+  @override
+
+  /// 当前登录用户在此圈子中的角色
+  @JsonKey(name: 'current_user_role')
+  GroupRole? get currentUserRole;
   @override
   @JsonKey(ignore: true)
   _$$GroupModelImplCopyWith<_$GroupModelImpl> get copyWith =>
@@ -558,8 +629,6 @@ mixin _$UploaderInfo {
   @JsonKey(name: 'user_id')
   int get userId => throw _privateConstructorUsedError;
   String get username => throw _privateConstructorUsedError;
-  @JsonKey(name: 'avatar_url')
-  String? get avatarUrl => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -573,10 +642,7 @@ abstract class $UploaderInfoCopyWith<$Res> {
           UploaderInfo value, $Res Function(UploaderInfo) then) =
       _$UploaderInfoCopyWithImpl<$Res, UploaderInfo>;
   @useResult
-  $Res call(
-      {@JsonKey(name: 'user_id') int userId,
-      String username,
-      @JsonKey(name: 'avatar_url') String? avatarUrl});
+  $Res call({@JsonKey(name: 'user_id') int userId, String username});
 }
 
 /// @nodoc
@@ -594,7 +660,6 @@ class _$UploaderInfoCopyWithImpl<$Res, $Val extends UploaderInfo>
   $Res call({
     Object? userId = null,
     Object? username = null,
-    Object? avatarUrl = freezed,
   }) {
     return _then(_value.copyWith(
       userId: null == userId
@@ -605,10 +670,6 @@ class _$UploaderInfoCopyWithImpl<$Res, $Val extends UploaderInfo>
           ? _value.username
           : username // ignore: cast_nullable_to_non_nullable
               as String,
-      avatarUrl: freezed == avatarUrl
-          ? _value.avatarUrl
-          : avatarUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
     ) as $Val);
   }
 }
@@ -621,10 +682,7 @@ abstract class _$$UploaderInfoImplCopyWith<$Res>
       __$$UploaderInfoImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {@JsonKey(name: 'user_id') int userId,
-      String username,
-      @JsonKey(name: 'avatar_url') String? avatarUrl});
+  $Res call({@JsonKey(name: 'user_id') int userId, String username});
 }
 
 /// @nodoc
@@ -640,7 +698,6 @@ class __$$UploaderInfoImplCopyWithImpl<$Res>
   $Res call({
     Object? userId = null,
     Object? username = null,
-    Object? avatarUrl = freezed,
   }) {
     return _then(_$UploaderInfoImpl(
       userId: null == userId
@@ -651,10 +708,6 @@ class __$$UploaderInfoImplCopyWithImpl<$Res>
           ? _value.username
           : username // ignore: cast_nullable_to_non_nullable
               as String,
-      avatarUrl: freezed == avatarUrl
-          ? _value.avatarUrl
-          : avatarUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
     ));
   }
 }
@@ -663,9 +716,7 @@ class __$$UploaderInfoImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$UploaderInfoImpl implements _UploaderInfo {
   const _$UploaderInfoImpl(
-      {@JsonKey(name: 'user_id') required this.userId,
-      required this.username,
-      @JsonKey(name: 'avatar_url') this.avatarUrl});
+      {@JsonKey(name: 'user_id') required this.userId, required this.username});
 
   factory _$UploaderInfoImpl.fromJson(Map<String, dynamic> json) =>
       _$$UploaderInfoImplFromJson(json);
@@ -675,13 +726,10 @@ class _$UploaderInfoImpl implements _UploaderInfo {
   final int userId;
   @override
   final String username;
-  @override
-  @JsonKey(name: 'avatar_url')
-  final String? avatarUrl;
 
   @override
   String toString() {
-    return 'UploaderInfo(userId: $userId, username: $username, avatarUrl: $avatarUrl)';
+    return 'UploaderInfo(userId: $userId, username: $username)';
   }
 
   @override
@@ -691,14 +739,12 @@ class _$UploaderInfoImpl implements _UploaderInfo {
             other is _$UploaderInfoImpl &&
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.username, username) ||
-                other.username == username) &&
-            (identical(other.avatarUrl, avatarUrl) ||
-                other.avatarUrl == avatarUrl));
+                other.username == username));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, userId, username, avatarUrl);
+  int get hashCode => Object.hash(runtimeType, userId, username);
 
   @JsonKey(ignore: true)
   @override
@@ -716,10 +762,8 @@ class _$UploaderInfoImpl implements _UploaderInfo {
 
 abstract class _UploaderInfo implements UploaderInfo {
   const factory _UploaderInfo(
-          {@JsonKey(name: 'user_id') required final int userId,
-          required final String username,
-          @JsonKey(name: 'avatar_url') final String? avatarUrl}) =
-      _$UploaderInfoImpl;
+      {@JsonKey(name: 'user_id') required final int userId,
+      required final String username}) = _$UploaderInfoImpl;
 
   factory _UploaderInfo.fromJson(Map<String, dynamic> json) =
       _$UploaderInfoImpl.fromJson;
@@ -729,9 +773,6 @@ abstract class _UploaderInfo implements UploaderInfo {
   int get userId;
   @override
   String get username;
-  @override
-  @JsonKey(name: 'avatar_url')
-  String? get avatarUrl;
   @override
   @JsonKey(ignore: true)
   _$$UploaderInfoImplCopyWith<_$UploaderInfoImpl> get copyWith =>
@@ -744,13 +785,11 @@ GroupMediaModel _$GroupMediaModelFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$GroupMediaModel {
-// 这是 group_media 表的 id
-  int get id => throw _privateConstructorUsedError;
+  int get group_media_id => throw _privateConstructorUsedError;
   String? get caption => throw _privateConstructorUsedError;
   @JsonKey(name: 'shared_at')
   String get sharedAt => throw _privateConstructorUsedError;
-  UploaderInfo get uploader =>
-      throw _privateConstructorUsedError; // 嵌套完整的媒体详情，复用已有的 MediaResponse
+  UploaderInfo get uploader => throw _privateConstructorUsedError;
   @JsonKey(name: 'media_details')
   MediaResponse get mediaDetails => throw _privateConstructorUsedError;
 
@@ -767,7 +806,7 @@ abstract class $GroupMediaModelCopyWith<$Res> {
       _$GroupMediaModelCopyWithImpl<$Res, GroupMediaModel>;
   @useResult
   $Res call(
-      {int id,
+      {int group_media_id,
       String? caption,
       @JsonKey(name: 'shared_at') String sharedAt,
       UploaderInfo uploader,
@@ -790,16 +829,16 @@ class _$GroupMediaModelCopyWithImpl<$Res, $Val extends GroupMediaModel>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? id = null,
+    Object? group_media_id = null,
     Object? caption = freezed,
     Object? sharedAt = null,
     Object? uploader = null,
     Object? mediaDetails = null,
   }) {
     return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
+      group_media_id: null == group_media_id
+          ? _value.group_media_id
+          : group_media_id // ignore: cast_nullable_to_non_nullable
               as int,
       caption: freezed == caption
           ? _value.caption
@@ -846,7 +885,7 @@ abstract class _$$GroupMediaModelImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {int id,
+      {int group_media_id,
       String? caption,
       @JsonKey(name: 'shared_at') String sharedAt,
       UploaderInfo uploader,
@@ -869,16 +908,16 @@ class __$$GroupMediaModelImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? id = null,
+    Object? group_media_id = null,
     Object? caption = freezed,
     Object? sharedAt = null,
     Object? uploader = null,
     Object? mediaDetails = null,
   }) {
     return _then(_$GroupMediaModelImpl(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
+      group_media_id: null == group_media_id
+          ? _value.group_media_id
+          : group_media_id // ignore: cast_nullable_to_non_nullable
               as int,
       caption: freezed == caption
           ? _value.caption
@@ -904,7 +943,7 @@ class __$$GroupMediaModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$GroupMediaModelImpl implements _GroupMediaModel {
   const _$GroupMediaModelImpl(
-      {required this.id,
+      {required this.group_media_id,
       this.caption,
       @JsonKey(name: 'shared_at') required this.sharedAt,
       required this.uploader,
@@ -913,9 +952,8 @@ class _$GroupMediaModelImpl implements _GroupMediaModel {
   factory _$GroupMediaModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$GroupMediaModelImplFromJson(json);
 
-// 这是 group_media 表的 id
   @override
-  final int id;
+  final int group_media_id;
   @override
   final String? caption;
   @override
@@ -923,14 +961,13 @@ class _$GroupMediaModelImpl implements _GroupMediaModel {
   final String sharedAt;
   @override
   final UploaderInfo uploader;
-// 嵌套完整的媒体详情，复用已有的 MediaResponse
   @override
   @JsonKey(name: 'media_details')
   final MediaResponse mediaDetails;
 
   @override
   String toString() {
-    return 'GroupMediaModel(id: $id, caption: $caption, sharedAt: $sharedAt, uploader: $uploader, mediaDetails: $mediaDetails)';
+    return 'GroupMediaModel(group_media_id: $group_media_id, caption: $caption, sharedAt: $sharedAt, uploader: $uploader, mediaDetails: $mediaDetails)';
   }
 
   @override
@@ -938,7 +975,8 @@ class _$GroupMediaModelImpl implements _GroupMediaModel {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$GroupMediaModelImpl &&
-            (identical(other.id, id) || other.id == id) &&
+            (identical(other.group_media_id, group_media_id) ||
+                other.group_media_id == group_media_id) &&
             (identical(other.caption, caption) || other.caption == caption) &&
             (identical(other.sharedAt, sharedAt) ||
                 other.sharedAt == sharedAt) &&
@@ -950,8 +988,8 @@ class _$GroupMediaModelImpl implements _GroupMediaModel {
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, caption, sharedAt, uploader, mediaDetails);
+  int get hashCode => Object.hash(
+      runtimeType, group_media_id, caption, sharedAt, uploader, mediaDetails);
 
   @JsonKey(ignore: true)
   @override
@@ -970,7 +1008,7 @@ class _$GroupMediaModelImpl implements _GroupMediaModel {
 
 abstract class _GroupMediaModel implements GroupMediaModel {
   const factory _GroupMediaModel(
-      {required final int id,
+      {required final int group_media_id,
       final String? caption,
       @JsonKey(name: 'shared_at') required final String sharedAt,
       required final UploaderInfo uploader,
@@ -980,8 +1018,8 @@ abstract class _GroupMediaModel implements GroupMediaModel {
   factory _GroupMediaModel.fromJson(Map<String, dynamic> json) =
       _$GroupMediaModelImpl.fromJson;
 
-  @override // 这是 group_media 表的 id
-  int get id;
+  @override
+  int get group_media_id;
   @override
   String? get caption;
   @override
@@ -989,7 +1027,7 @@ abstract class _GroupMediaModel implements GroupMediaModel {
   String get sharedAt;
   @override
   UploaderInfo get uploader;
-  @override // 嵌套完整的媒体详情，复用已有的 MediaResponse
+  @override
   @JsonKey(name: 'media_details')
   MediaResponse get mediaDetails;
   @override
@@ -1007,7 +1045,7 @@ mixin _$CommentModel {
   int get id => throw _privateConstructorUsedError;
   String get content => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
-  String get createdAt => throw _privateConstructorUsedError; // 评论发布者的信息
+  String get createdAt => throw _privateConstructorUsedError;
   UploaderInfo get user => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1152,7 +1190,6 @@ class _$CommentModelImpl implements _CommentModel {
   @override
   @JsonKey(name: 'created_at')
   final String createdAt;
-// 评论发布者的信息
   @override
   final UploaderInfo user;
 
@@ -1208,10 +1245,200 @@ abstract class _CommentModel implements CommentModel {
   @override
   @JsonKey(name: 'created_at')
   String get createdAt;
-  @override // 评论发布者的信息
+  @override
   UploaderInfo get user;
   @override
   @JsonKey(ignore: true)
   _$$CommentModelImplCopyWith<_$CommentModelImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+InviteCodeModel _$InviteCodeModelFromJson(Map<String, dynamic> json) {
+  return _InviteCodeModel.fromJson(json);
+}
+
+/// @nodoc
+mixin _$InviteCodeModel {
+  String get code => throw _privateConstructorUsedError;
+  @JsonKey(name: 'expires_at')
+  String? get expiresAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'usage_limit')
+  int? get usageLimit => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $InviteCodeModelCopyWith<InviteCodeModel> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $InviteCodeModelCopyWith<$Res> {
+  factory $InviteCodeModelCopyWith(
+          InviteCodeModel value, $Res Function(InviteCodeModel) then) =
+      _$InviteCodeModelCopyWithImpl<$Res, InviteCodeModel>;
+  @useResult
+  $Res call(
+      {String code,
+      @JsonKey(name: 'expires_at') String? expiresAt,
+      @JsonKey(name: 'usage_limit') int? usageLimit});
+}
+
+/// @nodoc
+class _$InviteCodeModelCopyWithImpl<$Res, $Val extends InviteCodeModel>
+    implements $InviteCodeModelCopyWith<$Res> {
+  _$InviteCodeModelCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? code = null,
+    Object? expiresAt = freezed,
+    Object? usageLimit = freezed,
+  }) {
+    return _then(_value.copyWith(
+      code: null == code
+          ? _value.code
+          : code // ignore: cast_nullable_to_non_nullable
+              as String,
+      expiresAt: freezed == expiresAt
+          ? _value.expiresAt
+          : expiresAt // ignore: cast_nullable_to_non_nullable
+              as String?,
+      usageLimit: freezed == usageLimit
+          ? _value.usageLimit
+          : usageLimit // ignore: cast_nullable_to_non_nullable
+              as int?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$InviteCodeModelImplCopyWith<$Res>
+    implements $InviteCodeModelCopyWith<$Res> {
+  factory _$$InviteCodeModelImplCopyWith(_$InviteCodeModelImpl value,
+          $Res Function(_$InviteCodeModelImpl) then) =
+      __$$InviteCodeModelImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {String code,
+      @JsonKey(name: 'expires_at') String? expiresAt,
+      @JsonKey(name: 'usage_limit') int? usageLimit});
+}
+
+/// @nodoc
+class __$$InviteCodeModelImplCopyWithImpl<$Res>
+    extends _$InviteCodeModelCopyWithImpl<$Res, _$InviteCodeModelImpl>
+    implements _$$InviteCodeModelImplCopyWith<$Res> {
+  __$$InviteCodeModelImplCopyWithImpl(
+      _$InviteCodeModelImpl _value, $Res Function(_$InviteCodeModelImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? code = null,
+    Object? expiresAt = freezed,
+    Object? usageLimit = freezed,
+  }) {
+    return _then(_$InviteCodeModelImpl(
+      code: null == code
+          ? _value.code
+          : code // ignore: cast_nullable_to_non_nullable
+              as String,
+      expiresAt: freezed == expiresAt
+          ? _value.expiresAt
+          : expiresAt // ignore: cast_nullable_to_non_nullable
+              as String?,
+      usageLimit: freezed == usageLimit
+          ? _value.usageLimit
+          : usageLimit // ignore: cast_nullable_to_non_nullable
+              as int?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$InviteCodeModelImpl implements _InviteCodeModel {
+  const _$InviteCodeModelImpl(
+      {required this.code,
+      @JsonKey(name: 'expires_at') this.expiresAt,
+      @JsonKey(name: 'usage_limit') this.usageLimit});
+
+  factory _$InviteCodeModelImpl.fromJson(Map<String, dynamic> json) =>
+      _$$InviteCodeModelImplFromJson(json);
+
+  @override
+  final String code;
+  @override
+  @JsonKey(name: 'expires_at')
+  final String? expiresAt;
+  @override
+  @JsonKey(name: 'usage_limit')
+  final int? usageLimit;
+
+  @override
+  String toString() {
+    return 'InviteCodeModel(code: $code, expiresAt: $expiresAt, usageLimit: $usageLimit)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$InviteCodeModelImpl &&
+            (identical(other.code, code) || other.code == code) &&
+            (identical(other.expiresAt, expiresAt) ||
+                other.expiresAt == expiresAt) &&
+            (identical(other.usageLimit, usageLimit) ||
+                other.usageLimit == usageLimit));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, code, expiresAt, usageLimit);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$InviteCodeModelImplCopyWith<_$InviteCodeModelImpl> get copyWith =>
+      __$$InviteCodeModelImplCopyWithImpl<_$InviteCodeModelImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$InviteCodeModelImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _InviteCodeModel implements InviteCodeModel {
+  const factory _InviteCodeModel(
+          {required final String code,
+          @JsonKey(name: 'expires_at') final String? expiresAt,
+          @JsonKey(name: 'usage_limit') final int? usageLimit}) =
+      _$InviteCodeModelImpl;
+
+  factory _InviteCodeModel.fromJson(Map<String, dynamic> json) =
+      _$InviteCodeModelImpl.fromJson;
+
+  @override
+  String get code;
+  @override
+  @JsonKey(name: 'expires_at')
+  String? get expiresAt;
+  @override
+  @JsonKey(name: 'usage_limit')
+  int? get usageLimit;
+  @override
+  @JsonKey(ignore: true)
+  _$$InviteCodeModelImplCopyWith<_$InviteCodeModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

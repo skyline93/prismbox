@@ -81,6 +81,19 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    GroupSettingsRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<GroupSettingsRouteArgs>(
+          orElse: () =>
+              GroupSettingsRouteArgs(uuid: pathParams.getString('uuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupSettingsPage(
+          key: args.key,
+          uuid: args.uuid,
+        ),
+      );
+    },
     LibraryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -91,6 +104,16 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const LoginPage(),
+      );
+    },
+    MediaItemRoute.name: (routeData) {
+      final args = routeData.argsAs<MediaItemRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: MediaItemPage(
+          key: args.key,
+          groupMedia: args.groupMedia,
+        ),
       );
     },
     MediaRoute.name: (routeData) {
@@ -332,6 +355,45 @@ class GroupMembersRouteArgs {
 }
 
 /// generated route for
+/// [GroupSettingsPage]
+class GroupSettingsRoute extends PageRouteInfo<GroupSettingsRouteArgs> {
+  GroupSettingsRoute({
+    Key? key,
+    required String uuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupSettingsRoute.name,
+          args: GroupSettingsRouteArgs(
+            key: key,
+            uuid: uuid,
+          ),
+          rawPathParams: {'uuid': uuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupSettingsRoute';
+
+  static const PageInfo<GroupSettingsRouteArgs> page =
+      PageInfo<GroupSettingsRouteArgs>(name);
+}
+
+class GroupSettingsRouteArgs {
+  const GroupSettingsRouteArgs({
+    this.key,
+    required this.uuid,
+  });
+
+  final Key? key;
+
+  final String uuid;
+
+  @override
+  String toString() {
+    return 'GroupSettingsRouteArgs{key: $key, uuid: $uuid}';
+  }
+}
+
+/// generated route for
 /// [LibraryPage]
 class LibraryRoute extends PageRouteInfo<void> {
   const LibraryRoute({List<PageRouteInfo>? children})
@@ -357,6 +419,44 @@ class LoginRoute extends PageRouteInfo<void> {
   static const String name = 'LoginRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [MediaItemPage]
+class MediaItemRoute extends PageRouteInfo<MediaItemRouteArgs> {
+  MediaItemRoute({
+    Key? key,
+    required GroupMediaModel groupMedia,
+    List<PageRouteInfo>? children,
+  }) : super(
+          MediaItemRoute.name,
+          args: MediaItemRouteArgs(
+            key: key,
+            groupMedia: groupMedia,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'MediaItemRoute';
+
+  static const PageInfo<MediaItemRouteArgs> page =
+      PageInfo<MediaItemRouteArgs>(name);
+}
+
+class MediaItemRouteArgs {
+  const MediaItemRouteArgs({
+    this.key,
+    required this.groupMedia,
+  });
+
+  final Key? key;
+
+  final GroupMediaModel groupMedia;
+
+  @override
+  String toString() {
+    return 'MediaItemRouteArgs{key: $key, groupMedia: $groupMedia}';
+  }
 }
 
 /// generated route for

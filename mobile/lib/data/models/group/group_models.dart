@@ -1,5 +1,3 @@
-// lib/data/models/group/group_models.dart
-
 // ignore_for_file: invalid_annotation_target
 
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -29,8 +27,16 @@ class GroupModel with _$GroupModel {
     @JsonKey(name: 'owner_id') required int ownerId,
     @JsonKey(name: 'created_at') required String createdAt,
     @JsonKey(name: 'updated_at') required String updatedAt,
-    // 聚合信息，例如成员数，可以由后端提供
+    // 聚合信息
     int? memberCount,
+
+    // === M4 新增字段 ===
+    // 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+    /// 当前登录用户在此圈子中的 User ID
+    @JsonKey(name: 'current_user_id') int? currentUserId,
+
+    /// 当前登录用户在此圈子中的角色
+    @JsonKey(name: 'current_user_role') GroupRole? currentUserRole,
   }) = _GroupModel;
 
   factory GroupModel.fromJson(Map<String, dynamic> json) =>
@@ -58,7 +64,7 @@ class UploaderInfo with _$UploaderInfo {
   const factory UploaderInfo({
     @JsonKey(name: 'user_id') required int userId,
     required String username,
-    @JsonKey(name: 'avatar_url') String? avatarUrl,
+    // @JsonKey(name: 'avatar_url') String? avatarUrl,
   }) = _UploaderInfo;
 
   factory UploaderInfo.fromJson(Map<String, dynamic> json) =>
@@ -69,12 +75,10 @@ class UploaderInfo with _$UploaderInfo {
 @freezed
 class GroupMediaModel with _$GroupMediaModel {
   const factory GroupMediaModel({
-    // 这是 group_media 表的 id
-    required int id,
+    required int group_media_id,
     String? caption,
     @JsonKey(name: 'shared_at') required String sharedAt,
     required UploaderInfo uploader,
-    // 嵌套完整的媒体详情，复用已有的 MediaResponse
     @JsonKey(name: 'media_details') required MediaResponse mediaDetails,
   }) = _GroupMediaModel;
 
@@ -89,10 +93,24 @@ class CommentModel with _$CommentModel {
     required int id,
     required String content,
     @JsonKey(name: 'created_at') required String createdAt,
-    // 评论发布者的信息
     required UploaderInfo user,
   }) = _CommentModel;
 
   factory CommentModel.fromJson(Map<String, dynamic> json) =>
       _$CommentModelFromJson(json);
+}
+
+// === M4 新增模型 ===
+
+/// 邀请码模型
+@freezed
+class InviteCodeModel with _$InviteCodeModel {
+  const factory InviteCodeModel({
+    required String code,
+    @JsonKey(name: 'expires_at') String? expiresAt,
+    @JsonKey(name: 'usage_limit') int? usageLimit,
+  }) = _InviteCodeModel;
+
+  factory InviteCodeModel.fromJson(Map<String, dynamic> json) =>
+      _$InviteCodeModelFromJson(json);
 }

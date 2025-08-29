@@ -139,6 +139,32 @@ definitions:
     required:
     - name
     type: object
+  group.GroupDetailResponse:
+    properties:
+      cover_media_uuid:
+        type: string
+      created_at:
+        type: string
+      current_user_id:
+        description: 针对当前请求者的上下文信息
+        type: integer
+      current_user_role:
+        $ref: '#/definitions/models.GroupRole'
+      description:
+        type: string
+      member_count:
+        description: 动态聚合的字段
+        type: integer
+      name:
+        type: string
+      owner_id:
+        type: integer
+      updated_at:
+        type: string
+      uuid:
+        description: 继承自 models.Group 的字段
+        type: string
+    type: object
   group.GroupFeedItemResponse:
     properties:
       caption:
@@ -146,7 +172,7 @@ definitions:
       group_media_id:
         type: integer
       media_details:
-        $ref: '#/definitions/models.Media'
+        $ref: '#/definitions/handlers.MediaResponse'
       shared_at:
         type: string
       uploader:
@@ -996,7 +1022,7 @@ paths:
       - Groups
   /groups/{uuid}:
     get:
-      description: 获取单个圈子的详细信息，前提是当前用户是该圈子成员
+      description: 获取单个圈子的详细信息，并包含当前用户的角色信息
       parameters:
       - description: 圈子的UUID
         format: uuid
@@ -1014,7 +1040,7 @@ paths:
             - $ref: '#/definitions/core.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Group'
+                  $ref: '#/definitions/group.GroupDetailResponse'
               type: object
         "400":
           description: 圈子未找到或无权限

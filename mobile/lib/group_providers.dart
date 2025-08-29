@@ -34,19 +34,39 @@ final groupListProvider = FutureProvider.autoDispose<List<GroupModel>>((ref) {
 // 补全：已移除占位符，现在会调用真实的 repository 方法。
 final groupMembersProvider = FutureProvider.autoDispose
     .family<List<GroupMemberModel>, String>((ref, String groupUuid) {
-  final groupRepository = ref.watch(groupRepositoryProvider);
-  // 核心修正：现在这个调用是有效的，因为它匹配了接口中新定义的方法签名
-  return groupRepository.fetchMembers(groupUuid: groupUuid);
-});
-
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      // 核心修正：现在这个调用是有效的，因为它匹配了接口中新定义的方法签名
+      return groupRepository.fetchMembers(groupUuid: groupUuid);
+    });
 
 // 4. 圈子 Feed 流的 ViewModel Provider
 // 类型：StateNotifierProvider.family
 // 职责：管理特定圈子 Feed 页面的复杂状态，包括分页加载、错误处理和刷新。
 // 适用场景：当状态不是一个简单的 Future，而是需要包含业务逻辑、可以被用户交互改变的复杂对象时。
 final groupFeedViewModelProvider = StateNotifierProvider.autoDispose
-    .family<GroupFeedViewModel, GroupFeedState, String>((ref, String groupUuid) {
-  final groupRepository = ref.watch(groupRepositoryProvider);
-  // 创建 ViewModel 实例，并将所需的 repository 和 groupUuid 传递进去。
-  return GroupFeedViewModel(groupRepository, groupUuid);
-});
+    .family<GroupFeedViewModel, GroupFeedState, String>((
+      ref,
+      String groupUuid,
+    ) {
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      // 创建 ViewModel 实例，并将所需的 repository 和 groupUuid 传递进去。
+      return GroupFeedViewModel(groupRepository, groupUuid);
+    });
+
+// 5. 获取评论列表的 Provider
+// 类型：FutureProvider.family
+// 职责：根据传入的 groupMediaId，异步获取该媒体项下的所有评论。
+// 适用场景：需要根据参数获取一次性数据列表。
+final commentsProvider = FutureProvider.autoDispose
+    .family<List<CommentModel>, int>((ref, int groupMediaId) {
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      return groupRepository.fetchComments(groupMediaId);
+    });
+
+/// 6. 获取圈子详细信息的 Provider
+/// 职责：提供一个圈子的完整信息，特别是包含当前用户的角色，用于权限判断。
+final groupDetailsProvider = FutureProvider.autoDispose
+    .family<GroupModel, String>((ref, String groupUuid) {
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      return groupRepository.fetchGroupDetails(groupUuid);
+    });
