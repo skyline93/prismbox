@@ -8,7 +8,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/providers.dart';
+import 'package:mobile/providers/providers.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 part 'gallery_viewmodel.freezed.dart';

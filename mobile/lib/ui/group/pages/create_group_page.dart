@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/group_providers.dart'; // 假设Provider在此
+import 'package:mobile/providers/group_providers.dart'; // 假设Provider在此
 
 @RoutePage()
 class CreateGroupPage extends HookConsumerWidget {

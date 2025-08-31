@@ -9,7 +9,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
-import 'package:mobile/providers.dart';
+import 'package:mobile/providers/providers.dart';
 
 /// 缩略图缓存提供者 - 用于内存缓存
 /// 包含缓存大小限制和清理机制

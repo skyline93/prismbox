@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/group_providers.dart';
+import 'package:mobile/providers/group_providers.dart';
 
 class CommentList extends ConsumerWidget {
   final int groupMediaId;

@@ -9,7 +9,7 @@ import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/ui/gallery/viewmodels/gallery_viewmodel.dart';
 import 'package:mobile/ui/gallery/pages/gallery_item_page.dart';
-import 'package:mobile/providers.dart';
+import 'package:mobile/providers/providers.dart';
 
 @RoutePage()
 class GalleryPage extends HookConsumerWidget {

@@ -1,11 +1,13 @@
-// lib/group_providers.dart
+// lib/providers/group_providers.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/core/service_locator.dart'; // 导入 getIt 服务定位器
+import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/domain/repositories/group_repository.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_viewmodel.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
+import 'package:mobile/domain/entities/group_feed_item_entity.dart';
+import 'package:mobile/data/mock_feed_data.dart';
 
 // 1. Repository Provider
 // 职责：作为 Riverpod 与 GetIt/Injectable 依赖注入框架之间的桥梁。
@@ -44,14 +46,10 @@ final groupMembersProvider = FutureProvider.autoDispose
 // 职责：管理特定圈子 Feed 页面的复杂状态，包括分页加载、错误处理和刷新。
 // 适用场景：当状态不是一个简单的 Future，而是需要包含业务逻辑、可以被用户交互改变的复杂对象时。
 final groupFeedViewModelProvider = StateNotifierProvider.autoDispose
-    .family<GroupFeedViewModel, GroupFeedState, String>((
-      ref,
-      String groupUuid,
-    ) {
-      final groupRepository = ref.watch(groupRepositoryProvider);
-      // 创建 ViewModel 实例，并将所需的 repository 和 groupUuid 传递进去。
-      return GroupFeedViewModel(groupRepository, groupUuid);
-    });
+    .family<GroupFeedViewModel, GroupFeedState, String>(
+      // --- 2. 修正构造函数参数 ---
+      (ref, uuid) => GroupFeedViewModel(uuid, ref),
+    );
 
 // 5. 获取评论列表的 Provider
 // 类型：FutureProvider.family
@@ -69,4 +67,15 @@ final groupDetailsProvider = FutureProvider.autoDispose
     .family<GroupModel, String>((ref, String groupUuid) {
       final groupRepository = ref.watch(groupRepositoryProvider);
       return groupRepository.fetchGroupDetails(groupUuid);
+    });
+
+final groupFeedFirstPageProvider = FutureProvider.autoDispose
+    .family<List<GroupFeedItemEntity>, String>((ref, uuid) async {
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // 直接返回 mock 数据列表
+      return getMockFeedItems();
+
+      // final groupRepository = ref.watch(groupRepositoryProvider);
+      // return groupRepository.getGroupFeed(uuid, page: 1);
     });

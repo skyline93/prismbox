@@ -2,65 +2,95 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/repositories/group_repository.dart';
+import 'package:mobile/providers/group_providers.dart';
+import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 import 'group_feed_state.dart';
 
 class GroupFeedViewModel extends StateNotifier<GroupFeedState> {
+  final String uuid;
+  final Ref ref;
   final GroupRepository _groupRepository;
-  final String _groupUuid;
-  int _currentPage = 1;
-  final int _limit = 30; // 每页加载数量
 
-  GroupFeedViewModel(this._groupRepository, this._groupUuid)
-      : super(const GroupFeedState.initial()) {
-    fetchFirstPage();
+  GroupFeedViewModel(this.uuid, this.ref)
+    : _groupRepository = ref.read(groupRepositoryProvider),
+      super(const GroupFeedState()) {
+    _initialize();
   }
 
+  void _initialize() {
+    ref.listen<AsyncValue<List<GroupFeedItemEntity>>>(
+      groupFeedFirstPageProvider(uuid),
+      (previous, next) {
+        next.when(
+          loading: () {
+            state = state.copyWith(isLoading: true, errorMessage: null);
+          },
+          error: (error, stackTrace) {
+            state = state.copyWith(
+              isLoading: false,
+              errorMessage: error.toString(),
+            );
+          },
+          data: (items) {
+            state = state.copyWith(
+              isLoading: false,
+              feedItems: items,
+              hasReachedMax: items.isEmpty,
+              currentPage: 1,
+            );
+          },
+        );
+      },
+      fireImmediately: true,
+    );
+  }
+
+  /// 下拉刷新
   Future<void> refresh() async {
-    await fetchFirstPage();
+    ref.invalidate(groupFeedFirstPageProvider(uuid));
   }
 
-  Future<void> fetchFirstPage() async {
-    state = const GroupFeedState.loading();
-    _currentPage = 1;
+  /// 加载下一页
+  Future<void> fetchNextPage() async {
+    if (state.isLoadingNextPage || state.hasReachedMax) return;
+
+    state = state.copyWith(isLoadingNextPage: true);
+
     try {
-      final items = await _groupRepository.fetchGroupFeed(
-        _groupUuid,
-        page: _currentPage,
-        limit: _limit,
+      final nextPage = state.currentPage + 1;
+      final newItems = await _groupRepository.getGroupFeed(
+        uuid,
+        page: nextPage,
       );
-      state = GroupFeedState.loaded(
-        mediaItems: items,
-        hasReachedMax: items.length < _limit,
+
+      if (!mounted) return;
+
+      state = state.copyWith(
+        isLoadingNextPage: false,
+        feedItems: [...state.feedItems, ...newItems],
+        currentPage: nextPage,
+        hasReachedMax: newItems.isEmpty,
       );
     } catch (e) {
-      state = GroupFeedState.error(e.toString());
+      if (!mounted) return;
+      state = state.copyWith(
+        isLoadingNextPage: false,
+        errorMessage: e.toString(),
+      );
     }
   }
 
-  Future<void> fetchNextPage() async {
-    state.maybeWhen(
-      loaded: (currentItems, hasReachedMax) async {
-        if (hasReachedMax) {
-          return;
-        }
-
-        _currentPage++;
-        try {
-          final newItems = await _groupRepository.fetchGroupFeed(
-            _groupUuid,
-            page: _currentPage,
-            limit: _limit,
-          );
-
-          state = GroupFeedState.loaded(
-            mediaItems: [...currentItems, ...newItems],
-            hasReachedMax: newItems.length < _limit,
-          );
-        } catch (e) {
-          _currentPage--;
-        }
-      },
-      orElse: () {},
+  // --- 1. 添加缺失的 createNewPost 方法 ---
+  /// 创建一个新的帖子
+  Future<void> createNewPost({
+    required String content,
+    required List<String> mediaUuids,
+  }) async {
+    // --- 关键修复：使用命名参数来调用方法 ---
+    await _groupRepository.createPostInGroup(
+      groupId: uuid, // 传入 groupId
+      content: content, // 传入 content
+      mediaUuids: mediaUuids, // 传入 mediaUuids
     );
   }
 }

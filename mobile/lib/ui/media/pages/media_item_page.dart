@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/group_providers.dart';
+import 'package:mobile/providers/group_providers.dart';
 import 'package:mobile/ui/gallery/widgets/image_content.dart';
 import 'package:mobile/ui/gallery/widgets/video_content.dart';
 import 'package:mobile/ui/group/widgets/comment_input_field.dart';

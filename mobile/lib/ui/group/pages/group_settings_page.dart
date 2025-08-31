@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/data/models/group/group_models.dart';
-import 'package:mobile/group_providers.dart';
+import 'package:mobile/providers/group_providers.dart';
 import 'package:mobile/routing/app_router.dart';
 
 @RoutePage()

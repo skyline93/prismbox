@@ -3,7 +3,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/auth/auth_model.dart';
 import 'auth_state.dart';
-import 'package:mobile/providers.dart';
+import 'package:mobile/providers/providers.dart';
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;

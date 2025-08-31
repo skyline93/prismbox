@@ -1,4 +1,5 @@
 import 'package:mobile/data/models/group/group_models.dart';
+import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 
 abstract class GroupRepository {
   Future<List<GroupModel>> fetchMyGroups();
@@ -48,4 +49,18 @@ abstract class GroupRepository {
 
   /// 成员主动退出圈子
   Future<void> leaveGroup(String groupUuid);
+
+    /// 获取指定圈子的Feed流。
+  Future<List<GroupFeedItemEntity>> getGroupFeed(
+    String groupId, {
+    int page = 1,
+    int limit = 20,
+  });
+
+  /// 在圈子中创建新帖子（分享媒体）。
+  Future<void> createPostInGroup({
+    required String groupId,
+    required String content,
+    required List<String> mediaUuids,
+  });
 }

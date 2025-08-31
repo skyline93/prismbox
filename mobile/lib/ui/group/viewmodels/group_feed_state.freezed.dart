@@ -16,59 +16,30 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$GroupFeedState {
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(
-            List<GroupMediaModel> mediaItems, bool hasReachedMax)
-        loaded,
-    required TResult Function(String message) error,
-  }) =>
-      throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult? Function(String message)? error,
-  }) =>
-      throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) =>
-      throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_Error value) error,
-  }) =>
-      throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_Error value)? error,
-  }) =>
-      throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) =>
+  /// Feed列表数据
+  List<GroupFeedItemEntity> get feedItems => throw _privateConstructorUsedError;
+
+  /// 是否正在进行初次加载
+  bool get isLoading => throw _privateConstructorUsedError;
+
+  /// 是否正在加载下一页
+  bool get isLoadingNextPage => throw _privateConstructorUsedError;
+
+  /// 是否已加载所有数据
+  bool get hasReachedMax => throw _privateConstructorUsedError;
+
+  /// 加载过程中发生的错误信息
+  String? get errorMessage => throw _privateConstructorUsedError;
+
+  /// 是否正在发布新帖子
+  bool get isPosting => throw _privateConstructorUsedError;
+  int get currentPage => throw _privateConstructorUsedError;
+
+  /// 发布帖子时发生的错误信息
+  String? get postError => throw _privateConstructorUsedError;
+
+  @JsonKey(ignore: true)
+  $GroupFeedStateCopyWith<GroupFeedState> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -77,6 +48,16 @@ abstract class $GroupFeedStateCopyWith<$Res> {
   factory $GroupFeedStateCopyWith(
           GroupFeedState value, $Res Function(GroupFeedState) then) =
       _$GroupFeedStateCopyWithImpl<$Res, GroupFeedState>;
+  @useResult
+  $Res call(
+      {List<GroupFeedItemEntity> feedItems,
+      bool isLoading,
+      bool isLoadingNextPage,
+      bool hasReachedMax,
+      String? errorMessage,
+      bool isPosting,
+      int currentPage,
+      String? postError});
 }
 
 /// @nodoc
@@ -88,562 +69,280 @@ class _$GroupFeedStateCopyWithImpl<$Res, $Val extends GroupFeedState>
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
-}
-
-/// @nodoc
-abstract class _$$InitialImplCopyWith<$Res> {
-  factory _$$InitialImplCopyWith(
-          _$InitialImpl value, $Res Function(_$InitialImpl) then) =
-      __$$InitialImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$InitialImplCopyWithImpl<$Res>
-    extends _$GroupFeedStateCopyWithImpl<$Res, _$InitialImpl>
-    implements _$$InitialImplCopyWith<$Res> {
-  __$$InitialImplCopyWithImpl(
-      _$InitialImpl _value, $Res Function(_$InitialImpl) _then)
-      : super(_value, _then);
-}
-
-/// @nodoc
-
-class _$InitialImpl implements _Initial {
-  const _$InitialImpl();
-
-  @override
-  String toString() {
-    return 'GroupFeedState.initial()';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$InitialImpl);
-  }
-
-  @override
-  int get hashCode => runtimeType.hashCode;
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(
-            List<GroupMediaModel> mediaItems, bool hasReachedMax)
-        loaded,
-    required TResult Function(String message) error,
-  }) {
-    return initial();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult? Function(String message)? error,
-  }) {
-    return initial?.call();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (initial != null) {
-      return initial();
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_Error value) error,
-  }) {
-    return initial(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_Error value)? error,
-  }) {
-    return initial?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (initial != null) {
-      return initial(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _Initial implements GroupFeedState {
-  const factory _Initial() = _$InitialImpl;
-}
-
-/// @nodoc
-abstract class _$$LoadingImplCopyWith<$Res> {
-  factory _$$LoadingImplCopyWith(
-          _$LoadingImpl value, $Res Function(_$LoadingImpl) then) =
-      __$$LoadingImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$LoadingImplCopyWithImpl<$Res>
-    extends _$GroupFeedStateCopyWithImpl<$Res, _$LoadingImpl>
-    implements _$$LoadingImplCopyWith<$Res> {
-  __$$LoadingImplCopyWithImpl(
-      _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
-      : super(_value, _then);
-}
-
-/// @nodoc
-
-class _$LoadingImpl implements _Loading {
-  const _$LoadingImpl();
-
-  @override
-  String toString() {
-    return 'GroupFeedState.loading()';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$LoadingImpl);
-  }
-
-  @override
-  int get hashCode => runtimeType.hashCode;
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(
-            List<GroupMediaModel> mediaItems, bool hasReachedMax)
-        loaded,
-    required TResult Function(String message) error,
-  }) {
-    return loading();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult? Function(String message)? error,
-  }) {
-    return loading?.call();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (loading != null) {
-      return loading();
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_Error value) error,
-  }) {
-    return loading(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_Error value)? error,
-  }) {
-    return loading?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (loading != null) {
-      return loading(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _Loading implements GroupFeedState {
-  const factory _Loading() = _$LoadingImpl;
-}
-
-/// @nodoc
-abstract class _$$LoadedImplCopyWith<$Res> {
-  factory _$$LoadedImplCopyWith(
-          _$LoadedImpl value, $Res Function(_$LoadedImpl) then) =
-      __$$LoadedImplCopyWithImpl<$Res>;
-  @useResult
-  $Res call({List<GroupMediaModel> mediaItems, bool hasReachedMax});
-}
-
-/// @nodoc
-class __$$LoadedImplCopyWithImpl<$Res>
-    extends _$GroupFeedStateCopyWithImpl<$Res, _$LoadedImpl>
-    implements _$$LoadedImplCopyWith<$Res> {
-  __$$LoadedImplCopyWithImpl(
-      _$LoadedImpl _value, $Res Function(_$LoadedImpl) _then)
-      : super(_value, _then);
 
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? mediaItems = null,
+    Object? feedItems = null,
+    Object? isLoading = null,
+    Object? isLoadingNextPage = null,
     Object? hasReachedMax = null,
+    Object? errorMessage = freezed,
+    Object? isPosting = null,
+    Object? currentPage = null,
+    Object? postError = freezed,
   }) {
-    return _then(_$LoadedImpl(
-      mediaItems: null == mediaItems
-          ? _value._mediaItems
-          : mediaItems // ignore: cast_nullable_to_non_nullable
-              as List<GroupMediaModel>,
+    return _then(_value.copyWith(
+      feedItems: null == feedItems
+          ? _value.feedItems
+          : feedItems // ignore: cast_nullable_to_non_nullable
+              as List<GroupFeedItemEntity>,
+      isLoading: null == isLoading
+          ? _value.isLoading
+          : isLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isLoadingNextPage: null == isLoadingNextPage
+          ? _value.isLoadingNextPage
+          : isLoadingNextPage // ignore: cast_nullable_to_non_nullable
+              as bool,
       hasReachedMax: null == hasReachedMax
           ? _value.hasReachedMax
           : hasReachedMax // ignore: cast_nullable_to_non_nullable
               as bool,
-    ));
+      errorMessage: freezed == errorMessage
+          ? _value.errorMessage
+          : errorMessage // ignore: cast_nullable_to_non_nullable
+              as String?,
+      isPosting: null == isPosting
+          ? _value.isPosting
+          : isPosting // ignore: cast_nullable_to_non_nullable
+              as bool,
+      currentPage: null == currentPage
+          ? _value.currentPage
+          : currentPage // ignore: cast_nullable_to_non_nullable
+              as int,
+      postError: freezed == postError
+          ? _value.postError
+          : postError // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
   }
 }
 
 /// @nodoc
-
-class _$LoadedImpl implements _Loaded {
-  const _$LoadedImpl(
-      {required final List<GroupMediaModel> mediaItems,
-      this.hasReachedMax = false})
-      : _mediaItems = mediaItems;
-
-  final List<GroupMediaModel> _mediaItems;
+abstract class _$$GroupFeedStateImplCopyWith<$Res>
+    implements $GroupFeedStateCopyWith<$Res> {
+  factory _$$GroupFeedStateImplCopyWith(_$GroupFeedStateImpl value,
+          $Res Function(_$GroupFeedStateImpl) then) =
+      __$$GroupFeedStateImplCopyWithImpl<$Res>;
   @override
-  List<GroupMediaModel> get mediaItems {
-    if (_mediaItems is EqualUnmodifiableListView) return _mediaItems;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_mediaItems);
-  }
-
-  @override
-  @JsonKey()
-  final bool hasReachedMax;
-
-  @override
-  String toString() {
-    return 'GroupFeedState.loaded(mediaItems: $mediaItems, hasReachedMax: $hasReachedMax)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$LoadedImpl &&
-            const DeepCollectionEquality()
-                .equals(other._mediaItems, _mediaItems) &&
-            (identical(other.hasReachedMax, hasReachedMax) ||
-                other.hasReachedMax == hasReachedMax));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType,
-      const DeepCollectionEquality().hash(_mediaItems), hasReachedMax);
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
-      __$$LoadedImplCopyWithImpl<_$LoadedImpl>(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(
-            List<GroupMediaModel> mediaItems, bool hasReachedMax)
-        loaded,
-    required TResult Function(String message) error,
-  }) {
-    return loaded(mediaItems, hasReachedMax);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult? Function(String message)? error,
-  }) {
-    return loaded?.call(mediaItems, hasReachedMax);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (loaded != null) {
-      return loaded(mediaItems, hasReachedMax);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_Error value) error,
-  }) {
-    return loaded(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_Error value)? error,
-  }) {
-    return loaded?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (loaded != null) {
-      return loaded(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _Loaded implements GroupFeedState {
-  const factory _Loaded(
-      {required final List<GroupMediaModel> mediaItems,
-      final bool hasReachedMax}) = _$LoadedImpl;
-
-  List<GroupMediaModel> get mediaItems;
-  bool get hasReachedMax;
-  @JsonKey(ignore: true)
-  _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class _$$ErrorImplCopyWith<$Res> {
-  factory _$$ErrorImplCopyWith(
-          _$ErrorImpl value, $Res Function(_$ErrorImpl) then) =
-      __$$ErrorImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String message});
+  $Res call(
+      {List<GroupFeedItemEntity> feedItems,
+      bool isLoading,
+      bool isLoadingNextPage,
+      bool hasReachedMax,
+      String? errorMessage,
+      bool isPosting,
+      int currentPage,
+      String? postError});
 }
 
 /// @nodoc
-class __$$ErrorImplCopyWithImpl<$Res>
-    extends _$GroupFeedStateCopyWithImpl<$Res, _$ErrorImpl>
-    implements _$$ErrorImplCopyWith<$Res> {
-  __$$ErrorImplCopyWithImpl(
-      _$ErrorImpl _value, $Res Function(_$ErrorImpl) _then)
+class __$$GroupFeedStateImplCopyWithImpl<$Res>
+    extends _$GroupFeedStateCopyWithImpl<$Res, _$GroupFeedStateImpl>
+    implements _$$GroupFeedStateImplCopyWith<$Res> {
+  __$$GroupFeedStateImplCopyWithImpl(
+      _$GroupFeedStateImpl _value, $Res Function(_$GroupFeedStateImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? message = null,
+    Object? feedItems = null,
+    Object? isLoading = null,
+    Object? isLoadingNextPage = null,
+    Object? hasReachedMax = null,
+    Object? errorMessage = freezed,
+    Object? isPosting = null,
+    Object? currentPage = null,
+    Object? postError = freezed,
   }) {
-    return _then(_$ErrorImpl(
-      null == message
-          ? _value.message
-          : message // ignore: cast_nullable_to_non_nullable
-              as String,
+    return _then(_$GroupFeedStateImpl(
+      feedItems: null == feedItems
+          ? _value._feedItems
+          : feedItems // ignore: cast_nullable_to_non_nullable
+              as List<GroupFeedItemEntity>,
+      isLoading: null == isLoading
+          ? _value.isLoading
+          : isLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isLoadingNextPage: null == isLoadingNextPage
+          ? _value.isLoadingNextPage
+          : isLoadingNextPage // ignore: cast_nullable_to_non_nullable
+              as bool,
+      hasReachedMax: null == hasReachedMax
+          ? _value.hasReachedMax
+          : hasReachedMax // ignore: cast_nullable_to_non_nullable
+              as bool,
+      errorMessage: freezed == errorMessage
+          ? _value.errorMessage
+          : errorMessage // ignore: cast_nullable_to_non_nullable
+              as String?,
+      isPosting: null == isPosting
+          ? _value.isPosting
+          : isPosting // ignore: cast_nullable_to_non_nullable
+              as bool,
+      currentPage: null == currentPage
+          ? _value.currentPage
+          : currentPage // ignore: cast_nullable_to_non_nullable
+              as int,
+      postError: freezed == postError
+          ? _value.postError
+          : postError // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
 
 /// @nodoc
 
-class _$ErrorImpl implements _Error {
-  const _$ErrorImpl(this.message);
+class _$GroupFeedStateImpl implements _GroupFeedState {
+  const _$GroupFeedStateImpl(
+      {final List<GroupFeedItemEntity> feedItems = const [],
+      this.isLoading = true,
+      this.isLoadingNextPage = false,
+      this.hasReachedMax = false,
+      this.errorMessage,
+      this.isPosting = false,
+      this.currentPage = 1,
+      this.postError})
+      : _feedItems = feedItems;
 
+  /// Feed列表数据
+  final List<GroupFeedItemEntity> _feedItems;
+
+  /// Feed列表数据
   @override
-  final String message;
+  @JsonKey()
+  List<GroupFeedItemEntity> get feedItems {
+    if (_feedItems is EqualUnmodifiableListView) return _feedItems;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_feedItems);
+  }
+
+  /// 是否正在进行初次加载
+  @override
+  @JsonKey()
+  final bool isLoading;
+
+  /// 是否正在加载下一页
+  @override
+  @JsonKey()
+  final bool isLoadingNextPage;
+
+  /// 是否已加载所有数据
+  @override
+  @JsonKey()
+  final bool hasReachedMax;
+
+  /// 加载过程中发生的错误信息
+  @override
+  final String? errorMessage;
+
+  /// 是否正在发布新帖子
+  @override
+  @JsonKey()
+  final bool isPosting;
+  @override
+  @JsonKey()
+  final int currentPage;
+
+  /// 发布帖子时发生的错误信息
+  @override
+  final String? postError;
 
   @override
   String toString() {
-    return 'GroupFeedState.error(message: $message)';
+    return 'GroupFeedState(feedItems: $feedItems, isLoading: $isLoading, isLoadingNextPage: $isLoadingNextPage, hasReachedMax: $hasReachedMax, errorMessage: $errorMessage, isPosting: $isPosting, currentPage: $currentPage, postError: $postError)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ErrorImpl &&
-            (identical(other.message, message) || other.message == message));
+            other is _$GroupFeedStateImpl &&
+            const DeepCollectionEquality()
+                .equals(other._feedItems, _feedItems) &&
+            (identical(other.isLoading, isLoading) ||
+                other.isLoading == isLoading) &&
+            (identical(other.isLoadingNextPage, isLoadingNextPage) ||
+                other.isLoadingNextPage == isLoadingNextPage) &&
+            (identical(other.hasReachedMax, hasReachedMax) ||
+                other.hasReachedMax == hasReachedMax) &&
+            (identical(other.errorMessage, errorMessage) ||
+                other.errorMessage == errorMessage) &&
+            (identical(other.isPosting, isPosting) ||
+                other.isPosting == isPosting) &&
+            (identical(other.currentPage, currentPage) ||
+                other.currentPage == currentPage) &&
+            (identical(other.postError, postError) ||
+                other.postError == postError));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, message);
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(_feedItems),
+      isLoading,
+      isLoadingNextPage,
+      hasReachedMax,
+      errorMessage,
+      isPosting,
+      currentPage,
+      postError);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
-      __$$ErrorImplCopyWithImpl<_$ErrorImpl>(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(
-            List<GroupMediaModel> mediaItems, bool hasReachedMax)
-        loaded,
-    required TResult Function(String message) error,
-  }) {
-    return error(message);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult? Function(String message)? error,
-  }) {
-    return error?.call(message);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(List<GroupMediaModel> mediaItems, bool hasReachedMax)?
-        loaded,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (error != null) {
-      return error(message);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_Error value) error,
-  }) {
-    return error(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_Error value)? error,
-  }) {
-    return error?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (error != null) {
-      return error(this);
-    }
-    return orElse();
-  }
+  _$$GroupFeedStateImplCopyWith<_$GroupFeedStateImpl> get copyWith =>
+      __$$GroupFeedStateImplCopyWithImpl<_$GroupFeedStateImpl>(
+          this, _$identity);
 }
 
-abstract class _Error implements GroupFeedState {
-  const factory _Error(final String message) = _$ErrorImpl;
+abstract class _GroupFeedState implements GroupFeedState {
+  const factory _GroupFeedState(
+      {final List<GroupFeedItemEntity> feedItems,
+      final bool isLoading,
+      final bool isLoadingNextPage,
+      final bool hasReachedMax,
+      final String? errorMessage,
+      final bool isPosting,
+      final int currentPage,
+      final String? postError}) = _$GroupFeedStateImpl;
 
-  String get message;
+  @override
+
+  /// Feed列表数据
+  List<GroupFeedItemEntity> get feedItems;
+  @override
+
+  /// 是否正在进行初次加载
+  bool get isLoading;
+  @override
+
+  /// 是否正在加载下一页
+  bool get isLoadingNextPage;
+  @override
+
+  /// 是否已加载所有数据
+  bool get hasReachedMax;
+  @override
+
+  /// 加载过程中发生的错误信息
+  String? get errorMessage;
+  @override
+
+  /// 是否正在发布新帖子
+  bool get isPosting;
+  @override
+  int get currentPage;
+  @override
+
+  /// 发布帖子时发生的错误信息
+  String? get postError;
+  @override
   @JsonKey(ignore: true)
-  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
+  _$$GroupFeedStateImplCopyWith<_$GroupFeedStateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

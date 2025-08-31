@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/routing/app_router.dart';
-import 'package:mobile/group_providers.dart';
+import 'package:mobile/providers/group_providers.dart';
 import 'package:mobile/ui/group/widgets/group_list_item.dart';
 
 @RoutePage()

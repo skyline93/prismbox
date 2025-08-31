@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/providers.dart';
+import 'package:mobile/providers/providers.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:mobile/ui/media/widgets/media_item.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';

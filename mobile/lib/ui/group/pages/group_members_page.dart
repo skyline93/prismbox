@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/data/models/group/group_models.dart';
-import 'package:mobile/group_providers.dart';
+import 'package:mobile/providers/group_providers.dart';
 
 @RoutePage()
 class GroupMembersPage extends ConsumerWidget {

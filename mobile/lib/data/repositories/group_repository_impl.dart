@@ -1,8 +1,12 @@
+// lib/data/repositories/group_repository_impl.dart
+
+import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/data/services/group_api_service.dart';
 import 'package:mobile/domain/repositories/group_repository.dart';
+import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 
 @LazySingleton(as: GroupRepository)
 class GroupRepositoryImpl implements GroupRepository {
@@ -162,5 +166,49 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<void> leaveGroup(String groupUuid) async {
     await _apiService.leaveGroup(groupUuid);
+  }
+
+  @override
+  Future<List<GroupFeedItemEntity>> getGroupFeed(
+    String groupId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    // 1. 调用API服务获取响应
+    final response = await _apiService.getGroupFeed(groupId, page, limit);
+
+    // 2. 参考 fetchGroupFeed 的方式，使用 ApiResponse 解析通用响应结构
+    final apiResponse = ApiResponse.fromJson(
+      response.data,
+      (json) => (json as List<dynamic>)
+          .map((item) => GroupMediaModel.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+
+    // 3. 安全地获取解析后的数据模型列表，如果为 null 则返回空列表
+    final List<GroupMediaModel> groupMediaModels = apiResponse.data ?? [];
+
+    // 4. 将数据模型 (Data Model) 列表映射为领域实体 (Domain Entity) 列表
+    return groupMediaModels
+        .map((model) => GroupFeedItemEntity.fromGroupMediaModel(model))
+        .toList();
+  }
+
+  @override
+  Future<void> createPostInGroup({
+    required String groupId,
+    required String content,
+    required List<String> mediaUuids,
+  }) async {
+    try {
+      // 根据 GroupApiService 中 shareMediaToGroup 的要求构建请求体
+      final Map<String, dynamic> data = {
+        'caption': content,
+        'media_uuids': mediaUuids,
+      };
+      await _apiService.shareMediaToGroup(groupId, data);
+    } on DioException catch (e) {
+      throw Exception('Failed to create post: ${e.message}');
+    }
   }
 }

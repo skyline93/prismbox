@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/providers.dart';
+import 'package:mobile/providers/providers.dart';
 
 class MediaAppBar extends HookConsumerWidget implements PreferredSizeWidget {
   const MediaAppBar({super.key});
