@@ -127,18 +127,24 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 				groupRoutes.GET("/:uuid", groupHandler.GetGroupDetails)
 				groupRoutes.PUT("/:uuid", groupHandler.UpdateGroup)
 
-				groupRoutes.POST("/:uuid/media", groupHandler.ShareMediaToGroup)
-				groupRoutes.GET("/:uuid/media", groupHandler.GetGroupFeed)
+				groupRoutes.POST("/:uuid/posts", groupHandler.CreatePost)
+				groupRoutes.GET("/:uuid/feed", groupHandler.GetGroupFeed)
 
 				groupRoutes.GET("/:uuid/members", groupHandler.GetGroupMembers)
 				groupRoutes.POST("/:uuid/members/invite", groupHandler.CreateInvite)
 				groupRoutes.DELETE("/:uuid/members/:userId", groupHandler.RemoveMember)
 			}
 
-			protected.POST("/group-media/:groupMediaId/comments", groupHandler.AddComment)
-			protected.GET("/group-media/:groupMediaId/comments", groupHandler.GetComments)
-			protected.DELETE("/group-media/:groupMediaId", groupHandler.RemoveMediaFromGroup)
-			protected.DELETE("/comments/:commentId", groupHandler.DeleteComment)
+			postRoutes := protected.Group("/posts")
+			{
+				postRoutes.POST("/:postId/comments", groupHandler.AddComment)
+				postRoutes.GET("/:postId/comments", groupHandler.GetComments)
+			}
+
+			commentRoutes := protected.Group("/comments")
+			{
+				commentRoutes.DELETE("/:commentId", groupHandler.DeleteComment)
+			}
 
 			shareRoutes := protected.Group("/shares")
 			{

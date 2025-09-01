@@ -72,6 +72,7 @@ func ConnectAndMigrate(cfg *core.DBConfig) (*gorm.DB, error) {
 
 		&models.Group{},
 		&models.GroupMember{},
+		&models.GroupPost{},
 		&models.GroupMedia{},
 		&models.GroupInvite{},
 		&models.Comment{},

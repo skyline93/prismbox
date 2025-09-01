@@ -61,17 +61,17 @@ type UploaderInfo struct {
 }
 
 // CreateCommentInput 定义了创建评论的请求体结构
-type CreateCommentInput struct {
-	Content string `json:"content" binding:"required"`
-}
+// type CreateCommentInput struct {
+// 	Content string `json:"content" binding:"required"`
+// }
 
-// CommentResponse 定义了获取评论列表时的响应结构
-type CommentResponse struct {
-	ID        uint      `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Content   string    `json:"content"`
-	User      UserInfo  `json:"user"`
-}
+// // CommentResponse 定义了获取评论列表时的响应结构
+// type CommentResponse struct {
+// 	ID        uint      `json:"id"`
+// 	CreatedAt time.Time `json:"created_at"`
+// 	Content   string    `json:"content"`
+// 	User      UserInfo  `json:"user"`
+// }
 
 // UserInfo 嵌套在 CommentResponse 中，用于表示评论者信息
 type UserInfo struct {

@@ -42,17 +42,51 @@ type GroupMember struct {
 	JoinedAt time.Time `gorm:"autoCreateTime" json:"joined_at"`
 }
 
+type GroupPost struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	GroupID   uint           `gorm:"not null;index" json:"group_id"`
+	CreatorID uint           `gorm:"not null" json:"creator_id"`
+	Caption   string         `gorm:"type:varchar(500)" json:"caption"`
+
+	Creator  User         `gorm:"foreignKey:CreatorID" json:"creator"`         // 预加载创建者信息
+	Media    []GroupMedia `gorm:"foreignKey:PostID" json:"media"`              // 一个帖子包含多个媒体
+	Comments []Comment    `gorm:"foreignKey:PostID" json:"comments,omitempty"` // 预加载评论
+	Likes    []Like       `gorm:"foreignKey:PostID" json:"-"`
+
+	Group Group `gorm:"foreignKey:GroupID" json:"-"`
+}
+
 // GroupMedia 对应 PRD 中的 `group_media` 表 (媒体引用核心)
 type GroupMedia struct {
-	ID         uint      `gorm:"primarykey" json:"id"`
-	CreatedAt  time.Time `json:"created_at"`
-	GroupID    uint      `gorm:"not null;index" json:"group_id"`
-	MediaUUID  string    `gorm:"type:varchar(36);not null;index" json:"media_uuid"`
-	UploaderID uint      `gorm:"not null" json:"uploader_id"`
-	Caption    string    `gorm:"type:varchar(500)" json:"caption"`
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	GroupID   uint      `gorm:"not null;index" json:"group_id"` // 保留 GroupID 以便快速按圈子过滤
+	PostID    uint      `gorm:"not null;index" json:"post_id"`  // 新增：关联到 GroupPost
+	MediaUUID string    `gorm:"type:varchar(36);not null;index" json:"media_uuid"`
+}
 
-	Uploader User      `gorm:"foreignKey:UploaderID" json:"uploader"`             // 预加载上传者信息
-	Comments []Comment `gorm:"foreignKey:GroupMediaID" json:"comments,omitempty"` // 预加载评论
+// Comment 对应 PRD 中的 `comments` 表
+type Comment struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	PostID    uint           `gorm:"not null;index" json:"post_id"`
+	UserID    uint           `gorm:"not null" json:"user_id"`
+	Content   string         `gorm:"type:text;not null" json:"content"`
+
+	User User      `gorm:"foreignKey:UserID" json:"user"` // 预加载评论者信息
+	Post GroupPost `gorm:"foreignKey:PostID" json:"-"`
+}
+
+type Like struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	PostID    uint      `gorm:"not null;uniqueIndex:idx_post_user,priority:1" json:"post_id"` // 修改：从 GroupMediaID -> PostID
+	UserID    uint      `gorm:"not null;uniqueIndex:idx_post_user,priority:2" json:"user_id"` // 修改：复合索引
 }
 
 // GroupInvite 对应 PRD 中的 `group_invites` 表
@@ -64,24 +98,4 @@ type GroupInvite struct {
 	Code        string    `gorm:"type:varchar(20);uniqueIndex;not null" json:"code"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	UsageLimit  int       `json:"usage_limit"` // 0 表示无限制
-}
-
-// Comment 对应 PRD 中的 `comments` 表
-type Comment struct {
-	ID           uint           `gorm:"primarykey" json:"id"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
-	GroupMediaID uint           `gorm:"not null;index" json:"group_media_id"`
-	UserID       uint           `gorm:"not null" json:"user_id"`
-	Content      string         `gorm:"type:text;not null" json:"content"`
-
-	User User `gorm:"foreignKey:UserID" json:"user"` // 预加载评论者信息
-}
-
-type Like struct {
-	ID           uint      `gorm:"primarykey" json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	GroupMediaID uint      `gorm:"not null;uniqueIndex:idx_media_user,priority:1" json:"group_media_id"`
-	UserID       uint      `gorm:"not null;uniqueIndex:idx_media_user,priority:2" json:"user_id"`
 }
