@@ -177,8 +177,7 @@ mixin _$GroupFeedItemEntity {
   DateTime get createdAt => throw _privateConstructorUsedError;
   FeedAuthorEntity get author => throw _privateConstructorUsedError;
   List<UnifiedMediaEntity> get mediaAttachments =>
-      throw _privateConstructorUsedError; // 注意: 点赞和评论数在当前的 GroupMediaModel 中不存在。
-// 此处添加是为了UI统一，数据将在后续或通过聚合接口提供。
+      throw _privateConstructorUsedError; // 这是一个列表
   int get likesCount => throw _privateConstructorUsedError;
   int get commentsCount => throw _privateConstructorUsedError;
 
@@ -349,8 +348,8 @@ class _$GroupFeedItemEntityImpl implements _GroupFeedItemEntity {
       required this.createdAt,
       required this.author,
       required final List<UnifiedMediaEntity> mediaAttachments,
-      this.likesCount = 0,
-      this.commentsCount = 0})
+      required this.likesCount,
+      required this.commentsCount})
       : _mediaAttachments = mediaAttachments;
 
   @override
@@ -370,13 +369,10 @@ class _$GroupFeedItemEntityImpl implements _GroupFeedItemEntity {
     return EqualUnmodifiableListView(_mediaAttachments);
   }
 
-// 注意: 点赞和评论数在当前的 GroupMediaModel 中不存在。
-// 此处添加是为了UI统一，数据将在后续或通过聚合接口提供。
+// 这是一个列表
   @override
-  @JsonKey()
   final int likesCount;
   @override
-  @JsonKey()
   final int commentsCount;
 
   @override
@@ -428,8 +424,8 @@ abstract class _GroupFeedItemEntity implements GroupFeedItemEntity {
       required final DateTime createdAt,
       required final FeedAuthorEntity author,
       required final List<UnifiedMediaEntity> mediaAttachments,
-      final int likesCount,
-      final int commentsCount}) = _$GroupFeedItemEntityImpl;
+      required final int likesCount,
+      required final int commentsCount}) = _$GroupFeedItemEntityImpl;
 
   @override
   int get id;
@@ -441,8 +437,7 @@ abstract class _GroupFeedItemEntity implements GroupFeedItemEntity {
   FeedAuthorEntity get author;
   @override
   List<UnifiedMediaEntity> get mediaAttachments;
-  @override // 注意: 点赞和评论数在当前的 GroupMediaModel 中不存在。
-// 此处添加是为了UI统一，数据将在后续或通过聚合接口提供。
+  @override // 这是一个列表
   int get likesCount;
   @override
   int get commentsCount;

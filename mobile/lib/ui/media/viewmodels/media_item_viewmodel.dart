@@ -98,7 +98,8 @@ final thumbnailProvider = FutureProvider.family<Uint8List?, UnifiedMediaEntity>(
     // 后备方案：如果本地资源ID不可用，或 photo_manager 失败，
     // 尝试从云端下载缩略图
     if (thumbnailData == null &&
-        entity.syncStatus == SyncStatus.cloudOnly &&
+        (entity.syncStatus == SyncStatus.cloudOnly ||
+            entity.syncStatus == SyncStatus.synced) &&
         entity.cloudUuid != null) {
       try {
         final repository = ref.read(mediaRepositoryProvider);

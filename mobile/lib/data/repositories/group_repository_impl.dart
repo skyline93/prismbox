@@ -50,56 +50,6 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<List<GroupMediaModel>> fetchGroupFeed(
-    String groupUuid, {
-    int page = 1,
-    int limit = 30,
-  }) async {
-    final response = await _apiService.getGroupFeed(groupUuid, page, limit);
-    final apiResponse = ApiResponse.fromJson(
-      response.data,
-      (json) => (json as List<dynamic>)
-          .map((item) => GroupMediaModel.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    );
-    return apiResponse.data ?? [];
-  }
-
-  @override
-  Future<void> shareMediaToGroup(
-    String groupUuid, {
-    required List<String> mediaUuids,
-    String? caption,
-  }) async {
-    await _apiService.shareMediaToGroup(groupUuid, {
-      'media_uuids': mediaUuids,
-      if (caption != null) 'caption': caption,
-    });
-  }
-
-  @override
-  Future<List<CommentModel>> fetchComments(int groupMediaId) async {
-    final response = await _apiService.getComments(groupMediaId);
-    final apiResponse = ApiResponse.fromJson(
-      response.data,
-      (json) => (json as List<dynamic>)
-          .map((item) => CommentModel.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    );
-    return apiResponse.data ?? [];
-  }
-
-  @override
-  Future<CommentModel> addComment(int groupMediaId, String content) async {
-    final response = await _apiService.addComment(groupMediaId, content);
-    final apiResponse = ApiResponse.fromJson(
-      response.data,
-      (json) => CommentModel.fromJson(json as Map<String, dynamic>),
-    );
-    return apiResponse.data!;
-  }
-
-  @override
   Future<List<GroupMemberModel>> fetchMembers({
     required String groupUuid,
   }) async {
@@ -114,8 +64,6 @@ class GroupRepositoryImpl implements GroupRepository {
     );
     return apiResponse.data ?? [];
   }
-
-  // === M4 新增实现 ===
 
   @override
   Future<GroupModel> fetchGroupDetails(String groupUuid) async {
@@ -170,45 +118,78 @@ class GroupRepositoryImpl implements GroupRepository {
 
   @override
   Future<List<GroupFeedItemEntity>> getGroupFeed(
-    String groupId, {
+    String groupUuid, {
     int page = 1,
     int limit = 20,
   }) async {
-    // 1. 调用API服务获取响应
-    final response = await _apiService.getGroupFeed(groupId, page, limit);
+    // 1. 调用更新后的API服务 (假设它现在请求 GET /groups/{uuid}/feed)
+    final response = await _apiService.getGroupFeed(groupUuid, page, limit);
 
-    // 2. 参考 fetchGroupFeed 的方式，使用 ApiResponse 解析通用响应结构
+    // 2. 使用 ApiResponse 解析，但将内部转换器从 GroupMediaModel 切换为 GroupPostModel
     final apiResponse = ApiResponse.fromJson(
       response.data,
       (json) => (json as List<dynamic>)
-          .map((item) => GroupMediaModel.fromJson(item as Map<String, dynamic>))
+          .map((item) => GroupPostModel.fromJson(item as Map<String, dynamic>))
           .toList(),
     );
 
-    // 3. 安全地获取解析后的数据模型列表，如果为 null 则返回空列表
-    final List<GroupMediaModel> groupMediaModels = apiResponse.data ?? [];
+    // 3. 安全地获取解析后的数据模型列表
+    final List<GroupPostModel> groupPostModels = apiResponse.data ?? [];
 
-    // 4. 将数据模型 (Data Model) 列表映射为领域实体 (Domain Entity) 列表
-    return groupMediaModels
-        .map((model) => GroupFeedItemEntity.fromGroupMediaModel(model))
+    // 4. 将新的 `GroupPostModel` 列表映射为领域实体 `GroupFeedItemEntity` 列表
+    //    这里会调用我们在上一步改造好的 `fromGroupPostModel` 工厂方法
+    return groupPostModels
+        .map((model) => GroupFeedItemEntity.fromGroupPostModel(model))
         .toList();
   }
 
   @override
-  Future<void> createPostInGroup({
-    required String groupId,
+  Future<void> createPost({
+    required String groupUuid,
     required String content,
     required List<String> mediaUuids,
+    // replyPermission 字段可以保留，如果后端支持的话
+    // ReplyPermission? replyPermission,
   }) async {
     try {
-      // 根据 GroupApiService 中 shareMediaToGroup 的要求构建请求体
+      // 构建请求体以匹配新的 `POST /groups/{uuid}/posts` API
       final Map<String, dynamic> data = {
         'caption': content,
         'media_uuids': mediaUuids,
+        // 如果后端实现了 reply_permission，可以取消这行注释
+        // if (replyPermission != null) 'reply_permission': replyPermission.toJson(),
       };
-      await _apiService.shareMediaToGroup(groupId, data);
+      // 调用更新后的 ApiService 方法
+      await _apiService.createPost(groupUuid, data);
     } on DioException catch (e) {
+      // 良好的错误处理
       throw Exception('Failed to create post: ${e.message}');
     }
+  }
+
+  @override
+  Future<List<CommentModel>> fetchComments(int postId) async {
+    // <-- 参数从 groupMediaId 变为 postId
+    // 假设 ApiService 也已更新
+    final response = await _apiService.getComments(postId);
+    final apiResponse = ApiResponse.fromJson(
+      response.data,
+      (json) => (json as List<dynamic>)
+          .map((item) => CommentModel.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+    return apiResponse.data ?? [];
+  }
+
+  @override
+  Future<CommentModel> addComment(int postId, String content) async {
+    // <-- 参数从 groupMediaId 变为 postId
+    // 假设 ApiService 也已更新
+    final response = await _apiService.addComment(postId, content);
+    final apiResponse = ApiResponse.fromJson(
+      response.data,
+      (json) => CommentModel.fromJson(json as Map<String, dynamic>),
+    );
+    return apiResponse.data!;
   }
 }

@@ -37,7 +37,9 @@ abstract class MediaRepository {
     AlbumSource source,
   );
 
-    /// 直接上传指定的本地媒体资源，并返回它们在服务器上对应的 UUID 列表。
+  /// [建议废弃] 这个方法只返回了UUID，信息不完整。
+  /// 建议后续重构时使用 `uploadMedia` 替代。
+  /// 直接上传指定的本地媒体资源，并返回它们在服务器上对应的 UUID 列表。
   ///
   /// 这个方法用于需要立即获取上传结果的交互场景（例如分享到圈子），
   /// 它会绕过后台同步队列，直接进行网络请求。
@@ -45,4 +47,13 @@ abstract class MediaRepository {
   /// @param assets 从 photo_manager 选择的资源列表。
   /// @return 上传成功后，服务器为每个资源生成的 UUID 列表。
   Future<List<String>> uploadAssets(List<AssetEntity> assets);
+
+  /// 上传单个本地媒体资源。
+  ///
+  /// 这个方法会直接上传文件并返回包含服务器信息的完整领域实体，
+  /// 适用于需要立即反馈的场景。
+  ///
+  /// @param asset 从 photo_manager 选择的资源。
+  /// @return 上传成功后，包含云端UUID和其他元数据的 UnifiedMediaEntity。
+  Future<UnifiedMediaEntity> uploadMedia(AssetEntity asset);
 }

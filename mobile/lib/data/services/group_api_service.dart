@@ -27,16 +27,13 @@ class GroupApiService {
 
   Future<Response> getGroupFeed(String groupUuid, int page, int limit) {
     return _dio.get(
-      '/groups/$groupUuid/media',
+      '/groups/$groupUuid/feed',
       queryParameters: {'page': page, 'limit': limit},
     );
   }
 
-  Future<Response> shareMediaToGroup(
-    String groupUuid,
-    Map<String, dynamic> data,
-  ) {
-    return _dio.post('/groups/$groupUuid/media', data: data);
+  Future<Response> createPost(String groupUuid, Map<String, dynamic> data) {
+    return _dio.post('/groups/$groupUuid/posts', data: data);
   }
 
   Future<Response> getComments(int groupMediaId) {

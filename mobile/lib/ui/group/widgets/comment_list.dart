@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/providers/group_providers.dart';
 
+// 1. [核心改造] 将 CommentList 从与 "媒体" 耦合改为与 "帖子" 耦合
 class CommentList extends ConsumerWidget {
-  final int groupMediaId;
+  // 2. [参数变更] 构造函数现在接收 postId，而不是 groupMediaId
+  final int postId;
 
-  const CommentList({super.key, required this.groupMediaId});
+  const CommentList({super.key, required this.postId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final commentsAsyncValue = ref.watch(commentsProvider(groupMediaId));
+    // 3. [逻辑更新] 使用 postId 来 watch commentsProvider
+    // 这会触发对 GET /posts/{postId}/comments 的 API 请求
+    final commentsAsyncValue = ref.watch(commentsProvider(postId));
 
     return commentsAsyncValue.when(
       data: (comments) {
@@ -26,8 +30,8 @@ class CommentList extends ConsumerWidget {
             ),
           );
         }
+        // UI 渲染逻辑保持不变，因为它只关心数据显示
         return ListView.builder(
-          // 禁用 ListView 的滚动，让外部的 Column 控制
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: comments.length,
@@ -37,12 +41,18 @@ class CommentList extends ConsumerWidget {
               leading: CircleAvatar(
                 // TODO: 替换为真实的头像 URL
                 backgroundColor: Colors.grey.shade800,
-                child: Text(comment.user.username.substring(0, 1)),
+                child: Text(
+                  comment.user.username.isNotEmpty
+                      ? comment.user.username.substring(0, 1)
+                      : "",
+                ),
               ),
-              title: Text(comment.user.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                comment.user.username,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Text(comment.content),
               trailing: Text(
-                // 简单的日期格式化
                 _formatDate(comment.createdAt),
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
@@ -51,12 +61,11 @@ class CommentList extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Text('加载评论失败: $error'),
-      ),
+      error: (error, stack) => Center(child: Text('加载评论失败: $error')),
     );
   }
 
+  // 日期格式化逻辑保持不变
   String _formatDate(String dateStr) {
     try {
       final dateTime = DateTime.parse(dateStr).toLocal();

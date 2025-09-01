@@ -633,6 +633,8 @@ mixin _$MediaResponse {
   String get updatedAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'media_taken_at')
   String? get mediaTakenAt => throw _privateConstructorUsedError;
+  int get width => throw _privateConstructorUsedError;
+  int get height => throw _privateConstructorUsedError;
   @JsonKey(name: 'download_url')
   String get downloadUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'preview_url')
@@ -661,6 +663,8 @@ abstract class $MediaResponseCopyWith<$Res> {
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
       @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
+      int width,
+      int height,
       @JsonKey(name: 'download_url') String downloadUrl,
       @JsonKey(name: 'preview_url') String previewUrl,
       @JsonKey(name: 'thumbnail_url') String thumbnailUrl});
@@ -687,6 +691,8 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? mediaTakenAt = freezed,
+    Object? width = null,
+    Object? height = null,
     Object? downloadUrl = null,
     Object? previewUrl = null,
     Object? thumbnailUrl = null,
@@ -724,6 +730,14 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
           ? _value.mediaTakenAt
           : mediaTakenAt // ignore: cast_nullable_to_non_nullable
               as String?,
+      width: null == width
+          ? _value.width
+          : width // ignore: cast_nullable_to_non_nullable
+              as int,
+      height: null == height
+          ? _value.height
+          : height // ignore: cast_nullable_to_non_nullable
+              as int,
       downloadUrl: null == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
@@ -757,6 +771,8 @@ abstract class _$$MediaResponseImplCopyWith<$Res>
       @JsonKey(name: 'created_at') String createdAt,
       @JsonKey(name: 'updated_at') String updatedAt,
       @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
+      int width,
+      int height,
       @JsonKey(name: 'download_url') String downloadUrl,
       @JsonKey(name: 'preview_url') String previewUrl,
       @JsonKey(name: 'thumbnail_url') String thumbnailUrl});
@@ -781,6 +797,8 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
     Object? createdAt = null,
     Object? updatedAt = null,
     Object? mediaTakenAt = freezed,
+    Object? width = null,
+    Object? height = null,
     Object? downloadUrl = null,
     Object? previewUrl = null,
     Object? thumbnailUrl = null,
@@ -818,6 +836,14 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
           ? _value.mediaTakenAt
           : mediaTakenAt // ignore: cast_nullable_to_non_nullable
               as String?,
+      width: null == width
+          ? _value.width
+          : width // ignore: cast_nullable_to_non_nullable
+              as int,
+      height: null == height
+          ? _value.height
+          : height // ignore: cast_nullable_to_non_nullable
+              as int,
       downloadUrl: null == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
@@ -846,6 +872,8 @@ class _$MediaResponseImpl implements _MediaResponse {
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       @JsonKey(name: 'media_taken_at') this.mediaTakenAt,
+      required this.width,
+      required this.height,
       @JsonKey(name: 'download_url') required this.downloadUrl,
       @JsonKey(name: 'preview_url') required this.previewUrl,
       @JsonKey(name: 'thumbnail_url') required this.thumbnailUrl});
@@ -876,6 +904,10 @@ class _$MediaResponseImpl implements _MediaResponse {
   @JsonKey(name: 'media_taken_at')
   final String? mediaTakenAt;
   @override
+  final int width;
+  @override
+  final int height;
+  @override
   @JsonKey(name: 'download_url')
   final String downloadUrl;
   @override
@@ -887,7 +919,7 @@ class _$MediaResponseImpl implements _MediaResponse {
 
   @override
   String toString() {
-    return 'MediaResponse(uuid: $uuid, filename: $filename, originalFilename: $originalFilename, itemType: $itemType, hash: $hash, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
+    return 'MediaResponse(uuid: $uuid, filename: $filename, originalFilename: $originalFilename, itemType: $itemType, hash: $hash, createdAt: $createdAt, updatedAt: $updatedAt, mediaTakenAt: $mediaTakenAt, width: $width, height: $height, downloadUrl: $downloadUrl, previewUrl: $previewUrl, thumbnailUrl: $thumbnailUrl)';
   }
 
   @override
@@ -909,6 +941,8 @@ class _$MediaResponseImpl implements _MediaResponse {
                 other.updatedAt == updatedAt) &&
             (identical(other.mediaTakenAt, mediaTakenAt) ||
                 other.mediaTakenAt == mediaTakenAt) &&
+            (identical(other.width, width) || other.width == width) &&
+            (identical(other.height, height) || other.height == height) &&
             (identical(other.downloadUrl, downloadUrl) ||
                 other.downloadUrl == downloadUrl) &&
             (identical(other.previewUrl, previewUrl) ||
@@ -929,6 +963,8 @@ class _$MediaResponseImpl implements _MediaResponse {
       createdAt,
       updatedAt,
       mediaTakenAt,
+      width,
+      height,
       downloadUrl,
       previewUrl,
       thumbnailUrl);
@@ -958,6 +994,8 @@ abstract class _MediaResponse implements MediaResponse {
           @JsonKey(name: 'created_at') required final String createdAt,
           @JsonKey(name: 'updated_at') required final String updatedAt,
           @JsonKey(name: 'media_taken_at') final String? mediaTakenAt,
+          required final int width,
+          required final int height,
           @JsonKey(name: 'download_url') required final String downloadUrl,
           @JsonKey(name: 'preview_url') required final String previewUrl,
           @JsonKey(name: 'thumbnail_url') required final String thumbnailUrl}) =
@@ -988,6 +1026,10 @@ abstract class _MediaResponse implements MediaResponse {
   @override
   @JsonKey(name: 'media_taken_at')
   String? get mediaTakenAt;
+  @override
+  int get width;
+  @override
+  int get height;
   @override
   @JsonKey(name: 'download_url')
   String get downloadUrl;

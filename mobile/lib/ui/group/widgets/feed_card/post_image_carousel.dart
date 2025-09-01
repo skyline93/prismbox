@@ -1,10 +1,10 @@
-// lib/ui/group/widgets/feed_card/post_image_carousel.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
+import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
 
-class PostImageCarousel extends StatelessWidget {
+class PostImageCarousel extends ConsumerWidget {
   final List<UnifiedMediaEntity> attachments;
 
   const PostImageCarousel({super.key, required this.attachments});
@@ -15,29 +15,87 @@ class PostImageCarousel extends StatelessWidget {
   static const double imageBorderRadius = 10.0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (attachments.isEmpty) {
       return const SizedBox.shrink();
+    }
+
+    // 一个通用的图片显示组件，用于处理加载、成功和失败状态
+    Widget buildImageDisplay(UnifiedMediaEntity attachment) {
+      final thumbnailAsyncValue = ref.watch(thumbnailProvider(attachment));
+
+      return thumbnailAsyncValue.when(
+        data: (thumbnailData) {
+          if (thumbnailData != null && thumbnailData.isNotEmpty) {
+            // 数据加载成功，使用 Image.memory 显示
+            return Image.memory(
+              thumbnailData,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+            );
+          }
+          // 数据为空或加载失败（但未抛出错误）
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Center(
+              child: Icon(
+                Icons.image_not_supported_outlined,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          );
+        },
+        loading: () {
+          // 加载中状态，显示一个简单的灰色背景和加载指示器
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2.0,
+                color: Colors.white,
+              ),
+            ),
+          );
+        },
+        error: (error, stackTrace) {
+          // 加载失败状态，显示错误图标
+          debugPrint("帖子轮播照片加载失败 for entityId=${attachment.id}: $error");
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          );
+        },
+      );
     }
 
     Widget imageContent;
 
     if (attachments.length == 1) {
+      // 单张图片的布局
       imageContent = Padding(
         padding: const EdgeInsets.only(left: PostWidget.contentLeftPadding),
         child: Align(
           alignment: Alignment.centerLeft,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(imageBorderRadius),
-            child: Image.network(
-              'https://picsum.photos/seed/${attachments.first.cloudUuid}/800/600',
-              fit: BoxFit.cover,
-              height: imageHeight,
+            // 使用 AspectRatio 来为单张图片提供一个合理的尺寸
+            child: AspectRatio(
+              aspectRatio: imageWidth / imageHeight,
+              child: buildImageDisplay(attachments.first),
             ),
           ),
         ),
       );
     } else {
+      // 多张图片的水平滚动列表
       imageContent = ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.only(
@@ -54,10 +112,7 @@ class PostImageCarousel extends StatelessWidget {
               width: imageWidth,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(imageBorderRadius),
-                child: Image.network(
-                  'https://picsum.photos/seed/${attachments[index].cloudUuid}/800/600',
-                  fit: BoxFit.cover,
-                ),
+                child: buildImageDisplay(attachments[index]),
               ),
             ),
           );
@@ -65,6 +120,7 @@ class PostImageCarousel extends StatelessWidget {
       );
     }
 
+    // 使用 SizedBox 约束轮播组件的整体高度
     return SizedBox(height: imageHeight, child: imageContent);
   }
 }

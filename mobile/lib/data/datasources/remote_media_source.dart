@@ -234,7 +234,7 @@ class RemoteMediaDataSource {
   ///
   /// 这个方法适用于交互式上传，它会先计算文件哈希值，再将其与文件内容一起上传。
   /// 成功后，它会解析服务器的响应并返回新创建媒体的 UUID。
-  Future<String> uploadFile(File file, MediaType itemType) async {
+  Future<MediaResponse> uploadFile(File file, MediaType itemType) async {
     try {
       final fileName = file.path.split('/').last;
 
@@ -262,8 +262,7 @@ class RemoteMediaDataSource {
       // 201 Created 也是 POST 请求成功的常见状态码
       if (response.statusCode == 200 || response.statusCode == 201) {
         // 假设响应体结构为 { "data": { ... media object ... } }
-        final mediaResponse = MediaResponse.fromJson(response.data['data']);
-        return mediaResponse.uuid;
+        return MediaResponse.fromJson(response.data['data']);
       } else {
         throw Exception('上传媒体失败: ${response.data?['message']}');
       }

@@ -81,6 +81,16 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    GroupPostDetailRoute.name: (routeData) {
+      final args = routeData.argsAs<GroupPostDetailRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupPostDetailPage(
+          key: args.key,
+          post: args.post,
+        ),
+      );
+    },
     GroupSettingsRoute.name: (routeData) {
       final pathParams = routeData.inheritedPathParams;
       final args = routeData.argsAs<GroupSettingsRouteArgs>(
@@ -104,16 +114,6 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const LoginPage(),
-      );
-    },
-    MediaItemRoute.name: (routeData) {
-      final args = routeData.argsAs<MediaItemRouteArgs>();
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: MediaItemPage(
-          key: args.key,
-          groupMedia: args.groupMedia,
-        ),
       );
     },
     MediaRoute.name: (routeData) {
@@ -355,6 +355,44 @@ class GroupMembersRouteArgs {
 }
 
 /// generated route for
+/// [GroupPostDetailPage]
+class GroupPostDetailRoute extends PageRouteInfo<GroupPostDetailRouteArgs> {
+  GroupPostDetailRoute({
+    Key? key,
+    required GroupFeedItemEntity post,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupPostDetailRoute.name,
+          args: GroupPostDetailRouteArgs(
+            key: key,
+            post: post,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupPostDetailRoute';
+
+  static const PageInfo<GroupPostDetailRouteArgs> page =
+      PageInfo<GroupPostDetailRouteArgs>(name);
+}
+
+class GroupPostDetailRouteArgs {
+  const GroupPostDetailRouteArgs({
+    this.key,
+    required this.post,
+  });
+
+  final Key? key;
+
+  final GroupFeedItemEntity post;
+
+  @override
+  String toString() {
+    return 'GroupPostDetailRouteArgs{key: $key, post: $post}';
+  }
+}
+
+/// generated route for
 /// [GroupSettingsPage]
 class GroupSettingsRoute extends PageRouteInfo<GroupSettingsRouteArgs> {
   GroupSettingsRoute({
@@ -419,44 +457,6 @@ class LoginRoute extends PageRouteInfo<void> {
   static const String name = 'LoginRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [MediaItemPage]
-class MediaItemRoute extends PageRouteInfo<MediaItemRouteArgs> {
-  MediaItemRoute({
-    Key? key,
-    required GroupMediaModel groupMedia,
-    List<PageRouteInfo>? children,
-  }) : super(
-          MediaItemRoute.name,
-          args: MediaItemRouteArgs(
-            key: key,
-            groupMedia: groupMedia,
-          ),
-          initialChildren: children,
-        );
-
-  static const String name = 'MediaItemRoute';
-
-  static const PageInfo<MediaItemRouteArgs> page =
-      PageInfo<MediaItemRouteArgs>(name);
-}
-
-class MediaItemRouteArgs {
-  const MediaItemRouteArgs({
-    this.key,
-    required this.groupMedia,
-  });
-
-  final Key? key;
-
-  final GroupMediaModel groupMedia;
-
-  @override
-  String toString() {
-    return 'MediaItemRouteArgs{key: $key, groupMedia: $groupMedia}';
-  }
 }
 
 /// generated route for

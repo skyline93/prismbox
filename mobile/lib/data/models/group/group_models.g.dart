@@ -61,37 +61,45 @@ Map<String, dynamic> _$$GroupMemberModelImplToJson(
       'joined_at': instance.joinedAt,
     };
 
-_$UploaderInfoImpl _$$UploaderInfoImplFromJson(Map<String, dynamic> json) =>
-    _$UploaderInfoImpl(
+_$AuthorModelImpl _$$AuthorModelImplFromJson(Map<String, dynamic> json) =>
+    _$AuthorModelImpl(
       userId: (json['user_id'] as num).toInt(),
       username: json['username'] as String,
+      avatarUrl: json['avatar_url'] as String?,
     );
 
-Map<String, dynamic> _$$UploaderInfoImplToJson(_$UploaderInfoImpl instance) =>
+Map<String, dynamic> _$$AuthorModelImplToJson(_$AuthorModelImpl instance) =>
     <String, dynamic>{
       'user_id': instance.userId,
       'username': instance.username,
+      'avatar_url': instance.avatarUrl,
     };
 
-_$GroupMediaModelImpl _$$GroupMediaModelImplFromJson(
-        Map<String, dynamic> json) =>
-    _$GroupMediaModelImpl(
-      group_media_id: (json['group_media_id'] as num).toInt(),
-      caption: json['caption'] as String?,
-      sharedAt: json['shared_at'] as String,
-      uploader: UploaderInfo.fromJson(json['uploader'] as Map<String, dynamic>),
-      mediaDetails:
-          MediaResponse.fromJson(json['media_details'] as Map<String, dynamic>),
+_$GroupPostModelImpl _$$GroupPostModelImplFromJson(Map<String, dynamic> json) =>
+    _$GroupPostModelImpl(
+      id: (json['id'] as num).toInt(),
+      caption: json['caption'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      creator: AuthorModel.fromJson(json['creator'] as Map<String, dynamic>),
+      media: (json['media'] as List<dynamic>)
+          .map((e) => MediaResponse.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      likesCount: (json['likes_count'] as num).toInt(),
+      commentsCount: (json['comments_count'] as num).toInt(),
+      hasLiked: json['has_liked'] as bool?,
     );
 
-Map<String, dynamic> _$$GroupMediaModelImplToJson(
-        _$GroupMediaModelImpl instance) =>
+Map<String, dynamic> _$$GroupPostModelImplToJson(
+        _$GroupPostModelImpl instance) =>
     <String, dynamic>{
-      'group_media_id': instance.group_media_id,
+      'id': instance.id,
       'caption': instance.caption,
-      'shared_at': instance.sharedAt,
-      'uploader': instance.uploader,
-      'media_details': instance.mediaDetails,
+      'created_at': instance.createdAt.toIso8601String(),
+      'creator': instance.creator,
+      'media': instance.media,
+      'likes_count': instance.likesCount,
+      'comments_count': instance.commentsCount,
+      'has_liked': instance.hasLiked,
     };
 
 _$CommentModelImpl _$$CommentModelImplFromJson(Map<String, dynamic> json) =>
@@ -99,7 +107,7 @@ _$CommentModelImpl _$$CommentModelImplFromJson(Map<String, dynamic> json) =>
       id: (json['id'] as num).toInt(),
       content: json['content'] as String,
       createdAt: json['created_at'] as String,
-      user: UploaderInfo.fromJson(json['user'] as Map<String, dynamic>),
+      user: AuthorModel.fromJson(json['user'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$CommentModelImplToJson(_$CommentModelImpl instance) =>

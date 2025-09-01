@@ -77,15 +77,4 @@ class GroupFeedViewModel extends StateNotifier<GroupFeedState> {
       );
     }
   }
-
-  Future<void> createNewPost({
-    required String content,
-    required List<String> mediaUuids,
-  }) async {
-    await _groupRepository.createPostInGroup(
-      groupId: uuid,
-      content: content,
-      mediaUuids: mediaUuids,
-    );
-  }
 }

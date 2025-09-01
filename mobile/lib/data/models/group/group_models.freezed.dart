@@ -31,8 +31,8 @@ mixin _$GroupModel {
   String get createdAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'updated_at')
   String get updatedAt => throw _privateConstructorUsedError; // 聚合信息
-  int? get memberCount => throw _privateConstructorUsedError; // === M4 新增字段 ===
-// 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+  int? get memberCount => throw _privateConstructorUsedError;
+
   /// 当前登录用户在此圈子中的 User ID
   @JsonKey(name: 'current_user_id')
   int? get currentUserId => throw _privateConstructorUsedError;
@@ -262,8 +262,7 @@ class _$GroupModelImpl implements _GroupModel {
 // 聚合信息
   @override
   final int? memberCount;
-// === M4 新增字段 ===
-// 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+
   /// 当前登录用户在此圈子中的 User ID
   @override
   @JsonKey(name: 'current_user_id')
@@ -369,8 +368,8 @@ abstract class _GroupModel implements GroupModel {
   String get updatedAt;
   @override // 聚合信息
   int? get memberCount;
-  @override // === M4 新增字段 ===
-// 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
+  @override
+
   /// 当前登录用户在此圈子中的 User ID
   @JsonKey(name: 'current_user_id')
   int? get currentUserId;
@@ -620,35 +619,40 @@ abstract class _GroupMemberModel implements GroupMemberModel {
       throw _privateConstructorUsedError;
 }
 
-UploaderInfo _$UploaderInfoFromJson(Map<String, dynamic> json) {
-  return _UploaderInfo.fromJson(json);
+AuthorModel _$AuthorModelFromJson(Map<String, dynamic> json) {
+  return _AuthorModel.fromJson(json);
 }
 
 /// @nodoc
-mixin _$UploaderInfo {
+mixin _$AuthorModel {
   @JsonKey(name: 'user_id')
   int get userId => throw _privateConstructorUsedError;
   String get username => throw _privateConstructorUsedError;
+  @JsonKey(name: 'avatar_url')
+  String? get avatarUrl => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
-  $UploaderInfoCopyWith<UploaderInfo> get copyWith =>
+  $AuthorModelCopyWith<AuthorModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class $UploaderInfoCopyWith<$Res> {
-  factory $UploaderInfoCopyWith(
-          UploaderInfo value, $Res Function(UploaderInfo) then) =
-      _$UploaderInfoCopyWithImpl<$Res, UploaderInfo>;
+abstract class $AuthorModelCopyWith<$Res> {
+  factory $AuthorModelCopyWith(
+          AuthorModel value, $Res Function(AuthorModel) then) =
+      _$AuthorModelCopyWithImpl<$Res, AuthorModel>;
   @useResult
-  $Res call({@JsonKey(name: 'user_id') int userId, String username});
+  $Res call(
+      {@JsonKey(name: 'user_id') int userId,
+      String username,
+      @JsonKey(name: 'avatar_url') String? avatarUrl});
 }
 
 /// @nodoc
-class _$UploaderInfoCopyWithImpl<$Res, $Val extends UploaderInfo>
-    implements $UploaderInfoCopyWith<$Res> {
-  _$UploaderInfoCopyWithImpl(this._value, this._then);
+class _$AuthorModelCopyWithImpl<$Res, $Val extends AuthorModel>
+    implements $AuthorModelCopyWith<$Res> {
+  _$AuthorModelCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -660,6 +664,7 @@ class _$UploaderInfoCopyWithImpl<$Res, $Val extends UploaderInfo>
   $Res call({
     Object? userId = null,
     Object? username = null,
+    Object? avatarUrl = freezed,
   }) {
     return _then(_value.copyWith(
       userId: null == userId
@@ -670,27 +675,34 @@ class _$UploaderInfoCopyWithImpl<$Res, $Val extends UploaderInfo>
           ? _value.username
           : username // ignore: cast_nullable_to_non_nullable
               as String,
+      avatarUrl: freezed == avatarUrl
+          ? _value.avatarUrl
+          : avatarUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
 
 /// @nodoc
-abstract class _$$UploaderInfoImplCopyWith<$Res>
-    implements $UploaderInfoCopyWith<$Res> {
-  factory _$$UploaderInfoImplCopyWith(
-          _$UploaderInfoImpl value, $Res Function(_$UploaderInfoImpl) then) =
-      __$$UploaderInfoImplCopyWithImpl<$Res>;
+abstract class _$$AuthorModelImplCopyWith<$Res>
+    implements $AuthorModelCopyWith<$Res> {
+  factory _$$AuthorModelImplCopyWith(
+          _$AuthorModelImpl value, $Res Function(_$AuthorModelImpl) then) =
+      __$$AuthorModelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({@JsonKey(name: 'user_id') int userId, String username});
+  $Res call(
+      {@JsonKey(name: 'user_id') int userId,
+      String username,
+      @JsonKey(name: 'avatar_url') String? avatarUrl});
 }
 
 /// @nodoc
-class __$$UploaderInfoImplCopyWithImpl<$Res>
-    extends _$UploaderInfoCopyWithImpl<$Res, _$UploaderInfoImpl>
-    implements _$$UploaderInfoImplCopyWith<$Res> {
-  __$$UploaderInfoImplCopyWithImpl(
-      _$UploaderInfoImpl _value, $Res Function(_$UploaderInfoImpl) _then)
+class __$$AuthorModelImplCopyWithImpl<$Res>
+    extends _$AuthorModelCopyWithImpl<$Res, _$AuthorModelImpl>
+    implements _$$AuthorModelImplCopyWith<$Res> {
+  __$$AuthorModelImplCopyWithImpl(
+      _$AuthorModelImpl _value, $Res Function(_$AuthorModelImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -698,8 +710,9 @@ class __$$UploaderInfoImplCopyWithImpl<$Res>
   $Res call({
     Object? userId = null,
     Object? username = null,
+    Object? avatarUrl = freezed,
   }) {
-    return _then(_$UploaderInfoImpl(
+    return _then(_$AuthorModelImpl(
       userId: null == userId
           ? _value.userId
           : userId // ignore: cast_nullable_to_non_nullable
@@ -708,65 +721,78 @@ class __$$UploaderInfoImplCopyWithImpl<$Res>
           ? _value.username
           : username // ignore: cast_nullable_to_non_nullable
               as String,
+      avatarUrl: freezed == avatarUrl
+          ? _value.avatarUrl
+          : avatarUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$UploaderInfoImpl implements _UploaderInfo {
-  const _$UploaderInfoImpl(
-      {@JsonKey(name: 'user_id') required this.userId, required this.username});
+class _$AuthorModelImpl implements _AuthorModel {
+  const _$AuthorModelImpl(
+      {@JsonKey(name: 'user_id') required this.userId,
+      required this.username,
+      @JsonKey(name: 'avatar_url') this.avatarUrl});
 
-  factory _$UploaderInfoImpl.fromJson(Map<String, dynamic> json) =>
-      _$$UploaderInfoImplFromJson(json);
+  factory _$AuthorModelImpl.fromJson(Map<String, dynamic> json) =>
+      _$$AuthorModelImplFromJson(json);
 
   @override
   @JsonKey(name: 'user_id')
   final int userId;
   @override
   final String username;
+  @override
+  @JsonKey(name: 'avatar_url')
+  final String? avatarUrl;
 
   @override
   String toString() {
-    return 'UploaderInfo(userId: $userId, username: $username)';
+    return 'AuthorModel(userId: $userId, username: $username, avatarUrl: $avatarUrl)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$UploaderInfoImpl &&
+            other is _$AuthorModelImpl &&
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.username, username) ||
-                other.username == username));
+                other.username == username) &&
+            (identical(other.avatarUrl, avatarUrl) ||
+                other.avatarUrl == avatarUrl));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, userId, username);
+  int get hashCode => Object.hash(runtimeType, userId, username, avatarUrl);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$UploaderInfoImplCopyWith<_$UploaderInfoImpl> get copyWith =>
-      __$$UploaderInfoImplCopyWithImpl<_$UploaderInfoImpl>(this, _$identity);
+  _$$AuthorModelImplCopyWith<_$AuthorModelImpl> get copyWith =>
+      __$$AuthorModelImplCopyWithImpl<_$AuthorModelImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$UploaderInfoImplToJson(
+    return _$$AuthorModelImplToJson(
       this,
     );
   }
 }
 
-abstract class _UploaderInfo implements UploaderInfo {
-  const factory _UploaderInfo(
-      {@JsonKey(name: 'user_id') required final int userId,
-      required final String username}) = _$UploaderInfoImpl;
+abstract class _AuthorModel implements AuthorModel {
+  const factory _AuthorModel(
+          {@JsonKey(name: 'user_id') required final int userId,
+          required final String username,
+          @JsonKey(name: 'avatar_url') final String? avatarUrl}) =
+      _$AuthorModelImpl;
 
-  factory _UploaderInfo.fromJson(Map<String, dynamic> json) =
-      _$UploaderInfoImpl.fromJson;
+  factory _AuthorModel.fromJson(Map<String, dynamic> json) =
+      _$AuthorModelImpl.fromJson;
 
   @override
   @JsonKey(name: 'user_id')
@@ -774,52 +800,62 @@ abstract class _UploaderInfo implements UploaderInfo {
   @override
   String get username;
   @override
+  @JsonKey(name: 'avatar_url')
+  String? get avatarUrl;
+  @override
   @JsonKey(ignore: true)
-  _$$UploaderInfoImplCopyWith<_$UploaderInfoImpl> get copyWith =>
+  _$$AuthorModelImplCopyWith<_$AuthorModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
-GroupMediaModel _$GroupMediaModelFromJson(Map<String, dynamic> json) {
-  return _GroupMediaModel.fromJson(json);
+GroupPostModel _$GroupPostModelFromJson(Map<String, dynamic> json) {
+  return _GroupPostModel.fromJson(json);
 }
 
 /// @nodoc
-mixin _$GroupMediaModel {
-  int get group_media_id => throw _privateConstructorUsedError;
-  String? get caption => throw _privateConstructorUsedError;
-  @JsonKey(name: 'shared_at')
-  String get sharedAt => throw _privateConstructorUsedError;
-  UploaderInfo get uploader => throw _privateConstructorUsedError;
-  @JsonKey(name: 'media_details')
-  MediaResponse get mediaDetails => throw _privateConstructorUsedError;
+mixin _$GroupPostModel {
+  int get id => throw _privateConstructorUsedError;
+  String get caption => throw _privateConstructorUsedError;
+  @JsonKey(name: 'created_at')
+  DateTime get createdAt => throw _privateConstructorUsedError;
+  AuthorModel get creator => throw _privateConstructorUsedError;
+  List<MediaResponse> get media => throw _privateConstructorUsedError;
+  @JsonKey(name: 'likes_count')
+  int get likesCount => throw _privateConstructorUsedError;
+  @JsonKey(name: 'comments_count')
+  int get commentsCount => throw _privateConstructorUsedError;
+  @JsonKey(name: 'has_liked')
+  bool? get hasLiked => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
-  $GroupMediaModelCopyWith<GroupMediaModel> get copyWith =>
+  $GroupPostModelCopyWith<GroupPostModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class $GroupMediaModelCopyWith<$Res> {
-  factory $GroupMediaModelCopyWith(
-          GroupMediaModel value, $Res Function(GroupMediaModel) then) =
-      _$GroupMediaModelCopyWithImpl<$Res, GroupMediaModel>;
+abstract class $GroupPostModelCopyWith<$Res> {
+  factory $GroupPostModelCopyWith(
+          GroupPostModel value, $Res Function(GroupPostModel) then) =
+      _$GroupPostModelCopyWithImpl<$Res, GroupPostModel>;
   @useResult
   $Res call(
-      {int group_media_id,
-      String? caption,
-      @JsonKey(name: 'shared_at') String sharedAt,
-      UploaderInfo uploader,
-      @JsonKey(name: 'media_details') MediaResponse mediaDetails});
+      {int id,
+      String caption,
+      @JsonKey(name: 'created_at') DateTime createdAt,
+      AuthorModel creator,
+      List<MediaResponse> media,
+      @JsonKey(name: 'likes_count') int likesCount,
+      @JsonKey(name: 'comments_count') int commentsCount,
+      @JsonKey(name: 'has_liked') bool? hasLiked});
 
-  $UploaderInfoCopyWith<$Res> get uploader;
-  $MediaResponseCopyWith<$Res> get mediaDetails;
+  $AuthorModelCopyWith<$Res> get creator;
 }
 
 /// @nodoc
-class _$GroupMediaModelCopyWithImpl<$Res, $Val extends GroupMediaModel>
-    implements $GroupMediaModelCopyWith<$Res> {
-  _$GroupMediaModelCopyWithImpl(this._value, this._then);
+class _$GroupPostModelCopyWithImpl<$Res, $Val extends GroupPostModel>
+    implements $GroupPostModelCopyWith<$Res> {
+  _$GroupPostModelCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -829,210 +865,272 @@ class _$GroupMediaModelCopyWithImpl<$Res, $Val extends GroupMediaModel>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? group_media_id = null,
-    Object? caption = freezed,
-    Object? sharedAt = null,
-    Object? uploader = null,
-    Object? mediaDetails = null,
+    Object? id = null,
+    Object? caption = null,
+    Object? createdAt = null,
+    Object? creator = null,
+    Object? media = null,
+    Object? likesCount = null,
+    Object? commentsCount = null,
+    Object? hasLiked = freezed,
   }) {
     return _then(_value.copyWith(
-      group_media_id: null == group_media_id
-          ? _value.group_media_id
-          : group_media_id // ignore: cast_nullable_to_non_nullable
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
               as int,
-      caption: freezed == caption
+      caption: null == caption
           ? _value.caption
           : caption // ignore: cast_nullable_to_non_nullable
-              as String?,
-      sharedAt: null == sharedAt
-          ? _value.sharedAt
-          : sharedAt // ignore: cast_nullable_to_non_nullable
               as String,
-      uploader: null == uploader
-          ? _value.uploader
-          : uploader // ignore: cast_nullable_to_non_nullable
-              as UploaderInfo,
-      mediaDetails: null == mediaDetails
-          ? _value.mediaDetails
-          : mediaDetails // ignore: cast_nullable_to_non_nullable
-              as MediaResponse,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      creator: null == creator
+          ? _value.creator
+          : creator // ignore: cast_nullable_to_non_nullable
+              as AuthorModel,
+      media: null == media
+          ? _value.media
+          : media // ignore: cast_nullable_to_non_nullable
+              as List<MediaResponse>,
+      likesCount: null == likesCount
+          ? _value.likesCount
+          : likesCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      commentsCount: null == commentsCount
+          ? _value.commentsCount
+          : commentsCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      hasLiked: freezed == hasLiked
+          ? _value.hasLiked
+          : hasLiked // ignore: cast_nullable_to_non_nullable
+              as bool?,
     ) as $Val);
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $UploaderInfoCopyWith<$Res> get uploader {
-    return $UploaderInfoCopyWith<$Res>(_value.uploader, (value) {
-      return _then(_value.copyWith(uploader: value) as $Val);
-    });
-  }
-
-  @override
-  @pragma('vm:prefer-inline')
-  $MediaResponseCopyWith<$Res> get mediaDetails {
-    return $MediaResponseCopyWith<$Res>(_value.mediaDetails, (value) {
-      return _then(_value.copyWith(mediaDetails: value) as $Val);
+  $AuthorModelCopyWith<$Res> get creator {
+    return $AuthorModelCopyWith<$Res>(_value.creator, (value) {
+      return _then(_value.copyWith(creator: value) as $Val);
     });
   }
 }
 
 /// @nodoc
-abstract class _$$GroupMediaModelImplCopyWith<$Res>
-    implements $GroupMediaModelCopyWith<$Res> {
-  factory _$$GroupMediaModelImplCopyWith(_$GroupMediaModelImpl value,
-          $Res Function(_$GroupMediaModelImpl) then) =
-      __$$GroupMediaModelImplCopyWithImpl<$Res>;
+abstract class _$$GroupPostModelImplCopyWith<$Res>
+    implements $GroupPostModelCopyWith<$Res> {
+  factory _$$GroupPostModelImplCopyWith(_$GroupPostModelImpl value,
+          $Res Function(_$GroupPostModelImpl) then) =
+      __$$GroupPostModelImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
-      {int group_media_id,
-      String? caption,
-      @JsonKey(name: 'shared_at') String sharedAt,
-      UploaderInfo uploader,
-      @JsonKey(name: 'media_details') MediaResponse mediaDetails});
+      {int id,
+      String caption,
+      @JsonKey(name: 'created_at') DateTime createdAt,
+      AuthorModel creator,
+      List<MediaResponse> media,
+      @JsonKey(name: 'likes_count') int likesCount,
+      @JsonKey(name: 'comments_count') int commentsCount,
+      @JsonKey(name: 'has_liked') bool? hasLiked});
 
   @override
-  $UploaderInfoCopyWith<$Res> get uploader;
-  @override
-  $MediaResponseCopyWith<$Res> get mediaDetails;
+  $AuthorModelCopyWith<$Res> get creator;
 }
 
 /// @nodoc
-class __$$GroupMediaModelImplCopyWithImpl<$Res>
-    extends _$GroupMediaModelCopyWithImpl<$Res, _$GroupMediaModelImpl>
-    implements _$$GroupMediaModelImplCopyWith<$Res> {
-  __$$GroupMediaModelImplCopyWithImpl(
-      _$GroupMediaModelImpl _value, $Res Function(_$GroupMediaModelImpl) _then)
+class __$$GroupPostModelImplCopyWithImpl<$Res>
+    extends _$GroupPostModelCopyWithImpl<$Res, _$GroupPostModelImpl>
+    implements _$$GroupPostModelImplCopyWith<$Res> {
+  __$$GroupPostModelImplCopyWithImpl(
+      _$GroupPostModelImpl _value, $Res Function(_$GroupPostModelImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? group_media_id = null,
-    Object? caption = freezed,
-    Object? sharedAt = null,
-    Object? uploader = null,
-    Object? mediaDetails = null,
+    Object? id = null,
+    Object? caption = null,
+    Object? createdAt = null,
+    Object? creator = null,
+    Object? media = null,
+    Object? likesCount = null,
+    Object? commentsCount = null,
+    Object? hasLiked = freezed,
   }) {
-    return _then(_$GroupMediaModelImpl(
-      group_media_id: null == group_media_id
-          ? _value.group_media_id
-          : group_media_id // ignore: cast_nullable_to_non_nullable
+    return _then(_$GroupPostModelImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
               as int,
-      caption: freezed == caption
+      caption: null == caption
           ? _value.caption
           : caption // ignore: cast_nullable_to_non_nullable
-              as String?,
-      sharedAt: null == sharedAt
-          ? _value.sharedAt
-          : sharedAt // ignore: cast_nullable_to_non_nullable
               as String,
-      uploader: null == uploader
-          ? _value.uploader
-          : uploader // ignore: cast_nullable_to_non_nullable
-              as UploaderInfo,
-      mediaDetails: null == mediaDetails
-          ? _value.mediaDetails
-          : mediaDetails // ignore: cast_nullable_to_non_nullable
-              as MediaResponse,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      creator: null == creator
+          ? _value.creator
+          : creator // ignore: cast_nullable_to_non_nullable
+              as AuthorModel,
+      media: null == media
+          ? _value._media
+          : media // ignore: cast_nullable_to_non_nullable
+              as List<MediaResponse>,
+      likesCount: null == likesCount
+          ? _value.likesCount
+          : likesCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      commentsCount: null == commentsCount
+          ? _value.commentsCount
+          : commentsCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      hasLiked: freezed == hasLiked
+          ? _value.hasLiked
+          : hasLiked // ignore: cast_nullable_to_non_nullable
+              as bool?,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$GroupMediaModelImpl implements _GroupMediaModel {
-  const _$GroupMediaModelImpl(
-      {required this.group_media_id,
-      this.caption,
-      @JsonKey(name: 'shared_at') required this.sharedAt,
-      required this.uploader,
-      @JsonKey(name: 'media_details') required this.mediaDetails});
+class _$GroupPostModelImpl implements _GroupPostModel {
+  const _$GroupPostModelImpl(
+      {required this.id,
+      required this.caption,
+      @JsonKey(name: 'created_at') required this.createdAt,
+      required this.creator,
+      required final List<MediaResponse> media,
+      @JsonKey(name: 'likes_count') required this.likesCount,
+      @JsonKey(name: 'comments_count') required this.commentsCount,
+      @JsonKey(name: 'has_liked') this.hasLiked})
+      : _media = media;
 
-  factory _$GroupMediaModelImpl.fromJson(Map<String, dynamic> json) =>
-      _$$GroupMediaModelImplFromJson(json);
+  factory _$GroupPostModelImpl.fromJson(Map<String, dynamic> json) =>
+      _$$GroupPostModelImplFromJson(json);
 
   @override
-  final int group_media_id;
+  final int id;
   @override
-  final String? caption;
+  final String caption;
   @override
-  @JsonKey(name: 'shared_at')
-  final String sharedAt;
+  @JsonKey(name: 'created_at')
+  final DateTime createdAt;
   @override
-  final UploaderInfo uploader;
+  final AuthorModel creator;
+  final List<MediaResponse> _media;
   @override
-  @JsonKey(name: 'media_details')
-  final MediaResponse mediaDetails;
+  List<MediaResponse> get media {
+    if (_media is EqualUnmodifiableListView) return _media;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_media);
+  }
+
+  @override
+  @JsonKey(name: 'likes_count')
+  final int likesCount;
+  @override
+  @JsonKey(name: 'comments_count')
+  final int commentsCount;
+  @override
+  @JsonKey(name: 'has_liked')
+  final bool? hasLiked;
 
   @override
   String toString() {
-    return 'GroupMediaModel(group_media_id: $group_media_id, caption: $caption, sharedAt: $sharedAt, uploader: $uploader, mediaDetails: $mediaDetails)';
+    return 'GroupPostModel(id: $id, caption: $caption, createdAt: $createdAt, creator: $creator, media: $media, likesCount: $likesCount, commentsCount: $commentsCount, hasLiked: $hasLiked)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$GroupMediaModelImpl &&
-            (identical(other.group_media_id, group_media_id) ||
-                other.group_media_id == group_media_id) &&
+            other is _$GroupPostModelImpl &&
+            (identical(other.id, id) || other.id == id) &&
             (identical(other.caption, caption) || other.caption == caption) &&
-            (identical(other.sharedAt, sharedAt) ||
-                other.sharedAt == sharedAt) &&
-            (identical(other.uploader, uploader) ||
-                other.uploader == uploader) &&
-            (identical(other.mediaDetails, mediaDetails) ||
-                other.mediaDetails == mediaDetails));
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt) &&
+            (identical(other.creator, creator) || other.creator == creator) &&
+            const DeepCollectionEquality().equals(other._media, _media) &&
+            (identical(other.likesCount, likesCount) ||
+                other.likesCount == likesCount) &&
+            (identical(other.commentsCount, commentsCount) ||
+                other.commentsCount == commentsCount) &&
+            (identical(other.hasLiked, hasLiked) ||
+                other.hasLiked == hasLiked));
   }
 
   @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
-      runtimeType, group_media_id, caption, sharedAt, uploader, mediaDetails);
+      runtimeType,
+      id,
+      caption,
+      createdAt,
+      creator,
+      const DeepCollectionEquality().hash(_media),
+      likesCount,
+      commentsCount,
+      hasLiked);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$GroupMediaModelImplCopyWith<_$GroupMediaModelImpl> get copyWith =>
-      __$$GroupMediaModelImplCopyWithImpl<_$GroupMediaModelImpl>(
+  _$$GroupPostModelImplCopyWith<_$GroupPostModelImpl> get copyWith =>
+      __$$GroupPostModelImplCopyWithImpl<_$GroupPostModelImpl>(
           this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$GroupMediaModelImplToJson(
+    return _$$GroupPostModelImplToJson(
       this,
     );
   }
 }
 
-abstract class _GroupMediaModel implements GroupMediaModel {
-  const factory _GroupMediaModel(
-      {required final int group_media_id,
-      final String? caption,
-      @JsonKey(name: 'shared_at') required final String sharedAt,
-      required final UploaderInfo uploader,
-      @JsonKey(name: 'media_details')
-      required final MediaResponse mediaDetails}) = _$GroupMediaModelImpl;
+abstract class _GroupPostModel implements GroupPostModel {
+  const factory _GroupPostModel(
+      {required final int id,
+      required final String caption,
+      @JsonKey(name: 'created_at') required final DateTime createdAt,
+      required final AuthorModel creator,
+      required final List<MediaResponse> media,
+      @JsonKey(name: 'likes_count') required final int likesCount,
+      @JsonKey(name: 'comments_count') required final int commentsCount,
+      @JsonKey(name: 'has_liked') final bool? hasLiked}) = _$GroupPostModelImpl;
 
-  factory _GroupMediaModel.fromJson(Map<String, dynamic> json) =
-      _$GroupMediaModelImpl.fromJson;
+  factory _GroupPostModel.fromJson(Map<String, dynamic> json) =
+      _$GroupPostModelImpl.fromJson;
 
   @override
-  int get group_media_id;
+  int get id;
   @override
-  String? get caption;
+  String get caption;
   @override
-  @JsonKey(name: 'shared_at')
-  String get sharedAt;
+  @JsonKey(name: 'created_at')
+  DateTime get createdAt;
   @override
-  UploaderInfo get uploader;
+  AuthorModel get creator;
   @override
-  @JsonKey(name: 'media_details')
-  MediaResponse get mediaDetails;
+  List<MediaResponse> get media;
+  @override
+  @JsonKey(name: 'likes_count')
+  int get likesCount;
+  @override
+  @JsonKey(name: 'comments_count')
+  int get commentsCount;
+  @override
+  @JsonKey(name: 'has_liked')
+  bool? get hasLiked;
   @override
   @JsonKey(ignore: true)
-  _$$GroupMediaModelImplCopyWith<_$GroupMediaModelImpl> get copyWith =>
+  _$$GroupPostModelImplCopyWith<_$GroupPostModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -1046,7 +1144,7 @@ mixin _$CommentModel {
   String get content => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   String get createdAt => throw _privateConstructorUsedError;
-  UploaderInfo get user => throw _privateConstructorUsedError;
+  AuthorModel get user => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -1064,9 +1162,9 @@ abstract class $CommentModelCopyWith<$Res> {
       {int id,
       String content,
       @JsonKey(name: 'created_at') String createdAt,
-      UploaderInfo user});
+      AuthorModel user});
 
-  $UploaderInfoCopyWith<$Res> get user;
+  $AuthorModelCopyWith<$Res> get user;
 }
 
 /// @nodoc
@@ -1103,14 +1201,14 @@ class _$CommentModelCopyWithImpl<$Res, $Val extends CommentModel>
       user: null == user
           ? _value.user
           : user // ignore: cast_nullable_to_non_nullable
-              as UploaderInfo,
+              as AuthorModel,
     ) as $Val);
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $UploaderInfoCopyWith<$Res> get user {
-    return $UploaderInfoCopyWith<$Res>(_value.user, (value) {
+  $AuthorModelCopyWith<$Res> get user {
+    return $AuthorModelCopyWith<$Res>(_value.user, (value) {
       return _then(_value.copyWith(user: value) as $Val);
     });
   }
@@ -1128,10 +1226,10 @@ abstract class _$$CommentModelImplCopyWith<$Res>
       {int id,
       String content,
       @JsonKey(name: 'created_at') String createdAt,
-      UploaderInfo user});
+      AuthorModel user});
 
   @override
-  $UploaderInfoCopyWith<$Res> get user;
+  $AuthorModelCopyWith<$Res> get user;
 }
 
 /// @nodoc
@@ -1166,7 +1264,7 @@ class __$$CommentModelImplCopyWithImpl<$Res>
       user: null == user
           ? _value.user
           : user // ignore: cast_nullable_to_non_nullable
-              as UploaderInfo,
+              as AuthorModel,
     ));
   }
 }
@@ -1191,7 +1289,7 @@ class _$CommentModelImpl implements _CommentModel {
   @JsonKey(name: 'created_at')
   final String createdAt;
   @override
-  final UploaderInfo user;
+  final AuthorModel user;
 
   @override
   String toString() {
@@ -1233,7 +1331,7 @@ abstract class _CommentModel implements CommentModel {
       {required final int id,
       required final String content,
       @JsonKey(name: 'created_at') required final String createdAt,
-      required final UploaderInfo user}) = _$CommentModelImpl;
+      required final AuthorModel user}) = _$CommentModelImpl;
 
   factory _CommentModel.fromJson(Map<String, dynamic> json) =
       _$CommentModelImpl.fromJson;
@@ -1246,7 +1344,7 @@ abstract class _CommentModel implements CommentModel {
   @JsonKey(name: 'created_at')
   String get createdAt;
   @override
-  UploaderInfo get user;
+  AuthorModel get user;
   @override
   @JsonKey(ignore: true)
   _$$CommentModelImplCopyWith<_$CommentModelImpl> get copyWith =>

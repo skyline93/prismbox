@@ -1,10 +1,12 @@
+// lib/ui/group/widgets/new_post/selected_assets_preview.dart
+
 import 'package:flutter/material.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
 class SelectedAssetsPreview extends StatelessWidget {
   final List<AssetEntity> assets;
   final ValueChanged<int> onRemoveAsset;
-  final VoidCallback onPickAssets; // 新增：接收用于打开照片选择器的回调
+  final VoidCallback onPickAssets;
 
   const SelectedAssetsPreview({
     super.key,

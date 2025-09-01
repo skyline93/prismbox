@@ -7,7 +7,7 @@ import 'package:mobile/domain/repositories/group_repository.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_viewmodel.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
-import 'package:mobile/data/mock_feed_data.dart';
+// import 'package:mobile/data/mock_feed_data.dart';
 
 // 1. Repository Provider
 // 职责：作为 Riverpod 与 GetIt/Injectable 依赖注入框架之间的桥梁。
@@ -71,11 +71,11 @@ final groupDetailsProvider = FutureProvider.autoDispose
 
 final groupFeedFirstPageProvider = FutureProvider.autoDispose
     .family<List<GroupFeedItemEntity>, String>((ref, uuid) async {
-      await Future.delayed(const Duration(milliseconds: 800));
+      // await Future.delayed(const Duration(milliseconds: 800));
 
       // 直接返回 mock 数据列表
-      return getMockFeedItems();
+      // return getMockFeedItems();
 
-      // final groupRepository = ref.watch(groupRepositoryProvider);
-      // return groupRepository.getGroupFeed(uuid, page: 1);
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      return groupRepository.getGroupFeed(uuid, page: 1);
     });

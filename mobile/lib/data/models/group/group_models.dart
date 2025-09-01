@@ -58,32 +58,33 @@ class GroupMemberModel with _$GroupMemberModel {
       _$GroupMemberModelFromJson(json);
 }
 
-/// 上传者信息（用于Feed流）
 @freezed
-class UploaderInfo with _$UploaderInfo {
-  const factory UploaderInfo({
+class AuthorModel with _$AuthorModel {
+  const factory AuthorModel({
     @JsonKey(name: 'user_id') required int userId,
     required String username,
-    // @JsonKey(name: 'avatar_url') String? avatarUrl,
-  }) = _UploaderInfo;
+    @JsonKey(name: 'avatar_url') String? avatarUrl,
+  }) = _AuthorModel;
 
-  factory UploaderInfo.fromJson(Map<String, dynamic> json) =>
-      _$UploaderInfoFromJson(json);
+  factory AuthorModel.fromJson(Map<String, dynamic> json) =>
+      _$AuthorModelFromJson(json);
 }
 
-/// 圈子Feed流中的媒体项模型
 @freezed
-class GroupMediaModel with _$GroupMediaModel {
-  const factory GroupMediaModel({
-    required int group_media_id,
-    String? caption,
-    @JsonKey(name: 'shared_at') required String sharedAt,
-    required UploaderInfo uploader,
-    @JsonKey(name: 'media_details') required MediaResponse mediaDetails,
-  }) = _GroupMediaModel;
+class GroupPostModel with _$GroupPostModel {
+  const factory GroupPostModel({
+    required int id,
+    required String caption,
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+    required AuthorModel creator,
+    required List<MediaResponse> media,
+    @JsonKey(name: 'likes_count') required int likesCount,
+    @JsonKey(name: 'comments_count') required int commentsCount,
+    @JsonKey(name: 'has_liked') bool? hasLiked,
+  }) = _GroupPostModel;
 
-  factory GroupMediaModel.fromJson(Map<String, dynamic> json) =>
-      _$GroupMediaModelFromJson(json);
+  factory GroupPostModel.fromJson(Map<String, dynamic> json) =>
+      _$GroupPostModelFromJson(json);
 }
 
 /// 评论模型
@@ -93,7 +94,7 @@ class CommentModel with _$CommentModel {
     required int id,
     required String content,
     @JsonKey(name: 'created_at') required String createdAt,
-    required UploaderInfo user,
+    required AuthorModel user,
   }) = _CommentModel;
 
   factory CommentModel.fromJson(Map<String, dynamic> json) =>

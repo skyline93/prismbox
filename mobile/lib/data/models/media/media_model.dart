@@ -67,6 +67,8 @@ class MediaResponse with _$MediaResponse {
     @JsonKey(name: 'created_at') required String createdAt,
     @JsonKey(name: 'updated_at') required String updatedAt,
     @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
+    required int width,
+    required int height,
     @JsonKey(name: 'download_url') required String downloadUrl,
     @JsonKey(name: 'preview_url') required String previewUrl,
     @JsonKey(name: 'thumbnail_url') required String thumbnailUrl,

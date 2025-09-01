@@ -23,12 +23,14 @@ const _mockUser = _User(
 );
 
 class NewThreadSheet extends HookConsumerWidget {
-  const NewThreadSheet({super.key});
+  final String groupId;
+
+  const NewThreadSheet({super.key, required this.groupId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(newThreadProvider);
-    final notifier = ref.read(newThreadProvider.notifier);
+    final state = ref.watch(newThreadProvider(groupId));
+    final notifier = ref.read(newThreadProvider(groupId).notifier);
     final textController = useTextEditingController(text: state.text);
     final focusNode = useFocusNode();
 

@@ -15,14 +15,12 @@ class FeedAuthorEntity with _$FeedAuthorEntity {
     String? avatarUrl,
   }) = _FeedAuthorEntity;
 
-  /// 从数据模型 [UploaderInfo] 转换
-  factory FeedAuthorEntity.fromUploaderInfo(UploaderInfo uploaderInfo) {
+  /// [改造] 从新的数据模型 [AuthorModel] 转换
+  factory FeedAuthorEntity.fromAuthorModel(AuthorModel author) {
     return FeedAuthorEntity(
-      userId: uploaderInfo.userId,
-      username: uploaderInfo.username,
-      // 注意: 当前的 UploaderInfo 模型中没有头像信息。
-      // 后续可能需要API同步提供或通过其他方式获取。
-      avatarUrl: null,
+      userId: author.userId,
+      username: author.username,
+      avatarUrl: author.avatarUrl,
     );
   }
 }
@@ -35,27 +33,31 @@ class GroupFeedItemEntity with _$GroupFeedItemEntity {
     required String content,
     required DateTime createdAt,
     required FeedAuthorEntity author,
-    required List<UnifiedMediaEntity> mediaAttachments,
-    // 注意: 点赞和评论数在当前的 GroupMediaModel 中不存在。
-    // 此处添加是为了UI统一，数据将在后续或通过聚合接口提供。
-    @Default(0) int likesCount,
-    @Default(0) int commentsCount,
+    required List<UnifiedMediaEntity> mediaAttachments, // 这是一个列表
+    required int likesCount,
+    required int commentsCount,
   }) = _GroupFeedItemEntity;
 
-  /// 从数据模型 [GroupMediaModel] 转换
-  factory GroupFeedItemEntity.fromGroupMediaModel(GroupMediaModel model) {
+  /// [核心改造] 从新的数据模型 [GroupPostModel] 转换
+  /// 这个方法现在将一个“帖子”模型（可能包含多张图片）转换为UI层使用的单个Feed项。
+  factory GroupFeedItemEntity.fromGroupPostModel(GroupPostModel model) {
+    // 将 model.media (List<MediaResponse>) 转换为 List<UnifiedMediaEntity>
+    final attachments = model.media
+        .map(
+          (mediaResponse) => UnifiedMediaEntity.fromRemoteMedia(mediaResponse),
+        )
+        .toList();
+
     return GroupFeedItemEntity(
-      id: model.group_media_id,
-      content: model.caption ?? '',
-      createdAt: DateTime.parse(model.sharedAt),
-      author: FeedAuthorEntity.fromUploaderInfo(model.uploader),
-      // 当前 GroupMediaModel 只包含一个媒体项，我们将其转换为列表
-      mediaAttachments: [
-        UnifiedMediaEntity.fromRemoteMedia(model.mediaDetails),
-      ],
-      // 暂时默认值为0
-      likesCount: 0,
-      commentsCount: 0,
+      id: model.id,
+      content: model.caption, // caption 现在是帖子的内容
+      createdAt: model.createdAt, // createdAt 现在是 DateTime 类型
+      // 使用新的 fromAuthorModel 工厂方法
+      author: FeedAuthorEntity.fromAuthorModel(model.creator),
+      // 关键：mediaAttachments 现在是一个完整的媒体列表
+      mediaAttachments: attachments,
+      likesCount: model.likesCount,
+      commentsCount: model.commentsCount,
     );
   }
 }

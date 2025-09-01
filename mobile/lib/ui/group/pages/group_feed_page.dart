@@ -72,7 +72,7 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
             topLeft: Radius.circular(16.0),
             topRight: Radius.circular(16.0),
           ),
-          child: const NewThreadSheet(),
+          child: NewThreadSheet(groupId: widget.uuid),
         ),
       ),
     );
