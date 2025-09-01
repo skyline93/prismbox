@@ -45,12 +45,10 @@ class GroupFeedViewModel extends StateNotifier<GroupFeedState> {
     );
   }
 
-  /// 下拉刷新
   Future<void> refresh() async {
     ref.invalidate(groupFeedFirstPageProvider(uuid));
   }
 
-  /// 加载下一页
   Future<void> fetchNextPage() async {
     if (state.isLoadingNextPage || state.hasReachedMax) return;
 
@@ -80,17 +78,14 @@ class GroupFeedViewModel extends StateNotifier<GroupFeedState> {
     }
   }
 
-  // --- 1. 添加缺失的 createNewPost 方法 ---
-  /// 创建一个新的帖子
   Future<void> createNewPost({
     required String content,
     required List<String> mediaUuids,
   }) async {
-    // --- 关键修复：使用命名参数来调用方法 ---
     await _groupRepository.createPostInGroup(
-      groupId: uuid, // 传入 groupId
-      content: content, // 传入 content
-      mediaUuids: mediaUuids, // 传入 mediaUuids
+      groupId: uuid,
+      content: content,
+      mediaUuids: mediaUuids,
     );
   }
 }

@@ -32,8 +32,6 @@ class GroupModel with _$GroupModel {
     // 聚合信息
     int? memberCount,
 
-    // === M4 新增字段 ===
-    // 这部分信息需要后端在 GET /groups/{uuid} 接口中针对当前请求者动态添加
     /// 当前登录用户在此圈子中的 User ID
     @JsonKey(name: 'current_user_id') int? currentUserId,
 
@@ -101,8 +99,6 @@ class CommentModel with _$CommentModel {
   factory CommentModel.fromJson(Map<String, dynamic> json) =>
       _$CommentModelFromJson(json);
 }
-
-// === M4 新增模型 ===
 
 /// 邀请码模型
 @freezed

@@ -14,7 +14,6 @@ class PostWidget extends StatelessWidget {
 
   const PostWidget({super.key, required this.item, this.hasThreadLine = true});
 
-  // --- 布局常量: 与参考项目完全一致 ---
   static const double avatarRadius = 15.0;
   static const double horizontalPadding = 7.0;
   static const double avatarColumnWidth = avatarRadius * 2;

@@ -18,14 +18,12 @@ class PostStats extends StatelessWidget {
       statsText.add('$likes likes');
     }
 
-    // 如果没有回复和点赞，则不显示任何内容
     if (statsText.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return Text(
       statsText.join(' · '),
-      // 精确的 TextStyle
       style: const TextStyle(color: Colors.grey, fontSize: 15),
     );
   }

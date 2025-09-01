@@ -62,7 +62,6 @@ class GroupApiService {
 
   // 创建邀请码
   Future<Response> createInviteCode(String groupUuid) {
-    // 假设后端接口不需要额外参数
     return _dio.post('/groups/$groupUuid/members/invite');
   }
 
@@ -73,7 +72,6 @@ class GroupApiService {
 
   // 主动退出圈子
   Future<Response> leaveGroup(String groupUuid) {
-    // 假设后端接口为 POST /groups/{uuid}/leave
     return _dio.post('/groups/$groupUuid/leave');
   }
 }

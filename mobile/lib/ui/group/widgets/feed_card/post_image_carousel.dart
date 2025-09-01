@@ -9,7 +9,6 @@ class PostImageCarousel extends StatelessWidget {
 
   const PostImageCarousel({super.key, required this.attachments});
 
-  // --- 统一样式配置: 与参考项目完全一致 ---
   static const double imageHeight = 200.0;
   static const double imageWidth = 280.0;
   static const double imageGap = 8.0;
@@ -24,7 +23,6 @@ class PostImageCarousel extends StatelessWidget {
     Widget imageContent;
 
     if (attachments.length == 1) {
-      // 单张图片
       imageContent = Padding(
         padding: const EdgeInsets.only(left: PostWidget.contentLeftPadding),
         child: Align(
@@ -40,7 +38,6 @@ class PostImageCarousel extends StatelessWidget {
         ),
       );
     } else {
-      // 多张图片: 使用横向 ListView
       imageContent = ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.only(
