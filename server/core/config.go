@@ -43,16 +43,17 @@ func LoadConfig() (*Config, error) {
 		return nil, errors.New("invalid SIGNED_URL_LOAD_TTL format: " + err.Error())
 	}
 
-	dbType := getEnv("DB_TYPE", "sqlite")
+	dbType := getEnv("DB_TYPE", "postgres")
 
 	var dbConfig DBConfig
 	if dbType == "postgres" {
 		dbConfig = DBConfig{
+			Type:     "postgres",
 			Host:     getEnv("DB_HOST", "localhost"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "password"),
-			DBName:   getEnv("DB_NAME", "photo_app_db"),
-			Port:     getEnv("DB_PORT", "5432"),
+			User:     getEnv("DB_USER", "mobile"),
+			Password: getEnv("DB_PASSWORD", "mobile"),
+			DBName:   getEnv("DB_NAME", "mobile"),
+			Port:     getEnv("DB_PORT", "15422"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 			TimeZone: getEnv("DB_TIMEZONE", "Asia/Shanghai"),
 		}

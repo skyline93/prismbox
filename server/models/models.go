@@ -17,6 +17,7 @@ type User struct {
 	Username  string         `gorm:"type:varchar(100);uniqueIndex" json:"username"`
 	Email     string         `gorm:"type:varchar(255);uniqueIndex" json:"email"`
 	Password  string         `json:"-"`
+	Avatar    string         `gorm:"type:varchar(255)" json:"avatar"`
 }
 
 type RefreshToken struct {
