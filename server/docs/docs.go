@@ -532,7 +532,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Groups"
+                    "Comments"
                 ],
                 "summary": "删除评论",
                 "parameters": [
@@ -553,175 +553,6 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "无权限操作",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/group-media/{groupMediaId}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "从圈子中移除一张照片，仅限照片上传者或圈主/管理员操作",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Groups"
-                ],
-                "summary": "从圈子移除照片",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "圈子媒体的ID (group_media_id)",
-                        "name": "groupMediaId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "照片移除成功",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "无权限操作",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/group-media/{groupMediaId}/comments": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "获取圈子中某个媒体的所有评论",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Groups"
-                ],
-                "summary": "获取评论列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "圈子媒体的ID (group_media_id)",
-                        "name": "groupMediaId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "获取评论列表成功",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/group.CommentResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "无权限操作（非圈子成员）",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "为圈子中的某个媒体添加一条评论",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Groups"
-                ],
-                "summary": "添加评论",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "圈子媒体的ID (group_media_id)",
-                        "name": "groupMediaId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "评论内容",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/group.CreateCommentInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "评论成功",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Comment"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "无权限操作（非圈子成员）",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1009,6 +840,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/groups/{uuid}/feed": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "分页获取圈子中的帖子，按创建时间倒序排列",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "获取圈子 Feed 流 (新版)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "圈子的UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "每页数量",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功获取Feed流",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/group.GroupPostResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "无权限操作（非圈子成员）",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/groups/{uuid}/leave": {
             "post": {
                 "security": [
@@ -1043,139 +944,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "圈主无法退出",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{uuid}/media": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "分页获取圈子中的媒体分享，按分享时间倒序排列",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Groups"
-                ],
-                "summary": "获取圈子 Feed 流",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "圈子的UUID",
-                        "name": "uuid",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "每页数量",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功获取Feed流",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/group.GroupFeedItemResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "无权限操作（非圈子成员）",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "将当前用户拥有的一个或多个媒体分享到指定的圈子",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Groups"
-                ],
-                "summary": "分享媒体到圈子",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "圈子的UUID",
-                        "name": "uuid",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "要分享的媒体UUID列表和可选的说明",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/group.ShareMediaInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "媒体分享成功",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误、照片未找到等",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "无权限操作（非圈子成员）",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1339,6 +1107,77 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "无权限操作",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/groups/{uuid}/posts": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "发布一个包含一个或多个媒体文件的新帖子到指定圈子",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "在圈子中创建新帖子",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "圈子的UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "帖子的内容，包含媒体UUID列表和说明",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/group.CreatePostInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "帖子创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GroupPost"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "无权限操作（非圈子成员）",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1880,6 +1719,123 @@ const docTemplate = `{
                 }
             }
         },
+        "/posts/{postId}/comments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取一个帖子的所有评论",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "获取帖子的评论列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "帖子的ID",
+                        "name": "postId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/group.CommentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "无权限或帖子不存在",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "为一个帖子添加一条新评论",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "为帖子添加评论",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "帖子的ID",
+                        "name": "postId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "评论内容",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/group.CreateCommentInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "评论成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/group.CommentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "无权限或帖子不存在",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/s/{share_token}": {
             "get": {
                 "description": "通过一个公开的分享令牌访问媒体资源。服务器会返回一个包含临时签名URL的HTML页面。",
@@ -2248,7 +2204,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "user": {
-                    "$ref": "#/definitions/group.UserInfo"
+                    "$ref": "#/definitions/handlers.UserSimpleResponse"
                 }
             }
         },
@@ -2276,6 +2232,24 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "巴厘岛假日"
+                }
+            }
+        },
+        "group.CreatePostInput": {
+            "type": "object",
+            "required": [
+                "media_uuids"
+            ],
+            "properties": {
+                "caption": {
+                    "type": "string"
+                },
+                "media_uuids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -2317,26 +2291,6 @@ const docTemplate = `{
                 }
             }
         },
-        "group.GroupFeedItemResponse": {
-            "type": "object",
-            "properties": {
-                "caption": {
-                    "type": "string"
-                },
-                "group_media_id": {
-                    "type": "integer"
-                },
-                "media_details": {
-                    "$ref": "#/definitions/handlers.MediaResponse"
-                },
-                "shared_at": {
-                    "type": "string"
-                },
-                "uploader": {
-                    "$ref": "#/definitions/group.UploaderInfo"
-                }
-            }
-        },
         "group.GroupMemberResponse": {
             "type": "object",
             "properties": {
@@ -2354,6 +2308,35 @@ const docTemplate = `{
                 }
             }
         },
+        "group.GroupPostResponse": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string"
+                },
+                "comments_count": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator": {
+                    "$ref": "#/definitions/handlers.UserSimpleResponse"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "likes_count": {
+                    "type": "integer"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.MediaResponse"
+                    }
+                }
+            }
+        },
         "group.JoinGroupInput": {
             "type": "object",
             "required": [
@@ -2363,23 +2346,6 @@ const docTemplate = `{
                 "code": {
                     "type": "string",
                     "example": "A7B3D9K1"
-                }
-            }
-        },
-        "group.ShareMediaInput": {
-            "type": "object",
-            "required": [
-                "media_uuids"
-            ],
-            "properties": {
-                "caption": {
-                    "type": "string"
-                },
-                "media_uuids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -2393,28 +2359,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "巴厘岛假日 updated"
-                }
-            }
-        },
-        "group.UploaderInfo": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "group.UserInfo": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         },
@@ -2531,6 +2475,9 @@ const docTemplate = `{
                 "hash": {
                     "type": "string"
                 },
+                "height": {
+                    "type": "integer"
+                },
                 "item_type": {
                     "$ref": "#/definitions/constant.MediaType"
                 },
@@ -2551,6 +2498,9 @@ const docTemplate = `{
                 },
                 "uuid": {
                     "type": "string"
+                },
+                "width": {
+                    "type": "integer"
                 }
             }
         },
@@ -2577,6 +2527,20 @@ const docTemplate = `{
                 },
                 "width": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.UserSimpleResponse": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -2628,10 +2592,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "group_media_id": {
+                "id": {
                     "type": "integer"
                 },
-                "id": {
+                "post_id": {
                     "type": "integer"
                 },
                 "updated_at": {
@@ -2703,6 +2667,73 @@ const docTemplate = `{
                 "usage_limit": {
                     "description": "0 表示无限制",
                     "type": "integer"
+                }
+            }
+        },
+        "models.GroupMedia": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "description": "保留 GroupID 以便快速按圈子过滤",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "media_uuid": {
+                    "type": "string"
+                },
+                "post_id": {
+                    "description": "新增：关联到 GroupPost",
+                    "type": "integer"
+                }
+            }
+        },
+        "models.GroupPost": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string"
+                },
+                "comments": {
+                    "description": "预加载评论",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Comment"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator": {
+                    "description": "预加载创建者信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    ]
+                },
+                "creator_id": {
+                    "type": "integer"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "media": {
+                    "description": "一个帖子包含多个媒体",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GroupMedia"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -2843,6 +2874,9 @@ const docTemplate = `{
         "models.User": {
             "type": "object",
             "properties": {
+                "avatar": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
