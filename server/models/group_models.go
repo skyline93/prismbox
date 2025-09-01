@@ -78,3 +78,10 @@ type Comment struct {
 
 	User User `gorm:"foreignKey:UserID" json:"user"` // 预加载评论者信息
 }
+
+type Like struct {
+	ID           uint      `gorm:"primarykey" json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	GroupMediaID uint      `gorm:"not null;uniqueIndex:idx_media_user,priority:1" json:"group_media_id"`
+	UserID       uint      `gorm:"not null;uniqueIndex:idx_media_user,priority:2" json:"user_id"`
+}

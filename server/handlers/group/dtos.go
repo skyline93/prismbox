@@ -44,17 +44,20 @@ type ShareMediaInput struct {
 
 // GroupFeedItemResponse 定义了圈子 Feed 流中单个媒体项的响应结构
 type GroupFeedItemResponse struct {
-	GroupMediaID uint                   `json:"group_media_id"`
-	Caption      string                 `json:"caption"`
-	SharedAt     time.Time              `json:"shared_at"`
-	Uploader     UploaderInfo           `json:"uploader"`
-	MediaDetails handlers.MediaResponse `json:"media_details"`
+	GroupMediaID  uint                   `json:"group_media_id"`
+	Caption       string                 `json:"caption"`
+	SharedAt      time.Time              `json:"shared_at"`
+	LikesCount    int64                  `json:"likes_count"`
+	CommentsCount int64                  `json:"comments_count"`
+	Uploader      UploaderInfo           `json:"uploader"`
+	MediaDetails  handlers.MediaResponse `json:"media_details"`
 }
 
 // UploaderInfo 嵌套在 GroupFeedItemResponse 中，用于表示上传者信息
 type UploaderInfo struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
+	UserID    uint   `json:"user_id"`
+	Username  string `json:"username"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 // CreateCommentInput 定义了创建评论的请求体结构

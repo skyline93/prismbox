@@ -5,12 +5,19 @@ package group
 
 import (
 	"server/core"
-	"server/handlers"
 	"server/models"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"server/handlers"
 )
+
+type GroupMediaWithCounts struct {
+	models.GroupMedia
+	LikesCount    int64 `gorm:"column:likes_count"`
+	CommentsCount int64 `gorm:"column:comments_count"`
+}
 
 // ShareMediaToGroup godoc
 // @Summary      分享媒体到圈子
@@ -87,12 +94,12 @@ func (h *GroupHandler) ShareMediaToGroup(c *gin.Context) {
 
 // GetGroupFeed godoc
 // @Summary      获取圈子 Feed 流
-// @Description  分页获取圈子中的媒体分享，按分享时间倒序排列
+// @Description  分页获取圈子中的媒体分享，按分享时间倒序排列，包含点赞/评论数
 // @Tags         Groups
 // @Produce      json
 // @Param        uuid path string true "圈子的UUID" format(uuid)
 // @Param        page query int false "页码" default(1)
-// @Param        limit query int false "每页数量" default(50)
+// @Param        limit query int false "每页数量" default(20)
 // @Success      200  {object}  core.ApiResponse{data=[]GroupFeedItemResponse} "成功获取Feed流"
 // @Failure      400  {object}  core.ApiResponse "请求参数错误"
 // @Failure      403  {object}  core.ApiResponse "无权限操作（非圈子成员）"
@@ -103,42 +110,58 @@ func (h *GroupHandler) GetGroupFeed(c *gin.Context) {
 	groupUUID := c.Param("uuid")
 
 	// 1. 权限校验：确保用户是圈子成员
-	// Using a helper method from group_helpers.go
-	if _, err := h.getUserRoleInGroup(groupUUID, userID); err != nil {
+	// (假设您有一个名为 IsUserMemberOfGroup 的辅助函数)
+	isMember, err := IsUserMemberOfGroup(h.DB, groupUUID, userID)
+	if err != nil {
+		core.Error(c, "Error checking group membership")
+		return
+	}
+	if !isMember {
 		core.Error(c, "Group not found or you are not a member")
 		return
 	}
 
 	// 2. 分页参数处理
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50")) // 默认每页50条
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	if page < 1 {
 		page = 1
 	}
+	if limit <= 0 {
+		limit = 20
+	}
 	offset := (page - 1) * limit
 
-	// 3. 高性能查询
-	// 直接查询 group_media 表，然后预加载关联数据
-	var groupMediaList []models.GroupMedia
-	err := h.DB.Joins("JOIN groups ON groups.id = group_media.group_id").
+	// 3. 高性能查询：使用子查询在一次查询中计算出点赞和评论数
+	var results []GroupMediaWithCounts
+
+	subQueryLikes := h.DB.Model(&models.Like{}).Select("count(*)").Where("likes.group_media_id = group_media.id")
+	subQueryComments := h.DB.Model(&models.Comment{}).Select("count(*)").Where("comments.group_media_id = group_media.id")
+
+	err = h.DB.Table("group_media").
+		Select("group_media.*, (?) as likes_count, (?) as comments_count", subQueryLikes, subQueryComments).
+		Joins("JOIN groups ON groups.id = group_media.group_id").
 		Where("groups.uuid = ?", groupUUID).
 		Order("group_media.created_at desc").
 		Limit(limit).
 		Offset(offset).
-		// 使用 Preload 预加载上传者信息，避免 N+1 查询
-		Preload("Uploader").
-		Find(&groupMediaList).Error
+		Preload("Uploader"). // 预加载完整的 User 对象，包括新加的 Avatar 字段
+		Find(&results).Error
 
 	if err != nil {
 		core.Error(c, "Failed to fetch group feed: "+err.Error())
 		return
 	}
 
-	// 4. 构建最终响应
-	// 为了获得完整的 Media 详情，我们需要单独查询一次
-	mediaUUIDs := make([]string, len(groupMediaList))
-	for i, gm := range groupMediaList {
-		mediaUUIDs[i] = gm.MediaUUID
+	if len(results) == 0 {
+		core.Success(c, "Group feed is empty", []GroupFeedItemResponse{})
+		return
+	}
+
+	// 4. 批量获取媒体详情
+	mediaUUIDs := make([]string, len(results))
+	for i, res := range results {
+		mediaUUIDs[i] = res.MediaUUID
 	}
 
 	mediaDetailsMap := make(map[string]handlers.MediaResponse)
@@ -146,38 +169,65 @@ func (h *GroupHandler) GetGroupFeed(c *gin.Context) {
 		var mediaList []models.Media
 		h.DB.Where("uuid IN ?", mediaUUIDs).Find(&mediaList)
 		for _, m := range mediaList {
+			// 在这里填充媒体详情，包含宽高
 			mediaDetailsMap[m.UUID] = handlers.MediaResponse{
-				UUID:             m.UUID,
-				Filename:         m.Filename,
-				OriginalFilename: m.OriginalFilename,
-				ItemType:         m.ItemType,
-				Hash:             m.Hash,
-				CreatedAt:        m.CreatedAt,
-				MediaTakenAt:     m.MediaTakenAt,
-				UpdatedAt:        m.UpdatedAt,
-				ThumbnailURL:     "http://localhost:8080/media/" + m.UUID + "/thumbnail", // TODO
-				PreviewURL:       "http://localhost:8080/media/" + m.UUID + "/preview",
-				DownloadURL:      "http://localhost:8080/media/" + m.UUID + "/original",
+				UUID:         m.UUID,
+				Filename:     m.Filename,
+				ItemType:     m.ItemType,
+				Width:        m.Width,
+				Height:       m.Height,
+				CreatedAt:    m.CreatedAt,
+				ThumbnailURL: "http://localhost:8080/media/" + m.UUID + "/thumbnail", // TODO: 使用 URL Builder
+				PreviewURL:   "http://localhost:8080/media/" + m.UUID + "/preview",   // TODO: 使用 URL Builder
+				DownloadURL:  "http://localhost:8080/media/" + m.UUID + "/original",  // TODO: 使用 URL Builder
 			}
 		}
 	}
 
-	// 组装成 GroupFeedItemResponse
-	response := make([]GroupFeedItemResponse, len(groupMediaList))
-	for i, gm := range groupMediaList {
+	// 5. 组装最终响应
+	response := make([]GroupFeedItemResponse, len(results))
+	baseURL := "http://localhost:8080" // TODO: 从配置中读取
+
+	for i, res := range results {
+		var uploaderInfo UploaderInfo
+		if res.Uploader.ID != 0 {
+			avatarURL := ""
+			// 只有当用户设置了头像时才生成URL
+			if res.Uploader.Avatar != "" {
+				avatarURL = baseURL + "/avatars/" + res.Uploader.Avatar // TODO: 使用 URL Builder
+			}
+			uploaderInfo = UploaderInfo{
+				UserID:    res.Uploader.ID,
+				Username:  res.Uploader.Username,
+				AvatarURL: avatarURL,
+			}
+		}
+
 		response[i] = GroupFeedItemResponse{
-			GroupMediaID: gm.ID,
-			Caption:      gm.Caption,
-			SharedAt:     gm.CreatedAt,
-			Uploader: UploaderInfo{
-				UserID:   gm.Uploader.ID,
-				Username: gm.Uploader.Username,
-			},
-			MediaDetails: mediaDetailsMap[gm.MediaUUID],
+			GroupMediaID:  res.ID,
+			Caption:       res.Caption,
+			SharedAt:      res.CreatedAt,
+			LikesCount:    res.LikesCount,
+			CommentsCount: res.CommentsCount,
+			Uploader:      uploaderInfo,
+			MediaDetails:  mediaDetailsMap[res.MediaUUID],
 		}
 	}
 
 	core.Success(c, "Group feed retrieved successfully", response)
+}
+
+// IsUserMemberOfGroup 是一个辅助函数，用于检查用户是否是圈子成员
+func IsUserMemberOfGroup(db *gorm.DB, groupUUID string, userID uint) (bool, error) {
+	var count int64
+	err := db.Model(&models.GroupMember{}).
+		Joins("JOIN groups ON groups.id = group_members.group_id").
+		Where("groups.uuid = ? AND group_members.user_id = ?", groupUUID, userID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // RemoveMediaFromGroup godoc
