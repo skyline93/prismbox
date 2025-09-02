@@ -19,6 +19,7 @@ mixin _$UnifiedMediaEntity {
   int get id => throw _privateConstructorUsedError;
   String? get localId => throw _privateConstructorUsedError;
   String? get cloudUuid => throw _privateConstructorUsedError;
+  String? get thumbnailUrl => throw _privateConstructorUsedError;
   SyncStatus get syncStatus => throw _privateConstructorUsedError;
   MediaType get assetType => throw _privateConstructorUsedError;
   String? get filePath => throw _privateConstructorUsedError;
@@ -44,6 +45,7 @@ abstract class $UnifiedMediaEntityCopyWith<$Res> {
       {int id,
       String? localId,
       String? cloudUuid,
+      String? thumbnailUrl,
       SyncStatus syncStatus,
       MediaType assetType,
       String? filePath,
@@ -71,6 +73,7 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
     Object? id = null,
     Object? localId = freezed,
     Object? cloudUuid = freezed,
+    Object? thumbnailUrl = freezed,
     Object? syncStatus = null,
     Object? assetType = null,
     Object? filePath = freezed,
@@ -93,6 +96,10 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
       cloudUuid: freezed == cloudUuid
           ? _value.cloudUuid
           : cloudUuid // ignore: cast_nullable_to_non_nullable
+              as String?,
+      thumbnailUrl: freezed == thumbnailUrl
+          ? _value.thumbnailUrl
+          : thumbnailUrl // ignore: cast_nullable_to_non_nullable
               as String?,
       syncStatus: null == syncStatus
           ? _value.syncStatus
@@ -146,6 +153,7 @@ abstract class _$$UnifiedMediaEntityImplCopyWith<$Res>
       {int id,
       String? localId,
       String? cloudUuid,
+      String? thumbnailUrl,
       SyncStatus syncStatus,
       MediaType assetType,
       String? filePath,
@@ -171,6 +179,7 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
     Object? id = null,
     Object? localId = freezed,
     Object? cloudUuid = freezed,
+    Object? thumbnailUrl = freezed,
     Object? syncStatus = null,
     Object? assetType = null,
     Object? filePath = freezed,
@@ -193,6 +202,10 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
       cloudUuid: freezed == cloudUuid
           ? _value.cloudUuid
           : cloudUuid // ignore: cast_nullable_to_non_nullable
+              as String?,
+      thumbnailUrl: freezed == thumbnailUrl
+          ? _value.thumbnailUrl
+          : thumbnailUrl // ignore: cast_nullable_to_non_nullable
               as String?,
       syncStatus: null == syncStatus
           ? _value.syncStatus
@@ -241,6 +254,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       {required this.id,
       this.localId,
       this.cloudUuid,
+      this.thumbnailUrl,
       required this.syncStatus,
       required this.assetType,
       this.filePath,
@@ -258,6 +272,8 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
   final String? localId;
   @override
   final String? cloudUuid;
+  @override
+  final String? thumbnailUrl;
   @override
   final SyncStatus syncStatus;
   @override
@@ -280,7 +296,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
 
   @override
   String toString() {
-    return 'UnifiedMediaEntity(id: $id, localId: $localId, cloudUuid: $cloudUuid, syncStatus: $syncStatus, assetType: $assetType, filePath: $filePath, fileName: $fileName, width: $width, height: $height, durationSec: $durationSec, createdAt: $createdAt, assetEntity: $assetEntity)';
+    return 'UnifiedMediaEntity(id: $id, localId: $localId, cloudUuid: $cloudUuid, thumbnailUrl: $thumbnailUrl, syncStatus: $syncStatus, assetType: $assetType, filePath: $filePath, fileName: $fileName, width: $width, height: $height, durationSec: $durationSec, createdAt: $createdAt, assetEntity: $assetEntity)';
   }
 
   @override
@@ -292,6 +308,8 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
             (identical(other.localId, localId) || other.localId == localId) &&
             (identical(other.cloudUuid, cloudUuid) ||
                 other.cloudUuid == cloudUuid) &&
+            (identical(other.thumbnailUrl, thumbnailUrl) ||
+                other.thumbnailUrl == thumbnailUrl) &&
             (identical(other.syncStatus, syncStatus) ||
                 other.syncStatus == syncStatus) &&
             (identical(other.assetType, assetType) ||
@@ -316,6 +334,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       id,
       localId,
       cloudUuid,
+      thumbnailUrl,
       syncStatus,
       assetType,
       filePath,
@@ -339,6 +358,7 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
       {required final int id,
       final String? localId,
       final String? cloudUuid,
+      final String? thumbnailUrl,
       required final SyncStatus syncStatus,
       required final MediaType assetType,
       final String? filePath,
@@ -356,6 +376,8 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
   String? get localId;
   @override
   String? get cloudUuid;
+  @override
+  String? get thumbnailUrl;
   @override
   SyncStatus get syncStatus;
   @override

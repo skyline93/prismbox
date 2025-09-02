@@ -1,6 +1,7 @@
 // lib/data/services/group_api_service.dart
 
 import 'package:dio/dio.dart';
+import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
 
 @lazySingleton
@@ -70,5 +71,18 @@ class GroupApiService {
   // 主动退出圈子
   Future<Response> leaveGroup(String groupUuid) {
     return _dio.post('/groups/$groupUuid/leave');
+  }
+
+  Future<Uint8List> downloadGroupMediaThumbnail(String groupUuid, String mediaUuid) async {
+    final response = await _dio.get(
+      '/groups/$groupUuid/media/$mediaUuid/thumbnail',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    
+    if (response.statusCode != 200){
+      throw Exception('下载缩略图失败: ${response.statusCode}');
+    }
+    
+    return response.data as Uint8List;
   }
 }

@@ -9,10 +9,11 @@ import 'package:mobile/ui/group/widgets/feed_card/post_stats.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class PostWidget extends StatelessWidget {
+  final String groupUuid;
   final GroupFeedItemEntity item;
   final bool hasThreadLine;
 
-  const PostWidget({super.key, required this.item, this.hasThreadLine = true});
+  const PostWidget({super.key, required this.groupUuid, required this.item, this.hasThreadLine = true});
 
   static const double avatarRadius = 15.0;
   static const double horizontalPadding = 7.0;
@@ -112,7 +113,7 @@ class PostWidget extends StatelessWidget {
               if (item.mediaAttachments.isNotEmpty) ...[
                 // 内容和图片之间的间距
                 const SizedBox(height: 12),
-                PostImageCarousel(attachments: item.mediaAttachments),
+                PostImageCarousel(groupUuid: groupUuid, attachments: item.mediaAttachments),
               ],
 
               // --- 操作按钮和统计信息 ---

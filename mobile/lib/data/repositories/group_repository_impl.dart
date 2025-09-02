@@ -1,5 +1,7 @@
 // lib/data/repositories/group_repository_impl.dart
 
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobile/data/models/media/media_model.dart';
@@ -191,5 +193,11 @@ class GroupRepositoryImpl implements GroupRepository {
       (json) => CommentModel.fromJson(json as Map<String, dynamic>),
     );
     return apiResponse.data!;
+  }
+
+  @override
+  Future<Uint8List> downloadGroupMediaThumbnail(String groupUuid, String mediaUuid) async {
+    final thumbnailData = await _apiService.downloadGroupMediaThumbnail(groupUuid, mediaUuid);
+    return thumbnailData;
   }
 }

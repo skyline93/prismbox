@@ -1,5 +1,6 @@
 // lib/domain/repositories/group_repository.dart
 
+import 'dart:typed_data';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 
@@ -47,4 +48,6 @@ abstract class GroupRepository {
     // replyPermission 字段可以保留，如果后端支持的话
     // ReplyPermission? replyPermission,
   });
+
+  Future<Uint8List> downloadGroupMediaThumbnail(String groupUuid, String mediaUuid);
 }

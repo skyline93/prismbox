@@ -16,6 +16,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
     required int id,
     String? localId,
     String? cloudUuid,
+    String? thumbnailUrl,
     required SyncStatus syncStatus,
     required MediaType assetType,
     String? filePath,
@@ -106,6 +107,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
 
       // 从 remoteMedia 对象映射字段
       cloudUuid: remoteMedia.uuid,
+      thumbnailUrl: remoteMedia.thumbnailUrl,
       assetType: remoteMedia.itemType == 'VIDEO'
           ? MediaType.video
           : MediaType.image,

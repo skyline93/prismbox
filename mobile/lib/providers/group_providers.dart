@@ -1,12 +1,17 @@
 // lib/providers/group_providers.dart
 
+import 'dart:typed_data';
+import 'package:tuple/tuple.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/data/models/group/group_models.dart';
+import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/group_repository.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_viewmodel.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
+import 'package:mobile/providers/providers.dart';
 // import 'package:mobile/data/mock_feed_data.dart';
 
 // 1. Repository Provider
@@ -79,3 +84,28 @@ final groupFeedFirstPageProvider = FutureProvider.autoDispose
       final groupRepository = ref.watch(groupRepositoryProvider);
       return groupRepository.getGroupFeed(uuid, page: 1);
     });
+
+final groupPostThumbnailProvider = FutureProvider.family<Uint8List?, Tuple2<UnifiedMediaEntity, String>>(
+  (ref, args) async {
+    final entity = args.item1;
+    final groupUuid = args.item2;
+
+    if (entity.cloudUuid == '' || entity.cloudUuid!.isEmpty){
+      debugPrint("提供的entity不是云类型!!!");
+    }
+
+    final cache = ref.read(thumbnailCacheProvider);
+    final cacheKey = '${entity.id}_${entity.localId ?? entity.cloudUuid}';
+
+    if (cache.containsKey(cacheKey)) {
+      return cache[cacheKey];
+    }
+
+    final repo = ref.read(groupRepositoryProvider);
+    final thumbnailData = await repo.downloadGroupMediaThumbnail(groupUuid, entity.cloudUuid!);
+    
+    ref.read(thumbnailCacheProvider.notifier).addToCache(cacheKey, thumbnailData);
+    
+    return thumbnailData;
+  }
+);

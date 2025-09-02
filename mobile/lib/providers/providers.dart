@@ -1,5 +1,6 @@
 // lib/providers.dart
 
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:mobile/data/datasources/local_db/app_database.dart';
@@ -21,6 +22,57 @@ import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/data/datasources/local_db/enums.dart';
 import 'package:mobile/ui/album/viewmodel/album_detail_viewmodel.dart';
+
+
+/// 缩略图缓存提供者 - 用于内存缓存
+/// 包含缓存大小限制和清理机制
+final thumbnailCacheProvider =
+    StateNotifierProvider<ThumbnailCacheNotifier, Map<String, Uint8List>>((
+      ref,
+    ) {
+      return ThumbnailCacheNotifier();
+    });
+
+/// 缩略图缓存管理器
+class ThumbnailCacheNotifier extends StateNotifier<Map<String, Uint8List>> {
+  static const int _maxCacheSize = 100; // 最大缓存100个缩略图
+  static const int _maxMemorySize = 50 * 1024 * 1024; // 最大50MB内存
+
+  ThumbnailCacheNotifier() : super({});
+
+  void addToCache(String key, Uint8List data) {
+    // 检查缓存大小
+    if (state.length >= _maxCacheSize) {
+      _cleanupCache();
+    }
+
+    // 检查内存使用
+    final currentMemoryUsage = _calculateMemoryUsage();
+    if (currentMemoryUsage + data.length > _maxMemorySize) {
+      _cleanupCache();
+    }
+
+    state = {...state, key: data};
+  }
+
+  void _cleanupCache() {
+    // 简单的LRU策略：移除最旧的20%的缓存项
+    final keysToRemove = state.keys.take((state.length * 0.2).round()).toList();
+    final newCache = Map<String, Uint8List>.from(state);
+    for (final key in keysToRemove) {
+      newCache.remove(key);
+    }
+    state = newCache;
+  }
+
+  int _calculateMemoryUsage() {
+    return state.values.fold(0, (sum, data) => sum + data.length);
+  }
+
+  void clearCache() {
+    state = {};
+  }
+}
 
 final syncJobManagerProvider = Provider<SyncJobManager>((ref) {
   return getIt<SyncJobManager>();

@@ -1,13 +1,17 @@
+// lib/ui/group/widgets/feed_card/post_image_carousel.dart
+
+import 'package:tuple/tuple.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
-import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
+import 'package:mobile/providers/group_providers.dart';
 
 class PostImageCarousel extends ConsumerWidget {
+  final String groupUuid;
   final List<UnifiedMediaEntity> attachments;
 
-  const PostImageCarousel({super.key, required this.attachments});
+  const PostImageCarousel({super.key, required this.groupUuid, required this.attachments});
 
   static const double imageHeight = 200.0;
   static const double imageWidth = 280.0;
@@ -22,7 +26,7 @@ class PostImageCarousel extends ConsumerWidget {
 
     // 一个通用的图片显示组件，用于处理加载、成功和失败状态
     Widget buildImageDisplay(UnifiedMediaEntity attachment) {
-      final thumbnailAsyncValue = ref.watch(thumbnailProvider(attachment));
+      final thumbnailAsyncValue = ref.watch(groupPostThumbnailProvider(Tuple2(attachment, groupUuid)));
 
       return thumbnailAsyncValue.when(
         data: (thumbnailData) {

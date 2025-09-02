@@ -220,7 +220,7 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
             );
           }
           final item = feedState.feedItems[index];
-          return PostWidget(item: item);
+          return PostWidget(groupUuid: widget.uuid, item: item);
         },
       ),
     );
