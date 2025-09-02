@@ -3,10 +3,16 @@
 package group
 
 import (
+	"fmt"
+	"log"
+	"os"
+	"server/constant"
 	"server/core"
 	"server/handlers"
 	"server/models"
 	"time"
+
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -186,6 +192,7 @@ func (h *GroupHandler) GetGroupFeed(c *gin.Context) {
 
 	for _, gm := range allGroupMedia {
 		if detail, ok := mediaDetailsMap[gm.MediaUUID]; ok {
+			detail.ThumbnailURL = h.URLBuilder.BuildGroupMediaURL(groupUUID, gm.MediaUUID)
 			postMediaMap[gm.PostID] = append(postMediaMap[gm.PostID], detail)
 		}
 	}
@@ -227,4 +234,76 @@ func getCountsMap(db *gorm.DB, fieldName string, ids []uint) map[uint]int64 {
 		countsMap[res.ID] = res.Total
 	}
 	return countsMap
+}
+
+// GetGroupMediaThumbnail godoc
+// @Summary      获取圈子内的媒体资源
+// @Description  获取指定圈子帖子中的某个媒体文件。请求者必须是该圈子成员。
+// @Tags         Groups
+// @Produce      application/octet-stream
+// @Param        uuid path string true "圈子的UUID" format(uuid)
+// @Param        media_uuid path string true "媒体的UUID" format(uuid)
+// @Success      200 {file} file "媒体文件内容"
+// @Failure      403 {object} core.ApiResponse "无权限访问（非圈子成员）"
+// @Failure      404 {object} core.ApiResponse "圈子或媒体未找到"
+// @Security     BearerAuth
+// @Router       /groups/{uuid}/media/{media_uuid}/thumbnail [get]
+func (h *GroupHandler) GetGroupMediaThumbnail(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	groupUUID := c.Param("uuid")
+	mediaUUID := c.Param("media_uuid")
+
+	// 1. 核心权限校验：验证用户是否为圈子成员
+	// 这里我们复用 group_helpers.go 中的 getGroupAndCheckMembership 辅助函数
+	group, err := h.getGroupAndCheckMembership(groupUUID, userID)
+	if err != nil {
+		core.Error(c, "Permission denied or group not found")
+		return
+	}
+
+	// 2. 核心安全校验：确认媒体确实存在于此圈子中
+	// 防止成员通过猜测 media_uuid 访问不属于本圈子的任何媒体
+	var groupMedia models.GroupMedia
+	err = h.DB.Where("group_id = ? AND media_uuid = ?", group.ID, mediaUUID).First(&groupMedia).Error
+	if err != nil {
+		core.Error(c, "Media not found in this group")
+		return
+	}
+
+	// 3. 获取媒体的物理文件信息
+	var media models.Media
+	if err := h.DB.First(&media, "uuid = ?", mediaUUID).Error; err != nil {
+		core.Error(c, "Media resource metadata not found")
+		return
+	}
+
+	// 2. 检查处理状态 (业务逻辑)
+	if media.ProcessingStatus != constant.StatusCompleted {
+		core.Error(c, fmt.Sprintf("Preview is not ready yet. Current status: %s", media.ProcessingStatus))
+		return
+	}
+
+	// 【最佳实践】
+	// 这里直接使用 c.File() 从应用服务器提供文件。
+	// 在高并发场景下，为了提升性能，应改为重定向到云存储（如S3）的预签名URL。
+	// 伪代码:
+	//   preSignedURL := cloudStorage.GetTempURL(media.Filename)
+	//   c.Redirect(http.StatusFound, preSignedURL)
+	// c.File(filePath)
+	h.downloadFile(c, media.UUID+constant.ThumbSuffix)
+}
+
+// downloadFile 是一个私有辅助函数，用于从磁盘提供文件下载
+func (h *GroupHandler) downloadFile(c *gin.Context, filename string) {
+	filePath := filepath.Join(h.UploadDir, filename)
+
+	// 检查文件是否存在于磁盘上
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// 这是一个服务器侧的问题，文件在数据库里有记录但在磁盘上丢失了
+		log.Printf("File record exists in DB but not found on disk: %s", filePath)
+		core.Error(c, "File not available on server")
+		return
+	}
+
+	c.File(filePath)
 }

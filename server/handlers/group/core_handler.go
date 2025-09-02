@@ -7,6 +7,8 @@ import (
 	"server/core"
 	"server/models"
 
+	"server/routing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -15,7 +17,9 @@ import (
 // GroupHandler 封装了所有与圈子相关的HTTP处理器
 // 它包含数据库连接，并将作为所有圈子相关方法的接收者。
 type GroupHandler struct {
-	DB *gorm.DB
+	DB         *gorm.DB
+	UploadDir string
+	URLBuilder *routing.URLBuilder
 }
 
 // CreateGroup godoc

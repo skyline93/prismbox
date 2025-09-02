@@ -72,7 +72,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		URLBuilder:       urlBuilder,
 	}
 
-	groupHandler := &group.GroupHandler{DB: db}
+	groupHandler := &group.GroupHandler{DB: db, UploadDir: cfg.UploadDir, URLBuilder: urlBuilder}
 
 	r.GET("/ping", func(ctx *gin.Context) { ctx.JSON(200, "pong") })
 
@@ -129,6 +129,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 
 				groupRoutes.POST("/:uuid/posts", groupHandler.CreatePost)
 				groupRoutes.GET("/:uuid/feed", groupHandler.GetGroupFeed)
+				groupRoutes.GET("/:uuid/media/:media_uuid/thumbnail", groupHandler.GetGroupMediaThumbnail)
 
 				groupRoutes.GET("/:uuid/members", groupHandler.GetGroupMembers)
 				groupRoutes.POST("/:uuid/members/invite", groupHandler.CreateInvite)

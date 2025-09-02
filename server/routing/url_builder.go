@@ -1,3 +1,5 @@
+// routing/url_builder.go
+
 package routing
 
 import "fmt"
@@ -8,6 +10,7 @@ const (
 	mediaPreviewPath   = "%s/api/v1/media/%s/download/preview"
 	mediaThumbnailPath = "%s/api/v1/media/%s/download/thumbnail"
 	mediaOriginalPath  = "%s/api/v1/media/%s/download/original"
+	groupMediaPath     = "%s/api/v1/groups/%s/media/thumbnail/%s"
 )
 
 // URLBuilder 是一个负责生成应用内URL的结构体
@@ -39,4 +42,10 @@ func (b *URLBuilder) BuildMediaThumbnailPath(mediaUUID string) string {
 // BuildMediaOriginalPath 生成照片原始文件的相对路径 (用于签名)
 func (b *URLBuilder) BuildMediaOriginalPath(mediaUUID string) string {
 	return fmt.Sprintf(mediaOriginalPath, b.PublicBaseURL, mediaUUID)
+}
+
+// BuildGroupMediaURL 生成一个安全的、需要访问控制的圈子内部媒体链接。
+// 此 URL 指向的端点将在提供内容前验证用户的圈子成员资格。
+func (b *URLBuilder) BuildGroupMediaURL(groupUUID, mediaUUID string) string {
+	return fmt.Sprintf(groupMediaPath, b.PublicBaseURL, groupUUID, mediaUUID)
 }
