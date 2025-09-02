@@ -9,6 +9,7 @@ import 'package:mobile/ui/album/page/album_page.dart';
 import 'package:mobile/ui/library/page/library_page.dart';
 import 'package:mobile/ui/library/page/server_config_page.dart';
 import 'package:mobile/ui/main/page/login_page.dart';
+import 'package:mobile/ui/main/page/register_page.dart';
 import 'package:mobile/ui/main/page/splash_page.dart';
 import 'package:mobile/ui/gallery/pages/gallery_page.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
@@ -40,6 +41,7 @@ class AppRouter extends _$AppRouter {
   List<AutoRoute> get routes => [
     AutoRoute(page: SplashRoute.page, path: "/splash", initial: true),
     AutoRoute(page: LoginRoute.page, path: "/login"),
+    AutoRoute(page: RegisterRoute.page, path: "/register"),
     AutoRoute(page: NavigationRoute.page, path: "/navigation"),
     AutoRoute(page: MediaRoute.page, path: "/media"),
     AutoRoute(page: GalleryRoute.page, path: '/gallery'),
