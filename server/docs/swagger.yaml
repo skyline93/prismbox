@@ -1112,6 +1112,42 @@ paths:
       summary: 退出圈子
       tags:
       - Groups
+  /groups/{uuid}/media/{media_uuid}/thumbnail:
+    get:
+      description: 获取指定圈子帖子中的某个媒体文件。请求者必须是该圈子成员。
+      parameters:
+      - description: 圈子的UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 媒体的UUID
+        format: uuid
+        in: path
+        name: media_uuid
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 媒体文件内容
+          schema:
+            type: file
+        "403":
+          description: 无权限访问（非圈子成员）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "404":
+          description: 圈子或媒体未找到
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取圈子内的媒体资源
+      tags:
+      - Groups
   /groups/{uuid}/members:
     get:
       description: 获取指定圈子的所有成员及其角色

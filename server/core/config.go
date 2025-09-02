@@ -35,7 +35,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	secret := getEnv("JWT_SECRET", "qwertyuiop")
 	urlSignerSecret := getEnv("URL_SIGNER_SECRET", "qazwsxedc")
-	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://127.0.0.1:8080")
+	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://10.168.1.161:8080")
 
 	ttlStr := getEnv("SIGNED_URL_LOAD_TTL", "30m")
 	signedURLLoadTTL, err := time.ParseDuration(ttlStr)
