@@ -17,7 +17,7 @@ class AlbumPage extends ConsumerWidget {
     final albumsAsyncValue = ref.watch(albumStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('相册'), centerTitle: false),
+      // appBar: AppBar(title: const Text('相册'), centerTitle: false),
       body: albumsAsyncValue.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(

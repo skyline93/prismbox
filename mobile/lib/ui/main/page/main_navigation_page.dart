@@ -7,8 +7,9 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/ui/media/pages/media_page.dart';
 import 'package:mobile/ui/album/page/album_page.dart';
-import 'package:mobile/ui/library/page/library_page.dart';
+// import 'package:mobile/ui/library/page/library_page.dart';
 import 'package:mobile/ui/group/pages/group_list_page.dart';
+import 'package:mobile/ui/main/widgets/user_profile_dialog.dart';
 
 @RoutePage()
 class NavigationPage extends HookConsumerWidget {
@@ -18,8 +19,6 @@ class NavigationPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = useState(0);
 
-    // 2. 监听全局选择状态
-    // 我们使用 .select 来只监听 isSelecting 布尔值的变化，这样更高效
     final isSelecting = ref.watch(
       selectionProvider.select((s) => s.isSelecting),
     );
@@ -28,10 +27,45 @@ class NavigationPage extends HookConsumerWidget {
       const MediaPage(),
       const AlbumPage(),
       const GroupListPage(),
-      const LibraryPage(),
+      // const LibraryPage(),
     ];
+    const pageTitles = ['照片', '相册', '圈子'];
+
+    void showUserProfileDialog() {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return const UserProfileDialog();
+        },
+      );
+    }
 
     return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
+          pageTitles[currentIndex.value],
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: showUserProfileDialog,
+              child: const CircleAvatar(
+                backgroundImage: NetworkImage(
+                  'https://i.pravatar.cc/150?img=3',
+                ),
+                radius: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: IndexedStack(index: currentIndex.value, children: pages),
       // 3. 根据 isSelecting 的值来决定是否显示底部导航栏
       bottomNavigationBar: isSelecting
@@ -52,7 +86,7 @@ class NavigationPage extends HookConsumerWidget {
                   label: '相册',
                 ),
                 NavigationDestination(icon: Icon(Icons.people), label: '圈子'),
-                NavigationDestination(icon: Icon(Icons.person), label: '我的'),
+                // NavigationDestination(icon: Icon(Icons.person), label: '我的'),
               ],
             ),
     );

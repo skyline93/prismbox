@@ -11,62 +11,62 @@ import 'package:mobile/ui/group/widgets/group_list_item.dart';
 class GroupListPage extends ConsumerWidget {
   const GroupListPage({super.key});
 
-  void _showJoinGroupDialog(BuildContext context, WidgetRef ref) {
-    final codeController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('使用邀请码加入圈子'),
-          content: TextField(
-            controller: codeController,
-            decoration: const InputDecoration(
-              labelText: '邀请码',
-              hintText: '在此粘贴邀请码',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final code = codeController.text.trim();
-                if (code.isNotEmpty) {
-                  final groupRepository = ref.read(groupRepositoryProvider);
-                  await groupRepository.joinGroup(code);
-                  // ignore: use_build_context_synchronously
-                  Navigator.of(context).pop();
-                  // ignore: unused_result
-                  ref.refresh(groupListProvider);
-                }
-              },
-              child: const Text('加入'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _showJoinGroupDialog(BuildContext context, WidgetRef ref) {
+  //   final codeController = TextEditingController();
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         title: const Text('使用邀请码加入圈子'),
+  //         content: TextField(
+  //           controller: codeController,
+  //           decoration: const InputDecoration(
+  //             labelText: '邀请码',
+  //             hintText: '在此粘贴邀请码',
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.of(context).pop(),
+  //             child: const Text('取消'),
+  //           ),
+  //           FilledButton(
+  //             onPressed: () async {
+  //               final code = codeController.text.trim();
+  //               if (code.isNotEmpty) {
+  //                 final groupRepository = ref.read(groupRepositoryProvider);
+  //                 await groupRepository.joinGroup(code);
+  //                 // ignore: use_build_context_synchronously
+  //                 Navigator.of(context).pop();
+  //                 // ignore: unused_result
+  //                 ref.refresh(groupListProvider);
+  //               }
+  //             },
+  //             child: const Text('加入'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupListAsync = ref.watch(groupListProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的圈子'),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group_add_outlined),
-            tooltip: '加入圈子',
-            onPressed: () => _showJoinGroupDialog(context, ref),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      // appBar: AppBar(
+      //   title: const Text('我的圈子'),
+      //   centerTitle: false,
+      //   actions: [
+      //     IconButton(
+      //       icon: const Icon(Icons.group_add_outlined),
+      //       tooltip: '加入圈子',
+      //       onPressed: () => _showJoinGroupDialog(context, ref),
+      //     ),
+      //     const SizedBox(width: 8),
+      //   ],
+      // ),
       body: groupListAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('加载失败: $err')),

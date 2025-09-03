@@ -10,7 +10,7 @@ class LibraryPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      // appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
           Container(

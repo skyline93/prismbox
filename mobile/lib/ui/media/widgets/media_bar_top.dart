@@ -1,4 +1,5 @@
 // lib/ui/media/widgets/media_bar_top.dart
+// 待废弃，不用支持视图切换，网格视图不常用
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

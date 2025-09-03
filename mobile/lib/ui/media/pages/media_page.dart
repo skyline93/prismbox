@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers/providers.dart';
-import 'package:mobile/ui/media/widgets/media_bar_top.dart';
+// import 'package:mobile/ui/media/widgets/media_bar_top.dart';
 import 'package:mobile/ui/media/widgets/media_body.dart';
 import 'package:mobile/ui/media/widgets/media_selection_drawer.dart';
 
@@ -19,7 +19,7 @@ class MediaPage extends HookConsumerWidget {
     );
 
     return Scaffold(
-      appBar: const MediaAppBar(),
+      // appBar: const MediaAppBar(),
       body: Stack(
         children: [
           RefreshIndicator(
