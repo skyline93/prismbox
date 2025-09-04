@@ -16,10 +16,7 @@ class UserProfileDialog extends HookConsumerWidget {
     final notifier = ref.read(userProfileProvider.notifier);
     final authNotifier = ref.read(authNotifierProvider.notifier);
 
-    // [修复 #1] 对可空的 avatarUrl 进行空安全检查
-    // 1. 将 avatarUrl 提取到局部变量中，方便使用
     final avatarUrl = viewModel.avatarUrl;
-    // 2. 先检查是否为 null，再检查是否为空字符串
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Dialog(
@@ -158,8 +155,7 @@ class UserProfileDialog extends HookConsumerWidget {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            // viewModel.storageText,
-                            "",
+                            viewModel.storageText,
                             style: TextStyle(color: Colors.grey[700]),
                           ),
                         ],
@@ -168,8 +164,7 @@ class UserProfileDialog extends HookConsumerWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: LinearProgressIndicator(
-                          // value: viewModel.storagePercentage,
-                          value: 0,
+                          value: viewModel.storagePercentage,
                           minHeight: 8,
                           backgroundColor: Colors.grey[300],
                           valueColor: const AlwaysStoppedAnimation<Color>(

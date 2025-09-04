@@ -17,52 +17,81 @@ final userRepositoryProvider = Provider<UserRepository>(
   (ref) => getIt<UserRepository>(),
 );
 
-/// StateNotifierProvider 用于提供 UserProfileNotifier 的实例
-/// 它依赖于 userRepositoryProvider
+final userProvider = StateNotifierProvider<UserNotifier, UserProfileEntity>((
+  ref,
+) {
+  final userRepository = ref.watch(userRepositoryProvider);
+  return UserNotifier(ref, userRepository);
+});
+
+// [NEW] The Notifier for the global userProvider.
+class UserNotifier extends StateNotifier<UserProfileEntity> {
+  final Ref _ref;
+  final UserRepository _userRepository;
+
+  UserNotifier(this._ref, this._userRepository)
+    : super(UserProfileEntity.initial()) {
+    // Listen to authentication changes to fetch the user data once upon login.
+    _ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      next.mapOrNull(
+        authenticated: (_) => fetchUser(),
+        unauthenticated: (_) => state = UserProfileEntity.initial(),
+      );
+    }, fireImmediately: true);
+  }
+
+  Future<void> fetchUser() async {
+    try {
+      final userProfile = await _userRepository.getCurrentUser();
+      if (mounted) {
+        state = userProfile;
+      }
+    } catch (e) {
+      log('Failed to fetch global user: $e', name: 'UserNotifier');
+    }
+  }
+}
+
 final userProfileProvider =
-    StateNotifierProvider<UserProfileNotifier, UserProfileEntity>((ref) {
+    StateNotifierProvider.autoDispose<UserProfileNotifier, UserProfileEntity>((
+      ref,
+    ) {
+      ref.onDispose(() {
+        log(
+          'userProfileProvider for Dialog has been disposed.',
+          name: 'UserProfileProvider',
+        );
+      });
       final userRepository = ref.watch(userRepositoryProvider);
       return UserProfileNotifier(ref, userRepository);
     });
 
-/// Notifier 类，封装了所有与用户个人资料相关的业务逻辑
 class UserProfileNotifier extends StateNotifier<UserProfileEntity> {
-  final Ref _ref;
   final UserRepository _userRepository;
+  final Ref _ref;
+
   UserProfileNotifier(this._ref, this._userRepository)
     : super(UserProfileEntity.initial()) {
-    _setupAuthListener();
-  }
-
-  void _setupAuthListener() {
-    _ref.listen<AuthState>(
-      authNotifierProvider,
-      (previous, next) {
-        log(
-          'Auth state changed from $previous to $next',
-          name: 'UserProfileNotifier',
-        );
-        next.mapOrNull(
-          authenticated: (_) => fetchUserProfile(),
-          unauthenticated: (_) => state = UserProfileEntity.initial(),
-        );
-      },
-      fireImmediately: true, // 修复“迟到监听者”问题
-    );
+    fetchUserProfile();
   }
 
   Future<void> fetchUserProfile() async {
     try {
-      log('开始获取用户信息...', name: 'UserProfileNotifier');
+      log(
+        'Fetching fresh user profile for dialog...',
+        name: 'UserProfileNotifier',
+      );
       final userProfile = await _userRepository.getCurrentUser();
       if (mounted) {
         state = userProfile;
-        log('用户信息获取成功: ${userProfile.username}', name: 'UserProfileNotifier');
+        log(
+          'Fresh user profile loaded: ${userProfile.username}',
+          name: 'UserProfileNotifier',
+        );
       }
     } catch (e, stackTrace) {
-      // 修复“静默错误”问题
       log(
-        '获取用户信息失败!',
+        'Failed to fetch user profile for dialog!',
         error: e,
         stackTrace: stackTrace,
         name: 'UserProfileNotifier',
@@ -70,42 +99,36 @@ class UserProfileNotifier extends StateNotifier<UserProfileEntity> {
     }
   }
 
-  /// 上传新头像的完整业务逻辑
+  // The upload/update logic remains the same, refreshing its own state.
   Future<void> uploadNewAvatar() async {
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 800,
+        imageQuality: 50,
+        maxWidth: 200,
       );
 
-      if (pickedFile == null) {
-        return;
-      }
+      if (pickedFile == null) return;
 
       final imageFile = File(pickedFile.path);
-      final newAvatarUrl = await _userRepository.uploadAvatar(imageFile);
+      await _userRepository.uploadAvatar(imageFile);
 
-      if (mounted) {
-        state = state.copyWith(avatarUrl: newAvatarUrl);
-      }
-    } catch (e) {
-      // [修复 #3] 建议使用日志库替代 print
-      // log('上传头像失败: $e', name: 'UserProfileNotifier');
-    }
-  }
+      // After uploading, refresh this dialog's state with the absolute latest data.
+      await fetchUserProfile();
 
-  /// 更新用户名的业务逻辑 (示例)
-  Future<void> updateUsername(String newName) async {
-    try {
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        state = state.copyWith(username: newName);
-      }
-    } catch (e) {
-      // [修复 #3] 建议使用日志库替代 print
-      // log('更新用户名失败: $e', name: 'UserProfileNotifier');
+      log(
+        'Triggering global user provider refresh...',
+        name: 'UserProfileNotifier',
+      );
+      _ref.read(userProvider.notifier).fetchUser();
+    } catch (e, stackTrace) {
+      log(
+        'Upload avatar failed!',
+        error: e,
+        stackTrace: stackTrace,
+        name: 'UserProfileNotifier',
+      );
     }
   }
 }

@@ -23,8 +23,8 @@ class UserProfileModel with _$UserProfileModel {
     @JsonKey(name: 'avatar_url') String? avatarUrl,
 
     // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
-    // @JsonKey(name: 'used_storage') required double usedStorage,
-    // @JsonKey(name: 'total_storage') required double totalStorage,
+    @JsonKey(name: 'used_storage') required double usedStorage,
+    @JsonKey(name: 'total_storage') required double totalStorage,
   }) = _UserProfileModel;
 
   /// 工厂构造函数：用于从JSON创建实例
@@ -40,8 +40,8 @@ class UserProfileModel with _$UserProfileModel {
       email: email,
       // 如果 avatarUrl 为 null，则在实体中也为 null
       avatarUrl: avatarUrl,
-      // usedStorage: usedStorage,
-      // totalStorage: totalStorage,
+      usedStorage: usedStorage,
+      totalStorage: totalStorage,
     );
   }
 }

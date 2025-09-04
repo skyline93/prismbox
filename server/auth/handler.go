@@ -63,11 +63,13 @@ type LogoutInput struct {
 }
 
 type UserProfileResponse struct {
-	ID        uint      `json:"id" example:"1"`
-	Username  string    `json:"username" example:"testuser"`
-	Email     string    `json:"email" example:"testuser@example.com"`
-	AvatarURL string    `json:"avatar_url,omitempty" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
-	CreatedAt time.Time `json:"created_at" example:"2023-10-27T10:00:00Z"`
+	ID           uint      `json:"id" example:"1"`
+	Username     string    `json:"username" example:"testuser"`
+	Email        string    `json:"email" example:"testuser@example.com"`
+	AvatarURL    string    `json:"avatar_url,omitempty" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
+	UsedStorage  int64     `json:"used_storage,omitempty"`
+	TotalStorage int64     `json:"total_storage,omitempty"`
+	CreatedAt    time.Time `json:"created_at" example:"2023-10-27T10:00:00Z"`
 }
 
 type UploadAvatarSuccessData struct {
@@ -281,11 +283,13 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 	// 3. 将数据库模型映射到安全的响应DTO
 	// 这是非常关键的一步，确保不会泄露密码哈希等敏感字段
 	userProfile := UserProfileResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		AvatarURL: avatarURL,
-		CreatedAt: user.CreatedAt,
+		ID:           user.ID,
+		Username:     user.Username,
+		Email:        user.Email,
+		AvatarURL:    avatarURL,
+		UsedStorage:  20,
+		TotalStorage: 100,
+		CreatedAt:    user.CreatedAt,
 	}
 
 	// 4. 返回成功响应

@@ -28,6 +28,8 @@ mixin _$UserProfileEntity {
       throw _privateConstructorUsedError; // [修改] 将 avatarUrl 改为可空，以处理用户未设置头像的情况
 // 这也与原 UserEntity 的定义保持了一致，增加了灵活性
   String? get avatarUrl => throw _privateConstructorUsedError;
+  double get usedStorage => throw _privateConstructorUsedError;
+  double get totalStorage => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -41,7 +43,13 @@ abstract class $UserProfileEntityCopyWith<$Res> {
           UserProfileEntity value, $Res Function(UserProfileEntity) then) =
       _$UserProfileEntityCopyWithImpl<$Res, UserProfileEntity>;
   @useResult
-  $Res call({int id, String username, String email, String? avatarUrl});
+  $Res call(
+      {int id,
+      String username,
+      String email,
+      String? avatarUrl,
+      double usedStorage,
+      double totalStorage});
 }
 
 /// @nodoc
@@ -61,6 +69,8 @@ class _$UserProfileEntityCopyWithImpl<$Res, $Val extends UserProfileEntity>
     Object? username = null,
     Object? email = null,
     Object? avatarUrl = freezed,
+    Object? usedStorage = null,
+    Object? totalStorage = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -79,6 +89,14 @@ class _$UserProfileEntityCopyWithImpl<$Res, $Val extends UserProfileEntity>
           ? _value.avatarUrl
           : avatarUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      usedStorage: null == usedStorage
+          ? _value.usedStorage
+          : usedStorage // ignore: cast_nullable_to_non_nullable
+              as double,
+      totalStorage: null == totalStorage
+          ? _value.totalStorage
+          : totalStorage // ignore: cast_nullable_to_non_nullable
+              as double,
     ) as $Val);
   }
 }
@@ -91,7 +109,13 @@ abstract class _$$UserProfileEntityImplCopyWith<$Res>
       __$$UserProfileEntityImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({int id, String username, String email, String? avatarUrl});
+  $Res call(
+      {int id,
+      String username,
+      String email,
+      String? avatarUrl,
+      double usedStorage,
+      double totalStorage});
 }
 
 /// @nodoc
@@ -109,6 +133,8 @@ class __$$UserProfileEntityImplCopyWithImpl<$Res>
     Object? username = null,
     Object? email = null,
     Object? avatarUrl = freezed,
+    Object? usedStorage = null,
+    Object? totalStorage = null,
   }) {
     return _then(_$UserProfileEntityImpl(
       id: null == id
@@ -127,6 +153,14 @@ class __$$UserProfileEntityImplCopyWithImpl<$Res>
           ? _value.avatarUrl
           : avatarUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      usedStorage: null == usedStorage
+          ? _value.usedStorage
+          : usedStorage // ignore: cast_nullable_to_non_nullable
+              as double,
+      totalStorage: null == totalStorage
+          ? _value.totalStorage
+          : totalStorage // ignore: cast_nullable_to_non_nullable
+              as double,
     ));
   }
 }
@@ -138,7 +172,9 @@ class _$UserProfileEntityImpl extends _UserProfileEntity {
       {required this.id,
       required this.username,
       required this.email,
-      this.avatarUrl})
+      this.avatarUrl,
+      required this.usedStorage,
+      required this.totalStorage})
       : super._();
 
   factory _$UserProfileEntityImpl.fromJson(Map<String, dynamic> json) =>
@@ -156,10 +192,14 @@ class _$UserProfileEntityImpl extends _UserProfileEntity {
 // 这也与原 UserEntity 的定义保持了一致，增加了灵活性
   @override
   final String? avatarUrl;
+  @override
+  final double usedStorage;
+  @override
+  final double totalStorage;
 
   @override
   String toString() {
-    return 'UserProfileEntity(id: $id, username: $username, email: $email, avatarUrl: $avatarUrl)';
+    return 'UserProfileEntity(id: $id, username: $username, email: $email, avatarUrl: $avatarUrl, usedStorage: $usedStorage, totalStorage: $totalStorage)';
   }
 
   @override
@@ -172,12 +212,17 @@ class _$UserProfileEntityImpl extends _UserProfileEntity {
                 other.username == username) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.avatarUrl, avatarUrl) ||
-                other.avatarUrl == avatarUrl));
+                other.avatarUrl == avatarUrl) &&
+            (identical(other.usedStorage, usedStorage) ||
+                other.usedStorage == usedStorage) &&
+            (identical(other.totalStorage, totalStorage) ||
+                other.totalStorage == totalStorage));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, id, username, email, avatarUrl);
+  int get hashCode => Object.hash(
+      runtimeType, id, username, email, avatarUrl, usedStorage, totalStorage);
 
   @JsonKey(ignore: true)
   @override
@@ -199,7 +244,9 @@ abstract class _UserProfileEntity extends UserProfileEntity {
       {required final int id,
       required final String username,
       required final String email,
-      final String? avatarUrl}) = _$UserProfileEntityImpl;
+      final String? avatarUrl,
+      required final double usedStorage,
+      required final double totalStorage}) = _$UserProfileEntityImpl;
   const _UserProfileEntity._() : super._();
 
   factory _UserProfileEntity.fromJson(Map<String, dynamic> json) =
@@ -214,6 +261,10 @@ abstract class _UserProfileEntity extends UserProfileEntity {
   @override // [修改] 将 avatarUrl 改为可空，以处理用户未设置头像的情况
 // 这也与原 UserEntity 的定义保持了一致，增加了灵活性
   String? get avatarUrl;
+  @override
+  double get usedStorage;
+  @override
+  double get totalStorage;
   @override
   @JsonKey(ignore: true)
   _$$UserProfileEntityImplCopyWith<_$UserProfileEntityImpl> get copyWith =>

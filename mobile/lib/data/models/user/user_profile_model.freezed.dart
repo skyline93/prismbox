@@ -26,7 +26,12 @@ mixin _$UserProfileModel {
   String get email =>
       throw _privateConstructorUsedError; // [保留] avatarUrl 字段，并确保 @JsonKey 正确
   @JsonKey(name: 'avatar_url')
-  String? get avatarUrl => throw _privateConstructorUsedError;
+  String? get avatarUrl =>
+      throw _privateConstructorUsedError; // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  @JsonKey(name: 'used_storage')
+  double get usedStorage => throw _privateConstructorUsedError;
+  @JsonKey(name: 'total_storage')
+  double get totalStorage => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -44,7 +49,9 @@ abstract class $UserProfileModelCopyWith<$Res> {
       {int id,
       String username,
       String email,
-      @JsonKey(name: 'avatar_url') String? avatarUrl});
+      @JsonKey(name: 'avatar_url') String? avatarUrl,
+      @JsonKey(name: 'used_storage') double usedStorage,
+      @JsonKey(name: 'total_storage') double totalStorage});
 }
 
 /// @nodoc
@@ -64,6 +71,8 @@ class _$UserProfileModelCopyWithImpl<$Res, $Val extends UserProfileModel>
     Object? username = null,
     Object? email = null,
     Object? avatarUrl = freezed,
+    Object? usedStorage = null,
+    Object? totalStorage = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -82,6 +91,14 @@ class _$UserProfileModelCopyWithImpl<$Res, $Val extends UserProfileModel>
           ? _value.avatarUrl
           : avatarUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      usedStorage: null == usedStorage
+          ? _value.usedStorage
+          : usedStorage // ignore: cast_nullable_to_non_nullable
+              as double,
+      totalStorage: null == totalStorage
+          ? _value.totalStorage
+          : totalStorage // ignore: cast_nullable_to_non_nullable
+              as double,
     ) as $Val);
   }
 }
@@ -98,7 +115,9 @@ abstract class _$$UserProfileModelImplCopyWith<$Res>
       {int id,
       String username,
       String email,
-      @JsonKey(name: 'avatar_url') String? avatarUrl});
+      @JsonKey(name: 'avatar_url') String? avatarUrl,
+      @JsonKey(name: 'used_storage') double usedStorage,
+      @JsonKey(name: 'total_storage') double totalStorage});
 }
 
 /// @nodoc
@@ -116,6 +135,8 @@ class __$$UserProfileModelImplCopyWithImpl<$Res>
     Object? username = null,
     Object? email = null,
     Object? avatarUrl = freezed,
+    Object? usedStorage = null,
+    Object? totalStorage = null,
   }) {
     return _then(_$UserProfileModelImpl(
       id: null == id
@@ -134,6 +155,14 @@ class __$$UserProfileModelImplCopyWithImpl<$Res>
           ? _value.avatarUrl
           : avatarUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      usedStorage: null == usedStorage
+          ? _value.usedStorage
+          : usedStorage // ignore: cast_nullable_to_non_nullable
+              as double,
+      totalStorage: null == totalStorage
+          ? _value.totalStorage
+          : totalStorage // ignore: cast_nullable_to_non_nullable
+              as double,
     ));
   }
 }
@@ -145,7 +174,9 @@ class _$UserProfileModelImpl extends _UserProfileModel {
       {required this.id,
       required this.username,
       required this.email,
-      @JsonKey(name: 'avatar_url') this.avatarUrl})
+      @JsonKey(name: 'avatar_url') this.avatarUrl,
+      @JsonKey(name: 'used_storage') required this.usedStorage,
+      @JsonKey(name: 'total_storage') required this.totalStorage})
       : super._();
 
   factory _$UserProfileModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -163,10 +194,17 @@ class _$UserProfileModelImpl extends _UserProfileModel {
   @override
   @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
+// [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  @override
+  @JsonKey(name: 'used_storage')
+  final double usedStorage;
+  @override
+  @JsonKey(name: 'total_storage')
+  final double totalStorage;
 
   @override
   String toString() {
-    return 'UserProfileModel(id: $id, username: $username, email: $email, avatarUrl: $avatarUrl)';
+    return 'UserProfileModel(id: $id, username: $username, email: $email, avatarUrl: $avatarUrl, usedStorage: $usedStorage, totalStorage: $totalStorage)';
   }
 
   @override
@@ -179,12 +217,17 @@ class _$UserProfileModelImpl extends _UserProfileModel {
                 other.username == username) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.avatarUrl, avatarUrl) ||
-                other.avatarUrl == avatarUrl));
+                other.avatarUrl == avatarUrl) &&
+            (identical(other.usedStorage, usedStorage) ||
+                other.usedStorage == usedStorage) &&
+            (identical(other.totalStorage, totalStorage) ||
+                other.totalStorage == totalStorage));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, id, username, email, avatarUrl);
+  int get hashCode => Object.hash(
+      runtimeType, id, username, email, avatarUrl, usedStorage, totalStorage);
 
   @JsonKey(ignore: true)
   @override
@@ -206,7 +249,9 @@ abstract class _UserProfileModel extends UserProfileModel {
           {required final int id,
           required final String username,
           required final String email,
-          @JsonKey(name: 'avatar_url') final String? avatarUrl}) =
+          @JsonKey(name: 'avatar_url') final String? avatarUrl,
+          @JsonKey(name: 'used_storage') required final double usedStorage,
+          @JsonKey(name: 'total_storage') required final double totalStorage}) =
       _$UserProfileModelImpl;
   const _UserProfileModel._() : super._();
 
@@ -222,6 +267,12 @@ abstract class _UserProfileModel extends UserProfileModel {
   @override // [保留] avatarUrl 字段，并确保 @JsonKey 正确
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl;
+  @override // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  @JsonKey(name: 'used_storage')
+  double get usedStorage;
+  @override
+  @JsonKey(name: 'total_storage')
+  double get totalStorage;
   @override
   @JsonKey(ignore: true)
   _$$UserProfileModelImplCopyWith<_$UserProfileModelImpl> get copyWith =>

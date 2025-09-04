@@ -34,7 +34,7 @@ class NavigationPage extends HookConsumerWidget {
       selectionProvider.select((s) => s.isSelecting),
     );
 
-    final userProfile = ref.watch(userProfileProvider);
+    final userProfile = ref.watch(userProvider);
     final avatarUrl = userProfile.avatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 

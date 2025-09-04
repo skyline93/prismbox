@@ -13,6 +13,8 @@ _$UserProfileEntityImpl _$$UserProfileEntityImplFromJson(
       username: json['username'] as String,
       email: json['email'] as String,
       avatarUrl: json['avatarUrl'] as String?,
+      usedStorage: (json['usedStorage'] as num).toDouble(),
+      totalStorage: (json['totalStorage'] as num).toDouble(),
     );
 
 Map<String, dynamic> _$$UserProfileEntityImplToJson(
@@ -22,4 +24,6 @@ Map<String, dynamic> _$$UserProfileEntityImplToJson(
       'username': instance.username,
       'email': instance.email,
       'avatarUrl': instance.avatarUrl,
+      'usedStorage': instance.usedStorage,
+      'totalStorage': instance.totalStorage,
     };

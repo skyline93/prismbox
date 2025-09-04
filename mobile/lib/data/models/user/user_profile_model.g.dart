@@ -13,6 +13,8 @@ _$UserProfileModelImpl _$$UserProfileModelImplFromJson(
       username: json['username'] as String,
       email: json['email'] as String,
       avatarUrl: json['avatar_url'] as String?,
+      usedStorage: (json['used_storage'] as num).toDouble(),
+      totalStorage: (json['total_storage'] as num).toDouble(),
     );
 
 Map<String, dynamic> _$$UserProfileModelImplToJson(
@@ -22,4 +24,6 @@ Map<String, dynamic> _$$UserProfileModelImplToJson(
       'username': instance.username,
       'email': instance.email,
       'avatar_url': instance.avatarUrl,
+      'used_storage': instance.usedStorage,
+      'total_storage': instance.totalStorage,
     };

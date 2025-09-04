@@ -53,11 +53,13 @@ abstract class _$AppRouter extends RootStackRouter {
     GroupFeedRoute.name: (routeData) {
       final pathParams = routeData.inheritedPathParams;
       final args = routeData.argsAs<GroupFeedRouteArgs>(
-        orElse: () => GroupFeedRouteArgs(uuid: pathParams.getString('uuid')),
-      );
+          orElse: () => GroupFeedRouteArgs(uuid: pathParams.getString('uuid')));
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: GroupFeedPage(key: args.key, uuid: args.uuid),
+        child: GroupFeedPage(
+          key: args.key,
+          uuid: args.uuid,
+        ),
       );
     },
     GroupListRoute.name: (routeData) {
@@ -69,29 +71,37 @@ abstract class _$AppRouter extends RootStackRouter {
     GroupMembersRoute.name: (routeData) {
       final pathParams = routeData.inheritedPathParams;
       final args = routeData.argsAs<GroupMembersRouteArgs>(
-        orElse: () => GroupMembersRouteArgs(uuid: pathParams.getString('uuid')),
-      );
+          orElse: () =>
+              GroupMembersRouteArgs(uuid: pathParams.getString('uuid')));
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: GroupMembersPage(key: args.key, uuid: args.uuid),
+        child: GroupMembersPage(
+          key: args.key,
+          uuid: args.uuid,
+        ),
       );
     },
     GroupPostDetailRoute.name: (routeData) {
       final args = routeData.argsAs<GroupPostDetailRouteArgs>();
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: GroupPostDetailPage(key: args.key, post: args.post),
+        child: GroupPostDetailPage(
+          key: args.key,
+          post: args.post,
+        ),
       );
     },
     GroupSettingsRoute.name: (routeData) {
       final pathParams = routeData.inheritedPathParams;
       final args = routeData.argsAs<GroupSettingsRouteArgs>(
-        orElse: () =>
-            GroupSettingsRouteArgs(uuid: pathParams.getString('uuid')),
-      );
+          orElse: () =>
+              GroupSettingsRouteArgs(uuid: pathParams.getString('uuid')));
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: GroupSettingsPage(key: args.key, uuid: args.uuid),
+        child: GroupSettingsPage(
+          key: args.key,
+          uuid: args.uuid,
+        ),
       );
     },
     LibraryRoute.name: (routeData) {
@@ -149,15 +159,15 @@ class AlbumDetailRoute extends PageRouteInfo<AlbumDetailRouteArgs> {
     required String albumName,
     List<PageRouteInfo>? children,
   }) : super(
-         AlbumDetailRoute.name,
-         args: AlbumDetailRouteArgs(
-           key: key,
-           albumId: albumId,
-           albumSource: albumSource,
-           albumName: albumName,
-         ),
-         initialChildren: children,
-       );
+          AlbumDetailRoute.name,
+          args: AlbumDetailRouteArgs(
+            key: key,
+            albumId: albumId,
+            albumSource: albumSource,
+            albumName: albumName,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'AlbumDetailRoute';
 
@@ -191,7 +201,10 @@ class AlbumDetailRouteArgs {
 /// [AlbumPage]
 class AlbumRoute extends PageRouteInfo<void> {
   const AlbumRoute({List<PageRouteInfo>? children})
-    : super(AlbumRoute.name, initialChildren: children);
+      : super(
+          AlbumRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'AlbumRoute';
 
@@ -202,7 +215,10 @@ class AlbumRoute extends PageRouteInfo<void> {
 /// [CreateGroupPage]
 class CreateGroupRoute extends PageRouteInfo<void> {
   const CreateGroupRoute({List<PageRouteInfo>? children})
-    : super(CreateGroupRoute.name, initialChildren: children);
+      : super(
+          CreateGroupRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'CreateGroupRoute';
 
@@ -218,20 +234,19 @@ class GalleryRoute extends PageRouteInfo<GalleryRouteArgs> {
     required int initialIndex,
     List<PageRouteInfo>? children,
   }) : super(
-         GalleryRoute.name,
-         args: GalleryRouteArgs(
-           key: key,
-           media: media,
-           initialIndex: initialIndex,
-         ),
-         initialChildren: children,
-       );
+          GalleryRoute.name,
+          args: GalleryRouteArgs(
+            key: key,
+            media: media,
+            initialIndex: initialIndex,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'GalleryRoute';
 
-  static const PageInfo<GalleryRouteArgs> page = PageInfo<GalleryRouteArgs>(
-    name,
-  );
+  static const PageInfo<GalleryRouteArgs> page =
+      PageInfo<GalleryRouteArgs>(name);
 }
 
 class GalleryRouteArgs {
@@ -261,21 +276,26 @@ class GroupFeedRoute extends PageRouteInfo<GroupFeedRouteArgs> {
     required String uuid,
     List<PageRouteInfo>? children,
   }) : super(
-         GroupFeedRoute.name,
-         args: GroupFeedRouteArgs(key: key, uuid: uuid),
-         rawPathParams: {'uuid': uuid},
-         initialChildren: children,
-       );
+          GroupFeedRoute.name,
+          args: GroupFeedRouteArgs(
+            key: key,
+            uuid: uuid,
+          ),
+          rawPathParams: {'uuid': uuid},
+          initialChildren: children,
+        );
 
   static const String name = 'GroupFeedRoute';
 
-  static const PageInfo<GroupFeedRouteArgs> page = PageInfo<GroupFeedRouteArgs>(
-    name,
-  );
+  static const PageInfo<GroupFeedRouteArgs> page =
+      PageInfo<GroupFeedRouteArgs>(name);
 }
 
 class GroupFeedRouteArgs {
-  const GroupFeedRouteArgs({this.key, required this.uuid});
+  const GroupFeedRouteArgs({
+    this.key,
+    required this.uuid,
+  });
 
   final Key? key;
 
@@ -291,7 +311,10 @@ class GroupFeedRouteArgs {
 /// [GroupListPage]
 class GroupListRoute extends PageRouteInfo<void> {
   const GroupListRoute({List<PageRouteInfo>? children})
-    : super(GroupListRoute.name, initialChildren: children);
+      : super(
+          GroupListRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'GroupListRoute';
 
@@ -306,11 +329,14 @@ class GroupMembersRoute extends PageRouteInfo<GroupMembersRouteArgs> {
     required String uuid,
     List<PageRouteInfo>? children,
   }) : super(
-         GroupMembersRoute.name,
-         args: GroupMembersRouteArgs(key: key, uuid: uuid),
-         rawPathParams: {'uuid': uuid},
-         initialChildren: children,
-       );
+          GroupMembersRoute.name,
+          args: GroupMembersRouteArgs(
+            key: key,
+            uuid: uuid,
+          ),
+          rawPathParams: {'uuid': uuid},
+          initialChildren: children,
+        );
 
   static const String name = 'GroupMembersRoute';
 
@@ -319,7 +345,10 @@ class GroupMembersRoute extends PageRouteInfo<GroupMembersRouteArgs> {
 }
 
 class GroupMembersRouteArgs {
-  const GroupMembersRouteArgs({this.key, required this.uuid});
+  const GroupMembersRouteArgs({
+    this.key,
+    required this.uuid,
+  });
 
   final Key? key;
 
@@ -339,10 +368,13 @@ class GroupPostDetailRoute extends PageRouteInfo<GroupPostDetailRouteArgs> {
     required GroupFeedItemEntity post,
     List<PageRouteInfo>? children,
   }) : super(
-         GroupPostDetailRoute.name,
-         args: GroupPostDetailRouteArgs(key: key, post: post),
-         initialChildren: children,
-       );
+          GroupPostDetailRoute.name,
+          args: GroupPostDetailRouteArgs(
+            key: key,
+            post: post,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'GroupPostDetailRoute';
 
@@ -351,7 +383,10 @@ class GroupPostDetailRoute extends PageRouteInfo<GroupPostDetailRouteArgs> {
 }
 
 class GroupPostDetailRouteArgs {
-  const GroupPostDetailRouteArgs({this.key, required this.post});
+  const GroupPostDetailRouteArgs({
+    this.key,
+    required this.post,
+  });
 
   final Key? key;
 
@@ -371,11 +406,14 @@ class GroupSettingsRoute extends PageRouteInfo<GroupSettingsRouteArgs> {
     required String uuid,
     List<PageRouteInfo>? children,
   }) : super(
-         GroupSettingsRoute.name,
-         args: GroupSettingsRouteArgs(key: key, uuid: uuid),
-         rawPathParams: {'uuid': uuid},
-         initialChildren: children,
-       );
+          GroupSettingsRoute.name,
+          args: GroupSettingsRouteArgs(
+            key: key,
+            uuid: uuid,
+          ),
+          rawPathParams: {'uuid': uuid},
+          initialChildren: children,
+        );
 
   static const String name = 'GroupSettingsRoute';
 
@@ -384,7 +422,10 @@ class GroupSettingsRoute extends PageRouteInfo<GroupSettingsRouteArgs> {
 }
 
 class GroupSettingsRouteArgs {
-  const GroupSettingsRouteArgs({this.key, required this.uuid});
+  const GroupSettingsRouteArgs({
+    this.key,
+    required this.uuid,
+  });
 
   final Key? key;
 
@@ -400,7 +441,10 @@ class GroupSettingsRouteArgs {
 /// [LibraryPage]
 class LibraryRoute extends PageRouteInfo<void> {
   const LibraryRoute({List<PageRouteInfo>? children})
-    : super(LibraryRoute.name, initialChildren: children);
+      : super(
+          LibraryRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'LibraryRoute';
 
@@ -411,7 +455,10 @@ class LibraryRoute extends PageRouteInfo<void> {
 /// [LoginPage]
 class LoginRoute extends PageRouteInfo<void> {
   const LoginRoute({List<PageRouteInfo>? children})
-    : super(LoginRoute.name, initialChildren: children);
+      : super(
+          LoginRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'LoginRoute';
 
@@ -422,7 +469,10 @@ class LoginRoute extends PageRouteInfo<void> {
 /// [MediaPage]
 class MediaRoute extends PageRouteInfo<void> {
   const MediaRoute({List<PageRouteInfo>? children})
-    : super(MediaRoute.name, initialChildren: children);
+      : super(
+          MediaRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MediaRoute';
 
@@ -433,7 +483,10 @@ class MediaRoute extends PageRouteInfo<void> {
 /// [NavigationPage]
 class NavigationRoute extends PageRouteInfo<void> {
   const NavigationRoute({List<PageRouteInfo>? children})
-    : super(NavigationRoute.name, initialChildren: children);
+      : super(
+          NavigationRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'NavigationRoute';
 
@@ -444,7 +497,10 @@ class NavigationRoute extends PageRouteInfo<void> {
 /// [RegisterPage]
 class RegisterRoute extends PageRouteInfo<void> {
   const RegisterRoute({List<PageRouteInfo>? children})
-    : super(RegisterRoute.name, initialChildren: children);
+      : super(
+          RegisterRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'RegisterRoute';
 
@@ -455,7 +511,10 @@ class RegisterRoute extends PageRouteInfo<void> {
 /// [ServerConfigPage]
 class ServerConfigRoute extends PageRouteInfo<void> {
   const ServerConfigRoute({List<PageRouteInfo>? children})
-    : super(ServerConfigRoute.name, initialChildren: children);
+      : super(
+          ServerConfigRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'ServerConfigRoute';
 
@@ -466,7 +525,10 @@ class ServerConfigRoute extends PageRouteInfo<void> {
 /// [SplashPage]
 class SplashRoute extends PageRouteInfo<void> {
   const SplashRoute({List<PageRouteInfo>? children})
-    : super(SplashRoute.name, initialChildren: children);
+      : super(
+          SplashRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'SplashRoute';
 
