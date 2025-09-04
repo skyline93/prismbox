@@ -1,3 +1,5 @@
+// lib/data/datasources/local_db/daos/user_settings_dao.dart
+
 part of '../app_database.dart';
 
 @DriftAccessor(tables: [UserSettings])

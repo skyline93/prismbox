@@ -3,18 +3,20 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_isolate/flutter_isolate.dart';
 import 'package:injectable/injectable.dart';
+import 'package:mobile/constants/settings_keys.dart';
 import 'package:mobile/core/storage/sync_state_service.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/services/album_sync_service.dart';
 import 'package:mobile/services/background_tasks/local_media_reconciliation.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/utils/asset_processor.dart';
 import 'package:photo_manager/photo_manager.dart';
-
 
 /// 监听器的运行状态
 enum ObserverStatus { idle, initializing, running, stopped }
@@ -25,6 +27,8 @@ class LocalMediaObserver {
   final MediaRepository _mediaRepository;
   final SyncStateService _syncStateService;
   final AlbumSyncService _albumSyncService;
+  final AppDatabase db;
+  final UserSettingDao _userSettingDao;
 
   ObserverStatus _status = ObserverStatus.idle;
   FlutterIsolate? _reconciliationIsolate;
@@ -36,11 +40,13 @@ class LocalMediaObserver {
     this._mediaRepository,
     this._syncStateService,
     this._albumSyncService,
-  );
+    this.db,
+  ) : _userSettingDao = db.userSettingDao;
 
   /// 启动本地媒体监听服务。
   Future<void> startObserving() async {
-    if (_status == ObserverStatus.initializing || _status == ObserverStatus.running) {
+    if (_status == ObserverStatus.initializing ||
+        _status == ObserverStatus.running) {
       if (kDebugMode) {
         print('[LocalMediaObserver] Observer is already starting or running.');
       }
@@ -51,7 +57,9 @@ class LocalMediaObserver {
     final ps = await PhotoManager.requestPermissionExtend();
     if (!ps.isAuth) {
       if (kDebugMode) {
-        print('[LocalMediaObserver] Permission denied. Cannot observe local media.');
+        print(
+          '[LocalMediaObserver] Permission denied. Cannot observe local media.',
+        );
       }
       _status = ObserverStatus.idle;
       return;
@@ -62,9 +70,11 @@ class LocalMediaObserver {
       workerCount: 4,
     );
 
-    await _performInitialReconciliation();
+    // 根据首次同步完成状态，执行不同的对账策略
+    await _runStartupReconciliation();
+
     _startListeningForChanges();
-    
+
     _status = ObserverStatus.running;
     if (kDebugMode) {
       print('[LocalMediaObserver] Started observing local media changes.');
@@ -76,49 +86,128 @@ class LocalMediaObserver {
     if (_status != ObserverStatus.running) {
       return;
     }
-    
+
     PhotoManager.removeChangeCallback(_onMediaChangeNotified);
     PhotoManager.stopChangeNotify();
 
     _assetProcessor?.dispose();
     _reconciliationIsolate?.kill();
     _reconciliationIsolate = null;
-    
+
     _status = ObserverStatus.stopped;
     if (kDebugMode) {
       print('[LocalMediaObserver] Stopped observing local media changes.');
     }
   }
 
-  /// 执行启动时的全量对账。
-  Future<void> _performInitialReconciliation() async {
+  /// 【新】执行启动对账，根据状态决定执行全量或增量对账。
+  Future<void> _runStartupReconciliation() async {
+    final isInitialSyncComplete =
+        await _userSettingDao.getSetting(
+          SettingKeys.initialReconciliationComplete,
+        ) ==
+        'true';
+
+    if (!isInitialSyncComplete) {
+      // 如果首次全量对账未完成，则执行它
+      await _performFullReconciliation();
+    } else {
+      // 否则，执行常规的增量对账
+      await _performIncrementalReconciliation();
+    }
+  }
+
+  /// 【修改】执行首次全量对账，成功后写入标志位。
+  /// 此函数保证了任务的原子性：只有在所有步骤都成功后，才会标记为完成。
+  Future<void> _performFullReconciliation() async {
     if (kDebugMode) {
-      print('[LocalMediaObserver] Starting initial reconciliation...');
+      print('[LocalMediaObserver] Starting FIRST-TIME FULL reconciliation...');
     }
     try {
-      final Set<String> dbAssetIds = await _mediaRepository.getAllSyncedLocalAssetIds();
+      final Set<String> dbAssetIds = await _mediaRepository
+          .getAllSyncedLocalAssetIds();
       if (kDebugMode) {
-        print('[LocalMediaObserver] Found ${dbAssetIds.length} assets in the database.');
+        print(
+          '[LocalMediaObserver] Found ${dbAssetIds.length} assets in the database.',
+        );
       }
 
       final result = await _runReconciliationInIsolate(dbAssetIds);
 
-      await _albumSyncService.synchronizeAllSources(localAlbums: result.localAlbums);
-      await _processReconciliationResult(result, "[Initial Check]");
+      await _albumSyncService.synchronizeAllSources(
+        localAlbums: result.localAlbums,
+      );
+      await _processReconciliationResult(result, "[Full Reconciliation]");
+
+      // 所有步骤成功后，更新最后同步时间戳并设置完成标志
+      await _syncStateService.setLastSyncTimestamp(DateTime.now());
+      await _userSettingDao.upsertSetting(
+        UserSettingsCompanion(
+          key: const Value(SettingKeys.initialReconciliationComplete),
+          value: const Value('true'),
+        ),
+      );
+
+      if (kDebugMode) {
+        print(
+          '[LocalMediaObserver] First-time full reconciliation COMPLETE. Flag set.',
+        );
+      }
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(
+          '[LocalMediaObserver] An error occurred during full reconciliation. It will be retried on next launch. Error: $e\n$s',
+        );
+      }
+    }
+  }
+
+  /// 【新】执行后续启动时的增量对账。
+  Future<void> _performIncrementalReconciliation() async {
+    if (kDebugMode) {
+      print('[LocalMediaObserver] Starting incremental reconciliation...');
+    }
+    try {
+      final Set<String> dbAssetIds = await _mediaRepository
+          .getAllSyncedLocalAssetIds();
+      final result = await _runReconciliationInIsolate(dbAssetIds);
+
+      // 检查是否有变更，避免不必要的处理
+      if (result.newAssetIds.isEmpty && result.deletedAssetIds.isEmpty) {
+        if (kDebugMode) {
+          print(
+            '[LocalMediaObserver] Incremental reconciliation found no changes.',
+          );
+        }
+        return;
+      }
+
+      // 仅在有变更时才同步相册和处理结果
+      await _albumSyncService.synchronizeAllSources(
+        localAlbums: result.localAlbums,
+      );
+      await _processReconciliationResult(
+        result,
+        "[Incremental Reconciliation]",
+      );
 
       await _syncStateService.setLastSyncTimestamp(DateTime.now());
       if (kDebugMode) {
-        print('[LocalMediaObserver] Initial reconciliation complete. Last sync timestamp updated.');
+        print('[LocalMediaObserver] Incremental reconciliation complete.');
       }
     } catch (e, s) {
-        if (kDebugMode) {
-            print('[LocalMediaObserver] An error occurred during initial reconciliation: $e\n$s');
-        }
+      if (kDebugMode) {
+        print(
+          '[LocalMediaObserver] An error occurred during incremental reconciliation: $e\n$s',
+        );
+      }
     }
   }
 
   /// 在后台 Isolate 中运行对账任务并返回结果。
-  Future<ReconciliationResult> _runReconciliationInIsolate(Set<String> dbAssetIds) async {
+  Future<ReconciliationResult> _runReconciliationInIsolate(
+    Set<String> dbAssetIds,
+  ) async {
     final completer = Completer<ReconciliationResult>();
     final receivePort = ReceivePort();
 
@@ -133,9 +222,12 @@ class LocalMediaObserver {
       'port': receivePort.sendPort,
       'dbAssetIds': dbAssetIds.toList(),
     };
-    
+
     _reconciliationIsolate?.kill();
-    _reconciliationIsolate = await FlutterIsolate.spawn(reconcileMediaInBackground, params);
+    _reconciliationIsolate = await FlutterIsolate.spawn(
+      reconcileMediaInBackground,
+      params,
+    );
 
     final result = await completer.future;
     _reconciliationIsolate = null;
@@ -143,22 +235,34 @@ class LocalMediaObserver {
   }
 
   /// 处理对账结果，包括新增和删除的资产。
-  Future<void> _processReconciliationResult(ReconciliationResult result, String context) async {
+  Future<void> _processReconciliationResult(
+    ReconciliationResult result,
+    String context,
+  ) async {
     if (result.newAssetIds.isNotEmpty) {
       if (kDebugMode) {
-        print('[LocalMediaObserver] $context Found ${result.newAssetIds.length} new assets. Adding to processing queue...');
+        print(
+          '[LocalMediaObserver] $context Found ${result.newAssetIds.length} new assets. Adding to processing queue...',
+        );
       }
       _assetProcessor?.addAll(result.newAssetIds);
     }
 
     if (result.deletedAssetIds.isNotEmpty) {
       if (kDebugMode) {
-        print('[LocalMediaObserver] $context Found ${result.deletedAssetIds.length} deleted assets. Processing deletions...');
+        print(
+          '[LocalMediaObserver] $context Found ${result.deletedAssetIds.length} deleted assets. Processing deletions...',
+        );
       }
-      await _processInBatches(result.deletedAssetIds, _syncJobManager.handleLocalAssetDeletion);
+      await _processInBatches(
+        result.deletedAssetIds,
+        _syncJobManager.handleLocalAssetDeletion,
+      );
     }
 
-    if (result.newAssetIds.isEmpty && result.deletedAssetIds.isEmpty && kDebugMode) {
+    if (result.newAssetIds.isEmpty &&
+        result.deletedAssetIds.isEmpty &&
+        kDebugMode) {
       print('[LocalMediaObserver] $context No changes detected.');
     }
   }
@@ -172,11 +276,15 @@ class LocalMediaObserver {
   /// 处理来自 PhotoManager 的变更通知。
   void _onMediaChangeNotified(MethodCall call) {
     if (kDebugMode) {
-      print('[LocalMediaObserver] Media change notification received: ${call.method}');
+      print(
+        '[LocalMediaObserver] Media change notification received: ${call.method}',
+      );
     }
     if (_isChangeHandlingLocked) {
       if (kDebugMode) {
-        print('[LocalMediaObserver] Already processing a change, ignoring this notification.');
+        print(
+          '[LocalMediaObserver] Already processing a change, ignoring this notification.',
+        );
       }
       return;
     }
@@ -186,16 +294,20 @@ class LocalMediaObserver {
         final bool processed = await _tryProcessWithMethodCall(call);
         if (!processed) {
           if (kDebugMode) {
-            print('[LocalMediaObserver] MethodCall did not provide details. Running full reconciliation.');
+            print(
+              '[LocalMediaObserver] MethodCall did not provide details. Running incremental reconciliation.',
+            );
           }
-          await _performInitialReconciliation();
+          // 后续的实时变更通知，应触发增量对账
+          await _performIncrementalReconciliation();
         }
       } catch (e, s) {
         if (kDebugMode) {
-            print('[LocalMediaObserver] Error handling media change notification: $e\n$s');
+          print(
+            '[LocalMediaObserver] Error handling media change notification: $e\n$s',
+          );
         }
-      }
-      finally {
+      } finally {
         _isChangeHandlingLocked = false;
       }
     });
@@ -206,7 +318,7 @@ class LocalMediaObserver {
     if (call.method != 'onNotify' || call.arguments is! Map) {
       return false;
     }
-    
+
     final args = call.arguments as Map;
     final createdIds = (args['create'] as List? ?? []).cast<String>().toSet();
     final deletedIds = (args['delete'] as List? ?? []).cast<String>().toSet();
@@ -214,8 +326,12 @@ class LocalMediaObserver {
     if (createdIds.isEmpty && deletedIds.isEmpty) {
       return false;
     }
-    
-    final result = ReconciliationResult(newAssetIds: createdIds, deletedAssetIds: deletedIds, localAlbums: []);
+
+    final result = ReconciliationResult(
+      newAssetIds: createdIds,
+      deletedAssetIds: deletedIds,
+      localAlbums: [],
+    );
     await _processReconciliationResult(result, "[Incremental Update]");
     return true;
   }
@@ -248,7 +364,9 @@ class LocalMediaObserver {
   }) async {
     final itemList = items.toList();
     for (int i = 0; i < itemList.length; i += batchSize) {
-      final end = (i + batchSize < itemList.length) ? i + batchSize : itemList.length;
+      final end = (i + batchSize < itemList.length)
+          ? i + batchSize
+          : itemList.length;
       final batch = itemList.sublist(i, end);
       await Future.wait(batch.map(processFunction));
       await Future.delayed(Duration.zero);
