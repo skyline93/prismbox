@@ -1,101 +1,111 @@
 // lib/providers/user_profile_provider.dart
 
+import 'dart:io';
+import 'dart:developer'; // 引入 developer 库，使用 log 替代 print
+
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mobile/core/service_locator.dart';
+
 import 'package:mobile/domain/entities/user_profile_entity.dart';
+import 'package:mobile/domain/repositories/user_repository.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/auth/auth_state.dart';
 
-// [升级] 将 Provider 升级为 StateNotifierProvider
-// 它现在提供的是 UserProfileNotifier 的实例
+// 这个 provider 定义没有问题
+final userRepositoryProvider = Provider<UserRepository>(
+  (ref) => getIt<UserRepository>(),
+);
+
+/// StateNotifierProvider 用于提供 UserProfileNotifier 的实例
+/// 它依赖于 userRepositoryProvider
 final userProfileProvider =
     StateNotifierProvider<UserProfileNotifier, UserProfileEntity>((ref) {
-      return UserProfileNotifier(ref);
+      final userRepository = ref.watch(userRepositoryProvider);
+      return UserProfileNotifier(ref, userRepository);
     });
 
-// [新增] UserProfileNotifier 类，我们的业务逻辑核心
+/// Notifier 类，封装了所有与用户个人资料相关的业务逻辑
 class UserProfileNotifier extends StateNotifier<UserProfileEntity> {
   final Ref _ref;
-
-  UserProfileNotifier(this._ref) : super(_getInitialViewModel()) {
-    // [修改] 3. 在构造函数中，立即开始监听认证状态
+  final UserRepository _userRepository;
+  UserProfileNotifier(this._ref, this._userRepository)
+    : super(UserProfileEntity.initial()) {
     _setupAuthListener();
   }
 
-  // 私有方法，用于获取初始数据
-  static UserProfileEntity _getInitialViewModel() {
-    // =======================================================================
-    // ** 这里是获取初始数据的地方 **
-    // 在真实应用中，你会在这里调用 API 或数据库来加载用户初始信息
-    // =======================================================================
-    return const UserProfileEntity(
-      username: '你的名字',
-      email: 'your.email@example.com',
-      avatarUrl: 'https://i.pravatar.cc/150?img=5',
-      usedStorage: 12.3,
-      totalStorage: 15.0,
+  void _setupAuthListener() {
+    _ref.listen<AuthState>(
+      authNotifierProvider,
+      (previous, next) {
+        log(
+          'Auth state changed from $previous to $next',
+          name: 'UserProfileNotifier',
+        );
+        next.mapOrNull(
+          authenticated: (_) => fetchUserProfile(),
+          unauthenticated: (_) => state = UserProfileEntity.initial(),
+        );
+      },
+      fireImmediately: true, // 修复“迟到监听者”问题
     );
   }
 
-  void _setupAuthListener() {
-    _ref.listen<AuthState>(authNotifierProvider, (previous, next) {
-      // 检查新的认证状态
-      next.whenOrNull(
-        // 当状态变为 "unauthenticated" (即用户已注销)
-        unauthenticated: () {
-          // 将当前 Notifier 的状态重置为最原始的初始状态
-          state = _getInitialViewModel();
-        },
-      );
-    });
-  }
-
-  // --- 公开的业务逻辑方法 ---
-
-  /// 方法1：更新用户名
-  Future<void> updateUsername(String newName) async {
-    // 可以在这里添加加载状态，例如：
-    // state = state.copyWith(isLoading: true);
-
+  Future<void> fetchUserProfile() async {
     try {
-      // =======================================================================
-      // ** 1. 在这里调用你的 API 或 Repository 来保存新用户名 **
-      // await userRepository.updateName(newName);
-      // 模拟一个网络延迟
-      await Future.delayed(const Duration(seconds: 1));
-      // =======================================================================
-
-      // 2. 如果API调用成功，则更新本地状态以刷新UI
-      state = state.copyWith(username: newName);
-    } catch (e) {
-      // 3. 处理错误
-      print('更新用户名失败: $e');
-      // 可以在这里设置一个错误状态给UI显示
-      // state = state.copyWith(error: '更新失败，请重试');
-    } finally {
-      // state = state.copyWith(isLoading: false);
+      log('开始获取用户信息...', name: 'UserProfileNotifier');
+      final userProfile = await _userRepository.getCurrentUser();
+      if (mounted) {
+        state = userProfile;
+        log('用户信息获取成功: ${userProfile.username}', name: 'UserProfileNotifier');
+      }
+    } catch (e, stackTrace) {
+      // 修复“静默错误”问题
+      log(
+        '获取用户信息失败!',
+        error: e,
+        stackTrace: stackTrace,
+        name: 'UserProfileNotifier',
+      );
     }
   }
 
-  /// 方法2：上传新头像
+  /// 上传新头像的完整业务逻辑
   Future<void> uploadNewAvatar() async {
     try {
-      // =======================================================================
-      // ** 1. 调用图片选择器让用户选择图片 **
-      // final file = await ImagePicker().pickImage(...);
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 800,
+      );
 
-      // ** 2. 上传文件到你的服务器，并获取新的URL **
-      // final newAvatarUrl = await storageRepository.uploadFile(file);
-      // 模拟一个网络延迟和新的URL
-      await Future.delayed(const Duration(seconds: 2));
-      final newAvatarUrl =
-          'https://i.pravatar.cc/150?img=${DateTime.now().millisecond % 60}';
-      // =======================================================================
+      if (pickedFile == null) {
+        return;
+      }
 
-      // 3. 更新本地状态
-      state = state.copyWith(avatarUrl: newAvatarUrl);
+      final imageFile = File(pickedFile.path);
+      final newAvatarUrl = await _userRepository.uploadAvatar(imageFile);
+
+      if (mounted) {
+        state = state.copyWith(avatarUrl: newAvatarUrl);
+      }
     } catch (e) {
-      // 4. 处理错误
-      print('上传头像失败: $e');
+      // [修复 #3] 建议使用日志库替代 print
+      // log('上传头像失败: $e', name: 'UserProfileNotifier');
+    }
+  }
+
+  /// 更新用户名的业务逻辑 (示例)
+  Future<void> updateUsername(String newName) async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        state = state.copyWith(username: newName);
+      }
+    } catch (e) {
+      // [修复 #3] 建议使用日志库替代 print
+      // log('更新用户名失败: $e', name: 'UserProfileNotifier');
     }
   }
 }

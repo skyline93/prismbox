@@ -1,4 +1,4 @@
-// lib/widgets/user_profile_dialog.dart
+// lib/ui/main/widgets/user_profile_dialog.dart
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -15,6 +15,12 @@ class UserProfileDialog extends HookConsumerWidget {
     final viewModel = ref.watch(userProfileProvider);
     final notifier = ref.read(userProfileProvider.notifier);
     final authNotifier = ref.read(authNotifierProvider.notifier);
+
+    // [修复 #1] 对可空的 avatarUrl 进行空安全检查
+    // 1. 将 avatarUrl 提取到局部变量中，方便使用
+    final avatarUrl = viewModel.avatarUrl;
+    // 2. 先检查是否为 null，再检查是否为空字符串
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
@@ -50,17 +56,30 @@ class UserProfileDialog extends HookConsumerWidget {
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
+                          // [修复 #2] 增强 CircleAvatar 以显示默认图标
                           CircleAvatar(
                             radius: 32,
-                            backgroundImage: NetworkImage(viewModel.avatarUrl),
+                            // 如果有头像，使用 NetworkImage；否则为 null
+                            backgroundImage: hasAvatar
+                                ? NetworkImage(
+                                    avatarUrl,
+                                  ) // 使用 ! 是安全的，因为 hasAvatar 已经检查过 null
+                                : null,
+                            backgroundColor: Colors.grey.shade200,
+                            // 如果没有头像，则显示一个默认的 person 图标作为 child
+                            child: !hasAvatar
+                                ? Icon(
+                                    Icons.person,
+                                    size: 32,
+                                    color: Colors.grey.shade400,
+                                  )
+                                : null,
                           ),
                           Positioned(
                             right: -2,
                             bottom: -2,
                             child: GestureDetector(
-                              // <-- 添加 GestureDetector
                               onTap: () {
-                                // [调用方法] 点击相机图标时调用上传头像的逻辑
                                 notifier.uploadNewAvatar();
                               },
                               child: Container(
@@ -93,11 +112,8 @@ class UserProfileDialog extends HookConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           GestureDetector(
-                            // <-- 添加 GestureDetector
                             onTap: () {
-                              // [调用方法] 点击用户名时，可以弹出一个输入框来修改
-                              // 这里为了演示，我们直接修改为一个固定的新名字
-                              notifier.updateUsername('一个很酷的新名字');
+                              // notifier.updateUsername('一个很酷的新名字');
                             },
                             child: Text(
                               viewModel.username,
@@ -142,16 +158,18 @@ class UserProfileDialog extends HookConsumerWidget {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            viewModel.storageText,
+                            // viewModel.storageText,
+                            "",
                             style: TextStyle(color: Colors.grey[700]),
-                          ), // <-- 使用数据
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: LinearProgressIndicator(
-                          value: viewModel.storagePercentage, // <-- 使用数据
+                          // value: viewModel.storagePercentage,
+                          value: 0,
                           minHeight: 8,
                           backgroundColor: Colors.grey[300],
                           valueColor: const AlwaysStoppedAnimation<Color>(
@@ -169,14 +187,12 @@ class UserProfileDialog extends HookConsumerWidget {
                   leading: const Icon(Icons.settings_outlined),
                   title: const Text('设置'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
-                  // onTap: () => Navigator.of(context).pop(),
                 ),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
                   leading: const Icon(Icons.info_outline),
                   title: const Text('关于'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
-                  // onTap: () => Navigator.of(context).pop(),
                 ),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -191,7 +207,10 @@ class UserProfileDialog extends HookConsumerWidget {
                     }
 
                     await authNotifier.logout();
-                    context.router.replaceAll([const LoginRoute()]);
+                    // 确保路由栈被正确替换
+                    if (context.mounted) {
+                      context.router.replaceAll([const LoginRoute()]);
+                    }
                   },
                 ),
               ],

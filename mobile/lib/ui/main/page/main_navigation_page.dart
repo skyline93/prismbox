@@ -9,6 +9,7 @@ import 'package:mobile/ui/media/pages/media_page.dart';
 import 'package:mobile/ui/album/page/album_page.dart';
 import 'package:mobile/ui/group/pages/group_list_page.dart';
 import 'package:mobile/ui/main/widgets/user_profile_dialog.dart';
+import 'package:mobile/providers/user_profile_provider.dart';
 
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 
@@ -32,6 +33,10 @@ class NavigationPage extends HookConsumerWidget {
     final isSelecting = ref.watch(
       selectionProvider.select((s) => s.isSelecting),
     );
+
+    final userProfile = ref.watch(userProfileProvider);
+    final avatarUrl = userProfile.avatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     // [改动 1/3] 调整页面列表以匹配新的导航项
     final pages = [
@@ -86,11 +91,16 @@ class NavigationPage extends HookConsumerWidget {
             padding: const EdgeInsets.only(right: 16.0),
             child: GestureDetector(
               onTap: showUserProfileDialog,
-              child: const CircleAvatar(
-                backgroundImage: NetworkImage(
-                  'https://i.pravatar.cc/150?img=3',
-                ),
+              // [关键改动 3/3] 使用动态数据构建 CircleAvatar
+              child: CircleAvatar(
                 radius: 20,
+                // 如果有头像，使用 NetworkImage；否则为 null
+                backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+                backgroundColor: Colors.grey.shade200,
+                // 如果没有头像，则显示一个默认的 person 图标作为 child
+                child: !hasAvatar
+                    ? Icon(Icons.person, size: 20, color: Colors.grey.shade400)
+                    : null,
               ),
             ),
           ),
@@ -100,6 +110,7 @@ class NavigationPage extends HookConsumerWidget {
 
       // 中央悬浮的 "添加" 按钮 (功能不变)
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () {
           // TODO: 定义添加/上传的点击事件
           // ScaffoldMessenger.of(
