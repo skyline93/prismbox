@@ -9,18 +9,19 @@ import 'package:mobile/ui/group/widgets/new_post/new_thread_app_bar.dart';
 import 'package:mobile/ui/group/widgets/new_post/new_thread_bottom_bar.dart';
 import 'package:mobile/ui/group/widgets/new_post/reply_permission_sheet.dart';
 import 'package:mobile/ui/group/widgets/new_post/text_input_section.dart';
+import 'package:mobile/providers/user_profile_provider.dart';
 
-class _User {
-  final String name;
-  final String avatarUrl;
-  const _User({required this.name, required this.avatarUrl});
-}
+// class _User {
+//   final String name;
+//   final String avatarUrl;
+//   const _User({required this.name, required this.avatarUrl});
+// }
 
-const _mockUser = _User(
-  name: 'Travel Diaries',
-  avatarUrl:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1887&q=80',
-);
+// const _mockUser = _User(
+//   name: 'Travel Diaries',
+//   avatarUrl:
+//       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1887&q=80',
+// );
 
 class NewThreadSheet extends HookConsumerWidget {
   final String groupId;
@@ -29,6 +30,10 @@ class NewThreadSheet extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final userProvider = ref.watch(userProfileProvider);
+    final avatarUrl = userProvider.avatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+
     final state = ref.watch(newThreadProvider(groupId));
     final notifier = ref.read(newThreadProvider(groupId).notifier);
     final textController = useTextEditingController(text: state.text);
@@ -61,7 +66,11 @@ class NewThreadSheet extends HookConsumerWidget {
                         children: [
                           CircleAvatar(
                             radius: 16,
-                            backgroundImage: NetworkImage(_mockUser.avatarUrl),
+                            backgroundImage: hasAvatar
+                                ? NetworkImage(
+                                    avatarUrl,
+                                  ) // 使用 ! 是安全的，因为 hasAvatar 已经检查过 null
+                                : null,
                           ),
                           const SizedBox(height: 8),
                           Expanded(
@@ -79,7 +88,7 @@ class NewThreadSheet extends HookConsumerWidget {
                           children: [
                             const SizedBox(height: 6),
                             Text(
-                              _mockUser.name,
+                              userProvider.username,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
