@@ -24,76 +24,48 @@ class SyncJobManager {
   SyncJobManager(this._db)
     : _mediaAssetDao = _db.mediaAssetDao,
       _syncJobDao = _db.syncJobDao;
-
   Future<void> createUploadJobForNewAsset(
     AssetEntity asset, {
     required bool isAutoBackupEnabled,
   }) async {
     try {
-      // 1. 防止重复处理
-      final existingAsset = await (_mediaAssetDao.select(
-        _mediaAssetDao.mediaAssets,
-      )..where((tbl) => tbl.localId.equals(asset.id))).getSingleOrNull();
-
+      // 1. 检查此“文件实例”是否已被记录。这是唯一的“重复”检查。
+      final existingAsset = await _mediaAssetDao.getAssetByLocalId(asset.id);
       if (existingAsset != null) {
-        // 如果资产已存在，检查是否需要补录哈希值
+        // 如果这个 localId 已经处理过，直接返回。
+        // 补录哈希的逻辑仍然可以保留，以防上次处理失败。
         if (existingAsset.contentHash == null) {
           final contentHash = await _calculateFileHash(asset);
-          log('[SyncJobManager] 为已存在的资产 ${asset.id} 补录哈希值。');
-
-          final companion = MediaAssetsCompanion(
-            id: Value(existingAsset.id),
-            contentHash: Value(contentHash),
-          );
-
-          // 使用 update 而不是 updateMediaAsset 以避免不必要的 updatedAt 更新
-          await (_mediaAssetDao.update(
-            _mediaAssetDao.mediaAssets,
-          )..where((tbl) => tbl.id.equals(existingAsset.id))).write(companion);
+          if (contentHash != null) {
+            final companion = MediaAssetsCompanion(
+              id: Value(existingAsset.id),
+              contentHash: Value(contentHash),
+            );
+            await (_mediaAssetDao.update(_mediaAssetDao.mediaAssets)
+                  ..where((tbl) => tbl.id.equals(existingAsset.id)))
+                .write(companion);
+          }
         }
-        // 资产已处理，无需任何操作
         return;
       }
 
+      // 2. 为这个新文件计算哈希
       final contentHash = await _calculateFileHash(asset);
       if (contentHash == null) {
-        log('[SyncJobManager] 无法计算资产 ${asset.id} 的哈希值!!!!!!');
+        log('[SyncJobManager] 无法计算资产 ${asset.id} 的哈希值，跳过。');
         return;
       }
 
-      // 3. 检查哈希值是否已存在（处理重复文件）
-      final duplicateAsset = await (_mediaAssetDao.select(
-        _mediaAssetDao.mediaAssets,
-      )..where((tbl) => tbl.contentHash.equals(contentHash))).getSingleOrNull();
-
-      if (duplicateAsset != null) {
-        log(
-          '[SyncJobManager] 检测到重复内容 (哈希: $contentHash)，将本地资产 ${asset.id} 关联到现有记录 ${duplicateAsset.id}。',
-        );
-        // 将新的 localId 和 filePath 关联到已存在的记录上
-        var companion = MediaAssetsCompanion(
-          id: Value(duplicateAsset.id),
-          localId: Value(asset.id),
-        );
-
-        if (duplicateAsset.syncStatus == SyncStatus.cloudOnly) {
-          companion = companion.copyWith(syncStatus: Value(SyncStatus.synced));
-        }
-
-        await (_mediaAssetDao.update(
-          _mediaAssetDao.mediaAssets,
-        )..where((tbl) => tbl.id.equals(duplicateAsset.id))).write(companion);
-        return;
-      }
-
-      // 2. 将 AssetEntity 转换为数据库实体
+      // 3. 将 AssetEntity 转换为数据库实体
       final companion = await _assetEntityToCompanion(asset);
       if (companion == null) {
         log('[SyncJobManager] 无法处理资产 ${asset.id}，跳过。');
         return;
       }
 
-      final newDbId = await _mediaAssetDao.insertMediaAsset(
+      // 4. 【核心逻辑】为这个新文件实例在本地数据库中创建一条全新的记录
+      // 注意：我们不再检查 contentHash 是否重复来阻止插入。
+      await _mediaAssetDao.insertMediaAsset(
         companion.copyWith(
           contentHash: Value(contentHash),
           syncStatus: Value(
@@ -104,24 +76,9 @@ class SyncJobManager {
         ),
       );
 
+      // 5. 创建同步任务
       if (isAutoBackupEnabled) {
-        final payload = jsonEncode({'filePath': companion.filePath.value});
-
-        await _syncJobDao
-            .into(_syncJobDao.syncJobs)
-            .insert(
-              SyncJobsCompanion.insert(
-                assetId: Value(newDbId),
-                jobType: JobType.upload,
-                status: JobStatus.pending,
-                priority: Value(1),
-                payload: Value(payload),
-              ),
-            );
-        log('[SyncJobManager] 已为新资产 ${asset.id} 创建上传任务。');
-        BackgroundServiceManager.triggerImmediateSync();
-      } else {
-        log('[SyncJobManager] 已为新资产 ${asset.id} 创建本地记录。');
+        // TODO
       }
     } catch (e, s) {
       log('[SyncJobManager] 创建上传任务时出错', error: e, stackTrace: s);
@@ -129,15 +86,29 @@ class SyncJobManager {
   }
 
   Future<String?> _calculateFileHash(AssetEntity asset) async {
-    final File? file = await asset.file;
-    if (file == null) {
-      log('[SyncJobManager] 无法获取资产文件: ${asset.id}，跳过。');
+    try {
+      // 【根本性修改】使用 asset.originFile
+      // 它能可靠地提供一个文件对象，即使文件在云端也会先下载到本地。
+      final File? file = await asset.originFile;
+
+      if (file == null) {
+        log('[SyncJobManager] 无法获取资产 ${asset.id} 的源文件。可能是网络或云端问题。');
+        return null;
+      }
+
+      // 既然我们有了一个可靠的 File 对象，就可以安全地使用文件流来计算哈希，避免OOM。
+      final stream = file.openRead();
+      final hash = await sha256.bind(stream).first;
+      return hash.toString();
+    } catch (e, s) {
+      // 捕获在下载或读取文件过程中可能发生的任何异常 (例如网络中断)。
+      log(
+        '[SyncJobManager] 在获取或哈希资产 ${asset.id} 的源文件时发生异常',
+        error: e,
+        stackTrace: s,
+      );
       return null;
     }
-
-    final stream = file.openRead();
-    final hash = await sha256.bind(stream).first;
-    return hash.toString();
   }
 
   Future<void> handleLocalAssetDeletion(String localId) async {
