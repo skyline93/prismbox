@@ -43,6 +43,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 
 	authHandler := &auth.AuthHandler{
 		DB:                    db,
+		AvatarBaseURL:         cfg.PublicBaseURL + "/static/avatars/",
 		JWTSecret:             cfg.JWTSecret,
 		AccessTokenExpiresIn:  cfg.AccessTokenExpiresIn,
 		RefreshTokenExpiresIn: cfg.RefreshTokenExpiresIn,
@@ -72,7 +73,12 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		URLBuilder:       urlBuilder,
 	}
 
-	groupHandler := &group.GroupHandler{DB: db, UploadDir: cfg.UploadDir, URLBuilder: urlBuilder}
+	groupHandler := &group.GroupHandler{
+		DB:            db,
+		UploadDir:     cfg.UploadDir,
+		AvatarBaseURL: cfg.PublicBaseURL + "/static/avatars/",
+		URLBuilder:    urlBuilder,
+	}
 
 	r.GET("/ping", func(ctx *gin.Context) { ctx.JSON(200, "pong") })
 	r.Static("/static", "./public")

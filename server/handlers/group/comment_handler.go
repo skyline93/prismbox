@@ -97,7 +97,7 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 		ID:        comment.ID,
 		CreatedAt: comment.CreatedAt,
 		Content:   comment.Content,
-		User:      handlers.ToUserSimpleResponse(comment.User), // [MODIFIED] 使用统一的响应模型
+		User:      handlers.ToUserSimpleResponse(comment.User, h.AvatarBaseURL), // [MODIFIED] 使用统一的响应模型
 	})
 }
 
@@ -141,7 +141,7 @@ func (h *GroupHandler) GetComments(c *gin.Context) {
 			ID:        cm.ID,
 			CreatedAt: cm.CreatedAt,
 			Content:   cm.Content,
-			User:      handlers.ToUserSimpleResponse(cm.User), // [MODIFIED] 使用统一的响应模型
+			User:      handlers.ToUserSimpleResponse(cm.User, h.AvatarBaseURL), // [MODIFIED] 使用统一的响应模型
 		}
 	}
 

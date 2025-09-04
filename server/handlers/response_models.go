@@ -15,18 +15,11 @@ type UserSimpleResponse struct {
 }
 
 // ToUserSimpleResponse 是一个转换函数，将 models.User 转换为 UserSimpleResponse
-func ToUserSimpleResponse(user models.User) UserSimpleResponse {
-	avatarURL := ""
-	// TODO: 从配置中读取 BaseURL
-	baseURL := "http://localhost:8080"
-	if user.Avatar != "" {
-		avatarURL = baseURL + "/avatars/" + user.Avatar
-	}
-
+func ToUserSimpleResponse(user models.User, avatorBaseUrl string) UserSimpleResponse {
 	return UserSimpleResponse{
 		UserID:    user.ID,
 		Username:  user.Username,
-		AvatarURL: avatarURL,
+		AvatarURL: avatorBaseUrl + user.Avatar,
 	}
 }
 

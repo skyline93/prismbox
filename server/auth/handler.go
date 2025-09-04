@@ -16,12 +16,13 @@ import (
 
 const (
 	AvatarSavePath = "./public/avatars/"
-	AvatarBaseURL  = "http://localhost:8080/static/avatars/" // 您的服务基础URL
-	MaxAvatarSize  = 5 << 20                                 // 5 MB
+	// AvatarBaseURL  = "http://localhost:8080/static/avatars/" // 您的服务基础URL
+	MaxAvatarSize = 5 << 20 // 5 MB
 )
 
 type AuthHandler struct {
 	DB                    *gorm.DB
+	AvatarBaseURL         string
 	JWTSecret             []byte
 	AccessTokenExpiresIn  time.Duration
 	RefreshTokenExpiresIn time.Duration
@@ -277,7 +278,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 
 	var avatarURL string
 	if user.Avatar != "" {
-		avatarURL = AvatarBaseURL + user.Avatar
+		avatarURL = h.AvatarBaseURL + user.Avatar
 	}
 
 	// 3. 将数据库模型映射到安全的响应DTO
@@ -359,7 +360,7 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	// 8. 构建可公开访问的URL并返回给客户端
-	fullAvatarURL := AvatarBaseURL + newFilename
+	fullAvatarURL := h.AvatarBaseURL + newFilename
 
 	core.Success(c, "Avatar uploaded successfully", UploadAvatarSuccessData{
 		AvatarURL: fullAvatarURL,

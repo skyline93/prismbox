@@ -202,7 +202,7 @@ func (h *GroupHandler) GetGroupFeed(c *gin.Context) {
 			ID:            post.ID,
 			Caption:       post.Caption,
 			CreatedAt:     post.CreatedAt,
-			Creator:       handlers.ToUserSimpleResponse(post.Creator), // 使用新定义的转换函数
+			Creator:       handlers.ToUserSimpleResponse(post.Creator, h.AvatarBaseURL), // 使用新定义的转换函数
 			Media:         postMediaMap[post.ID],
 			LikesCount:    likesCountMap[post.ID],
 			CommentsCount: commentsCountMap[post.ID],
