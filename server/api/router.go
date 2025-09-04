@@ -75,6 +75,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 	groupHandler := &group.GroupHandler{DB: db, UploadDir: cfg.UploadDir, URLBuilder: urlBuilder}
 
 	r.GET("/ping", func(ctx *gin.Context) { ctx.JSON(200, "pong") })
+	r.Static("/static", "./public")
 
 	r.GET("/s/:share_token", publicHandler.GetSharedResource)
 
@@ -94,6 +95,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 		protected.Use(auth.Middleware(cfg.JWTSecret)) // 中间件保持不变
 		{
 			protected.GET("/auth/profile", authHandler.GetProfile)
+			protected.POST("/auth/avatar", authHandler.UploadAvatar)
 
 			// 媒体相关路由
 			mediaRoutes := protected.Group("/media")

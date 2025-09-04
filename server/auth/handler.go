@@ -2,12 +2,22 @@ package auth
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"server/core"
 	"server/models"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+)
+
+const (
+	AvatarSavePath = "./public/avatars/"
+	AvatarBaseURL  = "http://localhost:8080/static/avatars/" // 您的服务基础URL
+	MaxAvatarSize  = 5 << 20                                 // 5 MB
 )
 
 type AuthHandler struct {
@@ -56,7 +66,12 @@ type UserProfileResponse struct {
 	ID        uint      `json:"id" example:"1"`
 	Username  string    `json:"username" example:"testuser"`
 	Email     string    `json:"email" example:"testuser@example.com"`
+	AvatarURL string    `json:"avatar_url,omitempty" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
 	CreatedAt time.Time `json:"created_at" example:"2023-10-27T10:00:00Z"`
+}
+
+type UploadAvatarSuccessData struct {
+	AvatarURL string `json:"avatar_url" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
 }
 
 // --- Handlers ---
@@ -258,15 +273,91 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
+	var avatarURL string
+	if user.Avatar != "" {
+		avatarURL = AvatarBaseURL + user.Avatar
+	}
+
 	// 3. 将数据库模型映射到安全的响应DTO
 	// 这是非常关键的一步，确保不会泄露密码哈希等敏感字段
 	userProfile := UserProfileResponse{
 		ID:        user.ID,
 		Username:  user.Username,
 		Email:     user.Email,
+		AvatarURL: avatarURL,
 		CreatedAt: user.CreatedAt,
 	}
 
 	// 4. 返回成功响应
 	core.Success(c, "User profile retrieved successfully", userProfile)
+}
+
+// UploadAvatar godoc
+// @Summary      上传用户头像
+// @Description  为当前认证的用户上传一个新的头像图片。上传成功后立即返回可访问的URL。
+// @Tags         Authentication
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        avatar formData file true "头像文件 (png, jpg, jpeg)，最大5MB"
+// @Success      200 {object} core.ApiResponse{data=UploadAvatarSuccessData} "头像上传成功"
+// @Failure      400 {object} core.ApiResponse "请求错误（如文件太大、格式不对、未上传文件等）"
+// @Failure      401 {object} core.ApiResponse "未授权或Token无效"
+// @Failure      500 {object} core.ApiResponse "服务器内部错误（如文件保存失败）"
+// @Security     BearerAuth
+// @Router       /auth/avatar [post]
+func (h *AuthHandler) UploadAvatar(c *gin.Context) {
+	// 1. 从认证中间件获取用户ID
+	userID := c.MustGet("userID").(uint)
+
+	// 2. 从表单中获取上传的文件
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		core.Error(c, "Failed to get file from form: "+err.Error())
+		return
+	}
+
+	// 3. 校验文件大小和类型
+	if file.Size > MaxAvatarSize {
+		core.Error(c, "File size exceeds the limit of 5MB")
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		core.Error(c, "Invalid file type. Only jpg, jpeg, and png are allowed.")
+		return
+	}
+
+	// 4. 生成唯一的文件名，避免冲突和覆盖
+	// 格式：{userID}-{timestamp}{extension}，例如: 123-1678886400.png
+	newFilename := fmt.Sprintf("%d-%d%s", userID, time.Now().Unix(), ext)
+	savePath := filepath.Join(AvatarSavePath, newFilename)
+
+	// 5. 确保目标目录存在
+	if err := os.MkdirAll(AvatarSavePath, 0755); err != nil {
+		core.Error(c, "Failed to create save directory: "+err.Error())
+		return
+	}
+
+	// 6. 保存文件到服务器指定目录
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		core.Error(c, "Failed to save file: "+err.Error())
+		return
+	}
+
+	// 7. 将新的文件名更新到数据库
+	// 注意：这里只保存文件名，不保存完整路径，这样更灵活
+	if err := h.DB.Model(&models.User{}).Where("id = ?", userID).Update("avatar", newFilename).Error; err != nil {
+		core.Error(c, "Failed to update user avatar in database")
+		// (可选) 在数据库更新失败时，可以尝试删除刚刚保存的文件以保持数据一致性
+		// os.Remove(savePath)
+		return
+	}
+
+	// 8. 构建可公开访问的URL并返回给客户端
+	fullAvatarURL := AvatarBaseURL + newFilename
+
+	core.Success(c, "Avatar uploaded successfully", UploadAvatarSuccessData{
+		AvatarURL: fullAvatarURL,
+	})
 }

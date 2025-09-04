@@ -275,6 +275,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/avatar": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "为当前认证的用户上传一个新的头像图片。上传成功后立即返回可访问的URL。",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "上传用户头像",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "头像文件 (png, jpg, jpeg)，最大5MB",
+                        "name": "avatar",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "头像上传成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.UploadAvatarSuccessData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求错误（如文件太大、格式不对、未上传文件等）",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权或Token无效",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误（如文件保存失败）",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "使用用户名和密码进行登录，成功后返回访问令牌和刷新令牌",
@@ -2123,6 +2190,15 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.UploadAvatarSuccessData": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "http://localhost:8080/static/avatars/1-1678886400.png"
+                }
+            }
+        },
         "auth.UserLoginInput": {
             "type": "object",
             "required": [
@@ -2156,6 +2232,10 @@ const docTemplate = `{
         "auth.UserProfileResponse": {
             "type": "object",
             "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "http://localhost:8080/static/avatars/1-1678886400.png"
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2023-10-27T10:00:00Z"

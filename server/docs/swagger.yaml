@@ -22,6 +22,12 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
+  auth.UploadAvatarSuccessData:
+    properties:
+      avatar_url:
+        example: http://localhost:8080/static/avatars/1-1678886400.png
+        type: string
+    type: object
   auth.UserLoginInput:
     properties:
       password:
@@ -45,6 +51,9 @@ definitions:
     type: object
   auth.UserProfileResponse:
     properties:
+      avatar_url:
+        example: http://localhost:8080/static/avatars/1-1678886400.png
+        type: string
       created_at:
         example: "2023-10-27T10:00:00Z"
         type: string
@@ -740,6 +749,46 @@ paths:
       summary: 向相册添加媒体
       tags:
       - Albums
+  /auth/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 为当前认证的用户上传一个新的头像图片。上传成功后立即返回可访问的URL。
+      parameters:
+      - description: 头像文件 (png, jpg, jpeg)，最大5MB
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 头像上传成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.UploadAvatarSuccessData'
+              type: object
+        "400":
+          description: 请求错误（如文件太大、格式不对、未上传文件等）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "401":
+          description: 未授权或Token无效
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "500":
+          description: 服务器内部错误（如文件保存失败）
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 上传用户头像
+      tags:
+      - Authentication
   /auth/login:
     post:
       consumes:
