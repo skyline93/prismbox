@@ -79,6 +79,8 @@ dependencies:
   tuple: ^2.0.2
   animated_bottom_navigation_bar: ^1.4.0
   image_picker: ^1.2.0
+  dio_smart_retry: ^6.0.0
+  connectivity_plus: ^6.0.3
 
 dev_dependencies:
   flutter_test:
