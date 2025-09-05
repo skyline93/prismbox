@@ -49,5 +49,13 @@ abstract class GroupRepository {
     // ReplyPermission? replyPermission,
   });
 
-  Future<Uint8List> downloadGroupMediaThumbnail(String groupUuid, String mediaUuid);
+  Future<Uint8List> downloadGroupMediaThumbnail(
+    String groupUuid,
+    String mediaUuid,
+  );
+
+  Future<Uint8List> downloadGroupMediaPreview(
+    String groupUuid,
+    String mediaUuid,
+  );
 }

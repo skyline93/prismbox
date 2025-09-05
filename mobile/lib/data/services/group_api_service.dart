@@ -73,16 +73,35 @@ class GroupApiService {
     return _dio.post('/groups/$groupUuid/leave');
   }
 
-  Future<Uint8List> downloadGroupMediaThumbnail(String groupUuid, String mediaUuid) async {
+  Future<Uint8List> downloadGroupMediaThumbnail(
+    String groupUuid,
+    String mediaUuid,
+  ) async {
     final response = await _dio.get(
       '/groups/$groupUuid/media/$mediaUuid/thumbnail',
       options: Options(responseType: ResponseType.bytes),
     );
-    
-    if (response.statusCode != 200){
+
+    if (response.statusCode != 200) {
       throw Exception('下载缩略图失败: ${response.statusCode}');
     }
-    
+
+    return response.data as Uint8List;
+  }
+
+  Future<Uint8List> downloadGroupMediaPreview(
+    String groupUuid,
+    String mediaUuid,
+  ) async {
+    final response = await _dio.get(
+      '/groups/$groupUuid/media/$mediaUuid/preview',
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('下载预览图失败: ${response.statusCode}');
+    }
+
     return response.data as Uint8List;
   }
 }

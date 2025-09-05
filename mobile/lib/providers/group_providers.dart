@@ -85,27 +85,50 @@ final groupFeedFirstPageProvider = FutureProvider.autoDispose
       return groupRepository.getGroupFeed(uuid, page: 1);
     });
 
-final groupPostThumbnailProvider = FutureProvider.family<Uint8List?, Tuple2<UnifiedMediaEntity, String>>(
-  (ref, args) async {
-    final entity = args.item1;
-    final groupUuid = args.item2;
+final groupPostThumbnailProvider =
+    FutureProvider.family<Uint8List?, Tuple2<UnifiedMediaEntity, String>>((
+      ref,
+      args,
+    ) async {
+      final entity = args.item1;
+      final groupUuid = args.item2;
 
-    if (entity.cloudUuid == '' || entity.cloudUuid!.isEmpty){
-      debugPrint("提供的entity不是云类型!!!");
-    }
+      if (entity.cloudUuid == '' || entity.cloudUuid!.isEmpty) {
+        debugPrint("提供的entity不是云类型!!!");
+      }
 
-    final cache = ref.read(thumbnailCacheProvider);
-    final cacheKey = '${entity.id}_${entity.localId ?? entity.cloudUuid}';
+      final cache = ref.read(thumbnailCacheProvider);
+      final cacheKey = '${entity.id}_${entity.localId ?? entity.cloudUuid}';
 
-    if (cache.containsKey(cacheKey)) {
-      return cache[cacheKey];
-    }
+      if (cache.containsKey(cacheKey)) {
+        return cache[cacheKey];
+      }
 
-    final repo = ref.read(groupRepositoryProvider);
-    final thumbnailData = await repo.downloadGroupMediaThumbnail(groupUuid, entity.cloudUuid!);
-    
-    ref.read(thumbnailCacheProvider.notifier).addToCache(cacheKey, thumbnailData);
-    
-    return thumbnailData;
-  }
-);
+      final repo = ref.read(groupRepositoryProvider);
+      final thumbnailData = await repo.downloadGroupMediaThumbnail(
+        groupUuid,
+        entity.cloudUuid!,
+      );
+
+      ref
+          .read(thumbnailCacheProvider.notifier)
+          .addToCache(cacheKey, thumbnailData);
+
+      return thumbnailData;
+    });
+
+/// Provider to get the full-resolution media attachment for a group post.
+final groupPostFullImageProvider = FutureProvider.autoDispose
+    .family<Uint8List?, Tuple2<UnifiedMediaEntity, String>>((
+      ref,
+      params,
+    ) async {
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      final entity = params.item1;
+      final groupUuid = params.item2;
+
+      return groupRepository.downloadGroupMediaPreview(
+        groupUuid,
+        entity.cloudUuid!,
+      );
+    });

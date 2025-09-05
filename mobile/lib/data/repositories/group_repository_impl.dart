@@ -196,8 +196,26 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Uint8List> downloadGroupMediaThumbnail(String groupUuid, String mediaUuid) async {
-    final thumbnailData = await _apiService.downloadGroupMediaThumbnail(groupUuid, mediaUuid);
+  Future<Uint8List> downloadGroupMediaThumbnail(
+    String groupUuid,
+    String mediaUuid,
+  ) async {
+    final thumbnailData = await _apiService.downloadGroupMediaThumbnail(
+      groupUuid,
+      mediaUuid,
+    );
+    return thumbnailData;
+  }
+
+  @override
+  Future<Uint8List> downloadGroupMediaPreview(
+    String groupUuid,
+    String mediaUuid,
+  ) async {
+    final thumbnailData = await _apiService.downloadGroupMediaPreview(
+      groupUuid,
+      mediaUuid,
+    );
     return thumbnailData;
   }
 }
