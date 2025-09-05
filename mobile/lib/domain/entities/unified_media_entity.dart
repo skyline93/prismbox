@@ -75,19 +75,19 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
     );
   }
 
- factory UnifiedMediaEntity.fromRemoteMedia(MediaResponse remoteMedia) {
+  factory UnifiedMediaEntity.fromRemoteMedia(MediaResponse remoteMedia) {
     /// 一个辅助函数，用于解析后端返回的 "HH:MM:SS.ms" 格式的时长字符串。
     int _parseDuration(String? durationStr) {
       if (durationStr == null || durationStr.isEmpty) return 0;
       try {
         final parts = durationStr.split(':');
         if (parts.length != 3) return 0;
-        
+
         final secondsAndMs = parts[2].split('.');
         final hours = int.parse(parts[0]);
         final minutes = int.parse(parts[1]);
         final seconds = int.parse(secondsAndMs[0]);
-        
+
         return (hours * 3600) + (minutes * 60) + seconds;
       } catch (e) {
         // debugPrint("Error parsing duration from remote: $durationStr");
@@ -112,8 +112,8 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
           ? MediaType.video
           : MediaType.image,
       fileName: remoteMedia.filename,
-      width: 0,
-      height: 0,
+      width: remoteMedia.width,
+      height: remoteMedia.height,
       durationSec: _parseDuration("0"),
       createdAt: DateTime.parse(remoteMedia.createdAt),
     );
