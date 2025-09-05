@@ -33,6 +33,7 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
   }
 
   void _onScroll() {
+    // 浮动按钮的显示/隐藏逻辑
     if (_scrollController.position.userScrollDirection ==
             ScrollDirection.reverse &&
         _isUiVisible) {
@@ -47,6 +48,7 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
       });
     }
 
+    // 分页加载逻辑
     final notifier = ref.read(groupFeedViewModelProvider(widget.uuid).notifier);
     final state = ref.read(groupFeedViewModelProvider(widget.uuid));
 
@@ -90,71 +92,98 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
     final feedState = ref.watch(groupFeedViewModelProvider(widget.uuid));
     final groupDetailsAsync = ref.watch(groupDetailsProvider(widget.uuid));
 
-    final appBar = AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      surfaceTintColor: Colors.white,
-      title: groupDetailsAsync.when(
-        data: (group) => Text(group.name, overflow: TextOverflow.ellipsis),
-        loading: () => const Text('Group Feed'),
-        error: (e, s) => const Text('Group Feed'),
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.people_alt_outlined),
-          tooltip: 'Members',
-          onPressed: () {
-            AutoRouter.of(context).push(GroupMembersRoute(uuid: widget.uuid));
-          },
-        ),
-        groupDetailsAsync.when(
-          data: (group) {
-            final bool isOwnerOrAdmin =
-                group.currentUserRole == GroupRole.owner ||
-                group.currentUserRole == GroupRole.admin;
-            if (isOwnerOrAdmin) {
-              return IconButton(
-                icon: const Icon(Icons.settings),
-                tooltip: 'Settings',
-                onPressed: () {
-                  AutoRouter.of(
-                    context,
-                  ).push(GroupSettingsRoute(uuid: widget.uuid));
-                },
-              );
-            }
-            return const SizedBox.shrink();
-          },
-          loading: () => const SizedBox.shrink(),
-          error: (e, s) => const SizedBox.shrink(),
-        ),
-      ],
-    );
-
-    // --- 1. 这是关键的修正 ---
-    // 获取状态栏的高度
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
-    // 计算 AppBar 的总高度 = 工具栏高度 + 状态栏高度
-    final double totalAppBarHeight =
-        appBar.preferredSize.height + statusBarHeight;
-
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          // --- 2. 将修正后的总高度用于列表的顶部 padding ---
-          _buildFeedContent(feedState, totalAppBarHeight),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            // --- 3. 将修正后的总高度用于动画的移动距离 ---
-            top: _isUiVisible ? 0 : -totalAppBarHeight,
-            left: 0,
-            right: 0,
-            child: appBar,
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: () => ref
+            .read(groupFeedViewModelProvider(widget.uuid).notifier)
+            .refresh(),
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverAppBar(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              elevation: 0,
+              pinned: true,
+              floating: true,
+              snap: true,
+              automaticallyImplyLeading: false,
+              toolbarHeight: 30.0,
+              expandedHeight: 60.0,
+              scrolledUnderElevation: 6.0,
+              shadowColor: Colors.black12,
+              flexibleSpace: FlexibleSpaceBar(
+                background: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // FIX 1: 'pop' is deprecated. Use 'maybePop'.
+                        BackButton(
+                          onPressed: () => AutoRouter.of(context).maybePop(),
+                        ),
+
+                        Expanded(
+                          child: groupDetailsAsync.when(
+                            data: (group) => Text(
+                              group.name,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleLarge?.copyWith(fontSize: 18.0),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                            // FIX 2: The argument type 'SizedBox' can't be assigned to the parameter type 'Widget Function()'.
+                            loading: () => const SizedBox.shrink(),
+                            error: (e, s) => const SizedBox.shrink(),
+                          ),
+                        ),
+
+                        groupDetailsAsync.when(
+                          data: (group) {
+                            final bool isOwnerOrAdmin =
+                                group.currentUserRole == GroupRole.owner ||
+                                group.currentUserRole == GroupRole.admin;
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.people_alt_outlined),
+                                  tooltip: 'Members',
+                                  onPressed: () {
+                                    AutoRouter.of(context).push(
+                                      GroupMembersRoute(uuid: widget.uuid),
+                                    );
+                                  },
+                                ),
+                                if (isOwnerOrAdmin)
+                                  IconButton(
+                                    icon: const Icon(Icons.settings),
+                                    tooltip: 'Settings',
+                                    onPressed: () {
+                                      AutoRouter.of(context).push(
+                                        GroupSettingsRoute(uuid: widget.uuid),
+                                      );
+                                    },
+                                  ),
+                              ],
+                            );
+                          },
+                          // FIX 2: (Same as above)
+                          loading: () => const SizedBox.shrink(),
+                          error: (e, s) => const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            _buildSliverContent(feedState),
+          ],
+        ),
       ),
       floatingActionButton: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
@@ -176,53 +205,55 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
     );
   }
 
-  Widget _buildFeedContent(GroupFeedState feedState, double topPadding) {
+  Widget _buildSliverContent(GroupFeedState feedState) {
     if (feedState.isLoading && feedState.feedItems.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (feedState.errorMessage != null && feedState.feedItems.isEmpty) {
-      return Center(
-        child: Text('Failed to load feed: ${feedState.errorMessage}'),
+      return const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (feedState.feedItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Nothing in this group yet.'),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _showCreatePostSheet,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Share the first post'),
-            ),
-          ],
+    if (feedState.errorMessage != null && feedState.feedItems.isEmpty) {
+      return SliverFillRemaining(
+        child: Center(
+          child: Text('Failed to load feed: ${feedState.errorMessage}'),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () =>
-          ref.read(groupFeedViewModelProvider(widget.uuid).notifier).refresh(),
-      child: ListView.builder(
-        padding: EdgeInsets.only(top: topPadding),
-        controller: _scrollController,
-        itemCount:
-            feedState.feedItems.length + (feedState.isLoadingNextPage ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == feedState.feedItems.length) {
-            return const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          final item = feedState.feedItems[index];
-          return PostWidget(groupUuid: widget.uuid, item: item);
-        },
-      ),
+    if (feedState.feedItems.isEmpty) {
+      // FIX 4: The 'child' argument should be last in widget constructor invocations.
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Nothing in this group yet.'),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _showCreatePostSheet,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: const Text('Share the first post'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SliverList.builder(
+      itemCount:
+          feedState.feedItems.length + (feedState.isLoadingNextPage ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == feedState.feedItems.length) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final item = feedState.feedItems[index];
+        return PostWidget(groupUuid: widget.uuid, item: item);
+      },
     );
   }
 }
