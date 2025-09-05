@@ -53,7 +53,9 @@ class NewThread extends _$NewThread {
   void updateText(String text) {
     state = state.copyWith(
       text: text,
-      isPostButtonEnabled: state.selectedAssets.isNotEmpty,
+      // 保持按钮状态的逻辑不变
+      isPostButtonEnabled:
+          text.trim().isNotEmpty || state.selectedAssets.isNotEmpty,
     );
   }
 
@@ -66,7 +68,8 @@ class NewThread extends _$NewThread {
       ..removeAt(index);
     state = state.copyWith(
       selectedAssets: newAssets,
-      isPostButtonEnabled: newAssets.isNotEmpty,
+      // 更新按钮状态
+      isPostButtonEnabled: state.text.trim().isNotEmpty || newAssets.isNotEmpty,
     );
   }
 
@@ -83,7 +86,9 @@ class NewThread extends _$NewThread {
       if (assets != null) {
         state = state.copyWith(
           selectedAssets: assets,
-          isPostButtonEnabled: assets.isNotEmpty,
+          // 更新按钮状态
+          isPostButtonEnabled:
+              state.text.trim().isNotEmpty || assets.isNotEmpty,
         );
       }
     } on PlatformException catch (e) {
@@ -98,24 +103,23 @@ class NewThread extends _$NewThread {
 
   /// 创建并发布新帖子的完整实现
   Future<void> post(BuildContext context) async {
-    // `arg` 是由 riverpod_generator 提供的，它持有 build 方法的参数，即 groupId
     final groupId = this.groupId;
 
     if (!state.isPostButtonEnabled || state.isLoading) return;
 
-    state = state.copyWith(isLoading: true);
+    // 关键点1: 开始发布，设置isLoading为true，这将触发UI更新
+    state = state.copyWith(isLoading: true, isPostButtonEnabled: false);
 
     try {
       final groupRepository = ref.read(groupRepositoryProvider);
       final mediaRepo = ref.read(mediaRepositoryProvider);
 
-      // 1. 并行上传所有选择的图片资源，以获取它们的 UUID
       final uploadFutures = state.selectedAssets.map((asset) async {
-        final file = await asset.file; // 获取文件
+        final file = await asset.file;
         if (file == null) {
           throw Exception('无法获取资产文件: ${asset.id}');
         }
-        return await mediaRepo.uploadMedia(asset); // 调用上传方法
+        return await mediaRepo.uploadMedia(asset);
       }).toList();
 
       final List<UnifiedMediaEntity> uploadedMedia = await Future.wait(
@@ -123,15 +127,13 @@ class NewThread extends _$NewThread {
       );
       final List<String> mediaUuids = [];
       for (final media in uploadedMedia) {
-        final uuid = media.cloudUuid; // 假设 UnifiedMediaEntity 类有 'uuid' 属性
+        final uuid = media.cloudUuid;
         if (uuid == null || uuid.isEmpty) {
-          // 如果发现任何一个无效的uuid，就立即抛出异常中断流程
           throw Exception('部分媒体上传失败，未能从服务器获取有效ID。');
         }
         mediaUuids.add(uuid);
       }
 
-      // 2. 调用 repository 来创建帖子
       await groupRepository.createPost(
         groupUuid: groupId,
         content: state.text,
@@ -139,7 +141,7 @@ class NewThread extends _$NewThread {
         // replyPermission: state.selectedPermission,
       );
 
-      // 3. 如果成功，显示提示并关闭当前页面
+      // 关键点2: 发布成功，关闭页面
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -154,12 +156,18 @@ class NewThread extends _$NewThread {
         ).showSnackBar(SnackBar(content: Text('发布失败: ${e.toString()}')));
       }
     } finally {
-      // 4. 无论成功与否，都要重置加载状态
-      if (state.isLoading) {
-        state = state.copyWith(isLoading: false);
+      // 关键点3: 无论成功与否，都要重置加载状态（如果页面没有被pop掉）
+      // 同时恢复按钮的可点击状态
+      if (ref.exists(newThreadProvider(groupId))) {
+        state = state.copyWith(
+          isLoading: false,
+          isPostButtonEnabled:
+              state.text.trim().isNotEmpty || state.selectedAssets.isNotEmpty,
+        );
       }
     }
 
-    Navigator.of(context).pop();
+    // 关键点4: 移除此处的 pop 调用，因为它会导致无论成功失败都关闭页面
+    // Navigator.of(context).pop();
   }
 }

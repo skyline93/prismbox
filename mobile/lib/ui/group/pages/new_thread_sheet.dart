@@ -11,18 +11,6 @@ import 'package:mobile/ui/group/widgets/new_post/reply_permission_sheet.dart';
 import 'package:mobile/ui/group/widgets/new_post/text_input_section.dart';
 import 'package:mobile/providers/user_profile_provider.dart';
 
-// class _User {
-//   final String name;
-//   final String avatarUrl;
-//   const _User({required this.name, required this.avatarUrl});
-// }
-
-// const _mockUser = _User(
-//   name: 'Travel Diaries',
-//   avatarUrl:
-//       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1887&q=80',
-// );
-
 class NewThreadSheet extends HookConsumerWidget {
   final String groupId;
 
@@ -67,9 +55,7 @@ class NewThreadSheet extends HookConsumerWidget {
                           CircleAvatar(
                             radius: 16,
                             backgroundImage: hasAvatar
-                                ? NetworkImage(
-                                    avatarUrl,
-                                  ) // 使用 ! 是安全的，因为 hasAvatar 已经检查过 null
+                                ? NetworkImage(avatarUrl)
                                 : null,
                           ),
                           const SizedBox(height: 8),
@@ -114,9 +100,11 @@ class NewThreadSheet extends HookConsumerWidget {
                 ),
               ),
             ),
+            // 核心改动：将 isLoading 状态传递给 BottomBar
             NewThreadBottomBar(
               selectedPermission: state.selectedPermission,
               isPostButtonEnabled: state.isPostButtonEnabled,
+              isLoading: state.isLoading, // <-- 将状态传递下去
               onPermissionTap: () => showReplyPermissionSheet(
                 context,
                 currentPermission: state.selectedPermission,
