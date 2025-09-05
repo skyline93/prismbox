@@ -1018,6 +1018,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/groups/{uuid}/media/{media_uuid}/preview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取指定圈子帖子中的某个媒体文件。请求者必须是该圈子成员。",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "获取圈子内的媒体资源(预览图)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "圈子的UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "媒体的UUID",
+                        "name": "media_uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "媒体文件内容",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "403": {
+                        "description": "无权限访问（非圈子成员）",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "圈子或媒体未找到",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/groups/{uuid}/media/{media_uuid}/thumbnail": {
             "get": {
                 "security": [
@@ -1032,7 +1087,7 @@ const docTemplate = `{
                 "tags": [
                     "Groups"
                 ],
-                "summary": "获取圈子内的媒体资源",
+                "summary": "获取圈子内的媒体资源(缩略图)",
                 "parameters": [
                     {
                         "type": "string",
@@ -2247,6 +2302,12 @@ const docTemplate = `{
                 "id": {
                     "type": "integer",
                     "example": 1
+                },
+                "total_storage": {
+                    "type": "integer"
+                },
+                "used_storage": {
+                    "type": "integer"
                 },
                 "username": {
                     "type": "string",

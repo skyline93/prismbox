@@ -138,6 +138,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 				groupRoutes.POST("/:uuid/posts", groupHandler.CreatePost)
 				groupRoutes.GET("/:uuid/feed", groupHandler.GetGroupFeed)
 				groupRoutes.GET("/:uuid/media/:media_uuid/thumbnail", groupHandler.GetGroupMediaThumbnail)
+				groupRoutes.GET("/:uuid/media/:media_uuid/preview", groupHandler.GetGroupMediaPreview)
 
 				groupRoutes.GET("/:uuid/members", groupHandler.GetGroupMembers)
 				groupRoutes.POST("/:uuid/members/invite", groupHandler.CreateInvite)
