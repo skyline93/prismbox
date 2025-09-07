@@ -9,6 +9,7 @@ import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/data/services/group_api_service.dart';
 import 'package:mobile/domain/repositories/group_repository.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
+import 'package:mobile/domain/entities/comment_entity.dart';
 
 @LazySingleton(as: GroupRepository)
 class GroupRepositoryImpl implements GroupRepository {
@@ -217,5 +218,46 @@ class GroupRepositoryImpl implements GroupRepository {
       mediaUuid,
     );
     return thumbnailData;
+  }
+
+  @override
+  Future<List<CommentEntity>> getComments(int postId) async {
+    try {
+      // 在调用 API 时将 int 转换为 String
+      final response = await _apiService.getPostComments(postId.toString());
+      final apiResponse = ApiResponse.fromJson(
+        response.data,
+        (json) => (json as List<dynamic>)
+            .map((item) => CommentModel.fromJson(item as Map<String, dynamic>))
+            .toList(),
+      );
+      final List<CommentModel> commentModels = apiResponse.data ?? [];
+      return commentModels.map((model) => model.toEntity()).toList();
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch comments: ${e.message}');
+    }
+  }
+
+  @override
+  Future<CommentEntity> postComment({
+    required int postId,
+    required String content,
+    String? parentCommentId,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {
+        'content': content,
+        if (parentCommentId != null) 'parent_comment_id': parentCommentId,
+      };
+      // 在调用 API 时将 int 转换为 String
+      final response = await _apiService.createComment(postId.toString(), data);
+      final apiResponse = ApiResponse.fromJson(
+        response.data,
+        (json) => CommentModel.fromJson(json as Map<String, dynamic>),
+      );
+      return apiResponse.data!.toEntity();
+    } on DioException catch (e) {
+      throw Exception('Failed to post comment: ${e.message}');
+    }
   }
 }

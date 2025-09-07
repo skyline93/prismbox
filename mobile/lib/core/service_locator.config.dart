@@ -74,10 +74,10 @@ extension GetItInjectableX on _i174.GetIt {
         () => injectableModule.getDio(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(
         () => injectableModule.getRemoteMediaSource(gh<_i361.Dio>()));
-    gh.lazySingleton<_i1052.UserApiService>(
-        () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i470.GroupApiService>(
         () => _i470.GroupApiService(gh<_i361.Dio>()));
+    gh.lazySingleton<_i1052.UserApiService>(
+        () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i442.MediaRepository>(() => _i74.MediaRepositoryImpl(
           cloudDataSource: gh<_i527.RemoteMediaDataSource>(),
           db: gh<_i669.AppDatabase>(),

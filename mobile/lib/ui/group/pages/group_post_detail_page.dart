@@ -1,112 +1,153 @@
 // lib/ui/group/pages/group_post_detail_page.dart
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // [新增]
+// import 'package:mobile/domain/entities/comment_entity.dart'; // [修改]
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
-import 'package:mobile/providers/group_providers.dart';
-import 'package:mobile/ui/gallery/widgets/image_content.dart';
-import 'package:mobile/ui/gallery/widgets/video_content.dart';
+import 'package:mobile/providers/group_providers.dart'; // [新增]
 import 'package:mobile/ui/group/widgets/comment_input_field.dart';
-import 'package:mobile/ui/group/widgets/comment_list.dart';
+import 'package:mobile/ui/group/widgets/comment_thread_widget.dart';
+import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
+
+// [删除] MockComment 类定义
 
 @RoutePage()
 class GroupPostDetailPage extends ConsumerStatefulWidget {
-  // 2. [参数变更] 构造函数现在接收一个完整的帖子实体 GroupFeedItemEntity
+  // [修改]
+  final String groupUuid;
   final GroupFeedItemEntity post;
 
-  const GroupPostDetailPage({super.key, required this.post});
+  const GroupPostDetailPage({
+    super.key,
+    required this.groupUuid,
+    required this.post,
+  });
 
   @override
   ConsumerState<GroupPostDetailPage> createState() =>
-      _GroupPostDetailPageState();
+      _GroupPostDetailPageState(); // [修改]
 }
 
 class _GroupPostDetailPageState extends ConsumerState<GroupPostDetailPage> {
-  // 3. [逻辑更新] 实现提交评论的逻辑，使用 postId
-  Future<void> _submitComment(String text) async {
-    final groupRepository = ref.read(groupRepositoryProvider);
-    try {
-      // 使用 widget.post.id 作为帖子的ID
-      await groupRepository.addComment(widget.post.id, text);
-      // 成功后，使用 post.id 来刷新对应的评论列表
-      ref.invalidate(commentsProvider(widget.post.id));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('发表评论失败: $e')));
-      }
-      rethrow;
-    }
+  // [修改]
+  final ScrollController _scrollController = ScrollController();
+
+  // [删除] 所有状态管理和业务逻辑 ( _comments, _replyingToComment, _currentUser, initState, _handleCommentSubmission 等)
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // [新增] 获取 ViewModel provider
+    // 注意：我们使用 post.id 作为 family 的参数
+    final viewModelProvider = postDetailViewModelProvider(widget.post.id);
+    final state = ref.watch(viewModelProvider);
+    final viewModel = ref.read(viewModelProvider.notifier);
+
+    // [新增] 监听一次性事件，例如滚动
+    ref.listen<bool>(
+      viewModelProvider.select((s) => s.commentPostedSuccessfully),
+      (previous, isSuccess) {
+        if (isSuccess) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+          // 通知 ViewModel 消耗掉这个事件
+          viewModel.consumePostSuccess();
+        }
+      },
+    );
+
     return Scaffold(
-      backgroundColor: Colors.white, // 背景色改为白色以容纳文案
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        // AppBar 背景色可以根据主题调整
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        // 显示帖子作者信息
-        title: Text(
-          '${widget.post.author.username}的帖子',
-          style: const TextStyle(color: Colors.black, fontSize: 16),
+        title: const Text(
+          'Post',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        leading: BackButton(
+          color: Colors.black,
+          onPressed: () => AutoRouter.of(context).maybePop(),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: Colors.grey.shade300, height: 1.0),
         ),
       ),
       body: Column(
         children: [
-          // 4. [UI 核心改造] 使用 PageView 来展示帖子中的所有媒体
-          SizedBox(
-            // 给PageView一个固定的高度，例如屏幕宽度
-            height: MediaQuery.of(context).size.width,
-            child: PageView.builder(
-              itemCount: widget.post.mediaAttachments.length,
-              itemBuilder: (context, index) {
-                final entity = widget.post.mediaAttachments[index];
-                // 根据媒体类型返回不同的Widget
-                return entity.isVideo
-                    ? VideoContent(entity: entity)
-                    : ImageContent(entity: entity);
-              },
-            ),
-          ),
-          // 5. [UI 新增] 使用 Expanded 和 CustomScrollView 来整合文案和评论
           Expanded(
-            child: CustomScrollView(
-              slivers: [
-                // 显示帖子文案 (Caption)
-                if (widget.post.content.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 12.0,
+            child: state.isLoading && state.comments.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: PostWidget(
+                          groupUuid: widget.groupUuid,
+                          item: widget.post,
+                          isDetailView: true,
+                        ),
                       ),
-                      child: Text(
-                        widget.post.content,
-                        style: const TextStyle(fontSize: 15, height: 1.5),
+                      const SliverToBoxAdapter(
+                        child: Divider(height: 1, thickness: 1),
                       ),
-                    ),
+                      if (state.errorMessage != null && state.comments.isEmpty)
+                        SliverFillRemaining(
+                          child: Center(child: Text(state.errorMessage!)),
+                        ),
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final comment = state.comments[index];
+                          return CommentThreadWidget(
+                            comment: comment,
+                            depth: 0,
+                            isLast: index == state.comments.length - 1,
+                            onReply: viewModel.setReplyingTo,
+                          );
+                        }, childCount: state.comments.length),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 120)),
+                    ],
                   ),
-
-                // 分割线
-                const SliverToBoxAdapter(child: Divider(height: 1)),
-
-                // 评论列表
-                SliverToBoxAdapter(
-                  // 6. [逻辑更新] CommentList 现在需要接收 postId
-                  child: CommentList(postId: widget.post.id),
-                ),
-              ],
-            ),
           ),
-          // 评论输入框
-          SafeArea(
-            top: false, // 输入框不需要顶部的安全区域
-            child: CommentInputField(onSubmitted: _submitComment),
+          if (state.replyingToComment != null)
+            Container(
+              color: Colors.grey.shade100,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Replying to ${state.replyingToComment!.author.username}',
+                  ),
+                  GestureDetector(
+                    onTap: viewModel.cancelReply,
+                    child: const Icon(Icons.close, size: 18),
+                  ),
+                ],
+              ),
+            ),
+          CommentInputField(
+            // 将提交操作转发给 ViewModel
+            onSubmitted: viewModel.postComment,
+            // 根据状态禁用输入框
+            enabled: !state.isPostingComment,
           ),
         ],
       ),

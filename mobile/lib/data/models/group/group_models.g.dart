@@ -104,18 +104,25 @@ Map<String, dynamic> _$$GroupPostModelImplToJson(
 
 _$CommentModelImpl _$$CommentModelImplFromJson(Map<String, dynamic> json) =>
     _$CommentModelImpl(
-      id: (json['id'] as num).toInt(),
+      id: json['id'] as String,
       content: json['content'] as String,
-      createdAt: json['created_at'] as String,
-      user: AuthorModel.fromJson(json['user'] as Map<String, dynamic>),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      author: AuthorModel.fromJson(json['author'] as Map<String, dynamic>),
+      likesCount: (json['likes_count'] as num?)?.toInt() ?? 0,
+      replies: (json['replies'] as List<dynamic>?)
+              ?.map((e) => CommentModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$$CommentModelImplToJson(_$CommentModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'content': instance.content,
-      'created_at': instance.createdAt,
-      'user': instance.user,
+      'created_at': instance.createdAt.toIso8601String(),
+      'author': instance.author,
+      'likes_count': instance.likesCount,
+      'replies': instance.replies,
     };
 
 _$InviteCodeModelImpl _$$InviteCodeModelImplFromJson(

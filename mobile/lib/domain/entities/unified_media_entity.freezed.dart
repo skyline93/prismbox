@@ -30,7 +30,9 @@ mixin _$UnifiedMediaEntity {
   DateTime get createdAt => throw _privateConstructorUsedError;
   AssetEntity? get assetEntity => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UnifiedMediaEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UnifiedMediaEntityCopyWith<UnifiedMediaEntity> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -67,6 +69,8 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UnifiedMediaEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -173,6 +177,8 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
       $Res Function(_$UnifiedMediaEntityImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UnifiedMediaEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -345,7 +351,9 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       createdAt,
       assetEntity);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UnifiedMediaEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UnifiedMediaEntityImplCopyWith<_$UnifiedMediaEntityImpl> get copyWith =>
@@ -396,8 +404,11 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
   DateTime get createdAt;
   @override
   AssetEntity? get assetEntity;
+
+  /// Create a copy of UnifiedMediaEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UnifiedMediaEntityImplCopyWith<_$UnifiedMediaEntityImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
