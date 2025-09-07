@@ -82,6 +82,8 @@ dependencies:
   dio_smart_retry: ^6.0.0
   connectivity_plus: ^6.0.3
   smooth_page_indicator: ^1.1.0
+  shimmer: ^3.0.0
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:
