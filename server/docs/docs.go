@@ -1903,14 +1903,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取一个帖子的所有评论",
+                "description": "获取一个帖子的所有评论，并组织成父子关系的树状结构",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Posts"
                 ],
-                "summary": "获取帖子的评论列表",
+                "summary": "获取帖子的评论列表（树状结构）",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1956,7 +1956,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "为一个帖子添加一条新评论",
+                "description": "为一个帖子添加一条新评论，或回复一条已有评论",
                 "consumes": [
                     "application/json"
                 ],
@@ -1966,7 +1966,7 @@ const docTemplate = `{
                 "tags": [
                     "Posts"
                 ],
-                "summary": "为帖子添加评论",
+                "summary": "为帖子添加评论或回复",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1976,7 +1976,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "评论内容",
+                        "description": "评论内容和可选的父评论ID",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -2002,6 +2002,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "输入无效",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
                         }
                     },
                     "403": {
@@ -2390,6 +2396,9 @@ const docTemplate = `{
         "group.CommentResponse": {
             "type": "object",
             "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.UserSimpleResponse"
+                },
                 "content": {
                     "type": "string"
                 },
@@ -2397,10 +2406,16 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "likes_count": {
                     "type": "integer"
                 },
-                "user": {
-                    "$ref": "#/definitions/handlers.UserSimpleResponse"
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/group.CommentResponse"
+                    }
                 }
             }
         },
@@ -2411,6 +2426,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
+                    "type": "string"
+                },
+                "parent_comment_id": {
                     "type": "string"
                 }
             }
@@ -2791,6 +2809,10 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "parent_comment_id": {
+                    "description": "[新增] 用于支持嵌套评论",
+                    "type": "integer"
+                },
                 "post_id": {
                     "type": "integer"
                 },
@@ -2798,12 +2820,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "description": "预加载评论者信息",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.User"
-                        }
-                    ]
+                    "$ref": "#/definitions/models.User"
                 },
                 "user_id": {
                     "type": "integer"

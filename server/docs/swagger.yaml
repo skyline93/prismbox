@@ -125,18 +125,26 @@ definitions:
     type: object
   group.CommentResponse:
     properties:
+      author:
+        $ref: '#/definitions/handlers.UserSimpleResponse'
       content:
         type: string
       created_at:
         type: string
       id:
+        type: string
+      likes_count:
         type: integer
-      user:
-        $ref: '#/definitions/handlers.UserSimpleResponse'
+      replies:
+        items:
+          $ref: '#/definitions/group.CommentResponse'
+        type: array
     type: object
   group.CreateCommentInput:
     properties:
       content:
+        type: string
+      parent_comment_id:
         type: string
     required:
     - content
@@ -391,14 +399,15 @@ definitions:
         type: string
       id:
         type: integer
+      parent_comment_id:
+        description: '[新增] 用于支持嵌套评论'
+        type: integer
       post_id:
         type: integer
       updated_at:
         type: string
       user:
-        allOf:
-        - $ref: '#/definitions/models.User'
-        description: 预加载评论者信息
+        $ref: '#/definitions/models.User'
       user_id:
         type: integer
     type: object
@@ -1739,7 +1748,7 @@ paths:
       - Media
   /posts/{postId}/comments:
     get:
-      description: 获取一个帖子的所有评论
+      description: 获取一个帖子的所有评论，并组织成父子关系的树状结构
       parameters:
       - description: 帖子的ID
         in: path
@@ -1766,20 +1775,20 @@ paths:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
-      summary: 获取帖子的评论列表
+      summary: 获取帖子的评论列表（树状结构）
       tags:
       - Posts
     post:
       consumes:
       - application/json
-      description: 为一个帖子添加一条新评论
+      description: 为一个帖子添加一条新评论，或回复一条已有评论
       parameters:
       - description: 帖子的ID
         in: path
         name: postId
         required: true
         type: integer
-      - description: 评论内容
+      - description: 评论内容和可选的父评论ID
         in: body
         name: input
         required: true
@@ -1797,13 +1806,17 @@ paths:
                 data:
                   $ref: '#/definitions/group.CommentResponse'
               type: object
+        "400":
+          description: 输入无效
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
         "403":
           description: 无权限或帖子不存在
           schema:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
-      summary: 为帖子添加评论
+      summary: 为帖子添加评论或回复
       tags:
       - Posts
   /s/{share_token}:

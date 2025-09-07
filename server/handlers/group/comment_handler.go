@@ -1,5 +1,4 @@
 // server/handlers/group/comment_handler.go
-// [MODIFIED] 这个文件现在处理针对“帖子”的评论
 
 package group
 
@@ -15,17 +14,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// CreateCommentInput 定义了创建评论的输入
 type CreateCommentInput struct {
-	Content string `json:"content" binding:"required"`
+	Content         string  `json:"content" binding:"required"`
+	ParentCommentID *string `json:"parent_comment_id"`
 }
 
-// CommentResponse 定义了返回给前端的评论结构
 type CommentResponse struct {
-	ID        uint                        `json:"id"`
-	CreatedAt time.Time                   `json:"created_at"`
-	Content   string                      `json:"content"`
-	User      handlers.UserSimpleResponse `json:"user"`
+	ID         string                      `json:"id"`
+	CreatedAt  time.Time                   `json:"created_at"`
+	Content    string                      `json:"content"`
+	User       handlers.UserSimpleResponse `json:"author"`
+	LikesCount int                         `json:"likes_count"`
+	Replies    []*CommentResponse          `json:"replies,omitempty"`
 }
 
 // getPostAndCheckMembership 是一个新的辅助函数，用于获取帖子并验证用户成员资格
@@ -47,15 +47,17 @@ func (h *GroupHandler) getPostAndCheckMembership(postID uint, userID uint) (*mod
 	return &post, nil
 }
 
+// [重写] AddComment - 支持回复
 // AddComment godoc
-// @Summary      为帖子添加评论
-// @Description  为一个帖子添加一条新评论
+// @Summary      为帖子添加评论或回复
+// @Description  为一个帖子添加一条新评论，或回复一条已有评论
 // @Tags         Posts
 // @Accept       json
 // @Produce      json
 // @Param        postId path int true "帖子的ID"
-// @Param        input body CreateCommentInput true "评论内容"
+// @Param        input body CreateCommentInput true "评论内容和可选的父评论ID"
 // @Success      201  {object}  core.ApiResponse{data=CommentResponse} "评论成功"
+// @Failure      400  {object}  core.ApiResponse "输入无效"
 // @Failure      403  {object}  core.ApiResponse "无权限或帖子不存在"
 // @Security     BearerAuth
 // @Router       /posts/{postId}/comments [post]
@@ -67,7 +69,6 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 		return
 	}
 
-	// [MODIFIED] 权限校验：确保用户是该帖子所在圈子的成员
 	if _, err := h.getPostAndCheckMembership(uint(postID), userID); err != nil {
 		core.Error(c, err.Error())
 		return
@@ -80,9 +81,25 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 	}
 
 	comment := models.Comment{
-		PostID:  uint(postID), // [MODIFIED] 使用 PostID
+		PostID:  uint(postID),
 		UserID:  userID,
 		Content: input.Content,
+	}
+
+	// 如果是回复，处理父评论ID
+	if input.ParentCommentID != nil {
+		parentID, err := strconv.ParseUint(*input.ParentCommentID, 10, 64)
+		if err != nil {
+			core.Error(c, "Invalid parent comment ID")
+			return
+		}
+		// 验证父评论是否存在且属于同一个帖子
+		var parentComment models.Comment
+		if err := h.DB.First(&parentComment, uint(parentID)).Error; err != nil || parentComment.PostID != uint(postID) {
+			core.Error(c, "Parent comment not found or does not belong to this post")
+			return
+		}
+		comment.ParentCommentID = &parentComment.ID
 	}
 
 	if err := h.DB.Create(&comment).Error; err != nil {
@@ -90,20 +107,24 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 		return
 	}
 
-	// 查询完整的 user 信息以便返回
-	h.DB.Preload("User").First(&comment, comment.ID)
+	h.DB.Preload("User").Preload("Likes").First(&comment, comment.ID)
 
-	core.Success(c, "Comment added successfully", CommentResponse{
-		ID:        comment.ID,
-		CreatedAt: comment.CreatedAt,
-		Content:   comment.Content,
-		User:      handlers.ToUserSimpleResponse(comment.User, h.AvatarBaseURL), // [MODIFIED] 使用统一的响应模型
-	})
+	response := CommentResponse{
+		ID:         strconv.FormatUint(uint64(comment.ID), 10),
+		CreatedAt:  comment.CreatedAt,
+		Content:    comment.Content,
+		User:       handlers.ToUserSimpleResponse(comment.User, h.AvatarBaseURL),
+		LikesCount: len(comment.Likes),
+		Replies:    []*CommentResponse{}, // 新评论没有回复
+	}
+
+	core.Success(c, "Comment added successfully", response)
 }
 
+// [重写] GetComments - 返回树状结构
 // GetComments godoc
-// @Summary      获取帖子的评论列表
-// @Description  获取一个帖子的所有评论
+// @Summary      获取帖子的评论列表（树状结构）
+// @Description  获取一个帖子的所有评论，并组织成父子关系的树状结构
 // @Tags         Posts
 // @Produce      json
 // @Param        postId path int true "帖子的ID"
@@ -119,33 +140,53 @@ func (h *GroupHandler) GetComments(c *gin.Context) {
 		return
 	}
 
-	// [MODIFIED] 权限校验
 	if _, err := h.getPostAndCheckMembership(uint(postID), userID); err != nil {
 		core.Error(c, err.Error())
 		return
 	}
 
 	var comments []models.Comment
-	err = h.DB.Where("post_id = ?", postID). // [MODIFIED] 使用 post_id 查询
-							Preload("User").
-							Order("created_at asc"). // 通常评论按时间正序排列
-							Find(&comments).Error
+	err = h.DB.Where("post_id = ?", postID).
+		Preload("User").
+		Preload("Likes"). // 预加载点赞信息
+		Order("created_at asc").
+		Find(&comments).Error
+
 	if err != nil {
 		core.Error(c, "Failed to fetch comments")
 		return
 	}
 
-	response := make([]CommentResponse, len(comments))
-	for i, cm := range comments {
-		response[i] = CommentResponse{
-			ID:        cm.ID,
-			CreatedAt: cm.CreatedAt,
-			Content:   cm.Content,
-			User:      handlers.ToUserSimpleResponse(cm.User, h.AvatarBaseURL), // [MODIFIED] 使用统一的响应模型
+	// 核心逻辑：将扁平列表转换为树状结构
+	commentMap := make(map[uint]*CommentResponse)
+	var rootComments []*CommentResponse
+
+	// 第一遍：创建所有评论的 Response 对象并存入 map
+	for _, cm := range comments {
+		commentMap[cm.ID] = &CommentResponse{
+			ID:         strconv.FormatUint(uint64(cm.ID), 10),
+			CreatedAt:  cm.CreatedAt,
+			Content:    cm.Content,
+			User:       handlers.ToUserSimpleResponse(cm.User, h.AvatarBaseURL),
+			LikesCount: len(cm.Likes),
+			Replies:    []*CommentResponse{},
 		}
 	}
 
-	core.Success(c, "Comments retrieved successfully", response)
+	// 第二遍：构建父子关系
+	for _, cm := range comments {
+		if cm.ParentCommentID != nil {
+			// 如果是子评论，找到父评论并添加到其 Replies 列表中
+			if parent, ok := commentMap[*cm.ParentCommentID]; ok {
+				parent.Replies = append(parent.Replies, commentMap[cm.ID])
+			}
+		} else {
+			// 如果是顶级评论，直接添加到根列表
+			rootComments = append(rootComments, commentMap[cm.ID])
+		}
+	}
+
+	core.Success(c, "Comments retrieved successfully", rootComments)
 }
 
 // DeleteComment godoc

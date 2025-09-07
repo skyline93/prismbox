@@ -68,7 +68,6 @@ type GroupMedia struct {
 	MediaUUID string    `gorm:"type:varchar(36);not null;index" json:"media_uuid"`
 }
 
-// Comment 对应 PRD 中的 `comments` 表
 type Comment struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -78,8 +77,21 @@ type Comment struct {
 	UserID    uint           `gorm:"not null" json:"user_id"`
 	Content   string         `gorm:"type:text;not null" json:"content"`
 
-	User User      `gorm:"foreignKey:UserID" json:"user"` // 预加载评论者信息
-	Post GroupPost `gorm:"foreignKey:PostID" json:"-"`
+	// [新增] 用于支持嵌套评论
+	ParentCommentID *uint `gorm:"index" json:"parent_comment_id"` // 使用指针，因为顶级评论没有父ID
+
+	User    User          `gorm:"foreignKey:UserID" json:"user"`
+	Post    GroupPost     `gorm:"foreignKey:PostID" json:"-"`
+	Replies []Comment     `gorm:"foreignKey:ParentCommentID" json:"-"` // GORM关联，用于预加载
+	Likes   []CommentLike `gorm:"foreignKey:CommentID" json:"-"`
+}
+
+// [新增] CommentLike 模型，用于记录评论的点赞
+type CommentLike struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	CommentID uint      `gorm:"not null;uniqueIndex:idx_comment_user,priority:1" json:"comment_id"`
+	UserID    uint      `gorm:"not null;uniqueIndex:idx_comment_user,priority:2" json:"user_id"`
 }
 
 type Like struct {
