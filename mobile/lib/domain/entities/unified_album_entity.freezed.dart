@@ -22,7 +22,9 @@ mixin _$UnifiedAlbumEntity {
   AlbumSource get source => throw _privateConstructorUsedError;
   String? get thumbnailId => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UnifiedAlbumEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UnifiedAlbumEntityCopyWith<UnifiedAlbumEntity> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -51,6 +53,8 @@ class _$UnifiedAlbumEntityCopyWithImpl<$Res, $Val extends UnifiedAlbumEntity>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UnifiedAlbumEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -109,6 +113,8 @@ class __$$UnifiedAlbumEntityImplCopyWithImpl<$Res>
       $Res Function(_$UnifiedAlbumEntityImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UnifiedAlbumEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -187,7 +193,9 @@ class _$UnifiedAlbumEntityImpl implements _UnifiedAlbumEntity {
   int get hashCode =>
       Object.hash(runtimeType, id, name, assetCount, source, thumbnailId);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UnifiedAlbumEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UnifiedAlbumEntityImplCopyWith<_$UnifiedAlbumEntityImpl> get copyWith =>
@@ -213,8 +221,11 @@ abstract class _UnifiedAlbumEntity implements UnifiedAlbumEntity {
   AlbumSource get source;
   @override
   String? get thumbnailId;
+
+  /// Create a copy of UnifiedAlbumEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UnifiedAlbumEntityImplCopyWith<_$UnifiedAlbumEntityImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

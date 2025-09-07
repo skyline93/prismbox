@@ -41,8 +41,12 @@ mixin _$GroupModel {
   @JsonKey(name: 'current_user_role')
   GroupRole? get currentUserRole => throw _privateConstructorUsedError;
 
+  /// Serializes this GroupModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of GroupModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $GroupModelCopyWith<GroupModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -76,6 +80,8 @@ class _$GroupModelCopyWithImpl<$Res, $Val extends GroupModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of GroupModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -164,6 +170,8 @@ class __$$GroupModelImplCopyWithImpl<$Res>
       _$GroupModelImpl _value, $Res Function(_$GroupModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of GroupModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -302,7 +310,7 @@ class _$GroupModelImpl implements _GroupModel {
                 other.currentUserRole == currentUserRole));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -317,7 +325,9 @@ class _$GroupModelImpl implements _GroupModel {
       currentUserId,
       currentUserRole);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$GroupModelImplCopyWith<_$GroupModelImpl> get copyWith =>
@@ -365,21 +375,24 @@ abstract class _GroupModel implements GroupModel {
   String get createdAt;
   @override
   @JsonKey(name: 'updated_at')
-  String get updatedAt;
-  @override // 聚合信息
-  int? get memberCount;
+  String get updatedAt; // 聚合信息
   @override
+  int? get memberCount;
 
   /// 当前登录用户在此圈子中的 User ID
+  @override
   @JsonKey(name: 'current_user_id')
   int? get currentUserId;
-  @override
 
   /// 当前登录用户在此圈子中的角色
+  @override
   @JsonKey(name: 'current_user_role')
   GroupRole? get currentUserRole;
+
+  /// Create a copy of GroupModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$GroupModelImplCopyWith<_$GroupModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -399,8 +412,12 @@ mixin _$GroupMemberModel {
   @JsonKey(name: 'joined_at')
   String get joinedAt => throw _privateConstructorUsedError;
 
+  /// Serializes this GroupMemberModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of GroupMemberModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $GroupMemberModelCopyWith<GroupMemberModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -429,6 +446,8 @@ class _$GroupMemberModelCopyWithImpl<$Res, $Val extends GroupMemberModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of GroupMemberModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -487,6 +506,8 @@ class __$$GroupMemberModelImplCopyWithImpl<$Res>
       $Res Function(_$GroupMemberModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of GroupMemberModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -568,12 +589,14 @@ class _$GroupMemberModelImpl implements _GroupMemberModel {
                 other.joinedAt == joinedAt));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
       Object.hash(runtimeType, userId, username, avatarUrl, role, joinedAt);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupMemberModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$GroupMemberModelImplCopyWith<_$GroupMemberModelImpl> get copyWith =>
@@ -613,8 +636,11 @@ abstract class _GroupMemberModel implements GroupMemberModel {
   @override
   @JsonKey(name: 'joined_at')
   String get joinedAt;
+
+  /// Create a copy of GroupMemberModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$GroupMemberModelImplCopyWith<_$GroupMemberModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -631,8 +657,12 @@ mixin _$AuthorModel {
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl => throw _privateConstructorUsedError;
 
+  /// Serializes this AuthorModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of AuthorModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $AuthorModelCopyWith<AuthorModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -659,6 +689,8 @@ class _$AuthorModelCopyWithImpl<$Res, $Val extends AuthorModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of AuthorModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -705,6 +737,8 @@ class __$$AuthorModelImplCopyWithImpl<$Res>
       _$AuthorModelImpl _value, $Res Function(_$AuthorModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of AuthorModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -731,11 +765,12 @@ class __$$AuthorModelImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$AuthorModelImpl implements _AuthorModel {
+class _$AuthorModelImpl extends _AuthorModel {
   const _$AuthorModelImpl(
       {@JsonKey(name: 'user_id') required this.userId,
       required this.username,
-      @JsonKey(name: 'avatar_url') this.avatarUrl});
+      @JsonKey(name: 'avatar_url') this.avatarUrl})
+      : super._();
 
   factory _$AuthorModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$AuthorModelImplFromJson(json);
@@ -766,11 +801,13 @@ class _$AuthorModelImpl implements _AuthorModel {
                 other.avatarUrl == avatarUrl));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, userId, username, avatarUrl);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of AuthorModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$AuthorModelImplCopyWith<_$AuthorModelImpl> get copyWith =>
@@ -784,12 +821,13 @@ class _$AuthorModelImpl implements _AuthorModel {
   }
 }
 
-abstract class _AuthorModel implements AuthorModel {
+abstract class _AuthorModel extends AuthorModel {
   const factory _AuthorModel(
           {@JsonKey(name: 'user_id') required final int userId,
           required final String username,
           @JsonKey(name: 'avatar_url') final String? avatarUrl}) =
       _$AuthorModelImpl;
+  const _AuthorModel._() : super._();
 
   factory _AuthorModel.fromJson(Map<String, dynamic> json) =
       _$AuthorModelImpl.fromJson;
@@ -802,8 +840,11 @@ abstract class _AuthorModel implements AuthorModel {
   @override
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl;
+
+  /// Create a copy of AuthorModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$AuthorModelImplCopyWith<_$AuthorModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -827,8 +868,12 @@ mixin _$GroupPostModel {
   @JsonKey(name: 'has_liked')
   bool? get hasLiked => throw _privateConstructorUsedError;
 
+  /// Serializes this GroupPostModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of GroupPostModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $GroupPostModelCopyWith<GroupPostModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -862,6 +907,8 @@ class _$GroupPostModelCopyWithImpl<$Res, $Val extends GroupPostModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of GroupPostModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -910,6 +957,8 @@ class _$GroupPostModelCopyWithImpl<$Res, $Val extends GroupPostModel>
     ) as $Val);
   }
 
+  /// Create a copy of GroupPostModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $AuthorModelCopyWith<$Res> get creator {
@@ -949,6 +998,8 @@ class __$$GroupPostModelImplCopyWithImpl<$Res>
       _$GroupPostModelImpl _value, $Res Function(_$GroupPostModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of GroupPostModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1066,7 +1117,7 @@ class _$GroupPostModelImpl implements _GroupPostModel {
                 other.hasLiked == hasLiked));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -1079,7 +1130,9 @@ class _$GroupPostModelImpl implements _GroupPostModel {
       commentsCount,
       hasLiked);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupPostModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$GroupPostModelImplCopyWith<_$GroupPostModelImpl> get copyWith =>
@@ -1128,8 +1181,11 @@ abstract class _GroupPostModel implements GroupPostModel {
   @override
   @JsonKey(name: 'has_liked')
   bool? get hasLiked;
+
+  /// Create a copy of GroupPostModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$GroupPostModelImplCopyWith<_$GroupPostModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1140,14 +1196,27 @@ CommentModel _$CommentModelFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$CommentModel {
-  int get id => throw _privateConstructorUsedError;
-  String get content => throw _privateConstructorUsedError;
+// id 类型改为 String 以支持 UUID
+  String get id => throw _privateConstructorUsedError;
+  String get content =>
+      throw _privateConstructorUsedError; // created_at 类型改为 DateTime
   @JsonKey(name: 'created_at')
-  String get createdAt => throw _privateConstructorUsedError;
-  AuthorModel get user => throw _privateConstructorUsedError;
+  DateTime get createdAt =>
+      throw _privateConstructorUsedError; // user 字段重命名为 author
+  AuthorModel get author =>
+      throw _privateConstructorUsedError; // 新增 likes_count 字段
+  @JsonKey(name: 'likes_count', defaultValue: 0)
+  int get likesCount =>
+      throw _privateConstructorUsedError; // 新增 replies 列表以支持嵌套
+  @JsonKey(defaultValue: [])
+  List<CommentModel> get replies => throw _privateConstructorUsedError;
 
+  /// Serializes this CommentModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of CommentModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $CommentModelCopyWith<CommentModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1159,12 +1228,14 @@ abstract class $CommentModelCopyWith<$Res> {
       _$CommentModelCopyWithImpl<$Res, CommentModel>;
   @useResult
   $Res call(
-      {int id,
+      {String id,
       String content,
-      @JsonKey(name: 'created_at') String createdAt,
-      AuthorModel user});
+      @JsonKey(name: 'created_at') DateTime createdAt,
+      AuthorModel author,
+      @JsonKey(name: 'likes_count', defaultValue: 0) int likesCount,
+      @JsonKey(defaultValue: []) List<CommentModel> replies});
 
-  $AuthorModelCopyWith<$Res> get user;
+  $AuthorModelCopyWith<$Res> get author;
 }
 
 /// @nodoc
@@ -1177,19 +1248,23 @@ class _$CommentModelCopyWithImpl<$Res, $Val extends CommentModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of CommentModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
     Object? id = null,
     Object? content = null,
     Object? createdAt = null,
-    Object? user = null,
+    Object? author = null,
+    Object? likesCount = null,
+    Object? replies = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
-              as int,
+              as String,
       content: null == content
           ? _value.content
           : content // ignore: cast_nullable_to_non_nullable
@@ -1197,19 +1272,29 @@ class _$CommentModelCopyWithImpl<$Res, $Val extends CommentModel>
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
-              as String,
-      user: null == user
-          ? _value.user
-          : user // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      author: null == author
+          ? _value.author
+          : author // ignore: cast_nullable_to_non_nullable
               as AuthorModel,
+      likesCount: null == likesCount
+          ? _value.likesCount
+          : likesCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      replies: null == replies
+          ? _value.replies
+          : replies // ignore: cast_nullable_to_non_nullable
+              as List<CommentModel>,
     ) as $Val);
   }
 
+  /// Create a copy of CommentModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $AuthorModelCopyWith<$Res> get user {
-    return $AuthorModelCopyWith<$Res>(_value.user, (value) {
-      return _then(_value.copyWith(user: value) as $Val);
+  $AuthorModelCopyWith<$Res> get author {
+    return $AuthorModelCopyWith<$Res>(_value.author, (value) {
+      return _then(_value.copyWith(author: value) as $Val);
     });
   }
 }
@@ -1223,13 +1308,15 @@ abstract class _$$CommentModelImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {int id,
+      {String id,
       String content,
-      @JsonKey(name: 'created_at') String createdAt,
-      AuthorModel user});
+      @JsonKey(name: 'created_at') DateTime createdAt,
+      AuthorModel author,
+      @JsonKey(name: 'likes_count', defaultValue: 0) int likesCount,
+      @JsonKey(defaultValue: []) List<CommentModel> replies});
 
   @override
-  $AuthorModelCopyWith<$Res> get user;
+  $AuthorModelCopyWith<$Res> get author;
 }
 
 /// @nodoc
@@ -1240,19 +1327,23 @@ class __$$CommentModelImplCopyWithImpl<$Res>
       _$CommentModelImpl _value, $Res Function(_$CommentModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of CommentModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
     Object? id = null,
     Object? content = null,
     Object? createdAt = null,
-    Object? user = null,
+    Object? author = null,
+    Object? likesCount = null,
+    Object? replies = null,
   }) {
     return _then(_$CommentModelImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
-              as int,
+              as String,
       content: null == content
           ? _value.content
           : content // ignore: cast_nullable_to_non_nullable
@@ -1260,40 +1351,69 @@ class __$$CommentModelImplCopyWithImpl<$Res>
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
-              as String,
-      user: null == user
-          ? _value.user
-          : user // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      author: null == author
+          ? _value.author
+          : author // ignore: cast_nullable_to_non_nullable
               as AuthorModel,
+      likesCount: null == likesCount
+          ? _value.likesCount
+          : likesCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      replies: null == replies
+          ? _value._replies
+          : replies // ignore: cast_nullable_to_non_nullable
+              as List<CommentModel>,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$CommentModelImpl implements _CommentModel {
+class _$CommentModelImpl extends _CommentModel {
   const _$CommentModelImpl(
       {required this.id,
       required this.content,
       @JsonKey(name: 'created_at') required this.createdAt,
-      required this.user});
+      required this.author,
+      @JsonKey(name: 'likes_count', defaultValue: 0) required this.likesCount,
+      @JsonKey(defaultValue: []) required final List<CommentModel> replies})
+      : _replies = replies,
+        super._();
 
   factory _$CommentModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$CommentModelImplFromJson(json);
 
+// id 类型改为 String 以支持 UUID
   @override
-  final int id;
+  final String id;
   @override
   final String content;
+// created_at 类型改为 DateTime
   @override
   @JsonKey(name: 'created_at')
-  final String createdAt;
+  final DateTime createdAt;
+// user 字段重命名为 author
   @override
-  final AuthorModel user;
+  final AuthorModel author;
+// 新增 likes_count 字段
+  @override
+  @JsonKey(name: 'likes_count', defaultValue: 0)
+  final int likesCount;
+// 新增 replies 列表以支持嵌套
+  final List<CommentModel> _replies;
+// 新增 replies 列表以支持嵌套
+  @override
+  @JsonKey(defaultValue: [])
+  List<CommentModel> get replies {
+    if (_replies is EqualUnmodifiableListView) return _replies;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_replies);
+  }
 
   @override
   String toString() {
-    return 'CommentModel(id: $id, content: $content, createdAt: $createdAt, user: $user)';
+    return 'CommentModel(id: $id, content: $content, createdAt: $createdAt, author: $author, likesCount: $likesCount, replies: $replies)';
   }
 
   @override
@@ -1305,14 +1425,20 @@ class _$CommentModelImpl implements _CommentModel {
             (identical(other.content, content) || other.content == content) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
-            (identical(other.user, user) || other.user == user));
+            (identical(other.author, author) || other.author == author) &&
+            (identical(other.likesCount, likesCount) ||
+                other.likesCount == likesCount) &&
+            const DeepCollectionEquality().equals(other._replies, _replies));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, content, createdAt, user);
+  int get hashCode => Object.hash(runtimeType, id, content, createdAt, author,
+      likesCount, const DeepCollectionEquality().hash(_replies));
 
-  @JsonKey(ignore: true)
+  /// Create a copy of CommentModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$CommentModelImplCopyWith<_$CommentModelImpl> get copyWith =>
@@ -1326,27 +1452,42 @@ class _$CommentModelImpl implements _CommentModel {
   }
 }
 
-abstract class _CommentModel implements CommentModel {
+abstract class _CommentModel extends CommentModel {
   const factory _CommentModel(
-      {required final int id,
+      {required final String id,
       required final String content,
-      @JsonKey(name: 'created_at') required final String createdAt,
-      required final AuthorModel user}) = _$CommentModelImpl;
+      @JsonKey(name: 'created_at') required final DateTime createdAt,
+      required final AuthorModel author,
+      @JsonKey(name: 'likes_count', defaultValue: 0)
+      required final int likesCount,
+      @JsonKey(defaultValue: [])
+      required final List<CommentModel> replies}) = _$CommentModelImpl;
+  const _CommentModel._() : super._();
 
   factory _CommentModel.fromJson(Map<String, dynamic> json) =
       _$CommentModelImpl.fromJson;
 
+// id 类型改为 String 以支持 UUID
   @override
-  int get id;
+  String get id;
   @override
-  String get content;
+  String get content; // created_at 类型改为 DateTime
   @override
   @JsonKey(name: 'created_at')
-  String get createdAt;
+  DateTime get createdAt; // user 字段重命名为 author
   @override
-  AuthorModel get user;
+  AuthorModel get author; // 新增 likes_count 字段
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(name: 'likes_count', defaultValue: 0)
+  int get likesCount; // 新增 replies 列表以支持嵌套
+  @override
+  @JsonKey(defaultValue: [])
+  List<CommentModel> get replies;
+
+  /// Create a copy of CommentModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$CommentModelImplCopyWith<_$CommentModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1363,8 +1504,12 @@ mixin _$InviteCodeModel {
   @JsonKey(name: 'usage_limit')
   int? get usageLimit => throw _privateConstructorUsedError;
 
+  /// Serializes this InviteCodeModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of InviteCodeModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $InviteCodeModelCopyWith<InviteCodeModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1391,6 +1536,8 @@ class _$InviteCodeModelCopyWithImpl<$Res, $Val extends InviteCodeModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of InviteCodeModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1437,6 +1584,8 @@ class __$$InviteCodeModelImplCopyWithImpl<$Res>
       _$InviteCodeModelImpl _value, $Res Function(_$InviteCodeModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of InviteCodeModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1498,11 +1647,13 @@ class _$InviteCodeModelImpl implements _InviteCodeModel {
                 other.usageLimit == usageLimit));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, code, expiresAt, usageLimit);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of InviteCodeModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$InviteCodeModelImplCopyWith<_$InviteCodeModelImpl> get copyWith =>
@@ -1535,8 +1686,11 @@ abstract class _InviteCodeModel implements InviteCodeModel {
   @override
   @JsonKey(name: 'usage_limit')
   int? get usageLimit;
+
+  /// Create a copy of InviteCodeModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$InviteCodeModelImplCopyWith<_$InviteCodeModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

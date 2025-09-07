@@ -3,6 +3,8 @@
 // ignore_for_file: invalid_annotation_target
 
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:mobile/domain/entities/comment_entity.dart';
+import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 import '../media/media_model.dart';
 
 part 'group_models.freezed.dart';
@@ -60,6 +62,8 @@ class GroupMemberModel with _$GroupMemberModel {
 
 @freezed
 class AuthorModel with _$AuthorModel {
+  // [ADDED] 添加 const constructor 和 private constructor
+  const AuthorModel._();
   const factory AuthorModel({
     @JsonKey(name: 'user_id') required int userId,
     required String username,
@@ -68,6 +72,12 @@ class AuthorModel with _$AuthorModel {
 
   factory AuthorModel.fromJson(Map<String, dynamic> json) =>
       _$AuthorModelFromJson(json);
+
+  FeedAuthorEntity toEntity() => FeedAuthorEntity(
+    userId: userId,
+    username: username,
+    avatarUrl: avatarUrl,
+  );
 }
 
 @freezed
@@ -87,18 +97,39 @@ class GroupPostModel with _$GroupPostModel {
       _$GroupPostModelFromJson(json);
 }
 
-/// 评论模型
+/// [MODIFIED] 评论模型 - 全面更新以支持嵌套和点赞
 @freezed
 class CommentModel with _$CommentModel {
+  // [ADDED] 添加 const constructor 和 private constructor
+  const CommentModel._();
   const factory CommentModel({
-    required int id,
+    // id 类型改为 String 以支持 UUID
+    required String id,
     required String content,
-    @JsonKey(name: 'created_at') required String createdAt,
-    required AuthorModel user,
+    // created_at 类型改为 DateTime
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+    // user 字段重命名为 author
+    required AuthorModel author,
+    // 新增 likes_count 字段
+    @JsonKey(name: 'likes_count', defaultValue: 0) required int likesCount,
+    // 新增 replies 列表以支持嵌套
+    @JsonKey(defaultValue: []) required List<CommentModel> replies,
   }) = _CommentModel;
 
   factory CommentModel.fromJson(Map<String, dynamic> json) =>
       _$CommentModelFromJson(json);
+
+  // [ADDED] 添加转换到 Entity 的方法 (支持递归转换)
+  CommentEntity toEntity() {
+    return CommentEntity(
+      id: id,
+      author: author.toEntity(),
+      content: content,
+      createdAt: createdAt,
+      likesCount: likesCount,
+      replies: replies.map((reply) => reply.toEntity()).toList(),
+    );
+  }
 }
 
 /// 邀请码模型

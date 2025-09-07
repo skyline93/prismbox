@@ -1,7 +1,5 @@
 // lib/ui/group/widgets/comment_input_field.dart
 
-// +++ NEW FILE +++
-
 import 'package:flutter/material.dart';
 
 class CommentInputField extends StatefulWidget {

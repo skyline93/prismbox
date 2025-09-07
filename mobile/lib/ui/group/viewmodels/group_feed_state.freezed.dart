@@ -38,7 +38,9 @@ mixin _$GroupFeedState {
   /// 发布帖子时发生的错误信息
   String? get postError => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupFeedState
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $GroupFeedStateCopyWith<GroupFeedState> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -70,6 +72,8 @@ class _$GroupFeedStateCopyWithImpl<$Res, $Val extends GroupFeedState>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of GroupFeedState
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -146,6 +150,8 @@ class __$$GroupFeedStateImplCopyWithImpl<$Res>
       _$GroupFeedStateImpl _value, $Res Function(_$GroupFeedStateImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of GroupFeedState
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -292,7 +298,9 @@ class _$GroupFeedStateImpl implements _GroupFeedState {
       currentPage,
       postError);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupFeedState
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$GroupFeedStateImplCopyWith<_$GroupFeedStateImpl> get copyWith =>
@@ -311,38 +319,40 @@ abstract class _GroupFeedState implements GroupFeedState {
       final int currentPage,
       final String? postError}) = _$GroupFeedStateImpl;
 
-  @override
-
   /// Feed列表数据
-  List<GroupFeedItemEntity> get feedItems;
   @override
+  List<GroupFeedItemEntity> get feedItems;
 
   /// 是否正在进行初次加载
-  bool get isLoading;
   @override
+  bool get isLoading;
 
   /// 是否正在加载下一页
-  bool get isLoadingNextPage;
   @override
+  bool get isLoadingNextPage;
 
   /// 是否已加载所有数据
-  bool get hasReachedMax;
   @override
+  bool get hasReachedMax;
 
   /// 加载过程中发生的错误信息
-  String? get errorMessage;
   @override
+  String? get errorMessage;
 
   /// 是否正在发布新帖子
+  @override
   bool get isPosting;
   @override
   int get currentPage;
-  @override
 
   /// 发布帖子时发生的错误信息
-  String? get postError;
   @override
-  @JsonKey(ignore: true)
+  String? get postError;
+
+  /// Create a copy of GroupFeedState
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$GroupFeedStateImplCopyWith<_$GroupFeedStateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

@@ -3,6 +3,7 @@
 import 'dart:typed_data';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
+import 'package:mobile/domain/entities/comment_entity.dart';
 
 abstract class GroupRepository {
   Future<List<GroupModel>> fetchMyGroups();
@@ -58,4 +59,12 @@ abstract class GroupRepository {
     String groupUuid,
     String mediaUuid,
   );
+
+  Future<List<CommentEntity>> getComments(int postId);
+
+  Future<CommentEntity> postComment({
+    required int postId,
+    required String content,
+    String? parentCommentId,
+  });
 }

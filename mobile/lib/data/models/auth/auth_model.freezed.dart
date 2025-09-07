@@ -23,8 +23,12 @@ mixin _$UserLoginInput {
   String get username => throw _privateConstructorUsedError;
   String get password => throw _privateConstructorUsedError;
 
+  /// Serializes this UserLoginInput to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of UserLoginInput
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UserLoginInputCopyWith<UserLoginInput> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -48,6 +52,8 @@ class _$UserLoginInputCopyWithImpl<$Res, $Val extends UserLoginInput>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UserLoginInput
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -86,6 +92,8 @@ class __$$UserLoginInputImplCopyWithImpl<$Res>
       _$UserLoginInputImpl _value, $Res Function(_$UserLoginInputImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UserLoginInput
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -134,11 +142,13 @@ class _$UserLoginInputImpl implements _UserLoginInput {
                 other.password == password));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, username, password);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UserLoginInput
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UserLoginInputImplCopyWith<_$UserLoginInputImpl> get copyWith =>
@@ -165,8 +175,11 @@ abstract class _UserLoginInput implements UserLoginInput {
   String get username;
   @override
   String get password;
+
+  /// Create a copy of UserLoginInput
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UserLoginInputImplCopyWith<_$UserLoginInputImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -181,8 +194,12 @@ mixin _$UserRegisterInput {
   String get email => throw _privateConstructorUsedError;
   String get password => throw _privateConstructorUsedError;
 
+  /// Serializes this UserRegisterInput to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of UserRegisterInput
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UserRegisterInputCopyWith<UserRegisterInput> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -206,6 +223,8 @@ class _$UserRegisterInputCopyWithImpl<$Res, $Val extends UserRegisterInput>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UserRegisterInput
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -249,6 +268,8 @@ class __$$UserRegisterInputImplCopyWithImpl<$Res>
       $Res Function(_$UserRegisterInputImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UserRegisterInput
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -306,11 +327,13 @@ class _$UserRegisterInputImpl implements _UserRegisterInput {
                 other.password == password));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, username, email, password);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UserRegisterInput
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UserRegisterInputImplCopyWith<_$UserRegisterInputImpl> get copyWith =>
@@ -340,8 +363,11 @@ abstract class _UserRegisterInput implements UserRegisterInput {
   String get email;
   @override
   String get password;
+
+  /// Create a copy of UserRegisterInput
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UserRegisterInputImplCopyWith<_$UserRegisterInputImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -355,8 +381,12 @@ mixin _$RefreshTokenInput {
   @JsonKey(name: 'refresh_token')
   String get refreshToken => throw _privateConstructorUsedError;
 
+  /// Serializes this RefreshTokenInput to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of RefreshTokenInput
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $RefreshTokenInputCopyWith<RefreshTokenInput> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -380,6 +410,8 @@ class _$RefreshTokenInputCopyWithImpl<$Res, $Val extends RefreshTokenInput>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of RefreshTokenInput
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -413,6 +445,8 @@ class __$$RefreshTokenInputImplCopyWithImpl<$Res>
       $Res Function(_$RefreshTokenInputImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of RefreshTokenInput
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -454,11 +488,13 @@ class _$RefreshTokenInputImpl implements _RefreshTokenInput {
                 other.refreshToken == refreshToken));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, refreshToken);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of RefreshTokenInput
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$RefreshTokenInputImplCopyWith<_$RefreshTokenInputImpl> get copyWith =>
@@ -484,8 +520,11 @@ abstract class _RefreshTokenInput implements RefreshTokenInput {
   @override
   @JsonKey(name: 'refresh_token')
   String get refreshToken;
+
+  /// Create a copy of RefreshTokenInput
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$RefreshTokenInputImplCopyWith<_$RefreshTokenInputImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -501,8 +540,12 @@ mixin _$UserLoginSuccessData {
   @JsonKey(name: 'refresh_token')
   String get refreshToken => throw _privateConstructorUsedError;
 
+  /// Serializes this UserLoginSuccessData to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of UserLoginSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UserLoginSuccessDataCopyWith<UserLoginSuccessData> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -529,6 +572,8 @@ class _$UserLoginSuccessDataCopyWithImpl<$Res,
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UserLoginSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -569,6 +614,8 @@ class __$$UserLoginSuccessDataImplCopyWithImpl<$Res>
       $Res Function(_$UserLoginSuccessDataImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UserLoginSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -621,11 +668,13 @@ class _$UserLoginSuccessDataImpl implements _UserLoginSuccessData {
                 other.refreshToken == refreshToken));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, accessToken, refreshToken);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UserLoginSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UserLoginSuccessDataImplCopyWith<_$UserLoginSuccessDataImpl>
@@ -656,8 +705,11 @@ abstract class _UserLoginSuccessData implements UserLoginSuccessData {
   @override
   @JsonKey(name: 'refresh_token')
   String get refreshToken;
+
+  /// Create a copy of UserLoginSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UserLoginSuccessDataImplCopyWith<_$UserLoginSuccessDataImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
@@ -673,8 +725,12 @@ mixin _$UserRegisterSuccessData {
   int get userId => throw _privateConstructorUsedError;
   String get username => throw _privateConstructorUsedError;
 
+  /// Serializes this UserRegisterSuccessData to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of UserRegisterSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UserRegisterSuccessDataCopyWith<UserRegisterSuccessData> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -699,6 +755,8 @@ class _$UserRegisterSuccessDataCopyWithImpl<$Res,
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UserRegisterSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -740,6 +798,8 @@ class __$$UserRegisterSuccessDataImplCopyWithImpl<$Res>
       $Res Function(_$UserRegisterSuccessDataImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UserRegisterSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -789,11 +849,13 @@ class _$UserRegisterSuccessDataImpl implements _UserRegisterSuccessData {
                 other.username == username));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, userId, username);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UserRegisterSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UserRegisterSuccessDataImplCopyWith<_$UserRegisterSuccessDataImpl>
@@ -821,8 +883,11 @@ abstract class _UserRegisterSuccessData implements UserRegisterSuccessData {
   int get userId;
   @override
   String get username;
+
+  /// Create a copy of UserRegisterSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UserRegisterSuccessDataImplCopyWith<_$UserRegisterSuccessDataImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
@@ -837,8 +902,12 @@ mixin _$RefreshTokenSuccessData {
   @JsonKey(name: 'access_token')
   String get accessToken => throw _privateConstructorUsedError;
 
+  /// Serializes this RefreshTokenSuccessData to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of RefreshTokenSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $RefreshTokenSuccessDataCopyWith<RefreshTokenSuccessData> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -863,6 +932,8 @@ class _$RefreshTokenSuccessDataCopyWithImpl<$Res,
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of RefreshTokenSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -899,6 +970,8 @@ class __$$RefreshTokenSuccessDataImplCopyWithImpl<$Res>
       $Res Function(_$RefreshTokenSuccessDataImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of RefreshTokenSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -940,11 +1013,13 @@ class _$RefreshTokenSuccessDataImpl implements _RefreshTokenSuccessData {
                 other.accessToken == accessToken));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, accessToken);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of RefreshTokenSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$RefreshTokenSuccessDataImplCopyWith<_$RefreshTokenSuccessDataImpl>
@@ -970,8 +1045,11 @@ abstract class _RefreshTokenSuccessData implements RefreshTokenSuccessData {
   @override
   @JsonKey(name: 'access_token')
   String get accessToken;
+
+  /// Create a copy of RefreshTokenSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$RefreshTokenSuccessDataImplCopyWith<_$RefreshTokenSuccessDataImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
@@ -989,8 +1067,12 @@ mixin _$GetProfileSuccessData {
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
 
+  /// Serializes this GetProfileSuccessData to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $GetProfileSuccessDataCopyWith<GetProfileSuccessData> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1019,6 +1101,8 @@ class _$GetProfileSuccessDataCopyWithImpl<$Res,
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1073,6 +1157,8 @@ class __$$GetProfileSuccessDataImplCopyWithImpl<$Res>
       $Res Function(_$GetProfileSuccessDataImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1142,11 +1228,13 @@ class _$GetProfileSuccessDataImpl implements _GetProfileSuccessData {
                 other.createdAt == createdAt));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, username, email, createdAt);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$GetProfileSuccessDataImplCopyWith<_$GetProfileSuccessDataImpl>
@@ -1181,8 +1269,11 @@ abstract class _GetProfileSuccessData implements GetProfileSuccessData {
   @override
   @JsonKey(name: 'created_at')
   DateTime get createdAt;
+
+  /// Create a copy of GetProfileSuccessData
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$GetProfileSuccessDataImplCopyWith<_$GetProfileSuccessDataImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

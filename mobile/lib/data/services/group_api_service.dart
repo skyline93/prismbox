@@ -104,4 +104,19 @@ class GroupApiService {
 
     return response.data as Uint8List;
   }
+
+  // [新增] 获取帖子的评论列表
+  // GET /posts/{postId}/comments
+  Future<Response> getPostComments(String postId) async {
+    return _dio.get('/posts/$postId/comments');
+  }
+
+  // [新增] 创建一条评论或回复
+  // POST /posts/{postId}/comments
+  Future<Response> createComment(
+    String postId,
+    Map<String, dynamic> data,
+  ) async {
+    return _dio.post('/posts/$postId/comments', data: data);
+  }
 }

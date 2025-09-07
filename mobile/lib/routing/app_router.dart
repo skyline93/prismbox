@@ -54,5 +54,6 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: GroupFeedRoute.page, path: "/groups/:uuid"),
     AutoRoute(page: GroupMembersRoute.page, path: "/groups/:uuid/members"),
     AutoRoute(page: GroupSettingsRoute.page, path: "/groups/:uuid/settings"),
+    AutoRoute(page: GroupPostDetailRoute.page, path: '/group/:uuid/post'),
   ];
 }

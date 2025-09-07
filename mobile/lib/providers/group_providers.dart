@@ -12,6 +12,8 @@ import 'package:mobile/ui/group/viewmodels/group_feed_viewmodel.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 import 'package:mobile/providers/providers.dart';
+import 'package:mobile/ui/group/viewmodels/post_detail_state.dart';
+import 'package:mobile/ui/group/viewmodels/post_detail_viewmodel.dart';
 // import 'package:mobile/data/mock_feed_data.dart';
 
 // 1. Repository Provider
@@ -131,4 +133,10 @@ final groupPostFullImageProvider = FutureProvider.autoDispose
         groupUuid,
         entity.cloudUuid!,
       );
+    });
+
+final postDetailViewModelProvider = StateNotifierProvider.autoDispose
+    .family<PostDetailViewModel, PostDetailState, int>((ref, postId) {
+      final groupRepository = ref.watch(groupRepositoryProvider);
+      return PostDetailViewModel(groupRepository, postId);
     });
