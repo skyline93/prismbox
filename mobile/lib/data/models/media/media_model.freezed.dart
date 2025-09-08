@@ -43,12 +43,8 @@ mixin _$MediaDetail {
   String get updatedAt => throw _privateConstructorUsedError;
   int get userID => throw _privateConstructorUsedError;
 
-  /// Serializes this MediaDetail to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of MediaDetail
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $MediaDetailCopyWith<MediaDetail> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -94,8 +90,6 @@ class _$MediaDetailCopyWithImpl<$Res, $Val extends MediaDetail>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of MediaDetail
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -256,8 +250,6 @@ class __$$MediaDetailImplCopyWithImpl<$Res>
       _$MediaDetailImpl _value, $Res Function(_$MediaDetailImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaDetail
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -501,7 +493,7 @@ class _$MediaDetailImpl implements _MediaDetail {
             (identical(other.userID, userID) || other.userID == userID));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hashAll([
         runtimeType,
@@ -529,9 +521,7 @@ class _$MediaDetailImpl implements _MediaDetail {
         userID
       ]);
 
-  /// Create a copy of MediaDetail
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaDetailImplCopyWith<_$MediaDetailImpl> get copyWith =>
@@ -617,11 +607,8 @@ abstract class _MediaDetail implements MediaDetail {
   String get updatedAt;
   @override
   int get userID;
-
-  /// Create a copy of MediaDetail
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaDetailImplCopyWith<_$MediaDetailImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -655,12 +642,8 @@ mixin _$MediaResponse {
   @JsonKey(name: 'thumbnail_url')
   String get thumbnailUrl => throw _privateConstructorUsedError;
 
-  /// Serializes this MediaResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of MediaResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $MediaResponseCopyWith<MediaResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -697,8 +680,6 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of MediaResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -805,8 +786,6 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
       _$MediaResponseImpl _value, $Res Function(_$MediaResponseImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -972,7 +951,7 @@ class _$MediaResponseImpl implements _MediaResponse {
                 other.thumbnailUrl == thumbnailUrl));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -990,9 +969,7 @@ class _$MediaResponseImpl implements _MediaResponse {
       previewUrl,
       thumbnailUrl);
 
-  /// Create a copy of MediaResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaResponseImplCopyWith<_$MediaResponseImpl> get copyWith =>
@@ -1062,11 +1039,8 @@ abstract class _MediaResponse implements MediaResponse {
   @override
   @JsonKey(name: 'thumbnail_url')
   String get thumbnailUrl;
-
-  /// Create a copy of MediaResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaResponseImplCopyWith<_$MediaResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1082,12 +1056,8 @@ mixin _$MediaListResponse {
   int get page => throw _privateConstructorUsedError;
   int get limit => throw _privateConstructorUsedError;
 
-  /// Serializes this MediaListResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of MediaListResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $MediaListResponseCopyWith<MediaListResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1111,8 +1081,6 @@ class _$MediaListResponseCopyWithImpl<$Res, $Val extends MediaListResponse>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of MediaListResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1161,8 +1129,6 @@ class __$$MediaListResponseImplCopyWithImpl<$Res>
       $Res Function(_$MediaListResponseImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaListResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1236,14 +1202,12 @@ class _$MediaListResponseImpl implements _MediaListResponse {
             (identical(other.limit, limit) || other.limit == limit));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType,
       const DeepCollectionEquality().hash(_data), total, page, limit);
 
-  /// Create a copy of MediaListResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaListResponseImplCopyWith<_$MediaListResponseImpl> get copyWith =>
@@ -1276,11 +1240,8 @@ abstract class _MediaListResponse implements MediaListResponse {
   int get page;
   @override
   int get limit;
-
-  /// Create a copy of MediaListResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaListResponseImplCopyWith<_$MediaListResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1289,9 +1250,7 @@ abstract class _MediaListResponse implements MediaListResponse {
 mixin _$CheckHashesRequest {
   List<String> get hashes => throw _privateConstructorUsedError;
 
-  /// Create a copy of CheckHashesRequest
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $CheckHashesRequestCopyWith<CheckHashesRequest> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1315,8 +1274,6 @@ class _$CheckHashesRequestCopyWithImpl<$Res, $Val extends CheckHashesRequest>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of CheckHashesRequest
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1350,8 +1307,6 @@ class __$$CheckHashesRequestImplCopyWithImpl<$Res>
       $Res Function(_$CheckHashesRequestImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of CheckHashesRequest
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1397,9 +1352,7 @@ class _$CheckHashesRequestImpl implements _CheckHashesRequest {
   int get hashCode =>
       Object.hash(runtimeType, const DeepCollectionEquality().hash(_hashes));
 
-  /// Create a copy of CheckHashesRequest
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$CheckHashesRequestImplCopyWith<_$CheckHashesRequestImpl> get copyWith =>
@@ -1413,11 +1366,8 @@ abstract class _CheckHashesRequest implements CheckHashesRequest {
 
   @override
   List<String> get hashes;
-
-  /// Create a copy of CheckHashesRequest
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$CheckHashesRequestImplCopyWith<_$CheckHashesRequestImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1430,12 +1380,8 @@ CheckHashesResponse _$CheckHashesResponseFromJson(Map<String, dynamic> json) {
 mixin _$CheckHashesResponse {
   List<String> get existingHashes => throw _privateConstructorUsedError;
 
-  /// Serializes this CheckHashesResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of CheckHashesResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $CheckHashesResponseCopyWith<CheckHashesResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1459,8 +1405,6 @@ class _$CheckHashesResponseCopyWithImpl<$Res, $Val extends CheckHashesResponse>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of CheckHashesResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1494,8 +1438,6 @@ class __$$CheckHashesResponseImplCopyWithImpl<$Res>
       $Res Function(_$CheckHashesResponseImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of CheckHashesResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1541,14 +1483,12 @@ class _$CheckHashesResponseImpl implements _CheckHashesResponse {
                 .equals(other._existingHashes, _existingHashes));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType, const DeepCollectionEquality().hash(_existingHashes));
 
-  /// Create a copy of CheckHashesResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$CheckHashesResponseImplCopyWith<_$CheckHashesResponseImpl> get copyWith =>
@@ -1572,11 +1512,8 @@ abstract class _CheckHashesResponse implements CheckHashesResponse {
 
   @override
   List<String> get existingHashes;
-
-  /// Create a copy of CheckHashesResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$CheckHashesResponseImplCopyWith<_$CheckHashesResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1591,12 +1528,8 @@ mixin _$MediaChangesResponse {
   List<MediaResponse> get updated => throw _privateConstructorUsedError;
   List<String> get deleted => throw _privateConstructorUsedError;
 
-  /// Serializes this MediaChangesResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of MediaChangesResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $MediaChangesResponseCopyWith<MediaChangesResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1624,8 +1557,6 @@ class _$MediaChangesResponseCopyWithImpl<$Res,
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of MediaChangesResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1672,8 +1603,6 @@ class __$$MediaChangesResponseImplCopyWithImpl<$Res>
       $Res Function(_$MediaChangesResponseImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaChangesResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1751,7 +1680,7 @@ class _$MediaChangesResponseImpl implements _MediaChangesResponse {
             const DeepCollectionEquality().equals(other._deleted, _deleted));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -1759,9 +1688,7 @@ class _$MediaChangesResponseImpl implements _MediaChangesResponse {
       const DeepCollectionEquality().hash(_updated),
       const DeepCollectionEquality().hash(_deleted));
 
-  /// Create a copy of MediaChangesResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaChangesResponseImplCopyWith<_$MediaChangesResponseImpl>
@@ -1792,11 +1719,8 @@ abstract class _MediaChangesResponse implements MediaChangesResponse {
   List<MediaResponse> get updated;
   @override
   List<String> get deleted;
-
-  /// Create a copy of MediaChangesResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaChangesResponseImplCopyWith<_$MediaChangesResponseImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

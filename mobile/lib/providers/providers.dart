@@ -15,7 +15,6 @@ import 'package:mobile/auth/auth_notifier.dart';
 import 'package:mobile/auth/auth_state.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/services/auth_service.dart';
-import 'package:mobile/data/services/server_check_service.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/local_media_source.dart';
@@ -122,11 +121,6 @@ final authServiceProvider = Provider<AuthService>((ref) {
   final dio = ref.watch(dioClientProvider).dio;
   final storage = ref.watch(secureStorageServiceProvider);
   return AuthService(dio, storage);
-});
-
-final serverCheckServiceProvider = Provider<ServerCheckService>((ref) {
-  final dio = ref.watch(dioClientProvider).dio;
-  return ServerCheckService(dio);
 });
 
 final mediaStreamProvider = StreamProvider<List<UnifiedMediaEntity>>((ref) {

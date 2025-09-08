@@ -31,12 +31,8 @@ mixin _$UserProfileEntity {
   double get usedStorage => throw _privateConstructorUsedError;
   double get totalStorage => throw _privateConstructorUsedError;
 
-  /// Serializes this UserProfileEntity to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of UserProfileEntity
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $UserProfileEntityCopyWith<UserProfileEntity> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -66,8 +62,6 @@ class _$UserProfileEntityCopyWithImpl<$Res, $Val extends UserProfileEntity>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of UserProfileEntity
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -132,8 +126,6 @@ class __$$UserProfileEntityImplCopyWithImpl<$Res>
       $Res Function(_$UserProfileEntityImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of UserProfileEntity
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -227,14 +219,12 @@ class _$UserProfileEntityImpl extends _UserProfileEntity {
                 other.totalStorage == totalStorage));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType, id, username, email, avatarUrl, usedStorage, totalStorage);
 
-  /// Create a copy of UserProfileEntity
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$UserProfileEntityImplCopyWith<_$UserProfileEntityImpl> get copyWith =>
@@ -262,25 +252,21 @@ abstract class _UserProfileEntity extends UserProfileEntity {
   factory _UserProfileEntity.fromJson(Map<String, dynamic> json) =
       _$UserProfileEntityImpl.fromJson;
 
-// [合并] 从 UserEntity 中添加了 'id' 字段
-  @override
-  int get id; // 保留 UserProfileEntity 的所有字段
-  @override
+  @override // [合并] 从 UserEntity 中添加了 'id' 字段
+  int get id;
+  @override // 保留 UserProfileEntity 的所有字段
   String get username;
   @override
-  String get email; // [修改] 将 avatarUrl 改为可空，以处理用户未设置头像的情况
+  String get email;
+  @override // [修改] 将 avatarUrl 改为可空，以处理用户未设置头像的情况
 // 这也与原 UserEntity 的定义保持了一致，增加了灵活性
-  @override
   String? get avatarUrl;
   @override
   double get usedStorage;
   @override
   double get totalStorage;
-
-  /// Create a copy of UserProfileEntity
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$UserProfileEntityImplCopyWith<_$UserProfileEntityImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

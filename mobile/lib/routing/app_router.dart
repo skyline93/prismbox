@@ -6,8 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/ui/main/page/main_navigation_page.dart';
 import 'package:mobile/ui/media/pages/media_page.dart';
 import 'package:mobile/ui/album/page/album_page.dart';
-import 'package:mobile/ui/library/page/library_page.dart';
-import 'package:mobile/ui/library/page/server_config_page.dart';
 import 'package:mobile/ui/main/page/login_page.dart';
 import 'package:mobile/ui/main/page/register_page.dart';
 import 'package:mobile/ui/main/page/splash_page.dart';
@@ -45,7 +43,6 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: NavigationRoute.page, path: "/navigation"),
     AutoRoute(page: MediaRoute.page, path: "/media"),
     AutoRoute(page: GalleryRoute.page, path: '/gallery'),
-    AutoRoute(page: ServerConfigRoute.page, path: "/server_config"),
     AutoRoute(page: AlbumRoute.page, path: "/albums"),
     AutoRoute(page: AlbumDetailRoute.page, path: "/album-detail"),
 
