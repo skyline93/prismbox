@@ -42,10 +42,10 @@ class MediaRepositoryImpl implements MediaRepository {
     });
   }
 
-  @override
-  Future<void> createDownloadJob(UnifiedMediaEntity entity) async {
-    return _syncJobManager.createDownloadJob(entity);
-  }
+  // @override
+  // Future<void> createDownloadJob(UnifiedMediaEntity entity) async {
+  //   return _syncJobManager.createDownloadJob(entity);
+  // }
 
   @override
   Future<Uint8List> downloadThumbnail(String uuid) async {
@@ -260,7 +260,7 @@ class MediaRepositoryImpl implements MediaRepository {
     return _syncJobManager.createUploadJobForExistingAsset(entity);
   }
 
- @override
+  @override
   Future<List<String>> uploadAssets(List<AssetEntity> assets) async {
     final List<String> newUuids = [];
     for (final asset in assets) {
@@ -276,7 +276,10 @@ class MediaRepositoryImpl implements MediaRepository {
         }
 
         // 2. 调用修正后的方法，传入文件和类型
-        final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(file, mediaType);
+        final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(
+          file,
+          mediaType,
+        );
         newUuids.add(remoteMedia.uuid);
       }
     }
@@ -291,12 +294,17 @@ class MediaRepositoryImpl implements MediaRepository {
       throw Exception('Failed to get file from asset: ${asset.id}');
     }
 
-    final mediaType = asset.type == AssetType.video ? MediaType.video : MediaType.image;
+    final mediaType = asset.type == AssetType.video
+        ? MediaType.video
+        : MediaType.image;
 
     // 调用数据源上传文件。
     // 这里我们假设 _cloudDataSource.uploadFile 返回的是一个 MediaResponse 对象。
     // 如果它当前返回的是 String (UUID)，需要修改它以返回完整的媒体信息。
-    final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(file, mediaType);
+    final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(
+      file,
+      mediaType,
+    );
 
     // 使用已有的工厂构造函数，将从服务器返回的数据转换为我们的领域实体
     return UnifiedMediaEntity.fromRemoteMedia(remoteMedia);

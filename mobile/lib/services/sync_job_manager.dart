@@ -151,47 +151,47 @@ class SyncJobManager {
     BackgroundServiceManager.triggerImmediateSync();
   }
 
-  Future<void> createDownloadJob(UnifiedMediaEntity entity) async {
-    final existingJob =
-        await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
-              (tbl) =>
-                  tbl.assetId.equals(entity.id) &
-                  tbl.jobType.equalsValue(JobType.downloadOriginal) &
-                  tbl.status.equalsValue(JobStatus.pending),
-            ))
-            .getSingleOrNull();
+  // Future<void> createDownloadJob(UnifiedMediaEntity entity) async {
+  //   final existingJob =
+  //       await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
+  //             (tbl) =>
+  //                 tbl.assetId.equals(entity.id) &
+  //                 tbl.jobType.equalsValue(JobType.downloadOriginal) &
+  //                 tbl.status.equalsValue(JobStatus.pending),
+  //           ))
+  //           .getSingleOrNull();
 
-    if (existingJob != null) {
-      log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的下载任务，跳过。');
-      return;
-    }
+  //   if (existingJob != null) {
+  //     log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的下载任务，跳过。');
+  //     return;
+  //   }
 
-    try {
-      await _db.transaction(() async {
-        await _mediaAssetDao.updateAssetStatus(
-          entity.id,
-          SyncStatus.downloading,
-        );
+  //   try {
+  //     await _db.transaction(() async {
+  //       await _mediaAssetDao.updateAssetStatus(
+  //         entity.id,
+  //         SyncStatus.downloading,
+  //       );
 
-        await _syncJobDao
-            .into(_syncJobDao.syncJobs)
-            .insert(
-              SyncJobsCompanion.insert(
-                assetId: Value(entity.id),
-                jobType: JobType.downloadOriginal,
-                status: JobStatus.pending,
-                priority: Value(10),
-              ),
-            );
-      });
-      log('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
+  //       await _syncJobDao
+  //           .into(_syncJobDao.syncJobs)
+  //           .insert(
+  //             SyncJobsCompanion.insert(
+  //               assetId: Value(entity.id),
+  //               jobType: JobType.downloadOriginal,
+  //               status: JobStatus.pending,
+  //               priority: Value(10),
+  //             ),
+  //           );
+  //     });
+  //     log('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
 
-      BackgroundServiceManager.triggerImmediateSync();
-    } catch (e, s) {
-      log('[SyncJobManager] 创建下载任务时出错', error: e, stackTrace: s);
-      await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.cloudOnly);
-    }
-  }
+  //     BackgroundServiceManager.triggerImmediateSync();
+  //   } catch (e, s) {
+  //     log('[SyncJobManager] 创建下载任务时出错', error: e, stackTrace: s);
+  //     await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.cloudOnly);
+  //   }
+  // }
 
   Future<MediaAssetsCompanion?> _assetEntityToCompanion(
     AssetEntity asset,
@@ -225,8 +225,7 @@ class SyncJobManager {
         await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
               (tbl) =>
                   tbl.assetId.equals(entity.id) &
-                  (tbl.jobType.equalsValue(JobType.upload) |
-                      tbl.jobType.equalsValue(JobType.downloadOriginal)) &
+                  (tbl.jobType.equalsValue(JobType.upload)) &
                   (tbl.status.equalsValue(JobStatus.pending) |
                       tbl.status.equalsValue(JobStatus.inProgress)),
             ))

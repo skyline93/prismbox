@@ -179,6 +179,16 @@ class UserProfileDialog extends HookConsumerWidget {
                 const Divider(height: 1),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  leading: const Icon(Icons.swap_horiz),
+                  title: const Text('传输管理'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () async {
+                    context.router.pop();
+                    context.router.push(const TransferManagerRoute());
+                  },
+                ),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
                   leading: const Icon(Icons.settings_outlined),
                   title: const Text('设置'),
                   trailing: const Icon(Icons.chevron_right, size: 20),

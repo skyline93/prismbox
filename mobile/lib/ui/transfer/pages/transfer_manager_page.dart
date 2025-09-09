@@ -15,7 +15,10 @@ class TransferManagerPage extends ConsumerWidget {
     final downloadJobsAsync = ref.watch(downloadJobsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Transfer Manager')),
+      appBar: AppBar(
+        title: const Text('Transfer Manager'),
+        leading: const BackButton(),
+      ),
       body: downloadJobsAsync.when(
         data: (jobs) {
           if (jobs.isEmpty) {

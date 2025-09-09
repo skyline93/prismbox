@@ -221,4 +221,16 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     final query = select(mediaAssets)..where((tbl) => tbl.localId.isIn(ids));
     return query.watch();
   }
+
+  Future<MediaAsset?> getAssetByCloudUuid(String cloudUuid) {
+    return (select(
+      mediaAssets,
+    )..where((tbl) => tbl.cloudUuid.equals(cloudUuid))).getSingleOrNull();
+  }
+
+  Future<MediaAsset?> getAssetById(int id) {
+    return (select(
+      mediaAssets,
+    )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
 }

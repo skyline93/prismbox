@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:mobile/providers/transfer_providers.dart';
 
 part 'gallery_viewmodel.freezed.dart';
 
@@ -80,8 +81,8 @@ class MediaDetailNotifier
   }
 
   Future<void> download() async {
-    final repo = ref.read(mediaRepositoryProvider);
-    await repo.createDownloadJob(arg);
+    final transferService = ref.read(transferServiceProvider);
+    await transferService.startDownloadForAsset(arg);
   }
 
   Future<void> upload() async {

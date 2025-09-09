@@ -9,7 +9,7 @@ import 'package:mobile/domain/entities/unified_album_entity.dart';
 abstract class MediaRepository {
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream();
 
-  Future<void> createDownloadJob(UnifiedMediaEntity entity);
+  // Future<void> createDownloadJob(UnifiedMediaEntity entity);
 
   Future<void> createUploadJobForExistingAsset(UnifiedMediaEntity entity);
 

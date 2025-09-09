@@ -10,8 +10,8 @@ import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
-import 'package:path_provider/path_provider.dart';
-import 'package:photo_manager/photo_manager.dart';
+// import 'package:path_provider/path_provider.dart';
+// import 'package:photo_manager/photo_manager.dart';
 
 @injectable
 class SyncJobProcessor {
@@ -55,9 +55,9 @@ class SyncJobProcessor {
         case JobType.syncCloudChanges:
           await _handleSyncCloudChangesJob(job);
           break;
-        case JobType.downloadOriginal:
-          await _handleDownloadOriginalJob(job);
-          break;
+        // case JobType.downloadOriginal:
+        //   await _handleDownloadOriginalJob(job);
+        //   break;
 
         default:
           log(
@@ -83,9 +83,9 @@ class SyncJobProcessor {
           case JobType.upload:
             newStatus = SyncStatus.uploadFailed;
             break;
-          case JobType.downloadOriginal:
-            newStatus = SyncStatus.downloadFailed;
-            break;
+          // case JobType.downloadOriginal:
+          //   newStatus = SyncStatus.downloadFailed;
+          //   break;
           default:
             break;
         }
@@ -104,79 +104,79 @@ class SyncJobProcessor {
     return true;
   }
 
-  Future<void> _handleDownloadOriginalJob(SyncJob job) async {
-    final assetId = job.assetId;
-    if (assetId == null) {
-      throw Exception('任务 #${job.id} (downloadOriginal) 缺少必需的 assetId。');
-    }
+  // Future<void> _handleDownloadOriginalJob(SyncJob job) async {
+  //   final assetId = job.assetId;
+  //   if (assetId == null) {
+  //     throw Exception('任务 #${job.id} (downloadOriginal) 缺少必需的 assetId。');
+  //   }
 
-    final asset = await (_mediaAssetDao.select(
-      _mediaAssetDao.mediaAssets,
-    )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
+  //   final asset = await (_mediaAssetDao.select(
+  //     _mediaAssetDao.mediaAssets,
+  //   )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
 
-    if (asset == null) {
-      throw Exception('任务 #${job.id} 对应的资产不存在。');
-    }
-    if (asset.cloudUuid == null) {
-      throw Exception('资产 #${asset.id} 缺少 cloudUuid，无法下载。');
-    }
+  //   if (asset == null) {
+  //     throw Exception('任务 #${job.id} 对应的资产不存在。');
+  //   }
+  //   if (asset.cloudUuid == null) {
+  //     throw Exception('资产 #${asset.id} 缺少 cloudUuid，无法下载。');
+  //   }
 
-    log('开始下载资产: ${asset.cloudUuid}', name: 'SyncJobProcessor');
-    final fileBytes = await remoteApi.downloadOriginalMedia(asset.cloudUuid!);
+  //   log('开始下载资产: ${asset.cloudUuid}', name: 'SyncJobProcessor');
+  //   final fileBytes = await remoteApi.downloadOriginalMedia(asset.cloudUuid!);
 
-    // [+] 3. 将下载的数据写入临时文件
-    final tempDir = await getTemporaryDirectory();
-    final tempFile = File('${tempDir.path}/${asset.fileName}');
-    await tempFile.writeAsBytes(fileBytes);
-    log('文件已临时保存至: ${tempFile.path}', name: 'SyncJobProcessor');
+  //   // [+] 3. 将下载的数据写入临时文件
+  //   final tempDir = await getTemporaryDirectory();
+  //   final tempFile = File('${tempDir.path}/${asset.fileName}');
+  //   await tempFile.writeAsBytes(fileBytes);
+  //   log('文件已临时保存至: ${tempFile.path}', name: 'SyncJobProcessor');
 
-    // [+] 4. 使用 photo_manager 将临时文件保存到系统相册
-    // 注意：这里需要权限。确保你的应用已经处理了权限请求。
-    final AssetEntity? savedAsset;
-    if (asset.assetType == MediaType.image) {
-      savedAsset = await PhotoManager.editor.saveImageWithPath(
-        tempFile.path,
-        title: asset.fileName,
-      );
-    } else if (asset.assetType == MediaType.video) {
-      savedAsset = await PhotoManager.editor.saveVideo(
-        tempFile,
-        title: asset.fileName,
-      );
-    } else {
-      savedAsset = null;
-      log('不支持的资产类型，无法保存到相册: ${asset.assetType}', name: 'SyncJobProcessor');
-    }
+  //   // [+] 4. 使用 photo_manager 将临时文件保存到系统相册
+  //   // 注意：这里需要权限。确保你的应用已经处理了权限请求。
+  //   final AssetEntity? savedAsset;
+  //   if (asset.assetType == MediaType.image) {
+  //     savedAsset = await PhotoManager.editor.saveImageWithPath(
+  //       tempFile.path,
+  //       title: asset.fileName,
+  //     );
+  //   } else if (asset.assetType == MediaType.video) {
+  //     savedAsset = await PhotoManager.editor.saveVideo(
+  //       tempFile,
+  //       title: asset.fileName,
+  //     );
+  //   } else {
+  //     savedAsset = null;
+  //     log('不支持的资产类型，无法保存到相册: ${asset.assetType}', name: 'SyncJobProcessor');
+  //   }
 
-    // [+] 5. 清理临时文件
-    await tempFile.delete();
+  //   // [+] 5. 清理临时文件
+  //   await tempFile.delete();
 
-    if (savedAsset == null) {
-      throw Exception('无法将媒体文件保存到系统相册。请检查权限或文件格式。');
-    }
+  //   if (savedAsset == null) {
+  //     throw Exception('无法将媒体文件保存到系统相册。请检查权限或文件格式。');
+  //   }
 
-    // [+] 6. 获取由 photo_manager 管理的最终文件路径
-    final finalFile = await savedAsset.file;
-    if (finalFile == null) {
-      throw Exception('无法从相册获取已保存文件的路径。');
-    }
-    final finalPath = finalFile.path;
+  //   // [+] 6. 获取由 photo_manager 管理的最终文件路径
+  //   final finalFile = await savedAsset.file;
+  //   if (finalFile == null) {
+  //     throw Exception('无法从相册获取已保存文件的路径。');
+  //   }
+  //   final finalPath = finalFile.path;
 
-    log('文件已成功注册到系统相册，路径为: $finalPath', name: 'SyncJobProcessor');
+  //   log('文件已成功注册到系统相册，路径为: $finalPath', name: 'SyncJobProcessor');
 
-    await _mediaAssetDao.updateAsset(
-      MediaAssetsCompanion(
-        id: Value(asset.id),
-        localId: Value(savedAsset.id),
-        filePath: Value(finalPath),
-        syncStatus: const Value(SyncStatus.synced),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-    log('数据库记录 #${asset.id} 已更新。', name: 'SyncJobProcessor');
+  //   await _mediaAssetDao.updateAsset(
+  //     MediaAssetsCompanion(
+  //       id: Value(asset.id),
+  //       localId: Value(savedAsset.id),
+  //       filePath: Value(finalPath),
+  //       syncStatus: const Value(SyncStatus.synced),
+  //       updatedAt: Value(DateTime.now()),
+  //     ),
+  //   );
+  //   log('数据库记录 #${asset.id} 已更新。', name: 'SyncJobProcessor');
 
-    await _syncJobDao.deleteJob(job.id);
-  }
+  //   await _syncJobDao.deleteJob(job.id);
+  // }
 
   Future<void> _handleUploadJob(SyncJob job) async {
     final assetId = job.assetId;

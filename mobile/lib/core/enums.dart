@@ -16,7 +16,7 @@ enum SyncStatus {
 enum JobType {
   upload,
   deleteCloud,
-  downloadOriginal,
+  // downloadOriginal,
   downloadThumbnail,
   syncCloudChanges,
   processCloudCreate,
@@ -54,7 +54,8 @@ enum DownloadJobStatus {
   paused, // 已暂停
   success, // 成功
   failed, // 失败
-  canceled, downloading, // 已取消
+  canceled,
+  downloading, // 已取消
 }
 
 /// 上传任务的状态枚举
