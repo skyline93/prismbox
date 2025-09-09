@@ -1629,6 +1629,195 @@
                 }
             }
         },
+        "/media/upload/chunk": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "上传指定 upload_id 和 chunk_index 的文件分片。",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "上传单个文件分片",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "上传作业ID",
+                        "name": "upload_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分片索引 (从0开始)",
+                        "name": "chunk_index",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "分片文件本身",
+                        "name": "chunk",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "分片上传成功",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或作业无效",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/upload/complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "通知服务器所有分片已上传完毕，请求合并文件并创建媒体记录。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "完成分片上传",
+                "parameters": [
+                    {
+                        "description": "完成上传所需的信息",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CompleteUploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文件合并成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.MediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求错误、分片不完整或哈希校验失败",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/upload/initiate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "请求开始一个大文件的上传。服务器会先进行秒传检查，如果文件不存在，则创建一个上传作业并返回 upload_id。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "初始化大文件分片上传",
+                "parameters": [
+                    {
+                        "description": "文件元数据",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.InitiateUploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文件已存在（秒传成功）",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.MediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "201": {
+                        "description": "初始化成功，可以开始上传分片",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.InitiateUploadResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/media/{uuid}": {
             "get": {
                 "security": [
@@ -2609,6 +2798,29 @@
                 }
             }
         },
+        "handlers.CompleteUploadRequest": {
+            "type": "object",
+            "required": [
+                "hash",
+                "item_type",
+                "original_filename",
+                "upload_id"
+            ],
+            "properties": {
+                "hash": {
+                    "type": "string"
+                },
+                "item_type": {
+                    "$ref": "#/definitions/constant.MediaType"
+                },
+                "original_filename": {
+                    "type": "string"
+                },
+                "upload_id": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.CreateAlbumInput": {
             "type": "object",
             "required": [
@@ -2641,6 +2853,46 @@
                 },
                 "target_user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.InitiateUploadRequest": {
+            "type": "object",
+            "required": [
+                "hash",
+                "item_type",
+                "original_filename",
+                "total_size"
+            ],
+            "properties": {
+                "hash": {
+                    "type": "string"
+                },
+                "item_type": {
+                    "$ref": "#/definitions/constant.MediaType"
+                },
+                "original_filename": {
+                    "type": "string"
+                },
+                "total_size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.InitiateUploadResponse": {
+            "type": "object",
+            "properties": {
+                "chunk_size": {
+                    "type": "integer"
+                },
+                "upload_id": {
+                    "type": "string"
+                },
+                "uploaded_chunks": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

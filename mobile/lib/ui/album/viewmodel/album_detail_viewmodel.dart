@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 

@@ -100,3 +100,16 @@ type Share struct {
 	// 是否已被创建者手动撤销
 	IsRevoked bool `gorm:"default:false"`
 }
+
+// UploadTask 用于追踪正在进行中的分片上传作业
+type UploadTask struct {
+	ID        string `gorm:"primaryKey;type:varchar(36)"` // Unique Upload ID (UUID)
+	UserID    uint   `gorm:"index"`
+	FileHash  string `gorm:"index;type:varchar(64)"` // SHA256 hash of the complete file
+	TotalSize int64
+	ChunkSize int
+	NumChunks int
+	Status    string `gorm:"type:varchar(20)"` // INITIATED, COMPLETED, FAILED
+	CreatedAt time.Time
+	ExpiresAt time.Time `gorm:"index"` // 用于清理任务，防止产生垃圾数据
+}

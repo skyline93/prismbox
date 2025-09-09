@@ -1744,6 +1744,955 @@ class AlbumsCompanion extends UpdateCompanion<Album> {
   }
 }
 
+class $UploadJobsTable extends UploadJobs
+    with TableInfo<$UploadJobsTable, UploadJob> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UploadJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _jobIdMeta = const VerificationMeta('jobId');
+  @override
+  late final GeneratedColumn<String> jobId = GeneratedColumn<String>(
+      'job_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _uploadIdMeta =
+      const VerificationMeta('uploadId');
+  @override
+  late final GeneratedColumn<String> uploadId = GeneratedColumn<String>(
+      'upload_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _filePathMeta =
+      const VerificationMeta('filePath');
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+      'file_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fileHashMeta =
+      const VerificationMeta('fileHash');
+  @override
+  late final GeneratedColumn<String> fileHash = GeneratedColumn<String>(
+      'file_hash', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _totalSizeMeta =
+      const VerificationMeta('totalSize');
+  @override
+  late final GeneratedColumn<int> totalSize = GeneratedColumn<int>(
+      'total_size', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _chunkSizeMeta =
+      const VerificationMeta('chunkSize');
+  @override
+  late final GeneratedColumn<int> chunkSize = GeneratedColumn<int>(
+      'chunk_size', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _totalChunksMeta =
+      const VerificationMeta('totalChunks');
+  @override
+  late final GeneratedColumn<int> totalChunks = GeneratedColumn<int>(
+      'total_chunks', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumnWithTypeConverter<UploadJobStatus, String> status =
+      GeneratedColumn<String>('status', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<UploadJobStatus>($UploadJobsTable.$converterstatus);
+  static const VerificationMeta _progressMeta =
+      const VerificationMeta('progress');
+  @override
+  late final GeneratedColumn<double> progress = GeneratedColumn<double>(
+      'progress', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        jobId,
+        uploadId,
+        filePath,
+        fileHash,
+        totalSize,
+        chunkSize,
+        totalChunks,
+        status,
+        progress,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'upload_jobs';
+  @override
+  VerificationContext validateIntegrity(Insertable<UploadJob> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('job_id')) {
+      context.handle(
+          _jobIdMeta, jobId.isAcceptableOrUnknown(data['job_id']!, _jobIdMeta));
+    } else if (isInserting) {
+      context.missing(_jobIdMeta);
+    }
+    if (data.containsKey('upload_id')) {
+      context.handle(_uploadIdMeta,
+          uploadId.isAcceptableOrUnknown(data['upload_id']!, _uploadIdMeta));
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(_filePathMeta,
+          filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta));
+    } else if (isInserting) {
+      context.missing(_filePathMeta);
+    }
+    if (data.containsKey('file_hash')) {
+      context.handle(_fileHashMeta,
+          fileHash.isAcceptableOrUnknown(data['file_hash']!, _fileHashMeta));
+    } else if (isInserting) {
+      context.missing(_fileHashMeta);
+    }
+    if (data.containsKey('total_size')) {
+      context.handle(_totalSizeMeta,
+          totalSize.isAcceptableOrUnknown(data['total_size']!, _totalSizeMeta));
+    } else if (isInserting) {
+      context.missing(_totalSizeMeta);
+    }
+    if (data.containsKey('chunk_size')) {
+      context.handle(_chunkSizeMeta,
+          chunkSize.isAcceptableOrUnknown(data['chunk_size']!, _chunkSizeMeta));
+    } else if (isInserting) {
+      context.missing(_chunkSizeMeta);
+    }
+    if (data.containsKey('total_chunks')) {
+      context.handle(
+          _totalChunksMeta,
+          totalChunks.isAcceptableOrUnknown(
+              data['total_chunks']!, _totalChunksMeta));
+    } else if (isInserting) {
+      context.missing(_totalChunksMeta);
+    }
+    context.handle(_statusMeta, const VerificationResult.success());
+    if (data.containsKey('progress')) {
+      context.handle(_progressMeta,
+          progress.isAcceptableOrUnknown(data['progress']!, _progressMeta));
+    } else if (isInserting) {
+      context.missing(_progressMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {jobId};
+  @override
+  UploadJob map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UploadJob(
+      jobId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}job_id'])!,
+      uploadId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}upload_id']),
+      filePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}file_path'])!,
+      fileHash: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}file_hash'])!,
+      totalSize: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}total_size'])!,
+      chunkSize: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}chunk_size'])!,
+      totalChunks: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}total_chunks'])!,
+      status: $UploadJobsTable.$converterstatus.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!),
+      progress: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}progress'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $UploadJobsTable createAlias(String alias) {
+    return $UploadJobsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<UploadJobStatus, String> $converterstatus =
+      const UploadJobStatusConverter();
+}
+
+class UploadJob extends DataClass implements Insertable<UploadJob> {
+  final String jobId;
+  final String? uploadId;
+  final String filePath;
+  final String fileHash;
+  final int totalSize;
+  final int chunkSize;
+  final int totalChunks;
+  final UploadJobStatus status;
+  final double progress;
+  final DateTime createdAt;
+  const UploadJob(
+      {required this.jobId,
+      this.uploadId,
+      required this.filePath,
+      required this.fileHash,
+      required this.totalSize,
+      required this.chunkSize,
+      required this.totalChunks,
+      required this.status,
+      required this.progress,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['job_id'] = Variable<String>(jobId);
+    if (!nullToAbsent || uploadId != null) {
+      map['upload_id'] = Variable<String>(uploadId);
+    }
+    map['file_path'] = Variable<String>(filePath);
+    map['file_hash'] = Variable<String>(fileHash);
+    map['total_size'] = Variable<int>(totalSize);
+    map['chunk_size'] = Variable<int>(chunkSize);
+    map['total_chunks'] = Variable<int>(totalChunks);
+    {
+      map['status'] =
+          Variable<String>($UploadJobsTable.$converterstatus.toSql(status));
+    }
+    map['progress'] = Variable<double>(progress);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  UploadJobsCompanion toCompanion(bool nullToAbsent) {
+    return UploadJobsCompanion(
+      jobId: Value(jobId),
+      uploadId: uploadId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(uploadId),
+      filePath: Value(filePath),
+      fileHash: Value(fileHash),
+      totalSize: Value(totalSize),
+      chunkSize: Value(chunkSize),
+      totalChunks: Value(totalChunks),
+      status: Value(status),
+      progress: Value(progress),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory UploadJob.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UploadJob(
+      jobId: serializer.fromJson<String>(json['jobId']),
+      uploadId: serializer.fromJson<String?>(json['uploadId']),
+      filePath: serializer.fromJson<String>(json['filePath']),
+      fileHash: serializer.fromJson<String>(json['fileHash']),
+      totalSize: serializer.fromJson<int>(json['totalSize']),
+      chunkSize: serializer.fromJson<int>(json['chunkSize']),
+      totalChunks: serializer.fromJson<int>(json['totalChunks']),
+      status: serializer.fromJson<UploadJobStatus>(json['status']),
+      progress: serializer.fromJson<double>(json['progress']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'jobId': serializer.toJson<String>(jobId),
+      'uploadId': serializer.toJson<String?>(uploadId),
+      'filePath': serializer.toJson<String>(filePath),
+      'fileHash': serializer.toJson<String>(fileHash),
+      'totalSize': serializer.toJson<int>(totalSize),
+      'chunkSize': serializer.toJson<int>(chunkSize),
+      'totalChunks': serializer.toJson<int>(totalChunks),
+      'status': serializer.toJson<UploadJobStatus>(status),
+      'progress': serializer.toJson<double>(progress),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  UploadJob copyWith(
+          {String? jobId,
+          Value<String?> uploadId = const Value.absent(),
+          String? filePath,
+          String? fileHash,
+          int? totalSize,
+          int? chunkSize,
+          int? totalChunks,
+          UploadJobStatus? status,
+          double? progress,
+          DateTime? createdAt}) =>
+      UploadJob(
+        jobId: jobId ?? this.jobId,
+        uploadId: uploadId.present ? uploadId.value : this.uploadId,
+        filePath: filePath ?? this.filePath,
+        fileHash: fileHash ?? this.fileHash,
+        totalSize: totalSize ?? this.totalSize,
+        chunkSize: chunkSize ?? this.chunkSize,
+        totalChunks: totalChunks ?? this.totalChunks,
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  UploadJob copyWithCompanion(UploadJobsCompanion data) {
+    return UploadJob(
+      jobId: data.jobId.present ? data.jobId.value : this.jobId,
+      uploadId: data.uploadId.present ? data.uploadId.value : this.uploadId,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      fileHash: data.fileHash.present ? data.fileHash.value : this.fileHash,
+      totalSize: data.totalSize.present ? data.totalSize.value : this.totalSize,
+      chunkSize: data.chunkSize.present ? data.chunkSize.value : this.chunkSize,
+      totalChunks:
+          data.totalChunks.present ? data.totalChunks.value : this.totalChunks,
+      status: data.status.present ? data.status.value : this.status,
+      progress: data.progress.present ? data.progress.value : this.progress,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UploadJob(')
+          ..write('jobId: $jobId, ')
+          ..write('uploadId: $uploadId, ')
+          ..write('filePath: $filePath, ')
+          ..write('fileHash: $fileHash, ')
+          ..write('totalSize: $totalSize, ')
+          ..write('chunkSize: $chunkSize, ')
+          ..write('totalChunks: $totalChunks, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(jobId, uploadId, filePath, fileHash,
+      totalSize, chunkSize, totalChunks, status, progress, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UploadJob &&
+          other.jobId == this.jobId &&
+          other.uploadId == this.uploadId &&
+          other.filePath == this.filePath &&
+          other.fileHash == this.fileHash &&
+          other.totalSize == this.totalSize &&
+          other.chunkSize == this.chunkSize &&
+          other.totalChunks == this.totalChunks &&
+          other.status == this.status &&
+          other.progress == this.progress &&
+          other.createdAt == this.createdAt);
+}
+
+class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
+  final Value<String> jobId;
+  final Value<String?> uploadId;
+  final Value<String> filePath;
+  final Value<String> fileHash;
+  final Value<int> totalSize;
+  final Value<int> chunkSize;
+  final Value<int> totalChunks;
+  final Value<UploadJobStatus> status;
+  final Value<double> progress;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const UploadJobsCompanion({
+    this.jobId = const Value.absent(),
+    this.uploadId = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.fileHash = const Value.absent(),
+    this.totalSize = const Value.absent(),
+    this.chunkSize = const Value.absent(),
+    this.totalChunks = const Value.absent(),
+    this.status = const Value.absent(),
+    this.progress = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UploadJobsCompanion.insert({
+    required String jobId,
+    this.uploadId = const Value.absent(),
+    required String filePath,
+    required String fileHash,
+    required int totalSize,
+    required int chunkSize,
+    required int totalChunks,
+    required UploadJobStatus status,
+    required double progress,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : jobId = Value(jobId),
+        filePath = Value(filePath),
+        fileHash = Value(fileHash),
+        totalSize = Value(totalSize),
+        chunkSize = Value(chunkSize),
+        totalChunks = Value(totalChunks),
+        status = Value(status),
+        progress = Value(progress),
+        createdAt = Value(createdAt);
+  static Insertable<UploadJob> custom({
+    Expression<String>? jobId,
+    Expression<String>? uploadId,
+    Expression<String>? filePath,
+    Expression<String>? fileHash,
+    Expression<int>? totalSize,
+    Expression<int>? chunkSize,
+    Expression<int>? totalChunks,
+    Expression<String>? status,
+    Expression<double>? progress,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (jobId != null) 'job_id': jobId,
+      if (uploadId != null) 'upload_id': uploadId,
+      if (filePath != null) 'file_path': filePath,
+      if (fileHash != null) 'file_hash': fileHash,
+      if (totalSize != null) 'total_size': totalSize,
+      if (chunkSize != null) 'chunk_size': chunkSize,
+      if (totalChunks != null) 'total_chunks': totalChunks,
+      if (status != null) 'status': status,
+      if (progress != null) 'progress': progress,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UploadJobsCompanion copyWith(
+      {Value<String>? jobId,
+      Value<String?>? uploadId,
+      Value<String>? filePath,
+      Value<String>? fileHash,
+      Value<int>? totalSize,
+      Value<int>? chunkSize,
+      Value<int>? totalChunks,
+      Value<UploadJobStatus>? status,
+      Value<double>? progress,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return UploadJobsCompanion(
+      jobId: jobId ?? this.jobId,
+      uploadId: uploadId ?? this.uploadId,
+      filePath: filePath ?? this.filePath,
+      fileHash: fileHash ?? this.fileHash,
+      totalSize: totalSize ?? this.totalSize,
+      chunkSize: chunkSize ?? this.chunkSize,
+      totalChunks: totalChunks ?? this.totalChunks,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (jobId.present) {
+      map['job_id'] = Variable<String>(jobId.value);
+    }
+    if (uploadId.present) {
+      map['upload_id'] = Variable<String>(uploadId.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (fileHash.present) {
+      map['file_hash'] = Variable<String>(fileHash.value);
+    }
+    if (totalSize.present) {
+      map['total_size'] = Variable<int>(totalSize.value);
+    }
+    if (chunkSize.present) {
+      map['chunk_size'] = Variable<int>(chunkSize.value);
+    }
+    if (totalChunks.present) {
+      map['total_chunks'] = Variable<int>(totalChunks.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+          $UploadJobsTable.$converterstatus.toSql(status.value));
+    }
+    if (progress.present) {
+      map['progress'] = Variable<double>(progress.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UploadJobsCompanion(')
+          ..write('jobId: $jobId, ')
+          ..write('uploadId: $uploadId, ')
+          ..write('filePath: $filePath, ')
+          ..write('fileHash: $fileHash, ')
+          ..write('totalSize: $totalSize, ')
+          ..write('chunkSize: $chunkSize, ')
+          ..write('totalChunks: $totalChunks, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadJobsTable extends DownloadJobs
+    with TableInfo<$DownloadJobsTable, DownloadJob> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _jobIdMeta = const VerificationMeta('jobId');
+  @override
+  late final GeneratedColumn<String> jobId = GeneratedColumn<String>(
+      'job_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+      'task_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _mediaUuidMeta =
+      const VerificationMeta('mediaUuid');
+  @override
+  late final GeneratedColumn<String> mediaUuid = GeneratedColumn<String>(
+      'media_uuid', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _downloadUrlMeta =
+      const VerificationMeta('downloadUrl');
+  @override
+  late final GeneratedColumn<String> downloadUrl = GeneratedColumn<String>(
+      'download_url', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _savePathMeta =
+      const VerificationMeta('savePath');
+  @override
+  late final GeneratedColumn<String> savePath = GeneratedColumn<String>(
+      'save_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumnWithTypeConverter<DownloadJobStatus, String>
+      status = GeneratedColumn<String>('status', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<DownloadJobStatus>(
+              $DownloadJobsTable.$converterstatus);
+  static const VerificationMeta _progressMeta =
+      const VerificationMeta('progress');
+  @override
+  late final GeneratedColumn<double> progress = GeneratedColumn<double>(
+      'progress', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        jobId,
+        taskId,
+        mediaUuid,
+        downloadUrl,
+        savePath,
+        status,
+        progress,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'download_jobs';
+  @override
+  VerificationContext validateIntegrity(Insertable<DownloadJob> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('job_id')) {
+      context.handle(
+          _jobIdMeta, jobId.isAcceptableOrUnknown(data['job_id']!, _jobIdMeta));
+    } else if (isInserting) {
+      context.missing(_jobIdMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(_taskIdMeta,
+          taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta));
+    }
+    if (data.containsKey('media_uuid')) {
+      context.handle(_mediaUuidMeta,
+          mediaUuid.isAcceptableOrUnknown(data['media_uuid']!, _mediaUuidMeta));
+    } else if (isInserting) {
+      context.missing(_mediaUuidMeta);
+    }
+    if (data.containsKey('download_url')) {
+      context.handle(
+          _downloadUrlMeta,
+          downloadUrl.isAcceptableOrUnknown(
+              data['download_url']!, _downloadUrlMeta));
+    } else if (isInserting) {
+      context.missing(_downloadUrlMeta);
+    }
+    if (data.containsKey('save_path')) {
+      context.handle(_savePathMeta,
+          savePath.isAcceptableOrUnknown(data['save_path']!, _savePathMeta));
+    } else if (isInserting) {
+      context.missing(_savePathMeta);
+    }
+    context.handle(_statusMeta, const VerificationResult.success());
+    if (data.containsKey('progress')) {
+      context.handle(_progressMeta,
+          progress.isAcceptableOrUnknown(data['progress']!, _progressMeta));
+    } else if (isInserting) {
+      context.missing(_progressMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {jobId};
+  @override
+  DownloadJob map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadJob(
+      jobId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}job_id'])!,
+      taskId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}task_id']),
+      mediaUuid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_uuid'])!,
+      downloadUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}download_url'])!,
+      savePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}save_path'])!,
+      status: $DownloadJobsTable.$converterstatus.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!),
+      progress: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}progress'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $DownloadJobsTable createAlias(String alias) {
+    return $DownloadJobsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DownloadJobStatus, String> $converterstatus =
+      const DownloadJobStatusConverter();
+}
+
+class DownloadJob extends DataClass implements Insertable<DownloadJob> {
+  final String jobId;
+  final String? taskId;
+  final String mediaUuid;
+  final String downloadUrl;
+  final String savePath;
+  final DownloadJobStatus status;
+  final double progress;
+  final DateTime createdAt;
+  const DownloadJob(
+      {required this.jobId,
+      this.taskId,
+      required this.mediaUuid,
+      required this.downloadUrl,
+      required this.savePath,
+      required this.status,
+      required this.progress,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['job_id'] = Variable<String>(jobId);
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<String>(taskId);
+    }
+    map['media_uuid'] = Variable<String>(mediaUuid);
+    map['download_url'] = Variable<String>(downloadUrl);
+    map['save_path'] = Variable<String>(savePath);
+    {
+      map['status'] =
+          Variable<String>($DownloadJobsTable.$converterstatus.toSql(status));
+    }
+    map['progress'] = Variable<double>(progress);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DownloadJobsCompanion toCompanion(bool nullToAbsent) {
+    return DownloadJobsCompanion(
+      jobId: Value(jobId),
+      taskId:
+          taskId == null && nullToAbsent ? const Value.absent() : Value(taskId),
+      mediaUuid: Value(mediaUuid),
+      downloadUrl: Value(downloadUrl),
+      savePath: Value(savePath),
+      status: Value(status),
+      progress: Value(progress),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DownloadJob.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadJob(
+      jobId: serializer.fromJson<String>(json['jobId']),
+      taskId: serializer.fromJson<String?>(json['taskId']),
+      mediaUuid: serializer.fromJson<String>(json['mediaUuid']),
+      downloadUrl: serializer.fromJson<String>(json['downloadUrl']),
+      savePath: serializer.fromJson<String>(json['savePath']),
+      status: serializer.fromJson<DownloadJobStatus>(json['status']),
+      progress: serializer.fromJson<double>(json['progress']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'jobId': serializer.toJson<String>(jobId),
+      'taskId': serializer.toJson<String?>(taskId),
+      'mediaUuid': serializer.toJson<String>(mediaUuid),
+      'downloadUrl': serializer.toJson<String>(downloadUrl),
+      'savePath': serializer.toJson<String>(savePath),
+      'status': serializer.toJson<DownloadJobStatus>(status),
+      'progress': serializer.toJson<double>(progress),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DownloadJob copyWith(
+          {String? jobId,
+          Value<String?> taskId = const Value.absent(),
+          String? mediaUuid,
+          String? downloadUrl,
+          String? savePath,
+          DownloadJobStatus? status,
+          double? progress,
+          DateTime? createdAt}) =>
+      DownloadJob(
+        jobId: jobId ?? this.jobId,
+        taskId: taskId.present ? taskId.value : this.taskId,
+        mediaUuid: mediaUuid ?? this.mediaUuid,
+        downloadUrl: downloadUrl ?? this.downloadUrl,
+        savePath: savePath ?? this.savePath,
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  DownloadJob copyWithCompanion(DownloadJobsCompanion data) {
+    return DownloadJob(
+      jobId: data.jobId.present ? data.jobId.value : this.jobId,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      mediaUuid: data.mediaUuid.present ? data.mediaUuid.value : this.mediaUuid,
+      downloadUrl:
+          data.downloadUrl.present ? data.downloadUrl.value : this.downloadUrl,
+      savePath: data.savePath.present ? data.savePath.value : this.savePath,
+      status: data.status.present ? data.status.value : this.status,
+      progress: data.progress.present ? data.progress.value : this.progress,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadJob(')
+          ..write('jobId: $jobId, ')
+          ..write('taskId: $taskId, ')
+          ..write('mediaUuid: $mediaUuid, ')
+          ..write('downloadUrl: $downloadUrl, ')
+          ..write('savePath: $savePath, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(jobId, taskId, mediaUuid, downloadUrl,
+      savePath, status, progress, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadJob &&
+          other.jobId == this.jobId &&
+          other.taskId == this.taskId &&
+          other.mediaUuid == this.mediaUuid &&
+          other.downloadUrl == this.downloadUrl &&
+          other.savePath == this.savePath &&
+          other.status == this.status &&
+          other.progress == this.progress &&
+          other.createdAt == this.createdAt);
+}
+
+class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
+  final Value<String> jobId;
+  final Value<String?> taskId;
+  final Value<String> mediaUuid;
+  final Value<String> downloadUrl;
+  final Value<String> savePath;
+  final Value<DownloadJobStatus> status;
+  final Value<double> progress;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DownloadJobsCompanion({
+    this.jobId = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.mediaUuid = const Value.absent(),
+    this.downloadUrl = const Value.absent(),
+    this.savePath = const Value.absent(),
+    this.status = const Value.absent(),
+    this.progress = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DownloadJobsCompanion.insert({
+    required String jobId,
+    this.taskId = const Value.absent(),
+    required String mediaUuid,
+    required String downloadUrl,
+    required String savePath,
+    required DownloadJobStatus status,
+    required double progress,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : jobId = Value(jobId),
+        mediaUuid = Value(mediaUuid),
+        downloadUrl = Value(downloadUrl),
+        savePath = Value(savePath),
+        status = Value(status),
+        progress = Value(progress),
+        createdAt = Value(createdAt);
+  static Insertable<DownloadJob> custom({
+    Expression<String>? jobId,
+    Expression<String>? taskId,
+    Expression<String>? mediaUuid,
+    Expression<String>? downloadUrl,
+    Expression<String>? savePath,
+    Expression<String>? status,
+    Expression<double>? progress,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (jobId != null) 'job_id': jobId,
+      if (taskId != null) 'task_id': taskId,
+      if (mediaUuid != null) 'media_uuid': mediaUuid,
+      if (downloadUrl != null) 'download_url': downloadUrl,
+      if (savePath != null) 'save_path': savePath,
+      if (status != null) 'status': status,
+      if (progress != null) 'progress': progress,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DownloadJobsCompanion copyWith(
+      {Value<String>? jobId,
+      Value<String?>? taskId,
+      Value<String>? mediaUuid,
+      Value<String>? downloadUrl,
+      Value<String>? savePath,
+      Value<DownloadJobStatus>? status,
+      Value<double>? progress,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return DownloadJobsCompanion(
+      jobId: jobId ?? this.jobId,
+      taskId: taskId ?? this.taskId,
+      mediaUuid: mediaUuid ?? this.mediaUuid,
+      downloadUrl: downloadUrl ?? this.downloadUrl,
+      savePath: savePath ?? this.savePath,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (jobId.present) {
+      map['job_id'] = Variable<String>(jobId.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (mediaUuid.present) {
+      map['media_uuid'] = Variable<String>(mediaUuid.value);
+    }
+    if (downloadUrl.present) {
+      map['download_url'] = Variable<String>(downloadUrl.value);
+    }
+    if (savePath.present) {
+      map['save_path'] = Variable<String>(savePath.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+          $DownloadJobsTable.$converterstatus.toSql(status.value));
+    }
+    if (progress.present) {
+      map['progress'] = Variable<double>(progress.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadJobsCompanion(')
+          ..write('jobId: $jobId, ')
+          ..write('taskId: $taskId, ')
+          ..write('mediaUuid: $mediaUuid, ')
+          ..write('downloadUrl: $downloadUrl, ')
+          ..write('savePath: $savePath, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1751,17 +2700,22 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncJobsTable syncJobs = $SyncJobsTable(this);
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
   late final $AlbumsTable albums = $AlbumsTable(this);
+  late final $UploadJobsTable uploadJobs = $UploadJobsTable(this);
+  late final $DownloadJobsTable downloadJobs = $DownloadJobsTable(this);
   late final MediaAssetDao mediaAssetDao = MediaAssetDao(this as AppDatabase);
   late final SyncJobDao syncJobDao = SyncJobDao(this as AppDatabase);
   late final AlbumDao albumDao = AlbumDao(this as AppDatabase);
   late final UserSettingDao userSettingDao =
       UserSettingDao(this as AppDatabase);
+  late final UploadJobDao uploadJobDao = UploadJobDao(this as AppDatabase);
+  late final DownloadJobDao downloadJobDao =
+      DownloadJobDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [mediaAssets, syncJobs, userSettings, albums];
+      [mediaAssets, syncJobs, userSettings, albums, uploadJobs, downloadJobs];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
         [
@@ -2487,6 +3441,392 @@ class $$AlbumsTableOrderingComposer
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
+typedef $$UploadJobsTableCreateCompanionBuilder = UploadJobsCompanion Function({
+  required String jobId,
+  Value<String?> uploadId,
+  required String filePath,
+  required String fileHash,
+  required int totalSize,
+  required int chunkSize,
+  required int totalChunks,
+  required UploadJobStatus status,
+  required double progress,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$UploadJobsTableUpdateCompanionBuilder = UploadJobsCompanion Function({
+  Value<String> jobId,
+  Value<String?> uploadId,
+  Value<String> filePath,
+  Value<String> fileHash,
+  Value<int> totalSize,
+  Value<int> chunkSize,
+  Value<int> totalChunks,
+  Value<UploadJobStatus> status,
+  Value<double> progress,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$UploadJobsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $UploadJobsTable,
+    UploadJob,
+    $$UploadJobsTableFilterComposer,
+    $$UploadJobsTableOrderingComposer,
+    $$UploadJobsTableCreateCompanionBuilder,
+    $$UploadJobsTableUpdateCompanionBuilder> {
+  $$UploadJobsTableTableManager(_$AppDatabase db, $UploadJobsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$UploadJobsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$UploadJobsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> jobId = const Value.absent(),
+            Value<String?> uploadId = const Value.absent(),
+            Value<String> filePath = const Value.absent(),
+            Value<String> fileHash = const Value.absent(),
+            Value<int> totalSize = const Value.absent(),
+            Value<int> chunkSize = const Value.absent(),
+            Value<int> totalChunks = const Value.absent(),
+            Value<UploadJobStatus> status = const Value.absent(),
+            Value<double> progress = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UploadJobsCompanion(
+            jobId: jobId,
+            uploadId: uploadId,
+            filePath: filePath,
+            fileHash: fileHash,
+            totalSize: totalSize,
+            chunkSize: chunkSize,
+            totalChunks: totalChunks,
+            status: status,
+            progress: progress,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String jobId,
+            Value<String?> uploadId = const Value.absent(),
+            required String filePath,
+            required String fileHash,
+            required int totalSize,
+            required int chunkSize,
+            required int totalChunks,
+            required UploadJobStatus status,
+            required double progress,
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UploadJobsCompanion.insert(
+            jobId: jobId,
+            uploadId: uploadId,
+            filePath: filePath,
+            fileHash: fileHash,
+            totalSize: totalSize,
+            chunkSize: chunkSize,
+            totalChunks: totalChunks,
+            status: status,
+            progress: progress,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$UploadJobsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $UploadJobsTable> {
+  $$UploadJobsTableFilterComposer(super.$state);
+  ColumnFilters<String> get jobId => $state.composableBuilder(
+      column: $state.table.jobId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get uploadId => $state.composableBuilder(
+      column: $state.table.uploadId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get filePath => $state.composableBuilder(
+      column: $state.table.filePath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get fileHash => $state.composableBuilder(
+      column: $state.table.fileHash,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get totalSize => $state.composableBuilder(
+      column: $state.table.totalSize,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get chunkSize => $state.composableBuilder(
+      column: $state.table.chunkSize,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get totalChunks => $state.composableBuilder(
+      column: $state.table.totalChunks,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<UploadJobStatus, UploadJobStatus, String>
+      get status => $state.composableBuilder(
+          column: $state.table.status,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$UploadJobsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $UploadJobsTable> {
+  $$UploadJobsTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get jobId => $state.composableBuilder(
+      column: $state.table.jobId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get uploadId => $state.composableBuilder(
+      column: $state.table.uploadId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get filePath => $state.composableBuilder(
+      column: $state.table.filePath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get fileHash => $state.composableBuilder(
+      column: $state.table.fileHash,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get totalSize => $state.composableBuilder(
+      column: $state.table.totalSize,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get chunkSize => $state.composableBuilder(
+      column: $state.table.chunkSize,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get totalChunks => $state.composableBuilder(
+      column: $state.table.totalChunks,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get status => $state.composableBuilder(
+      column: $state.table.status,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
+typedef $$DownloadJobsTableCreateCompanionBuilder = DownloadJobsCompanion
+    Function({
+  required String jobId,
+  Value<String?> taskId,
+  required String mediaUuid,
+  required String downloadUrl,
+  required String savePath,
+  required DownloadJobStatus status,
+  required double progress,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$DownloadJobsTableUpdateCompanionBuilder = DownloadJobsCompanion
+    Function({
+  Value<String> jobId,
+  Value<String?> taskId,
+  Value<String> mediaUuid,
+  Value<String> downloadUrl,
+  Value<String> savePath,
+  Value<DownloadJobStatus> status,
+  Value<double> progress,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$DownloadJobsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DownloadJobsTable,
+    DownloadJob,
+    $$DownloadJobsTableFilterComposer,
+    $$DownloadJobsTableOrderingComposer,
+    $$DownloadJobsTableCreateCompanionBuilder,
+    $$DownloadJobsTableUpdateCompanionBuilder> {
+  $$DownloadJobsTableTableManager(_$AppDatabase db, $DownloadJobsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$DownloadJobsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$DownloadJobsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> jobId = const Value.absent(),
+            Value<String?> taskId = const Value.absent(),
+            Value<String> mediaUuid = const Value.absent(),
+            Value<String> downloadUrl = const Value.absent(),
+            Value<String> savePath = const Value.absent(),
+            Value<DownloadJobStatus> status = const Value.absent(),
+            Value<double> progress = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DownloadJobsCompanion(
+            jobId: jobId,
+            taskId: taskId,
+            mediaUuid: mediaUuid,
+            downloadUrl: downloadUrl,
+            savePath: savePath,
+            status: status,
+            progress: progress,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String jobId,
+            Value<String?> taskId = const Value.absent(),
+            required String mediaUuid,
+            required String downloadUrl,
+            required String savePath,
+            required DownloadJobStatus status,
+            required double progress,
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DownloadJobsCompanion.insert(
+            jobId: jobId,
+            taskId: taskId,
+            mediaUuid: mediaUuid,
+            downloadUrl: downloadUrl,
+            savePath: savePath,
+            status: status,
+            progress: progress,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$DownloadJobsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $DownloadJobsTable> {
+  $$DownloadJobsTableFilterComposer(super.$state);
+  ColumnFilters<String> get jobId => $state.composableBuilder(
+      column: $state.table.jobId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get taskId => $state.composableBuilder(
+      column: $state.table.taskId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mediaUuid => $state.composableBuilder(
+      column: $state.table.mediaUuid,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get downloadUrl => $state.composableBuilder(
+      column: $state.table.downloadUrl,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get savePath => $state.composableBuilder(
+      column: $state.table.savePath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<DownloadJobStatus, DownloadJobStatus, String>
+      get status => $state.composableBuilder(
+          column: $state.table.status,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$DownloadJobsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $DownloadJobsTable> {
+  $$DownloadJobsTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get jobId => $state.composableBuilder(
+      column: $state.table.jobId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get taskId => $state.composableBuilder(
+      column: $state.table.taskId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mediaUuid => $state.composableBuilder(
+      column: $state.table.mediaUuid,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get downloadUrl => $state.composableBuilder(
+      column: $state.table.downloadUrl,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get savePath => $state.composableBuilder(
+      column: $state.table.savePath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get status => $state.composableBuilder(
+      column: $state.table.status,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
@@ -2498,6 +3838,10 @@ class $AppDatabaseManager {
       $$UserSettingsTableTableManager(_db, _db.userSettings);
   $$AlbumsTableTableManager get albums =>
       $$AlbumsTableTableManager(_db, _db.albums);
+  $$UploadJobsTableTableManager get uploadJobs =>
+      $$UploadJobsTableTableManager(_db, _db.uploadJobs);
+  $$DownloadJobsTableTableManager get downloadJobs =>
+      $$DownloadJobsTableTableManager(_db, _db.downloadJobs);
 }
 
 mixin _$MediaAssetDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -2513,4 +3857,10 @@ mixin _$AlbumDaoMixin on DatabaseAccessor<AppDatabase> {
 }
 mixin _$UserSettingDaoMixin on DatabaseAccessor<AppDatabase> {
   $UserSettingsTable get userSettings => attachedDatabase.userSettings;
+}
+mixin _$UploadJobDaoMixin on DatabaseAccessor<AppDatabase> {
+  $UploadJobsTable get uploadJobs => attachedDatabase.uploadJobs;
+}
+mixin _$DownloadJobDaoMixin on DatabaseAccessor<AppDatabase> {
+  $DownloadJobsTable get downloadJobs => attachedDatabase.downloadJobs;
 }

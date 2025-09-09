@@ -1,10 +1,15 @@
+// handlers/media_handler.go
+
 package handlers
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"server/constant"
@@ -13,6 +18,7 @@ import (
 	"server/processing"
 	"server/routing"
 	"server/urlsigner"
+	"sort"
 	"strconv"
 	"time"
 
@@ -24,6 +30,8 @@ import (
 const (
 	defaultPageSize = 100
 	iso8601Format   = time.RFC3339
+	chunkSize       = 5 * 1024 * 1024 // 5 MB
+	tmpUploadDir    = "tmp"           // 临时分片存储目录
 )
 
 // MediaHandler 封装了所有与照片/视频相关的HTTP处理器
@@ -405,13 +413,15 @@ func (h *MediaHandler) downloadFile(c *gin.Context, filename string) {
 
 	// 检查文件是否存在于磁盘上
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		// 这是一个服务器侧的问题，文件在数据库里有记录但在磁盘上丢失了
 		log.Printf("File record exists in DB but not found on disk: %s", filePath)
 		core.Error(c, "File not available on server")
 		return
 	}
 
-	c.File(filePath)
+	// 使用 http.ServeFile 替换 c.File()。
+	// http.ServeFile 会自动处理 Content-Type, ETag, 和 Range 请求头，
+	// 这对于断点续传至关重要。
+	http.ServeFile(c.Writer, c.Request, filePath)
 }
 
 // [新增] CheckHashes godoc
@@ -563,4 +573,251 @@ func (h *MediaHandler) buildMediaResponses(userID uint, medias []models.Media) [
 	}
 
 	return mediaResponses
+}
+
+// @Summary      初始化大文件分片上传
+// @Description  请求开始一个大文件的上传。服务器会先进行秒传检查，如果文件不存在，则创建一个上传作业并返回 upload_id。
+// @Tags         Media
+// @Accept       json
+// @Produce      json
+// @Param        body body InitiateUploadRequest true "文件元数据"
+// @Success      200  {object}  core.ApiResponse{data=MediaResponse} "文件已存在（秒传成功）"
+// @Success      201  {object}  core.ApiResponse{data=InitiateUploadResponse} "初始化成功，可以开始上传分片"
+// @Failure      400  {object}  core.ApiResponse "请求参数错误"
+// @Security     BearerAuth
+// @Router       /media/upload/initiate [post]
+func (h *MediaHandler) InitiateUpload(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	var req InitiateUploadRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		core.Error(c, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// 1. 秒传检查
+	var existingMedia models.Media
+	if err := h.DB.First(&existingMedia, "hash = ? AND user_id = ?", req.Hash, userID).Error; err == nil {
+		core.Success(c, "File already exists for this user", h.buildMediaResponse(userID, existingMedia))
+		return
+	}
+
+	// 2. 创建上传作业
+	uploadID := uuid.New().String()
+	numChunks := int(req.TotalSize / int64(chunkSize))
+	if req.TotalSize%int64(chunkSize) != 0 {
+		numChunks++
+	}
+
+	task := models.UploadTask{
+		ID:        uploadID,
+		UserID:    userID,
+		FileHash:  req.Hash,
+		TotalSize: req.TotalSize,
+		ChunkSize: chunkSize,
+		NumChunks: numChunks,
+		Status:    "INITIATED",
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(24 * time.Hour), // 设置24小时过期
+	}
+
+	if err := h.DB.Create(&task).Error; err != nil {
+		core.Error(c, "Failed to create upload task: "+err.Error())
+		return
+	}
+
+	// 3. 准备临时目录并检查已存在的分片 (用于断点续传)
+	tmpDir := filepath.Join(h.UploadDir, tmpUploadDir, uploadID)
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		core.Error(c, "Failed to create temporary directory")
+		return
+	}
+
+	var uploadedChunks []int
+	files, err := os.ReadDir(tmpDir)
+	if err == nil {
+		for _, file := range files {
+			chunkIndex, err := strconv.Atoi(file.Name())
+			if err == nil {
+				uploadedChunks = append(uploadedChunks, chunkIndex)
+			}
+		}
+	}
+	sort.Ints(uploadedChunks)
+
+	// 4. 返回响应
+	resp := InitiateUploadResponse{
+		UploadID:       uploadID,
+		ChunkSize:      chunkSize,
+		UploadedChunks: uploadedChunks,
+	}
+	core.Created(c, "Upload initiated successfully", resp)
+}
+
+// @Summary      上传单个文件分片
+// @Description  上传指定 upload_id 和 chunk_index 的文件分片。
+// @Tags         Media
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        upload_id formData string true "上传作业ID"
+// @Param        chunk_index formData int true "分片索引 (从0开始)"
+// @Param        chunk formData file true "分片文件本身"
+// @Success      200  {object}  core.ApiResponse "分片上传成功"
+// @Failure      400  {object}  core.ApiResponse "请求参数错误或作业无效"
+// @Security     BearerAuth
+// @Router       /media/upload/chunk [post]
+func (h *MediaHandler) UploadChunk(c *gin.Context) {
+	uploadID := c.PostForm("upload_id")
+	chunkIndex := c.PostForm("chunk_index")
+	if uploadID == "" || chunkIndex == "" {
+		core.Error(c, "upload_id and chunk_index are required")
+		return
+	}
+
+	// 1. 校验 upload_id
+	var task models.UploadTask
+	if err := h.DB.First(&task, "id = ?", uploadID).Error; err != nil {
+		core.Error(c, "Invalid upload_id")
+		return
+	}
+	if task.Status != "INITIATED" {
+		core.Error(c, "This upload is already completed or has failed")
+		return
+	}
+	if time.Now().After(task.ExpiresAt) {
+		core.Error(c, "This upload task has expired")
+		return
+	}
+
+	// 2. 获取分片文件
+	file, _, err := c.Request.FormFile("chunk")
+	if err != nil {
+		core.Error(c, "File chunk upload failed: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	// 3. 保存分片
+	tmpDir := filepath.Join(h.UploadDir, tmpUploadDir, uploadID)
+	chunkPath := filepath.Join(tmpDir, chunkIndex)
+	outFile, err := os.Create(chunkPath)
+	if err != nil {
+		core.Error(c, "Failed to save chunk")
+		return
+	}
+	defer outFile.Close()
+	_, err = io.Copy(outFile, file)
+	if err != nil {
+		core.Error(c, "Failed to write chunk to disk")
+		return
+	}
+
+	core.Success(c, "Chunk uploaded successfully", nil)
+}
+
+// @Summary      完成分片上传
+// @Description  通知服务器所有分片已上传完毕，请求合并文件并创建媒体记录。
+// @Tags         Media
+// @Accept       json
+// @Produce      json
+// @Param        body body CompleteUploadRequest true "完成上传所需的信息"
+// @Success      200  {object}  core.ApiResponse{data=MediaResponse} "文件合并成功"
+// @Failure      400  {object}  core.ApiResponse "请求错误、分片不完整或哈希校验失败"
+// @Security     BearerAuth
+// @Router       /media/upload/complete [post]
+func (h *MediaHandler) CompleteUpload(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	var req CompleteUploadRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		core.Error(c, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// 1. 查找上传任务
+	var task models.UploadTask
+	if err := h.DB.First(&task, "id = ? AND user_id = ?", req.UploadID, userID).Error; err != nil {
+		core.Error(c, "Upload task not found or permission denied")
+		return
+	}
+	tmpDir := filepath.Join(h.UploadDir, tmpUploadDir, req.UploadID)
+	// 使用 defer 确保无论成功失败都清理临时目录
+	defer os.RemoveAll(tmpDir)
+
+	// 2. 校验所有分片是否完整
+	for i := 0; i < task.NumChunks; i++ {
+		chunkPath := filepath.Join(tmpDir, strconv.Itoa(i))
+		if _, err := os.Stat(chunkPath); os.IsNotExist(err) {
+			core.Error(c, fmt.Sprintf("Chunk %d is missing", i))
+			return
+		}
+	}
+
+	// 3. 合并文件
+	newUUID := uuid.New().String()
+	newFilename := newUUID + filepath.Ext(req.OriginalFilename)
+	finalPath := filepath.Join(h.UploadDir, newFilename)
+	destFile, err := os.Create(finalPath)
+	if err != nil {
+		core.Error(c, "Failed to create final file")
+		return
+	}
+	defer destFile.Close()
+
+	hasher := sha256.New()
+	for i := 0; i < task.NumChunks; i++ {
+		chunkPath := filepath.Join(tmpDir, strconv.Itoa(i))
+		chunkFile, err := os.Open(chunkPath)
+		if err != nil {
+			os.Remove(finalPath) // 清理不完整的目标文件
+			core.Error(c, "Failed to open chunk for merging")
+			return
+		}
+		// 同时写入目标文件和哈希计算器
+		multiWriter := io.MultiWriter(destFile, hasher)
+		_, err = io.Copy(multiWriter, chunkFile)
+		chunkFile.Close()
+		if err != nil {
+			os.Remove(finalPath)
+			core.Error(c, "Failed to merge chunk")
+			return
+		}
+	}
+
+	// 4. 【关键安全校验】: 对比哈希
+	calculatedHash := hex.EncodeToString(hasher.Sum(nil))
+	if calculatedHash != req.Hash {
+		os.Remove(finalPath) // 哈希不匹配，删除垃圾文件
+		core.Error(c, "File hash mismatch. Upload corrupted.")
+		return
+	}
+
+	// 5. 创建 Media 记录并启动后台处理
+	media := models.Media{
+		UUID:             newUUID,
+		UserID:           userID,
+		Hash:             req.Hash,
+		ItemType:         req.ItemType,
+		OriginalFilename: req.OriginalFilename,
+		Filename:         newFilename,
+		FileSize:         task.TotalSize, // 使用任务中记录的大小
+		ProcessingStatus: constant.StatusPending,
+	}
+	if err := h.DB.Create(&media).Error; err != nil {
+		os.Remove(finalPath)
+		core.Error(c, "Failed to save final metadata")
+		return
+	}
+
+	// 6. 清理 UploadTask 记录
+	h.DB.Delete(&task)
+
+	// 7. 启动异步处理
+	if media.ItemType == constant.TypeVideo {
+		go processing.ProcessVideo(h.DB, finalPath, newUUID)
+	} else {
+		go processing.ProcessImage(h.DB, finalPath, newUUID)
+	}
+
+	// 8. 返回成功响应
+	mediaResponse := h.buildMediaResponse(userID, media)
+	core.Success(c, "File uploaded and merged successfully", mediaResponse)
 }

@@ -1,7 +1,7 @@
 // lib/data/datasources/local_db/tables/albums.dart
 
 import 'package:drift/drift.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 
 /// 定义 `Albums` 表，用于存储本地和云端相册的元数据。
 @DataClassName('Album')

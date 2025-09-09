@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/services/dio_client.dart';
+import 'package:mobile/core/enums.dart';
 
 class RemoteMediaDataSource {
   final Dio _dio;

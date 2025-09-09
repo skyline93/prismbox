@@ -3,27 +3,10 @@
 // ignore_for_file: invalid_annotation_target
 
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:mobile/core/enums.dart';
 
 part 'media_model.freezed.dart';
 part 'media_model.g.dart';
-
-/// 媒体类型枚举
-enum MediaType {
-  @JsonValue('IMAGE')
-  image,
-  @JsonValue('VIDEO')
-  video,
-}
-
-/// 处理状态枚举
-enum ProcessingStatus {
-  @JsonValue('PENDING')
-  pending,
-  @JsonValue('COMPLETED')
-  completed,
-  @JsonValue('FAILED')
-  failed,
-}
 
 @freezed
 class MediaDetail with _$MediaDetail {

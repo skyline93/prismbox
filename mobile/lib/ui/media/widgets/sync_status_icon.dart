@@ -1,7 +1,7 @@
 // lib/ui/media/widgets/sync_status_icon.dart
 
 import 'package:flutter/material.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 
 class SyncStatusIcon extends StatelessWidget {
   final SyncStatus status;

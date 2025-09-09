@@ -5,7 +5,7 @@ import 'dart:developer';
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:crypto/crypto.dart';

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/providers/providers.dart';
 
 final thumbnailProvider = FutureProvider.family<Uint8List?, UnifiedMediaEntity>(

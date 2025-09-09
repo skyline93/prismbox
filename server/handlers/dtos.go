@@ -1,3 +1,5 @@
+// handlers/dtos.go
+
 package handlers
 
 import (
@@ -36,4 +38,27 @@ type MediaChangesResponse struct {
 	Created []MediaResponse `json:"created"`
 	Updated []MediaResponse `json:"updated"`
 	Deleted []string        `json:"deleted"` // 删除的媒体只返回 UUID
+}
+
+// InitiateUploadRequest 是 /media/upload/initiate 接口的请求体
+type InitiateUploadRequest struct {
+	OriginalFilename string             `json:"original_filename" binding:"required"`
+	Hash             string             `json:"hash" binding:"required"`
+	TotalSize        int64              `json:"total_size" binding:"required"`
+	ItemType         constant.MediaType `json:"item_type" binding:"required"`
+}
+
+// InitiateUploadResponse 是 /media/upload/initiate 接口在需要上传文件时的响应体
+type InitiateUploadResponse struct {
+	UploadID       string `json:"upload_id"`
+	ChunkSize      int    `json:"chunk_size"`
+	UploadedChunks []int  `json:"uploaded_chunks"`
+}
+
+// CompleteUploadRequest 是 /media/upload/complete 接口的请求体
+type CompleteUploadRequest struct {
+	UploadID         string             `json:"upload_id" binding:"required"`
+	OriginalFilename string             `json:"original_filename" binding:"required"`
+	Hash             string             `json:"hash" binding:"required"`
+	ItemType         constant.MediaType `json:"item_type" binding:"required"`
 }

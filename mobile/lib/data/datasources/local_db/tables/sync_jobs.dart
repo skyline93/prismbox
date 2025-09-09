@@ -1,7 +1,7 @@
 // lib/data/datasources/local_db/tables/sync_jobs.dart
 
 import 'package:drift/drift.dart';
-import '../enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'media_assets.dart';
 
 @DataClassName('SyncJob')

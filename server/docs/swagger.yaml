@@ -270,6 +270,22 @@ definitions:
           type: string
         type: array
     type: object
+  handlers.CompleteUploadRequest:
+    properties:
+      hash:
+        type: string
+      item_type:
+        $ref: '#/definitions/constant.MediaType'
+      original_filename:
+        type: string
+      upload_id:
+        type: string
+    required:
+    - hash
+    - item_type
+    - original_filename
+    - upload_id
+    type: object
   handlers.CreateAlbumInput:
     properties:
       description:
@@ -293,6 +309,33 @@ definitions:
     required:
     - duration_minute
     - media_uuid
+    type: object
+  handlers.InitiateUploadRequest:
+    properties:
+      hash:
+        type: string
+      item_type:
+        $ref: '#/definitions/constant.MediaType'
+      original_filename:
+        type: string
+      total_size:
+        type: integer
+    required:
+    - hash
+    - item_type
+    - original_filename
+    - total_size
+    type: object
+  handlers.InitiateUploadResponse:
+    properties:
+      chunk_size:
+        type: integer
+      upload_id:
+        type: string
+      uploaded_chunks:
+        items:
+          type: integer
+        type: array
     type: object
   handlers.MediaChangesResponse:
     properties:
@@ -1744,6 +1787,118 @@ paths:
       security:
       - BearerAuth: []
       summary: 上传单个媒体文件
+      tags:
+      - Media
+  /media/upload/chunk:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传指定 upload_id 和 chunk_index 的文件分片。
+      parameters:
+      - description: 上传作业ID
+        in: formData
+        name: upload_id
+        required: true
+        type: string
+      - description: 分片索引 (从0开始)
+        in: formData
+        name: chunk_index
+        required: true
+        type: integer
+      - description: 分片文件本身
+        in: formData
+        name: chunk
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 分片上传成功
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "400":
+          description: 请求参数错误或作业无效
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 上传单个文件分片
+      tags:
+      - Media
+  /media/upload/complete:
+    post:
+      consumes:
+      - application/json
+      description: 通知服务器所有分片已上传完毕，请求合并文件并创建媒体记录。
+      parameters:
+      - description: 完成上传所需的信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CompleteUploadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 文件合并成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/handlers.MediaResponse'
+              type: object
+        "400":
+          description: 请求错误、分片不完整或哈希校验失败
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 完成分片上传
+      tags:
+      - Media
+  /media/upload/initiate:
+    post:
+      consumes:
+      - application/json
+      description: 请求开始一个大文件的上传。服务器会先进行秒传检查，如果文件不存在，则创建一个上传作业并返回 upload_id。
+      parameters:
+      - description: 文件元数据
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.InitiateUploadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 文件已存在（秒传成功）
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/handlers.MediaResponse'
+              type: object
+        "201":
+          description: 初始化成功，可以开始上传分片
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/handlers.InitiateUploadResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 初始化大文件分片上传
       tags:
       - Media
   /posts/{postId}/comments:

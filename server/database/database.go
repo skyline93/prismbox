@@ -78,6 +78,7 @@ func ConnectAndMigrate(cfg *core.DBConfig) (*gorm.DB, error) {
 		&models.Comment{},
 		&models.Like{},
 		&models.CommentLike{},
+		&models.UploadTask{},
 	)
 	if err != nil {
 		log.Printf("Failed to auto migrate database: %v", err)

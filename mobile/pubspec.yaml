@@ -47,7 +47,7 @@ dependencies:
   photo_manager_image_provider: ^2.2.0
   logger: ^2.6.1
   drift: ^2.11.0 # 使用最新版本
-  sqlite3_flutter_libs: ^0.5.0
+  sqlite3_flutter_libs: ^0.5.39
   path_provider: ^2.0.0
   path: ^1.8.0
   equatable: ^2.0.5
@@ -84,6 +84,7 @@ dependencies:
   smooth_page_indicator: ^1.1.0
   shimmer: ^3.0.0
   flutter_animate: ^4.5.2
+  background_downloader: ^9.2.3
 
 dev_dependencies:
   flutter_test:

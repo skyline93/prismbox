@@ -37,3 +37,11 @@ func ErrorAuth(c *gin.Context, message string) {
 		Data:    nil,
 	})
 }
+
+func Created(c *gin.Context, message string, data interface{}) {
+	c.JSON(http.StatusCreated, ApiResponse{
+		Code:    0,
+		Message: message,
+		Data:    data,
+	})
+}

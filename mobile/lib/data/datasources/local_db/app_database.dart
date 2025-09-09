@@ -4,29 +4,46 @@ import 'dart:developer';
 import 'dart:async';
 
 import 'package:drift/drift.dart';
-import 'package:mobile/data/models/media/media_model.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/data/datasources/local_db/tables/media_assets.dart';
 import 'package:mobile/data/datasources/local_db/tables/sync_jobs.dart';
 import 'package:mobile/data/datasources/local_db/tables/user_settings.dart';
 import 'package:mobile/data/datasources/local_db/tables/albums.dart';
+import 'package:mobile/data/datasources/local_db/tables/upload_jobs.dart';
+import 'package:mobile/data/datasources/local_db/tables/download_jobs.dart';
 
 part 'daos/media_asset_dao.dart';
 part 'daos/sync_job_dao.dart';
 part 'daos/album_dao.dart';
 part 'daos/user_settings_dao.dart';
+part 'daos/upload_job_dao.dart';
+part 'daos/download_job_dao.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [MediaAssets, SyncJobs, UserSettings, Albums],
-  daos: [MediaAssetDao, SyncJobDao, AlbumDao, UserSettingDao],
+  tables: [
+    MediaAssets,
+    SyncJobs,
+    UserSettings,
+    Albums,
+    UploadJobs,
+    DownloadJobs,
+  ],
+  daos: [
+    MediaAssetDao,
+    SyncJobDao,
+    AlbumDao,
+    UserSettingDao,
+    UploadJobDao,
+    DownloadJobDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -44,6 +61,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {}
       if (from < 5) {
         await m.createTable(albums);
+      }
+
+      if (from < 6) {
+        await m.createTable(uploadJobs);
+        await m.createTable(downloadJobs);
       }
     },
   );

@@ -11,7 +11,7 @@ import 'package:mobile/ui/main/page/register_page.dart';
 import 'package:mobile/ui/main/page/splash_page.dart';
 import 'package:mobile/ui/gallery/pages/gallery_page.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/ui/album/page/album_detail_page.dart';
 
 import 'package:mobile/ui/group/pages/group_list_page.dart';
@@ -20,6 +20,7 @@ import 'package:mobile/ui/group/pages/group_feed_page.dart';
 import 'package:mobile/ui/group/pages/group_members_page.dart';
 import 'package:mobile/ui/group/pages/group_settings_page.dart';
 import 'package:mobile/ui/group/pages/group_post_detail_page.dart';
+import 'package:mobile/ui/transfer/pages/transfer_manager_page.dart';
 
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 
@@ -52,5 +53,7 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: GroupMembersRoute.page, path: "/groups/:uuid/members"),
     AutoRoute(page: GroupSettingsRoute.page, path: "/groups/:uuid/settings"),
     AutoRoute(page: GroupPostDetailRoute.page, path: '/group/:uuid/post'),
+
+    AutoRoute(page: TransferManagerRoute.page, path: '/transfers'),
   ];
 }

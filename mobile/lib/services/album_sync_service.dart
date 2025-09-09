@@ -5,8 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
-// 确保这里的导入路径正确
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/services/background_tasks/local_media_reconciliation.dart'; 
 
 

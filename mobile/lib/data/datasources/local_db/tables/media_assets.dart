@@ -1,8 +1,7 @@
 // lib/data/datasources/local_db/tables/media_assets.dart
 
 import 'package:drift/drift.dart';
-import 'package:mobile/data/models/media/media_model.dart';
-import '../enums.dart';
+import 'package:mobile/core/enums.dart';
 
 @DataClassName('MediaAsset')
 class MediaAssets extends Table {

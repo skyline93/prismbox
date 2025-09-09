@@ -6,7 +6,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/ui/gallery/viewmodels/gallery_viewmodel.dart';
 import 'package:mobile/ui/gallery/pages/gallery_item_page.dart';
 import 'package:mobile/providers/providers.dart';

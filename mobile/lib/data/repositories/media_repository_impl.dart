@@ -12,7 +12,7 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
-import 'package:mobile/data/datasources/local_db/enums.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 

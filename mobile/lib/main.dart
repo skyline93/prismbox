@@ -1,6 +1,8 @@
 // lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -11,14 +13,29 @@ import 'package:storage_inspector/storage_inspector.dart';
 import 'package:drift_local_storage_inspector/drift_local_storage_inspector.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/data/datasources/local_db/connection.dart';
+import 'package:mobile/services/transfer_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    // ignore: avoid_print
+    print(
+      '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}',
+    );
+    if (record.error != null) {
+      // ignore: avoid_print
+      print('ERROR: ${record.error}, StackTrace: ${record.stackTrace}');
+    }
+  });
 
   await initializeDatabaseIsolate();
 
   await configureDependencies();
   await initializeDateFormatting('zh_CN', null);
+
+  await getIt<TransferService>().initialize();
 
   getIt<LocalMediaObserver>().startObserving();
 
@@ -42,6 +59,7 @@ void main() async {
     driver.addSQLServer(driftServer);
 
     await driver.start();
+    // ignore: avoid_print
     print('Storage Inspector server running on port ${driver.port}');
   }
 
