@@ -74,10 +74,10 @@ extension GetItInjectableX on _i174.GetIt {
             ));
     gh.lazySingleton<_i361.Dio>(
         () => injectableModule.getDio(gh<_i305.DioClient>()));
-    gh.lazySingleton<_i1052.UserApiService>(
-        () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i470.GroupApiService>(
         () => _i470.GroupApiService(gh<_i361.Dio>()));
+    gh.lazySingleton<_i1052.UserApiService>(
+        () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i816.MediaApiService>(
         () => _i816.MediaApiService(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(
@@ -88,13 +88,14 @@ extension GetItInjectableX on _i174.GetIt {
           syncJobManager: gh<_i987.SyncJobManager>(),
           localMediaSource: gh<_i290.LocalMediaDataSource>(),
         ));
-    gh.lazySingleton<_i957.GroupRepository>(
-        () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
     gh.lazySingleton<_i298.TransferService>(() => _i298.TransferService(
           gh<_i669.AppDatabase>(),
           gh<_i527.RemoteMediaDataSource>(),
           gh<_i816.MediaApiService>(),
+          gh<_i65.SecureStorageService>(),
         ));
+    gh.lazySingleton<_i957.GroupRepository>(
+        () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
     gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
           db: gh<_i669.AppDatabase>(),
           remoteApi: gh<_i527.RemoteMediaDataSource>(),

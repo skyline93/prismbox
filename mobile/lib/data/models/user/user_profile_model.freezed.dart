@@ -33,8 +33,12 @@ mixin _$UserProfileModel {
   @JsonKey(name: 'total_storage')
   double get totalStorage => throw _privateConstructorUsedError;
 
+  /// Serializes this UserProfileModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of UserProfileModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $UserProfileModelCopyWith<UserProfileModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -64,6 +68,8 @@ class _$UserProfileModelCopyWithImpl<$Res, $Val extends UserProfileModel>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of UserProfileModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -128,6 +134,8 @@ class __$$UserProfileModelImplCopyWithImpl<$Res>
       $Res Function(_$UserProfileModelImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of UserProfileModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -224,12 +232,14 @@ class _$UserProfileModelImpl extends _UserProfileModel {
                 other.totalStorage == totalStorage));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType, id, username, email, avatarUrl, usedStorage, totalStorage);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of UserProfileModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$UserProfileModelImplCopyWith<_$UserProfileModelImpl> get copyWith =>
@@ -258,23 +268,27 @@ abstract class _UserProfileModel extends UserProfileModel {
   factory _UserProfileModel.fromJson(Map<String, dynamic> json) =
       _$UserProfileModelImpl.fromJson;
 
-  @override // [保留] 原有字段
+// [保留] 原有字段
+  @override
   int get id;
   @override
-  String get username;
-  @override // [新增] 添加 email 字段
-  String get email;
-  @override // [保留] avatarUrl 字段，并确保 @JsonKey 正确
+  String get username; // [新增] 添加 email 字段
+  @override
+  String get email; // [保留] avatarUrl 字段，并确保 @JsonKey 正确
+  @override
   @JsonKey(name: 'avatar_url')
-  String? get avatarUrl;
-  @override // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  String? get avatarUrl; // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  @override
   @JsonKey(name: 'used_storage')
   double get usedStorage;
   @override
   @JsonKey(name: 'total_storage')
   double get totalStorage;
+
+  /// Create a copy of UserProfileModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$UserProfileModelImplCopyWith<_$UserProfileModelImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

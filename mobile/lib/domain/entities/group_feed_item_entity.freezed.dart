@@ -20,7 +20,9 @@ mixin _$FeedAuthorEntity {
   String get username => throw _privateConstructorUsedError;
   String? get avatarUrl => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
+  /// Create a copy of FeedAuthorEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $FeedAuthorEntityCopyWith<FeedAuthorEntity> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -44,6 +46,8 @@ class _$FeedAuthorEntityCopyWithImpl<$Res, $Val extends FeedAuthorEntity>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of FeedAuthorEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -87,6 +91,8 @@ class __$$FeedAuthorEntityImplCopyWithImpl<$Res>
       $Res Function(_$FeedAuthorEntityImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of FeedAuthorEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -144,7 +150,9 @@ class _$FeedAuthorEntityImpl implements _FeedAuthorEntity {
   @override
   int get hashCode => Object.hash(runtimeType, userId, username, avatarUrl);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of FeedAuthorEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$FeedAuthorEntityImplCopyWith<_$FeedAuthorEntityImpl> get copyWith =>
@@ -164,8 +172,11 @@ abstract class _FeedAuthorEntity implements FeedAuthorEntity {
   String get username;
   @override
   String? get avatarUrl;
+
+  /// Create a copy of FeedAuthorEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$FeedAuthorEntityImplCopyWith<_$FeedAuthorEntityImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -181,7 +192,9 @@ mixin _$GroupFeedItemEntity {
   int get likesCount => throw _privateConstructorUsedError;
   int get commentsCount => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupFeedItemEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $GroupFeedItemEntityCopyWith<GroupFeedItemEntity> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -214,6 +227,8 @@ class _$GroupFeedItemEntityCopyWithImpl<$Res, $Val extends GroupFeedItemEntity>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of GroupFeedItemEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -257,6 +272,8 @@ class _$GroupFeedItemEntityCopyWithImpl<$Res, $Val extends GroupFeedItemEntity>
     ) as $Val);
   }
 
+  /// Create a copy of GroupFeedItemEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $FeedAuthorEntityCopyWith<$Res> get author {
@@ -295,6 +312,8 @@ class __$$GroupFeedItemEntityImplCopyWithImpl<$Res>
       $Res Function(_$GroupFeedItemEntityImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of GroupFeedItemEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -409,7 +428,9 @@ class _$GroupFeedItemEntityImpl implements _GroupFeedItemEntity {
       likesCount,
       commentsCount);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of GroupFeedItemEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$GroupFeedItemEntityImplCopyWith<_$GroupFeedItemEntityImpl> get copyWith =>
@@ -436,13 +457,16 @@ abstract class _GroupFeedItemEntity implements GroupFeedItemEntity {
   @override
   FeedAuthorEntity get author;
   @override
-  List<UnifiedMediaEntity> get mediaAttachments;
-  @override // 这是一个列表
+  List<UnifiedMediaEntity> get mediaAttachments; // 这是一个列表
+  @override
   int get likesCount;
   @override
   int get commentsCount;
+
+  /// Create a copy of GroupFeedItemEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$GroupFeedItemEntityImplCopyWith<_$GroupFeedItemEntityImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

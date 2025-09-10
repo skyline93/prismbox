@@ -18,6 +18,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:uuid/uuid.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/services/media_api_service.dart';
+import 'package:mobile/core/storage/secure_storage_service.dart';
 
 // 这是一个顶层函数，以便可以在 Isolate 中运行
 Future<String> _calculateFileHash(String filePath) async {
@@ -56,6 +57,8 @@ class TransferService {
   final MediaAssetDao _mediaAssetDao;
   final RemoteMediaDataSource _remoteMediaSource;
   final MediaApiService _mediaApiService;
+  final SecureStorageService _secureStorageService;
+
   final _log = Logger('TransferService');
   final _uuid = const Uuid();
 
@@ -63,6 +66,7 @@ class TransferService {
     AppDatabase db,
     this._remoteMediaSource,
     this._mediaApiService,
+    this._secureStorageService,
   ) : _downloadJobDao = db.downloadJobDao,
       _uploadJobDao = db.uploadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
@@ -77,12 +81,234 @@ class TransferService {
   }
 
   void _onTaskUpdate(dynamic update) {
-    final group = update.task.group;
-    if (group == 'download') {
-      _handleDownloadUpdate(update);
-    } else {
-      // 任何非 'download' 的 group 都被视为上传任务
-      _handleUploadUpdate(update);
+    // 依然使用 switch 匹配更新的类型（状态或进度），这是最佳实践。
+    switch (update) {
+      case TaskStatusUpdate():
+        // 获得 task 对象和 status
+        final task = update.task;
+        final status = update.status;
+
+        // 使用嵌套的 switch 直接对 task 的运行时类型进行匹配
+        // 这是最安全、最清晰的区分方式
+        switch (task) {
+          case DownloadTask():
+            // 如果 task 是 DownloadTask 类型，调用下载状态处理器
+            _handleDownloadStatusUpdate(task, status);
+            break;
+
+          case MultiUploadTask():
+            // 如果 task 是 MultiUploadTask 类型，调用上传状态处理器
+            _handleUploadStatusUpdate(task, status);
+            break;
+
+          // 如果您还使用了其他任务类型（如 UploadTask），可以在这里添加 case
+          default:
+            _log.info(
+              'Received status update for an unhandled task type: ${task.runtimeType}',
+            );
+        }
+        break;
+
+      case TaskProgressUpdate():
+        // 获得 task 对象和 progress
+        final task = update.task;
+        final progress = update.progress;
+
+        // 同样，对 task 的类型进行匹配
+        switch (task) {
+          case DownloadTask():
+            _handleDownloadProgressUpdate(task, progress);
+            break;
+
+          case MultiUploadTask():
+            _handleUploadProgressUpdate(task, progress);
+            break;
+
+          default:
+            _log.finer(
+              'Received progress update for an unhandled task type: ${task.runtimeType}',
+            );
+        }
+        break;
+
+      default:
+        _log.fine('Received an unhandled update type: ${update.runtimeType}');
+    }
+  }
+
+  Future<void> _handleDownloadStatusUpdate(
+    DownloadTask task,
+    TaskStatus status,
+  ) async {
+    final Map<String, dynamic> metaData;
+    try {
+      final metaDataString = task.metaData.isEmpty ? '{}' : task.metaData;
+      metaData = jsonDecode(metaDataString);
+    } catch (e) {
+      _log.warning('Could not parse metaData for task ${task.taskId}');
+      return;
+    }
+
+    final String? mediaUuid = metaData['mediaUuid'];
+    final String? itemType = metaData['itemType'];
+
+    if (mediaUuid == null || itemType == null) {
+      _log.warning(
+        'Received status update for task ${task.taskId} without mediaUuid or itemType.',
+      );
+      return;
+    }
+    final asset = await _mediaAssetDao.getAssetByCloudUuid(mediaUuid);
+    if (asset == null) {
+      _log.warning(
+        'Could not find MediaAsset for cloudUuid: $mediaUuid. Cancelling task.',
+      );
+      await FileDownloader().cancelTasksWithIds([task.taskId]);
+      return;
+    }
+
+    final job = await _downloadJobDao.getJobByTaskId(task.taskId);
+    if (job == null) {
+      _log.warning('Received update for an unknown taskId: ${task.taskId}');
+      return;
+    }
+
+    final newStatus = _statusFromTaskStatus(status);
+    await _downloadJobDao.updateJob(
+      DownloadJobsCompanion(
+        jobId: d.Value(job.jobId),
+        status: d.Value(newStatus),
+      ),
+    );
+    _log.fine(
+      'Download job ${job.jobId} (asset ${asset.id}) status updated to $newStatus',
+    );
+
+    if (newStatus == DownloadJobStatus.success) {
+      final realFilePath = await task.filePath();
+      _log.info(
+        'Task for asset ${asset.id} successful. File path: $realFilePath',
+      );
+
+      final savedAssetEntity = await _registerMediaToGallery(
+        realFilePath,
+        itemType,
+      );
+
+      if (savedAssetEntity != null) {
+        final finalFile = await savedAssetEntity.file;
+        if (finalFile != null) {
+          await _mediaAssetDao.updateAsset(
+            MediaAssetsCompanion(
+              id: d.Value(asset.id),
+              localId: d.Value(savedAssetEntity.id),
+              filePath: d.Value(finalFile.path),
+              syncStatus: const d.Value(SyncStatus.synced),
+              updatedAt: d.Value(DateTime.now()),
+            ),
+          );
+          _log.info(
+            'MediaAsset ${asset.id} successfully updated with new local info.',
+          );
+        } else {
+          _log.severe(
+            'Failed to get file path from saved AssetEntity for asset ${asset.id}.',
+          );
+          await _mediaAssetDao.updateAssetStatus(
+            asset.id,
+            SyncStatus.downloadFailed,
+          );
+        }
+      } else {
+        _log.severe(
+          'Failed to register downloaded media to gallery for asset ${asset.id}.',
+        );
+        await _mediaAssetDao.updateAssetStatus(
+          asset.id,
+          SyncStatus.downloadFailed,
+        );
+      }
+    } else if (newStatus == DownloadJobStatus.failed ||
+        newStatus == DownloadJobStatus.canceled) {
+      await _mediaAssetDao.updateAssetStatus(
+        asset.id,
+        SyncStatus.downloadFailed,
+      );
+      _log.warning(
+        'Download for MediaAsset ${asset.id} failed or was canceled.',
+      );
+    }
+  }
+
+  Future<void> _handleDownloadProgressUpdate(
+    DownloadTask task,
+    double progress,
+  ) async {
+    final job = await _downloadJobDao.getJobByTaskId(task.taskId);
+    if (job == null) {
+      // 在日志中记录，但可能不需要处理，因为状态更新会处理最终结果
+      _log.finer('Received progress for an unknown taskId: ${task.taskId}');
+      return;
+    }
+    await _downloadJobDao.updateJob(
+      DownloadJobsCompanion(
+        jobId: d.Value(job.jobId),
+        progress: d.Value(progress),
+      ),
+    );
+  }
+
+  Future<void> _handleUploadStatusUpdate(Task task, TaskStatus status) async {
+    final uploadId = task.group;
+
+    final job = await _uploadJobDao.getJobByUploadId(uploadId);
+    if (job == null) {
+      _log.warning('Received status update for an unknown uploadId: $uploadId');
+      return;
+    }
+
+    _log.fine('Upload chunk status update for job ${job.jobId}: $status');
+
+    if (status == TaskStatus.complete) {
+      await _checkAndCompleteUpload(uploadId);
+    } else if (status == TaskStatus.failed || status == TaskStatus.canceled) {
+      await _updateJobStatus(job.jobId, UploadJobStatus.failed);
+      try {
+        await FileDownloader().cancelTasksWithIds([task.taskId]);
+      } catch (e, st) {
+        _log.warning('Failed to cancel task ${task.taskId}: $e', e, st);
+      }
+    }
+  }
+
+  Future<void> _handleUploadProgressUpdate(Task task, double progress) async {
+    final uploadId = task.group;
+
+    final job = await _uploadJobDao.getJobByUploadId(uploadId);
+    if (job == null) {
+      _log.warning(
+        'Received progress update for an unknown uploadId: $uploadId',
+      );
+      return;
+    }
+
+    // 手动计算该 group 的平均进度
+    final records = await _recordsForGroup(uploadId);
+    if (records.isNotEmpty) {
+      final totalProgress = records.fold<double>(0.0, (sum, record) {
+        try {
+          return sum + (record.progress ?? 0.0);
+        } catch (_) {
+          return sum;
+        }
+      });
+      final groupProgress = totalProgress / records.length;
+      await _uploadJobDao.updateJob(
+        UploadJobsCompanion(
+          jobId: d.Value(job.jobId),
+          progress: d.Value(groupProgress),
+        ),
+      );
     }
   }
 
@@ -195,118 +421,6 @@ class TransferService {
         );
       }
       rethrow;
-    }
-  }
-
-  Future<void> _handleDownloadUpdate(dynamic update) async {
-    final task = update.task as DownloadTask;
-
-    final Map<String, dynamic> metaData;
-    try {
-      final metaDataString = task.metaData.isEmpty ? '{}' : task.metaData;
-      metaData = jsonDecode(metaDataString);
-    } catch (e) {
-      _log.warning('Could not parse metaData for task ${task.taskId}');
-      return;
-    }
-
-    final String? mediaUuid = metaData['mediaUuid'];
-    final String? itemType = metaData['itemType'];
-
-    if (mediaUuid == null || itemType == null) {
-      _log.warning(
-        'Received update for task ${task.taskId} without mediaUuid or itemType in metaData.',
-      );
-      return;
-    }
-    final asset = await _mediaAssetDao.getAssetByCloudUuid(mediaUuid);
-    if (asset == null) {
-      _log.warning(
-        'Could not find MediaAsset for cloudUuid: $mediaUuid. Cancelling task.',
-      );
-      await FileDownloader().cancelTasksWithIds([task.taskId]);
-      return;
-    }
-
-    final job = await _downloadJobDao.getJobByTaskId(task.taskId);
-    if (job == null) {
-      _log.warning('Received update for an unknown taskId: ${task.taskId}');
-      return;
-    }
-
-    if (update is TaskStatusUpdate) {
-      final newStatus = _statusFromTaskStatus(update.status);
-      await _downloadJobDao.updateJob(
-        DownloadJobsCompanion(
-          jobId: d.Value(job.jobId),
-          status: d.Value(newStatus),
-        ),
-      );
-      _log.fine(
-        'Download job ${job.jobId} (asset ${asset.id}) status updated to $newStatus',
-      );
-
-      if (newStatus == DownloadJobStatus.success) {
-        final realFilePath = await task.filePath();
-        _log.info(
-          'Task for asset ${asset.id} successful. File path: $realFilePath',
-        );
-
-        final savedAssetEntity = await _registerMediaToGallery(
-          realFilePath,
-          itemType,
-        );
-
-        if (savedAssetEntity != null) {
-          final finalFile = await savedAssetEntity.file;
-          if (finalFile != null) {
-            await _mediaAssetDao.updateAsset(
-              MediaAssetsCompanion(
-                id: d.Value(asset.id),
-                localId: d.Value(savedAssetEntity.id),
-                filePath: d.Value(finalFile.path),
-                syncStatus: const d.Value(SyncStatus.synced),
-                updatedAt: d.Value(DateTime.now()),
-              ),
-            );
-            _log.info(
-              'MediaAsset ${asset.id} successfully updated with new local info.',
-            );
-          } else {
-            _log.severe(
-              'Failed to get file path from saved AssetEntity for asset ${asset.id}.',
-            );
-            await _mediaAssetDao.updateAssetStatus(
-              asset.id,
-              SyncStatus.downloadFailed,
-            );
-          }
-        } else {
-          _log.severe(
-            'Failed to register downloaded media to gallery for asset ${asset.id}.',
-          );
-          await _mediaAssetDao.updateAssetStatus(
-            asset.id,
-            SyncStatus.downloadFailed,
-          );
-        }
-      } else if (newStatus == DownloadJobStatus.failed ||
-          newStatus == DownloadJobStatus.canceled) {
-        await _mediaAssetDao.updateAssetStatus(
-          asset.id,
-          SyncStatus.downloadFailed,
-        );
-        _log.warning(
-          'Download for MediaAsset ${asset.id} failed or was canceled.',
-        );
-      }
-    } else if (update is TaskProgressUpdate) {
-      await _downloadJobDao.updateJob(
-        DownloadJobsCompanion(
-          jobId: d.Value(job.jobId),
-          progress: d.Value(update.progress),
-        ),
-      );
     }
   }
 
@@ -505,6 +619,15 @@ class TransferService {
       );
 
       await _updateJobStatus(jobId, UploadJobStatus.uploading);
+
+      final accessToken = await _secureStorageService.getAccessToken();
+      if (accessToken == null) {
+        _log.severe('Upload failed: Access token is null for job $jobId.');
+        await _updateJobStatus(jobId, UploadJobStatus.failed);
+        return;
+      }
+      final headers = {'Authorization': 'Bearer $accessToken'};
+
       final tasks = <Task>[]; // 使用 Task 基类列表
 
       for (int i = 0; i < chunkPaths.length; i++) {
@@ -521,6 +644,7 @@ class TransferService {
             group: uploadId,
             files: [('chunk', chunkPaths[i])],
             fields: {'upload_id': uploadId, 'chunk_index': i.toString()},
+            headers: headers,
             retries: 3,
             metaData: jsonEncode({'jobId': jobId}),
             updates: Updates.statusAndProgress,
@@ -546,58 +670,8 @@ class TransferService {
     }
   }
 
-  /// 核心回调处理
-  Future<void> _handleUploadUpdate(dynamic update) async {
-    final task = update.task;
-    final uploadId = task.group;
-    if (uploadId == 'download') return; // 以防万一
-
-    final job = await _uploadJobDao.getJobByUploadId(uploadId);
-    if (job == null) {
-      _log.warning('Received update for an unknown uploadId: $uploadId');
-      return;
-    }
-
-    if (update is TaskProgressUpdate) {
-      // 手动计算该 group 的平均进度：由于插件没有直接的 recordsForGroup，我们使用 allRecords() 并在 Dart 端筛选
-      final records = await _recordsForGroup(uploadId);
-      if (records.isNotEmpty) {
-        final totalProgress = records.fold<double>(0.0, (sum, record) {
-          try {
-            return sum + (record.progress ?? 0.0);
-          } catch (_) {
-            return sum;
-          }
-        });
-        final groupProgress = totalProgress / records.length;
-        await _uploadJobDao.updateJob(
-          UploadJobsCompanion(
-            jobId: d.Value(job.jobId),
-            progress: d.Value(groupProgress),
-          ),
-        );
-      }
-    } else if (update is TaskStatusUpdate) {
-      _log.fine(
-        'Upload chunk status update for job ${job.jobId}: ${update.status}',
-      );
-      if (update.status == TaskStatus.complete) {
-        await _checkAndCompleteUpload(uploadId);
-      } else if (update.status == TaskStatus.failed ||
-          update.status == TaskStatus.canceled) {
-        await _updateJobStatus(job.jobId, UploadJobStatus.failed);
-        // cancel the task by id（安全）：
-        try {
-          await FileDownloader().cancelTasksWithIds([task.taskId]);
-        } catch (e, st) {
-          _log.warning('Failed to cancel task ${task.taskId}: $e', e, st);
-        }
-      }
-    }
-  }
-
   /// Helper：从数据库所有记录中过滤出属于某个 group 的记录（因为 plugin 没有直接的 recordsForGroup API）
-  Future<List<dynamic>> _recordsForGroup(String group) async {
+  Future<List<TaskRecord>> _recordsForGroup(String group) async {
     final all = await FileDownloader().database.allRecords();
     final filtered = all.where((record) {
       try {

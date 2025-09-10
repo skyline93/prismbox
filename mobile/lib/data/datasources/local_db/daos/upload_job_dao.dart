@@ -17,12 +17,21 @@ class UploadJobDao extends DatabaseAccessor<AppDatabase>
 
   /// 更新一个上传任务的部分字段。
   /// 它会根据 [job] 中的主键 [jobId] 匹配记录，并只更新 [job] 中有值的字段。
-  Future<int> updateJob(UploadJobsCompanion job) {
+  Future<void> updateJob(UploadJobsCompanion job) {
+    if (job.jobId.present) {
+      return (update(
+        uploadJobs,
+      )..where((tbl) => tbl.jobId.equals(job.jobId.value))).write(job);
+    } else {
+      // 在更新操作中，jobId 是必须的
+      throw ArgumentError('jobId must be provided when updating a job.');
+    }
+
     // 使用 (update()..where()).write() 来执行部分更新
     // 这只会更新 job 中被明确设置的字段
-    return (update(
-      uploadJobs,
-    )..where((tbl) => tbl.jobId.equals(job.jobId.value))).write(job);
+    // return (update(
+    //   uploadJobs,
+    // )..where((tbl) => tbl.jobId.equals(job.jobId.value))).write(job);
   }
 
   /// 根据 jobId 获取一个具体的上传任务

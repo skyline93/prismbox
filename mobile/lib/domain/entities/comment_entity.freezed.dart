@@ -23,7 +23,9 @@ mixin _$CommentEntity {
   int get likesCount => throw _privateConstructorUsedError;
   List<CommentEntity> get replies => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
+  /// Create a copy of CommentEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $CommentEntityCopyWith<CommentEntity> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -55,6 +57,8 @@ class _$CommentEntityCopyWithImpl<$Res, $Val extends CommentEntity>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of CommentEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -93,6 +97,8 @@ class _$CommentEntityCopyWithImpl<$Res, $Val extends CommentEntity>
     ) as $Val);
   }
 
+  /// Create a copy of CommentEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $FeedAuthorEntityCopyWith<$Res> get author {
@@ -130,6 +136,8 @@ class __$$CommentEntityImplCopyWithImpl<$Res>
       _$CommentEntityImpl _value, $Res Function(_$CommentEntityImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of CommentEntity
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -226,7 +234,9 @@ class _$CommentEntityImpl extends _CommentEntity {
   int get hashCode => Object.hash(runtimeType, id, author, content, createdAt,
       likesCount, const DeepCollectionEquality().hash(_replies));
 
-  @JsonKey(ignore: true)
+  /// Create a copy of CommentEntity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$CommentEntityImplCopyWith<_$CommentEntityImpl> get copyWith =>
@@ -255,8 +265,11 @@ abstract class _CommentEntity extends CommentEntity {
   int get likesCount;
   @override
   List<CommentEntity> get replies;
+
+  /// Create a copy of CommentEntity
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$CommentEntityImplCopyWith<_$CommentEntityImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
