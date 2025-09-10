@@ -34,7 +34,7 @@ void callbackDispatcher() {
     final secStor = SecureStorageService(db);
     final dioClient = DioClient(secStor);
 
-    final remoteApi = RemoteMediaDataSource(dioClient.dio);
+    final remoteApi = RemoteMediaDataSource(dioClient);
     final processor = SyncJobProcessor(db: db, remoteApi: remoteApi);
     final jobManager = SyncJobManager(db);
 

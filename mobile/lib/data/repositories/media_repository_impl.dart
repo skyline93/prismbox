@@ -260,32 +260,6 @@ class MediaRepositoryImpl implements MediaRepository {
     return _syncJobManager.createUploadJobForExistingAsset(entity);
   }
 
-  @override
-  Future<List<String>> uploadAssets(List<AssetEntity> assets) async {
-    final List<String> newUuids = [];
-    for (final asset in assets) {
-      final File? file = await asset.file;
-      if (file != null) {
-        // 1. 从 photo_manager 的 AssetType 映射到我们自己的 MediaType
-        final MediaType mediaType;
-        if (asset.type == AssetType.video) {
-          mediaType = MediaType.video;
-        } else {
-          // 将所有非视频类型（如图片、Live Photo）都视为图片
-          mediaType = MediaType.image;
-        }
-
-        // 2. 调用修正后的方法，传入文件和类型
-        final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(
-          file,
-          mediaType,
-        );
-        newUuids.add(remoteMedia.uuid);
-      }
-    }
-    return newUuids;
-  }
-
   // [新增] 实现单个文件上传方法
   @override
   Future<UnifiedMediaEntity> uploadMedia(AssetEntity asset) async {

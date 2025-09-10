@@ -12,8 +12,8 @@ abstract class InjectableModule {
   Dio getDio(DioClient client) => client.dio;
 
   @lazySingleton
-  RemoteMediaDataSource getRemoteMediaSource(Dio dio) =>
-      RemoteMediaDataSource(dio);
+  RemoteMediaDataSource getRemoteMediaSource(DioClient dioClient) =>
+      RemoteMediaDataSource(dioClient);
 
   @preResolve
   Future<SharedPreferences> get prefs async =>

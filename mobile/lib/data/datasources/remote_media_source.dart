@@ -9,11 +9,15 @@ import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/core/enums.dart';
 
 class RemoteMediaDataSource {
+  // ignore: unused_field
+  final DioClient _dioClient;
   final Dio _dio;
-  final downloadDio = Dio();
+  final Dio _fileDio;
   final String baseUrl = DioClient.getBaseUrl();
 
-  RemoteMediaDataSource(this._dio);
+  RemoteMediaDataSource(this._dioClient)
+    : _dio = _dioClient.dio,
+      _fileDio = _dioClient.fileDio;
 
   Future<List<MediaResponse>> getMediaList({
     int page = 1,
@@ -26,7 +30,7 @@ class RemoteMediaDataSource {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data']; 
+        final List<dynamic> data = response.data['data'];
         return data.map((json) => MediaResponse.fromJson(json)).toList();
       } else {
         throw Exception('获取媒体列表失败: ${response.data['message']}');
@@ -64,7 +68,7 @@ class RemoteMediaDataSource {
           MapEntry('original_filename', originalFilename),
       ]);
 
-      final response = await _dio.post(
+      final response = await _fileDio.post(
         '$baseUrl/media/upload',
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
@@ -103,7 +107,7 @@ class RemoteMediaDataSource {
     }
 
     try {
-      final response = await downloadDio.get(
+      final response = await _fileDio.get(
         mediaItem.downloadUrl,
         options: Options(responseType: ResponseType.bytes),
       );
@@ -127,7 +131,7 @@ class RemoteMediaDataSource {
     }
 
     try {
-      final response = await downloadDio.get(
+      final response = await _fileDio.get(
         mediaItem.previewUrl,
         options: Options(responseType: ResponseType.bytes),
       );
@@ -151,7 +155,7 @@ class RemoteMediaDataSource {
     }
 
     try {
-      final response = await downloadDio.get(
+      final response = await _fileDio.get(
         mediaItem.thumbnailUrl,
         options: Options(responseType: ResponseType.bytes),
       );
@@ -254,7 +258,7 @@ class RemoteMediaDataSource {
         'hash': hash, // <-- **关键修改：在这里添加 hash 字段**
       });
 
-      final response = await _dio.post(
+      final response = await _fileDio.post(
         '$baseUrl/media/upload',
         data: formData,
         options: Options(contentType: 'multipart/form-data'),

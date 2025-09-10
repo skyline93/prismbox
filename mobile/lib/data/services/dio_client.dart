@@ -48,7 +48,6 @@ class DioClient {
           Duration(seconds: 3),
           Duration(seconds: 5),
         ],
-        // --- 最终修正: 使用 retryEvaluator 实现自定义重试逻辑 ---
         retryEvaluator: (error, attempt) {
           const retryableDioTypes = {
             DioExceptionType.connectionTimeout,
@@ -75,11 +74,42 @@ class DioClient {
     ]);
 
     // ---- 2. 配置用于文件传输的Dio实例 (fileDio) ----
-    fileDio.options.baseUrl = baseUrl;
+    // fileDio.options.baseUrl = baseUrl;  // 文件上传下载通常使用完整URL，不设置baseUrl
     fileDio.options.connectTimeout = const Duration(seconds: 60);
     fileDio.options.receiveTimeout = const Duration(minutes: 30);
     fileDio.interceptors.addAll([
       _createAuthInterceptor(),
+      RetryInterceptor(
+        dio: fileDio,
+        logPrint: log,
+        retries: 3,
+        retryDelays: const [
+          Duration(seconds: 1),
+          Duration(seconds: 3),
+          Duration(seconds: 5),
+        ],
+        retryEvaluator: (error, attempt) {
+          const retryableDioTypes = {
+            DioExceptionType.connectionTimeout,
+            DioExceptionType.sendTimeout,
+            DioExceptionType.receiveTimeout,
+          };
+
+          if (retryableDioTypes.contains(error.type)) {
+            return true;
+          }
+
+          if (error.type == DioExceptionType.badResponse) {
+            final statusCode = error.response?.statusCode;
+            if (statusCode != null &&
+                defaultRetryableStatuses.contains(statusCode)) {
+              return true;
+            }
+          }
+
+          return false;
+        },
+      ),
       LogInterceptor(
         requestHeader: true,
         responseHeader: true,
@@ -196,7 +226,10 @@ class DioClient {
       }
       String fileName = file.path.split('/').last;
       FormData formData = FormData.fromMap({
-        "file": await MultipartFile.fromFile(file.path, filename: fileName),
+        "file": MultipartFileRecreatable.fromFileSync(
+          file.path,
+          filename: fileName,
+        ),
       });
       final options = Options(extra: {'dio_instance': 'file'});
       final response = await fileDio.post(
