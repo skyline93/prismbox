@@ -25,3 +25,14 @@ Stream<List<DownloadJob>> downloadJobs(DownloadJobsRef ref) {
   final dao = ref.watch(downloadJobDaoProvider);
   return dao.watchAllJobs();
 }
+
+@riverpod
+UploadJobDao uploadJobDao(UploadJobDaoRef ref) {
+  return getIt<AppDatabase>().uploadJobDao;
+}
+
+@riverpod
+Stream<List<UploadJob>> uploadJobs(UploadJobsRef ref) {
+  final dao = ref.watch(uploadJobDaoProvider);
+  return dao.watchAllJobs();
+}

@@ -30,7 +30,7 @@ import (
 const (
 	defaultPageSize = 100
 	iso8601Format   = time.RFC3339
-	chunkSize       = 5 * 1024 * 1024 // 5 MB
+	chunkSize       = 1 * 1024 * 1024 // 1 MB
 	tmpUploadDir    = "tmp"           // 临时分片存储目录
 )
 
@@ -661,57 +661,92 @@ func (h *MediaHandler) InitiateUpload(c *gin.Context) {
 // @Param        upload_id formData string true "上传作业ID"
 // @Param        chunk_index formData int true "分片索引 (从0开始)"
 // @Param        chunk formData file true "分片文件本身"
-// @Success      200  {object}  core.ApiResponse "分片上传成功"
-// @Failure      400  {object}  core.ApiResponse "请求参数错误或作业无效"
+// @Success      204 "分片上传成功 (无返回内容)"
+// @Failure      400 {object} core.ApiResponse "请求参数错误、任务状态无效或任务已过期"
+// @Failure      404 {object} core.ApiResponse "上传作业不存在"
+// @Failure      500 {object} core.ApiResponse "服务器内部错误"
 // @Security     BearerAuth
 // @Router       /media/upload/chunk [post]
 func (h *MediaHandler) UploadChunk(c *gin.Context) {
+	// --- 1. 参数解析与校验 ---
 	uploadID := c.PostForm("upload_id")
-	chunkIndex := c.PostForm("chunk_index")
-	if uploadID == "" || chunkIndex == "" {
-		core.Error(c, "upload_id and chunk_index are required")
+	chunkIndexStr := c.PostForm("chunk_index")
+	if uploadID == "" || chunkIndexStr == "" {
+		// 使用新函数返回 400 Bad Request
+		core.ErrorWithStatus(c, http.StatusBadRequest, "upload_id and chunk_index are required")
 		return
 	}
 
-	// 1. 校验 upload_id
-	var task models.UploadTask
-	if err := h.DB.First(&task, "id = ?", uploadID).Error; err != nil {
-		core.Error(c, "Invalid upload_id")
+	chunkIndex, err := strconv.Atoi(chunkIndexStr)
+	if err != nil {
+		core.ErrorWithStatus(c, http.StatusBadRequest, "chunk_index must be a valid integer")
 		return
 	}
+
+	// --- 2. 查找并校验上传任务 ---
+	var task models.UploadTask
+	if err := h.DB.First(&task, "id = ?", uploadID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 使用新函数返回 404 Not Found
+			core.ErrorWithStatus(c, http.StatusNotFound, "Upload task not found")
+		} else {
+			// 使用新函数返回 500 Internal Server Error
+			log.Printf("Database error while finding upload task %s: %v", uploadID, err)
+			core.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to retrieve upload task information")
+		}
+		return
+	}
+
 	if task.Status != "INITIATED" {
-		core.Error(c, "This upload is already completed or has failed")
+		core.ErrorWithStatus(c, http.StatusBadRequest, fmt.Sprintf("Cannot upload chunk for a task with status '%s'", task.Status))
 		return
 	}
 	if time.Now().After(task.ExpiresAt) {
-		core.Error(c, "This upload task has expired")
+		core.ErrorWithStatus(c, http.StatusBadRequest, "This upload task has expired")
 		return
 	}
 
-	// 2. 获取分片文件
-	file, _, err := c.Request.FormFile("chunk")
+	// --- 3. 获取并处理上传的分片文件 ---
+	fileHeader, err := c.FormFile("chunk")
 	if err != nil {
-		core.Error(c, "File chunk upload failed: "+err.Error())
+		core.ErrorWithStatus(c, http.StatusBadRequest, "Form field 'chunk' is missing or invalid")
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.Printf("Error opening uploaded file for task %s: %v", uploadID, err)
+		core.ErrorWithStatus(c, http.StatusInternalServerError, "Could not process uploaded file")
 		return
 	}
 	defer file.Close()
 
-	// 3. 保存分片
-	tmpDir := filepath.Join(h.UploadDir, tmpUploadDir, uploadID)
-	chunkPath := filepath.Join(tmpDir, chunkIndex)
-	outFile, err := os.Create(chunkPath)
-	if err != nil {
-		core.Error(c, "Failed to save chunk")
-		return
-	}
-	defer outFile.Close()
-	_, err = io.Copy(outFile, file)
-	if err != nil {
-		core.Error(c, "Failed to write chunk to disk")
+	// --- 4. 保存分片到磁盘 ---
+	tmpDir := filepath.Join(h.UploadDir, "tmp_uploads", uploadID)
+	if err := os.MkdirAll(tmpDir, 0750); err != nil {
+		log.Printf("FATAL: Could not create chunk directory %s: %v", tmpDir, err)
+		core.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to prepare storage for chunk")
 		return
 	}
 
-	core.Success(c, "Chunk uploaded successfully", nil)
+	chunkPath := filepath.Join(tmpDir, strconv.Itoa(chunkIndex))
+	outFile, err := os.Create(chunkPath)
+	if err != nil {
+		log.Printf("FATAL: Could not create chunk file %s: %v", chunkPath, err)
+		core.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to save chunk")
+		return
+	}
+	defer outFile.Close()
+
+	if _, err = io.Copy(outFile, file); err != nil {
+		log.Printf("FATAL: Could not write chunk to disk %s: %v", chunkPath, err)
+		core.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to write chunk to disk")
+		return
+	}
+
+	// --- 5. 成功响应 ---
+	// 使用新增的 NoContent 辅助函数返回 204
+	core.NoContent(c)
 }
 
 // @Summary      完成分片上传

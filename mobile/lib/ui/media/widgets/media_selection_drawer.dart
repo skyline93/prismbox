@@ -2,12 +2,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/providers/providers.dart';
+import 'package:mobile/providers/transfer_providers.dart';
+import 'package:mobile/routing/app_router.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:mobile/domain/entities/unified_media_entity.dart';
 
 class MediaSelectionDrawer extends ConsumerWidget {
   final ScrollController scrollController;
 
   const MediaSelectionDrawer({super.key, required this.scrollController});
+
+  // 定义大文件阈值 (1MB)
+  static const int largeFileThreshold = 1 * 1024 * 1024;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,14 +24,9 @@ class MediaSelectionDrawer extends ConsumerWidget {
     );
     final bool hasSelection = selectedCount > 0;
 
-    // [关键修改] 1. 将 "悬浮卡片" 的视觉效果放在内部
-    // DraggableScrollableSheet 本身是看不见的，它只提供拖拽行为
-    // 我们在内部用 Container + Padding 来创建我们想要的视觉样式
     return Container(
-      // 背景设为透明，让下方的 Padding 和阴影正确显示
       color: Colors.transparent,
       child: Padding(
-        // 这个 Padding 创造了卡片与屏幕边缘的 "呼吸空间"
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
         child: Container(
           decoration: BoxDecoration(
@@ -31,24 +34,16 @@ class MediaSelectionDrawer extends ConsumerWidget {
             borderRadius: const BorderRadius.all(Radius.circular(24.0)),
             boxShadow: [
               BoxShadow(
-                // 1. 将阴影颜色稍微调深一点，增加对比度
                 color: Colors.black.withOpacity(1),
-                // 2. 增加一个向下的偏移量，模拟顶部光源
                 offset: const Offset(0, 4),
-                // 3. 大幅增加模糊半径，让阴影非常柔和、自然
                 blurRadius: 24,
-                // 4. 增加一个微小的扩展半径，让阴影范围更大
                 spreadRadius: 2,
               ),
             ],
           ),
-          // [关键修改] 2. 使用 ListView 来承载所有内容
-          // 并将 DraggableScrollableSheet 的控制器赋给它
           child: ListView(
             controller: scrollController,
-            // ListView 的内容就是抽屉里所有可见的元素
             children: [
-              // 顶部拖拽指示器
               Center(
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 12.0),
@@ -63,10 +58,65 @@ class MediaSelectionDrawer extends ConsumerWidget {
                 ),
               ),
 
-              // 初始状态下可见的核心操作
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
+                  _buildActionButton(
+                    context: context,
+                    icon: Icons.cloud_upload_outlined,
+                    label: '上传',
+                    isEnabled: hasSelection,
+                    onPressed: () async {
+                      final transferService = ref.read(transferServiceProvider);
+                      final selectionNotifier = ref.read(
+                        selectionProvider.notifier,
+                      );
+                      final selectedItems = ref
+                          .read(selectionProvider)
+                          .selectedItems;
+                      final messenger = ScaffoldMessenger.of(context);
+                      final router = context.router;
+
+                      final itemsToUploadCount = selectedItems.length;
+
+                      for (final UnifiedMediaEntity entity in selectedItems) {
+                        AssetEntity? asset;
+                        if (entity.assetEntity != null) {
+                          asset = entity.assetEntity;
+                        } else if (entity.localId != null) {
+                          asset = await AssetEntity.fromId(entity.localId!);
+                        }
+
+                        if (asset != null) {
+                          final file = await asset.file;
+                          if (file != null) {
+                            final fileSize = await file.length();
+                            if (fileSize > largeFileThreshold) {
+                              transferService.enqueueUploadJob(file);
+                            } else {
+                              // TODO: 实现小文件的直接上传逻辑
+                              debugPrint('小文件 (${file.path}) 将使用标准上传');
+                              // 暂时也用大文件通道
+                              transferService.enqueueUploadJob(file);
+                            }
+                          }
+                        } else {
+                          debugPrint('无法找到实体 ${entity.id} 的本地文件，跳过上传。');
+                        }
+                      }
+
+                      if (!context.mounted) return;
+
+                      selectionNotifier.clearSelection();
+                      router.push(const TransferManagerRoute());
+
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('$itemsToUploadCount 个文件已加入上传队列'),
+                        ),
+                      );
+                    },
+                  ),
                   _buildActionButton(
                     context: context,
                     icon: Icons.share_outlined,
@@ -90,11 +140,9 @@ class MediaSelectionDrawer extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16), // 分隔
+              const SizedBox(height: 16),
               const Divider(indent: 16, endIndent: 16),
 
-              // [关键修改] 3. 这里是向上拖拽后才会完全展示的 "隐藏内容"
-              // 使用 ListTile 是展示这类列表的最佳实践
               ListTile(
                 leading: const Icon(Icons.add_to_photos_outlined),
                 title: const Text('添加到相册'),
@@ -105,7 +153,6 @@ class MediaSelectionDrawer extends ConsumerWidget {
                 title: const Text('信息'),
                 onTap: hasSelection ? () {} : null,
               ),
-              // 你可以在下面添加更多 ListTile 来测试长列表的滚动效果
             ],
           ),
         ),

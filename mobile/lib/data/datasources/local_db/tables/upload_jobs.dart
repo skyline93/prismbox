@@ -3,8 +3,6 @@
 import 'package:drift/drift.dart';
 import 'package:mobile/core/enums.dart';
 
-
-/// 用于在 Drift 表和 Dart 枚举之间转换的转换器
 class UploadJobStatusConverter extends TypeConverter<UploadJobStatus, String> {
   const UploadJobStatusConverter();
   @override

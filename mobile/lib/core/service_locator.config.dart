@@ -21,6 +21,7 @@ import '../data/repositories/media_repository_impl.dart' as _i74;
 import '../data/repositories/user_repository_impl.dart' as _i223;
 import '../data/services/dio_client.dart' as _i305;
 import '../data/services/group_api_service.dart' as _i470;
+import '../data/services/media_api_service.dart' as _i816;
 import '../data/services/user_api_service.dart' as _i1052;
 import '../domain/repositories/group_repository.dart' as _i957;
 import '../domain/repositories/media_repository.dart' as _i442;
@@ -77,6 +78,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i470.GroupApiService>(
         () => _i470.GroupApiService(gh<_i361.Dio>()));
+    gh.lazySingleton<_i816.MediaApiService>(
+        () => _i816.MediaApiService(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(
         () => injectableModule.getRemoteMediaSource(gh<_i305.DioClient>()));
     gh.lazySingleton<_i442.MediaRepository>(() => _i74.MediaRepositoryImpl(
@@ -87,6 +90,11 @@ extension GetItInjectableX on _i174.GetIt {
         ));
     gh.lazySingleton<_i957.GroupRepository>(
         () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
+    gh.lazySingleton<_i298.TransferService>(() => _i298.TransferService(
+          gh<_i669.AppDatabase>(),
+          gh<_i527.RemoteMediaDataSource>(),
+          gh<_i816.MediaApiService>(),
+        ));
     gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
           db: gh<_i669.AppDatabase>(),
           remoteApi: gh<_i527.RemoteMediaDataSource>(),
@@ -99,10 +107,6 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i518.SyncStateService>(),
           gh<_i166.AlbumSyncService>(),
           gh<_i669.AppDatabase>(),
-        ));
-    gh.lazySingleton<_i298.TransferService>(() => _i298.TransferService(
-          gh<_i669.AppDatabase>(),
-          gh<_i527.RemoteMediaDataSource>(),
         ));
     return this;
   }

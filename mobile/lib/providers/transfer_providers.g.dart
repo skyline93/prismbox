@@ -51,5 +51,33 @@ final downloadJobsProvider =
 );
 
 typedef DownloadJobsRef = AutoDisposeStreamProviderRef<List<DownloadJob>>;
+String _$uploadJobDaoHash() => r'51912cfdfb546b1c1e67e701ba0cd95225df5951';
+
+/// See also [uploadJobDao].
+@ProviderFor(uploadJobDao)
+final uploadJobDaoProvider = AutoDisposeProvider<UploadJobDao>.internal(
+  uploadJobDao,
+  name: r'uploadJobDaoProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$uploadJobDaoHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef UploadJobDaoRef = AutoDisposeProviderRef<UploadJobDao>;
+String _$uploadJobsHash() => r'1439e7b484b30b1f38062c5580abd2ca5bb7a5ce';
+
+/// See also [uploadJobs].
+@ProviderFor(uploadJobs)
+final uploadJobsProvider = AutoDisposeStreamProvider<List<UploadJob>>.internal(
+  uploadJobs,
+  name: r'uploadJobsProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$uploadJobsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef UploadJobsRef = AutoDisposeStreamProviderRef<List<UploadJob>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

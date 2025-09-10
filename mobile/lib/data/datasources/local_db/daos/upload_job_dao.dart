@@ -15,10 +15,14 @@ class UploadJobDao extends DatabaseAccessor<AppDatabase>
     return into(uploadJobs).insert(job);
   }
 
-  /// 更新一个上传任务
-  /// 它会根据主键 [jobId] 匹配并更新记录
-  Future<bool> updateJob(UploadJobsCompanion job) {
-    return update(uploadJobs).replace(job);
+  /// 更新一个上传任务的部分字段。
+  /// 它会根据 [job] 中的主键 [jobId] 匹配记录，并只更新 [job] 中有值的字段。
+  Future<int> updateJob(UploadJobsCompanion job) {
+    // 使用 (update()..where()).write() 来执行部分更新
+    // 这只会更新 job 中被明确设置的字段
+    return (update(
+      uploadJobs,
+    )..where((tbl) => tbl.jobId.equals(job.jobId.value))).write(job);
   }
 
   /// 根据 jobId 获取一个具体的上传任务
