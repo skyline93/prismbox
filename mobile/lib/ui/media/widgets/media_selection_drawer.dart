@@ -92,12 +92,18 @@ class MediaSelectionDrawer extends ConsumerWidget {
                           if (file != null) {
                             final fileSize = await file.length();
                             if (fileSize > largeFileThreshold) {
-                              transferService.enqueueUploadJob(file);
+                              transferService.uploadService.enqueueUploadJob(
+                                file,
+                                asset.id,
+                              );
                             } else {
                               // TODO: 实现小文件的直接上传逻辑
                               debugPrint('小文件 (${file.path}) 将使用标准上传');
                               // 暂时也用大文件通道
-                              transferService.enqueueUploadJob(file);
+                              transferService.uploadService.enqueueUploadJob(
+                                file,
+                                asset.id,
+                              );
                             }
                           }
                         } else {

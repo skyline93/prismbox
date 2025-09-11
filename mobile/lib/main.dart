@@ -13,7 +13,7 @@ import 'package:storage_inspector/storage_inspector.dart';
 import 'package:drift_local_storage_inspector/drift_local_storage_inspector.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/data/datasources/local_db/connection.dart';
-import 'package:mobile/services/transfer_service.dart';
+import 'package:mobile/services/transfer/transfer_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +35,7 @@ void main() async {
   await configureDependencies();
   await initializeDateFormatting('zh_CN', null);
 
-  await getIt<TransferService>().initialize();
+  await getIt<TransferManager>().initialize();
 
   getIt<LocalMediaObserver>().startObserving();
 

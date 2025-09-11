@@ -26,12 +26,6 @@ class UploadJobDao extends DatabaseAccessor<AppDatabase>
       // 在更新操作中，jobId 是必须的
       throw ArgumentError('jobId must be provided when updating a job.');
     }
-
-    // 使用 (update()..where()).write() 来执行部分更新
-    // 这只会更新 job 中被明确设置的字段
-    // return (update(
-    //   uploadJobs,
-    // )..where((tbl) => tbl.jobId.equals(job.jobId.value))).write(job);
   }
 
   /// 根据 jobId 获取一个具体的上传任务
@@ -39,12 +33,5 @@ class UploadJobDao extends DatabaseAccessor<AppDatabase>
     return (select(
       uploadJobs,
     )..where((tbl) => tbl.jobId.equals(jobId))).getSingleOrNull();
-  }
-
-  /// 根据服务端返回的 uploadId 获取一个上传任务
-  Future<UploadJob?> getJobByUploadId(String uploadId) {
-    return (select(
-      uploadJobs,
-    )..where((tbl) => tbl.uploadId.equals(uploadId))).getSingleOrNull();
   }
 }

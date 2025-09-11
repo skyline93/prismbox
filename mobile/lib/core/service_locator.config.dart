@@ -30,7 +30,9 @@ import '../services/album_sync_service.dart' as _i166;
 import '../services/local_media_observer.dart' as _i538;
 import '../services/sync_job_manager.dart' as _i987;
 import '../services/sync_job_processor.dart' as _i642;
-import '../services/transfer_service.dart' as _i298;
+import '../services/transfer/download_service.dart' as _i180;
+import '../services/transfer/transfer_manager.dart' as _i422;
+import '../services/transfer/upload_service.dart' as _i1069;
 import 'database_module.dart' as _i384;
 import 'injectable_modules.dart' as _i129;
 import 'storage/secure_storage_service.dart' as _i65;
@@ -72,6 +74,10 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i669.AppDatabase>(),
               gh<_i987.SyncJobManager>(),
             ));
+    gh.lazySingleton<_i1069.UploadService>(() => _i1069.UploadService(
+          gh<_i669.AppDatabase>(),
+          gh<_i65.SecureStorageService>(),
+        ));
     gh.lazySingleton<_i361.Dio>(
         () => injectableModule.getDio(gh<_i305.DioClient>()));
     gh.lazySingleton<_i470.GroupApiService>(
@@ -88,12 +94,6 @@ extension GetItInjectableX on _i174.GetIt {
           syncJobManager: gh<_i987.SyncJobManager>(),
           localMediaSource: gh<_i290.LocalMediaDataSource>(),
         ));
-    gh.lazySingleton<_i298.TransferService>(() => _i298.TransferService(
-          gh<_i669.AppDatabase>(),
-          gh<_i527.RemoteMediaDataSource>(),
-          gh<_i816.MediaApiService>(),
-          gh<_i65.SecureStorageService>(),
-        ));
     gh.lazySingleton<_i957.GroupRepository>(
         () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
     gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
@@ -108,6 +108,14 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i518.SyncStateService>(),
           gh<_i166.AlbumSyncService>(),
           gh<_i669.AppDatabase>(),
+        ));
+    gh.lazySingleton<_i180.DownloadService>(() => _i180.DownloadService(
+          gh<_i669.AppDatabase>(),
+          gh<_i527.RemoteMediaDataSource>(),
+        ));
+    gh.lazySingleton<_i422.TransferManager>(() => _i422.TransferManager(
+          gh<_i180.DownloadService>(),
+          gh<_i1069.UploadService>(),
         ));
     return this;
   }
