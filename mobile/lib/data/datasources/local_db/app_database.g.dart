@@ -1755,12 +1755,6 @@ class $UploadJobsTable extends UploadJobs
   late final GeneratedColumn<String> jobId = GeneratedColumn<String>(
       'job_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _uploadIdMeta =
-      const VerificationMeta('uploadId');
-  @override
-  late final GeneratedColumn<String> uploadId = GeneratedColumn<String>(
-      'upload_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _filePathMeta =
       const VerificationMeta('filePath');
   @override
@@ -1778,18 +1772,6 @@ class $UploadJobsTable extends UploadJobs
   @override
   late final GeneratedColumn<int> totalSize = GeneratedColumn<int>(
       'total_size', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _chunkSizeMeta =
-      const VerificationMeta('chunkSize');
-  @override
-  late final GeneratedColumn<int> chunkSize = GeneratedColumn<int>(
-      'chunk_size', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _totalChunksMeta =
-      const VerificationMeta('totalChunks');
-  @override
-  late final GeneratedColumn<int> totalChunks = GeneratedColumn<int>(
-      'total_chunks', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -1810,18 +1792,8 @@ class $UploadJobsTable extends UploadJobs
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [
-        jobId,
-        uploadId,
-        filePath,
-        fileHash,
-        totalSize,
-        chunkSize,
-        totalChunks,
-        status,
-        progress,
-        createdAt
-      ];
+  List<GeneratedColumn> get $columns =>
+      [jobId, filePath, fileHash, totalSize, status, progress, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1837,10 +1809,6 @@ class $UploadJobsTable extends UploadJobs
           _jobIdMeta, jobId.isAcceptableOrUnknown(data['job_id']!, _jobIdMeta));
     } else if (isInserting) {
       context.missing(_jobIdMeta);
-    }
-    if (data.containsKey('upload_id')) {
-      context.handle(_uploadIdMeta,
-          uploadId.isAcceptableOrUnknown(data['upload_id']!, _uploadIdMeta));
     }
     if (data.containsKey('file_path')) {
       context.handle(_filePathMeta,
@@ -1859,20 +1827,6 @@ class $UploadJobsTable extends UploadJobs
           totalSize.isAcceptableOrUnknown(data['total_size']!, _totalSizeMeta));
     } else if (isInserting) {
       context.missing(_totalSizeMeta);
-    }
-    if (data.containsKey('chunk_size')) {
-      context.handle(_chunkSizeMeta,
-          chunkSize.isAcceptableOrUnknown(data['chunk_size']!, _chunkSizeMeta));
-    } else if (isInserting) {
-      context.missing(_chunkSizeMeta);
-    }
-    if (data.containsKey('total_chunks')) {
-      context.handle(
-          _totalChunksMeta,
-          totalChunks.isAcceptableOrUnknown(
-              data['total_chunks']!, _totalChunksMeta));
-    } else if (isInserting) {
-      context.missing(_totalChunksMeta);
     }
     context.handle(_statusMeta, const VerificationResult.success());
     if (data.containsKey('progress')) {
@@ -1898,18 +1852,12 @@ class $UploadJobsTable extends UploadJobs
     return UploadJob(
       jobId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}job_id'])!,
-      uploadId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}upload_id']),
       filePath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}file_path'])!,
       fileHash: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}file_hash'])!,
       totalSize: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}total_size'])!,
-      chunkSize: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}chunk_size'])!,
-      totalChunks: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}total_chunks'])!,
       status: $UploadJobsTable.$converterstatus.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!),
@@ -1931,23 +1879,17 @@ class $UploadJobsTable extends UploadJobs
 
 class UploadJob extends DataClass implements Insertable<UploadJob> {
   final String jobId;
-  final String? uploadId;
   final String filePath;
   final String fileHash;
   final int totalSize;
-  final int chunkSize;
-  final int totalChunks;
   final UploadJobStatus status;
   final double progress;
   final DateTime createdAt;
   const UploadJob(
       {required this.jobId,
-      this.uploadId,
       required this.filePath,
       required this.fileHash,
       required this.totalSize,
-      required this.chunkSize,
-      required this.totalChunks,
       required this.status,
       required this.progress,
       required this.createdAt});
@@ -1955,14 +1897,9 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['job_id'] = Variable<String>(jobId);
-    if (!nullToAbsent || uploadId != null) {
-      map['upload_id'] = Variable<String>(uploadId);
-    }
     map['file_path'] = Variable<String>(filePath);
     map['file_hash'] = Variable<String>(fileHash);
     map['total_size'] = Variable<int>(totalSize);
-    map['chunk_size'] = Variable<int>(chunkSize);
-    map['total_chunks'] = Variable<int>(totalChunks);
     {
       map['status'] =
           Variable<String>($UploadJobsTable.$converterstatus.toSql(status));
@@ -1975,14 +1912,9 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
   UploadJobsCompanion toCompanion(bool nullToAbsent) {
     return UploadJobsCompanion(
       jobId: Value(jobId),
-      uploadId: uploadId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(uploadId),
       filePath: Value(filePath),
       fileHash: Value(fileHash),
       totalSize: Value(totalSize),
-      chunkSize: Value(chunkSize),
-      totalChunks: Value(totalChunks),
       status: Value(status),
       progress: Value(progress),
       createdAt: Value(createdAt),
@@ -1994,12 +1926,9 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return UploadJob(
       jobId: serializer.fromJson<String>(json['jobId']),
-      uploadId: serializer.fromJson<String?>(json['uploadId']),
       filePath: serializer.fromJson<String>(json['filePath']),
       fileHash: serializer.fromJson<String>(json['fileHash']),
       totalSize: serializer.fromJson<int>(json['totalSize']),
-      chunkSize: serializer.fromJson<int>(json['chunkSize']),
-      totalChunks: serializer.fromJson<int>(json['totalChunks']),
       status: serializer.fromJson<UploadJobStatus>(json['status']),
       progress: serializer.fromJson<double>(json['progress']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2010,12 +1939,9 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'jobId': serializer.toJson<String>(jobId),
-      'uploadId': serializer.toJson<String?>(uploadId),
       'filePath': serializer.toJson<String>(filePath),
       'fileHash': serializer.toJson<String>(fileHash),
       'totalSize': serializer.toJson<int>(totalSize),
-      'chunkSize': serializer.toJson<int>(chunkSize),
-      'totalChunks': serializer.toJson<int>(totalChunks),
       'status': serializer.toJson<UploadJobStatus>(status),
       'progress': serializer.toJson<double>(progress),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -2024,23 +1950,17 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
 
   UploadJob copyWith(
           {String? jobId,
-          Value<String?> uploadId = const Value.absent(),
           String? filePath,
           String? fileHash,
           int? totalSize,
-          int? chunkSize,
-          int? totalChunks,
           UploadJobStatus? status,
           double? progress,
           DateTime? createdAt}) =>
       UploadJob(
         jobId: jobId ?? this.jobId,
-        uploadId: uploadId.present ? uploadId.value : this.uploadId,
         filePath: filePath ?? this.filePath,
         fileHash: fileHash ?? this.fileHash,
         totalSize: totalSize ?? this.totalSize,
-        chunkSize: chunkSize ?? this.chunkSize,
-        totalChunks: totalChunks ?? this.totalChunks,
         status: status ?? this.status,
         progress: progress ?? this.progress,
         createdAt: createdAt ?? this.createdAt,
@@ -2048,13 +1968,9 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
   UploadJob copyWithCompanion(UploadJobsCompanion data) {
     return UploadJob(
       jobId: data.jobId.present ? data.jobId.value : this.jobId,
-      uploadId: data.uploadId.present ? data.uploadId.value : this.uploadId,
       filePath: data.filePath.present ? data.filePath.value : this.filePath,
       fileHash: data.fileHash.present ? data.fileHash.value : this.fileHash,
       totalSize: data.totalSize.present ? data.totalSize.value : this.totalSize,
-      chunkSize: data.chunkSize.present ? data.chunkSize.value : this.chunkSize,
-      totalChunks:
-          data.totalChunks.present ? data.totalChunks.value : this.totalChunks,
       status: data.status.present ? data.status.value : this.status,
       progress: data.progress.present ? data.progress.value : this.progress,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -2065,12 +1981,9 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
   String toString() {
     return (StringBuffer('UploadJob(')
           ..write('jobId: $jobId, ')
-          ..write('uploadId: $uploadId, ')
           ..write('filePath: $filePath, ')
           ..write('fileHash: $fileHash, ')
           ..write('totalSize: $totalSize, ')
-          ..write('chunkSize: $chunkSize, ')
-          ..write('totalChunks: $totalChunks, ')
           ..write('status: $status, ')
           ..write('progress: $progress, ')
           ..write('createdAt: $createdAt')
@@ -2079,19 +1992,16 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
   }
 
   @override
-  int get hashCode => Object.hash(jobId, uploadId, filePath, fileHash,
-      totalSize, chunkSize, totalChunks, status, progress, createdAt);
+  int get hashCode => Object.hash(
+      jobId, filePath, fileHash, totalSize, status, progress, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UploadJob &&
           other.jobId == this.jobId &&
-          other.uploadId == this.uploadId &&
           other.filePath == this.filePath &&
           other.fileHash == this.fileHash &&
           other.totalSize == this.totalSize &&
-          other.chunkSize == this.chunkSize &&
-          other.totalChunks == this.totalChunks &&
           other.status == this.status &&
           other.progress == this.progress &&
           other.createdAt == this.createdAt);
@@ -2099,24 +2009,18 @@ class UploadJob extends DataClass implements Insertable<UploadJob> {
 
 class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
   final Value<String> jobId;
-  final Value<String?> uploadId;
   final Value<String> filePath;
   final Value<String> fileHash;
   final Value<int> totalSize;
-  final Value<int> chunkSize;
-  final Value<int> totalChunks;
   final Value<UploadJobStatus> status;
   final Value<double> progress;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const UploadJobsCompanion({
     this.jobId = const Value.absent(),
-    this.uploadId = const Value.absent(),
     this.filePath = const Value.absent(),
     this.fileHash = const Value.absent(),
     this.totalSize = const Value.absent(),
-    this.chunkSize = const Value.absent(),
-    this.totalChunks = const Value.absent(),
     this.status = const Value.absent(),
     this.progress = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2124,12 +2028,9 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
   });
   UploadJobsCompanion.insert({
     required String jobId,
-    this.uploadId = const Value.absent(),
     required String filePath,
     required String fileHash,
     required int totalSize,
-    required int chunkSize,
-    required int totalChunks,
     required UploadJobStatus status,
     required double progress,
     required DateTime createdAt,
@@ -2138,19 +2039,14 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
         filePath = Value(filePath),
         fileHash = Value(fileHash),
         totalSize = Value(totalSize),
-        chunkSize = Value(chunkSize),
-        totalChunks = Value(totalChunks),
         status = Value(status),
         progress = Value(progress),
         createdAt = Value(createdAt);
   static Insertable<UploadJob> custom({
     Expression<String>? jobId,
-    Expression<String>? uploadId,
     Expression<String>? filePath,
     Expression<String>? fileHash,
     Expression<int>? totalSize,
-    Expression<int>? chunkSize,
-    Expression<int>? totalChunks,
     Expression<String>? status,
     Expression<double>? progress,
     Expression<DateTime>? createdAt,
@@ -2158,12 +2054,9 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
   }) {
     return RawValuesInsertable({
       if (jobId != null) 'job_id': jobId,
-      if (uploadId != null) 'upload_id': uploadId,
       if (filePath != null) 'file_path': filePath,
       if (fileHash != null) 'file_hash': fileHash,
       if (totalSize != null) 'total_size': totalSize,
-      if (chunkSize != null) 'chunk_size': chunkSize,
-      if (totalChunks != null) 'total_chunks': totalChunks,
       if (status != null) 'status': status,
       if (progress != null) 'progress': progress,
       if (createdAt != null) 'created_at': createdAt,
@@ -2173,24 +2066,18 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
 
   UploadJobsCompanion copyWith(
       {Value<String>? jobId,
-      Value<String?>? uploadId,
       Value<String>? filePath,
       Value<String>? fileHash,
       Value<int>? totalSize,
-      Value<int>? chunkSize,
-      Value<int>? totalChunks,
       Value<UploadJobStatus>? status,
       Value<double>? progress,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return UploadJobsCompanion(
       jobId: jobId ?? this.jobId,
-      uploadId: uploadId ?? this.uploadId,
       filePath: filePath ?? this.filePath,
       fileHash: fileHash ?? this.fileHash,
       totalSize: totalSize ?? this.totalSize,
-      chunkSize: chunkSize ?? this.chunkSize,
-      totalChunks: totalChunks ?? this.totalChunks,
       status: status ?? this.status,
       progress: progress ?? this.progress,
       createdAt: createdAt ?? this.createdAt,
@@ -2204,9 +2091,6 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
     if (jobId.present) {
       map['job_id'] = Variable<String>(jobId.value);
     }
-    if (uploadId.present) {
-      map['upload_id'] = Variable<String>(uploadId.value);
-    }
     if (filePath.present) {
       map['file_path'] = Variable<String>(filePath.value);
     }
@@ -2215,12 +2099,6 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
     }
     if (totalSize.present) {
       map['total_size'] = Variable<int>(totalSize.value);
-    }
-    if (chunkSize.present) {
-      map['chunk_size'] = Variable<int>(chunkSize.value);
-    }
-    if (totalChunks.present) {
-      map['total_chunks'] = Variable<int>(totalChunks.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(
@@ -2242,12 +2120,9 @@ class UploadJobsCompanion extends UpdateCompanion<UploadJob> {
   String toString() {
     return (StringBuffer('UploadJobsCompanion(')
           ..write('jobId: $jobId, ')
-          ..write('uploadId: $uploadId, ')
           ..write('filePath: $filePath, ')
           ..write('fileHash: $fileHash, ')
           ..write('totalSize: $totalSize, ')
-          ..write('chunkSize: $chunkSize, ')
-          ..write('totalChunks: $totalChunks, ')
           ..write('status: $status, ')
           ..write('progress: $progress, ')
           ..write('createdAt: $createdAt, ')
@@ -3443,12 +3318,9 @@ class $$AlbumsTableOrderingComposer
 
 typedef $$UploadJobsTableCreateCompanionBuilder = UploadJobsCompanion Function({
   required String jobId,
-  Value<String?> uploadId,
   required String filePath,
   required String fileHash,
   required int totalSize,
-  required int chunkSize,
-  required int totalChunks,
   required UploadJobStatus status,
   required double progress,
   required DateTime createdAt,
@@ -3456,12 +3328,9 @@ typedef $$UploadJobsTableCreateCompanionBuilder = UploadJobsCompanion Function({
 });
 typedef $$UploadJobsTableUpdateCompanionBuilder = UploadJobsCompanion Function({
   Value<String> jobId,
-  Value<String?> uploadId,
   Value<String> filePath,
   Value<String> fileHash,
   Value<int> totalSize,
-  Value<int> chunkSize,
-  Value<int> totalChunks,
   Value<UploadJobStatus> status,
   Value<double> progress,
   Value<DateTime> createdAt,
@@ -3486,12 +3355,9 @@ class $$UploadJobsTableTableManager extends RootTableManager<
               $$UploadJobsTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> jobId = const Value.absent(),
-            Value<String?> uploadId = const Value.absent(),
             Value<String> filePath = const Value.absent(),
             Value<String> fileHash = const Value.absent(),
             Value<int> totalSize = const Value.absent(),
-            Value<int> chunkSize = const Value.absent(),
-            Value<int> totalChunks = const Value.absent(),
             Value<UploadJobStatus> status = const Value.absent(),
             Value<double> progress = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -3499,12 +3365,9 @@ class $$UploadJobsTableTableManager extends RootTableManager<
           }) =>
               UploadJobsCompanion(
             jobId: jobId,
-            uploadId: uploadId,
             filePath: filePath,
             fileHash: fileHash,
             totalSize: totalSize,
-            chunkSize: chunkSize,
-            totalChunks: totalChunks,
             status: status,
             progress: progress,
             createdAt: createdAt,
@@ -3512,12 +3375,9 @@ class $$UploadJobsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String jobId,
-            Value<String?> uploadId = const Value.absent(),
             required String filePath,
             required String fileHash,
             required int totalSize,
-            required int chunkSize,
-            required int totalChunks,
             required UploadJobStatus status,
             required double progress,
             required DateTime createdAt,
@@ -3525,12 +3385,9 @@ class $$UploadJobsTableTableManager extends RootTableManager<
           }) =>
               UploadJobsCompanion.insert(
             jobId: jobId,
-            uploadId: uploadId,
             filePath: filePath,
             fileHash: fileHash,
             totalSize: totalSize,
-            chunkSize: chunkSize,
-            totalChunks: totalChunks,
             status: status,
             progress: progress,
             createdAt: createdAt,
@@ -3547,11 +3404,6 @@ class $$UploadJobsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get uploadId => $state.composableBuilder(
-      column: $state.table.uploadId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get filePath => $state.composableBuilder(
       column: $state.table.filePath,
       builder: (column, joinBuilders) =>
@@ -3564,16 +3416,6 @@ class $$UploadJobsTableFilterComposer
 
   ColumnFilters<int> get totalSize => $state.composableBuilder(
       column: $state.table.totalSize,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get chunkSize => $state.composableBuilder(
-      column: $state.table.chunkSize,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get totalChunks => $state.composableBuilder(
-      column: $state.table.totalChunks,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -3603,11 +3445,6 @@ class $$UploadJobsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get uploadId => $state.composableBuilder(
-      column: $state.table.uploadId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
   ColumnOrderings<String> get filePath => $state.composableBuilder(
       column: $state.table.filePath,
       builder: (column, joinBuilders) =>
@@ -3620,16 +3457,6 @@ class $$UploadJobsTableOrderingComposer
 
   ColumnOrderings<int> get totalSize => $state.composableBuilder(
       column: $state.table.totalSize,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get chunkSize => $state.composableBuilder(
-      column: $state.table.chunkSize,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get totalChunks => $state.composableBuilder(
-      column: $state.table.totalChunks,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

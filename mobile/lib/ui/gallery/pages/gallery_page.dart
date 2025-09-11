@@ -10,6 +10,8 @@ import 'package:mobile/core/enums.dart';
 import 'package:mobile/ui/gallery/viewmodels/gallery_viewmodel.dart';
 import 'package:mobile/ui/gallery/pages/gallery_item_page.dart';
 import 'package:mobile/providers/providers.dart';
+import 'package:mobile/providers/transfer_providers.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 @RoutePage()
 class GalleryPage extends HookConsumerWidget {
@@ -165,8 +167,21 @@ class GalleryPage extends HookConsumerWidget {
         return IconButton(
           icon: const Icon(Icons.cloud_upload_outlined),
           tooltip: '上传到云端',
-          onPressed: () {
-            ref.read(mediaDetailProvider(entity).notifier).upload();
+          onPressed: () async {
+            final asset = await AssetEntity.fromId(entity.localId!);
+            if (asset == null) {
+              ScaffoldMessenger.of(
+                // ignore: use_build_context_synchronously
+                context,
+              ).showSnackBar(const SnackBar(content: Text('无法找到本地媒体资源，上传失败')));
+              return;
+            }
+
+            final file = await asset.file;
+            ref
+                .read(transferServiceProvider)
+                .uploadService
+                .enqueueUploadJob(file!, entity.localId!);
           },
         );
       case SyncStatus.uploadFailed:
@@ -176,8 +191,21 @@ class GalleryPage extends HookConsumerWidget {
             color: Colors.orangeAccent,
           ),
           tooltip: '上传失败，点击重试',
-          onPressed: () {
-            ref.read(mediaDetailProvider(entity).notifier).upload();
+          onPressed: () async {
+            final asset = await AssetEntity.fromId(entity.localId!);
+            if (asset == null) {
+              ScaffoldMessenger.of(
+                // ignore: use_build_context_synchronously
+                context,
+              ).showSnackBar(const SnackBar(content: Text('无法找到本地媒体资源，上传失败')));
+              return;
+            }
+
+            final file = await asset.file;
+            ref
+                .read(transferServiceProvider)
+                .uploadService
+                .enqueueUploadJob(file!, entity.localId!);
           },
         );
       case SyncStatus.uploading:

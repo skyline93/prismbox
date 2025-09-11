@@ -6,11 +6,11 @@ part of 'transfer_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transferServiceHash() => r'74604e7f8ea9b69620c634262e27e2942ead5874';
+String _$transferServiceHash() => r'7f7d35bbec4c06c2208b2c23383c9063c50b4910';
 
 /// See also [transferService].
 @ProviderFor(transferService)
-final transferServiceProvider = Provider<TransferService>.internal(
+final transferServiceProvider = Provider<TransferManager>.internal(
   transferService,
   name: r'transferServiceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,7 +22,7 @@ final transferServiceProvider = Provider<TransferService>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef TransferServiceRef = ProviderRef<TransferService>;
+typedef TransferServiceRef = ProviderRef<TransferManager>;
 String _$downloadJobDaoHash() => r'87983842dfc4ab2e48c77fb6e54237e2cb44ab47';
 
 /// See also [downloadJobDao].

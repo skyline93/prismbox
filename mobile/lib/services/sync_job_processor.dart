@@ -1,6 +1,5 @@
 // lib/services/sync_job_processor.dart
 
-import 'dart:io';
 import 'dart:developer';
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
@@ -8,10 +7,6 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/models/media/media_model.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
-// import 'package:path_provider/path_provider.dart';
-// import 'package:photo_manager/photo_manager.dart';
 
 @injectable
 class SyncJobProcessor {
@@ -46,18 +41,12 @@ class SyncJobProcessor {
 
     try {
       switch (job.jobType) {
-        case JobType.upload:
-          await _handleUploadJob(job);
-          break;
         case JobType.deleteCloud:
           await _handleDeleteCloudJob(job);
           break;
         case JobType.syncCloudChanges:
           await _handleSyncCloudChangesJob(job);
           break;
-        // case JobType.downloadOriginal:
-        //   await _handleDownloadOriginalJob(job);
-        //   break;
 
         default:
           log(
@@ -76,28 +65,6 @@ class SyncJobProcessor {
         stackTrace: stacktrace,
         level: 1000,
       );
-
-      if (job.assetId != null) {
-        SyncStatus? newStatus;
-        switch (job.jobType) {
-          case JobType.upload:
-            newStatus = SyncStatus.uploadFailed;
-            break;
-          // case JobType.downloadOriginal:
-          //   newStatus = SyncStatus.downloadFailed;
-          //   break;
-          default:
-            break;
-        }
-
-        if (newStatus != null) {
-          log(
-            '任务 #${job.id} 失败，将资产 ${job.assetId} 的状态更新为 $newStatus',
-            name: 'SyncJobProcessor',
-          );
-          await _mediaAssetDao.updateAssetStatus(job.assetId!, newStatus);
-        }
-      }
 
       await _syncJobDao.deleteJob(job.id);
     }
@@ -178,69 +145,69 @@ class SyncJobProcessor {
   //   await _syncJobDao.deleteJob(job.id);
   // }
 
-  Future<void> _handleUploadJob(SyncJob job) async {
-    final assetId = job.assetId;
-    if (assetId == null) {
-      throw Exception('任务 #${job.id} (upload) 缺少必需的 assetId。');
-    }
+  // Future<void> _handleUploadJob(SyncJob job) async {
+  //   final assetId = job.assetId;
+  //   if (assetId == null) {
+  //     throw Exception('任务 #${job.id} (upload) 缺少必需的 assetId。');
+  //   }
 
-    // [+] 从 payload 解析参数
-    final payload = jsonDecode(job.payload);
-    final String filePath = payload['filePath'];
+  //   // [+] 从 payload 解析参数
+  //   final payload = jsonDecode(job.payload);
+  //   final String filePath = payload['filePath'];
 
-    final asset = await (_mediaAssetDao.select(
-      _mediaAssetDao.mediaAssets,
-    )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
+  //   final asset = await (_mediaAssetDao.select(
+  //     _mediaAssetDao.mediaAssets,
+  //   )..where((tbl) => tbl.id.equals(assetId))).getSingleOrNull();
 
-    if (asset == null || asset.filePath == null) {
-      throw Exception('任务 #${job.id} 对应的资产不存在或没有文件路径。');
-    }
-    // 注意：在您的原代码中，这里检查了 contentHash，如果下载逻辑不生成hash，上传会失败
-    // 您可能需要一个计算文件hash的通用服务
-    // if (asset.contentHash == null) {
-    //   throw Exception('资产 #${asset.id} 缺少 contentHash，无法上传。');
-    // }
+  //   if (asset == null || asset.filePath == null) {
+  //     throw Exception('任务 #${job.id} 对应的资产不存在或没有文件路径。');
+  //   }
+  //   // 注意：在您的原代码中，这里检查了 contentHash，如果下载逻辑不生成hash，上传会失败
+  //   // 您可能需要一个计算文件hash的通用服务
+  //   // if (asset.contentHash == null) {
+  //   //   throw Exception('资产 #${asset.id} 缺少 contentHash，无法上传。');
+  //   // }
 
-    final file = File(filePath);
-    if (!await file.exists()) {
-      log('上传失败：文件 $filePath 不存在。', name: 'SyncJobProcessor');
-      await _mediaAssetDao.updateAssetStatus(asset.id, SyncStatus.error);
-      await _syncJobDao.deleteJob(job.id);
-      return;
-    }
-    final fileBytes = await file.readAsBytes();
+  //   final file = File(filePath);
+  //   if (!await file.exists()) {
+  //     log('上传失败：文件 $filePath 不存在。', name: 'SyncJobProcessor');
+  //     await _mediaAssetDao.updateAssetStatus(asset.id, SyncStatus.error);
+  //     await _syncJobDao.deleteJob(job.id);
+  //     return;
+  //   }
+  //   final fileBytes = await file.readAsBytes();
 
-    // 2. 计算真实的 SHA256 哈希值
-    final String realHash = sha256.convert(fileBytes).toString();
+  //   // 2. 计算真实的 SHA256 哈希值
+  //   final String realHash = sha256.convert(fileBytes).toString();
 
-    // 3. 将 MediaType 枚举转换为后端期望的字符串
-    final String itemTypeString = asset.assetType == MediaType.video
-        ? 'VIDEO'
-        : 'IMAGE';
+  //   // 3. 将 MediaType 枚举转换为后端期望的字符串
+  //   final String itemTypeString = asset.assetType == MediaType.video
+  //       ? 'VIDEO'
+  //       : 'IMAGE';
 
-    log(
-      '准备上传: hash=$realHash, type=$itemTypeString, filename=${asset.fileName}',
-    );
+  //   log(
+  //     '准备上传: hash=$realHash, type=$itemTypeString, filename=${asset.fileName}',
+  //   );
 
-    final MediaResponse cloudMedia = await remoteApi.uploadMedia(
-      file: fileBytes,
-      hash: realHash,
-      itemType: asset.assetType,
-      originalFilename: asset.fileName,
-    );
+  //   final MediaResponse cloudMedia = await remoteApi.uploadMedia(
+  //     file: fileBytes,
+  //     hash: realHash,
+  //     itemType: asset.assetType,
+  //     originalFilename: asset.fileName,
+  //   );
 
-    await _mediaAssetDao.updateAsset(
-      MediaAssetsCompanion(
-        id: Value(asset.id),
-        cloudUuid: Value(cloudMedia.uuid),
-        contentHash: Value(realHash),
-        syncStatus: const Value(SyncStatus.synced),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+  //   await _mediaAssetDao.updateAsset(
+  //     MediaAssetsCompanion(
+  //       id: Value(asset.id),
+  //       cloudUuid: Value(cloudMedia.uuid),
+  //       contentHash: Value(realHash),
+  //       syncStatus: const Value(SyncStatus.synced),
+  //       updatedAt: Value(DateTime.now()),
+  //     ),
+  //   );
 
-    await _syncJobDao.deleteJob(job.id);
-  }
+  //   await _syncJobDao.deleteJob(job.id);
+  // }
 
   Future<void> _handleDeleteCloudJob(SyncJob job) async {
     final cloudUuid = job.relatedCloudUuid;

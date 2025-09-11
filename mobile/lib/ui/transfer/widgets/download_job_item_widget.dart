@@ -6,7 +6,7 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/providers/transfer_providers.dart';
 import 'package:path/path.dart' as p;
-import 'package:mobile/services/transfer_service.dart';
+import 'package:mobile/services/transfer/transfer_manager.dart';
 
 class DownloadJobItemWidget extends ConsumerWidget {
   final DownloadJob job;
@@ -100,18 +100,19 @@ class DownloadJobItemWidget extends ConsumerWidget {
     return job.status.name[0].toUpperCase() + job.status.name.substring(1);
   }
 
-  Widget _buildActionButton(TransferService service) {
+  Widget _buildActionButton(TransferManager service) {
     switch (job.status) {
       case DownloadJobStatus.downloading:
         return Row(
           children: [
             IconButton(
               icon: const Icon(Icons.pause),
-              onPressed: () => service.pauseDownload(job.jobId),
+              onPressed: () => service.downloadService.pauseDownload(job.jobId),
             ),
             IconButton(
               icon: const Icon(Icons.cancel),
-              onPressed: () => service.cancelDownload(job.jobId),
+              onPressed: () =>
+                  service.downloadService.cancelDownload(job.jobId),
             ),
           ],
         );
@@ -120,11 +121,13 @@ class DownloadJobItemWidget extends ConsumerWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.play_arrow),
-              onPressed: () => service.resumeDownload(job.jobId),
+              onPressed: () =>
+                  service.downloadService.resumeDownload(job.jobId),
             ),
             IconButton(
               icon: const Icon(Icons.cancel),
-              onPressed: () => service.cancelDownload(job.jobId),
+              onPressed: () =>
+                  service.downloadService.cancelDownload(job.jobId),
             ),
           ],
         );

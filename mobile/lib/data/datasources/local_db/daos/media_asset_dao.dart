@@ -200,6 +200,15 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     )..where((tbl) => tbl.id.equals(id))).write(companion);
   }
 
+  Future<void> updateMediaAssetWithlocalId(
+    String localId,
+    MediaAssetsCompanion companion,
+  ) {
+    return (update(
+      mediaAssets,
+    )..where((tbl) => tbl.localId.equals(localId))).write(companion);
+  }
+
   Stream<MediaAsset> watchMediaAssetById(int id) {
     return (select(
       mediaAssets,

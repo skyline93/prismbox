@@ -20,7 +20,7 @@ import 'package:mobile/data/models/media/media_model.dart';
 class MediaRepositoryImpl implements MediaRepository {
   final RemoteMediaDataSource _cloudDataSource;
   final MediaAssetDao _mediaAssetDao;
-  final SyncJobManager _syncJobManager;
+  // final SyncJobManager _syncJobManager;
   final AlbumDao _albumDao;
   final LocalMediaDataSource _localMediaSource;
 
@@ -32,8 +32,8 @@ class MediaRepositoryImpl implements MediaRepository {
   }) : _cloudDataSource = cloudDataSource,
        _mediaAssetDao = db.mediaAssetDao,
        _albumDao = db.albumDao, // 新增：从 db 中获取 albumDao
-       _localMediaSource = localMediaSource, // 新增
-       _syncJobManager = syncJobManager;
+       _localMediaSource = localMediaSource; // 新增
+  //  _syncJobManager = syncJobManager;
 
   @override
   Stream<List<UnifiedMediaEntity>> getUnifiedMediaStream() {
@@ -255,10 +255,10 @@ class MediaRepositoryImpl implements MediaRepository {
     }
   }
 
-  @override
-  Future<void> createUploadJobForExistingAsset(UnifiedMediaEntity entity) {
-    return _syncJobManager.createUploadJobForExistingAsset(entity);
-  }
+  // @override
+  // Future<void> createUploadJobForExistingAsset(UnifiedMediaEntity entity) {
+  //   return _syncJobManager.createUploadJobForExistingAsset(entity);
+  // }
 
   // [新增] 实现单个文件上传方法
   @override

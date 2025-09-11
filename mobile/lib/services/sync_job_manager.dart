@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'dart:developer';
-import 'dart:convert';
+// import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
@@ -11,11 +11,12 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;
-import 'package:mobile/domain/entities/unified_media_entity.dart';
+// import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/services/background_service_manager.dart';
 
 @lazySingleton
 class SyncJobManager {
+  // ignore: unused_field
   final AppDatabase _db;
   final MediaAssetDao _mediaAssetDao;
   final SyncJobDao _syncJobDao;
@@ -217,60 +218,60 @@ class SyncJobManager {
     );
   }
 
-  Future<void> createUploadJobForExistingAsset(
-    UnifiedMediaEntity entity,
-  ) async {
-    // 1. 检查是否已有待处理的任务（上传或下载），避免重复
-    final existingJob =
-        await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
-              (tbl) =>
-                  tbl.assetId.equals(entity.id) &
-                  (tbl.jobType.equalsValue(JobType.upload)) &
-                  (tbl.status.equalsValue(JobStatus.pending) |
-                      tbl.status.equalsValue(JobStatus.inProgress)),
-            ))
-            .getSingleOrNull();
+  // Future<void> createUploadJobForExistingAsset(
+  //   UnifiedMediaEntity entity,
+  // ) async {
+  //   // 1. 检查是否已有待处理的任务（上传或下载），避免重复
+  //   final existingJob =
+  //       await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
+  //             (tbl) =>
+  //                 tbl.assetId.equals(entity.id) &
+  //                 (tbl.jobType.equalsValue(JobType.upload)) &
+  //                 (tbl.status.equalsValue(JobStatus.pending) |
+  //                     tbl.status.equalsValue(JobStatus.inProgress)),
+  //           ))
+  //           .getSingleOrNull();
 
-    if (existingJob != null) {
-      log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的同步任务，跳过创建。');
-      return;
-    }
+  //   if (existingJob != null) {
+  //     log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的同步任务，跳过创建。');
+  //     return;
+  //   }
 
-    // [+] 确保文件路径存在
-    if (entity.filePath == null) {
-      log('[SyncJobManager] 资产 ${entity.id} 缺少文件路径，无法创建上传任务。');
-      return;
-    }
+  //   // [+] 确保文件路径存在
+  //   if (entity.filePath == null) {
+  //     log('[SyncJobManager] 资产 ${entity.id} 缺少文件路径，无法创建上传任务。');
+  //     return;
+  //   }
 
-    // [+] 准备 payload
-    final payload = jsonEncode({'filePath': entity.filePath});
+  //   // [+] 准备 payload
+  //   final payload = jsonEncode({'filePath': entity.filePath});
 
-    try {
-      await _db.transaction(() async {
-        await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.uploading);
-        await _syncJobDao
-            .into(_syncJobDao.syncJobs)
-            .insert(
-              SyncJobsCompanion.insert(
-                assetId: Value(entity.id),
-                jobType: JobType.upload,
-                status: JobStatus.pending,
-                priority: Value(10),
-                payload: Value(payload), // [+] 存储 payload
-              ),
-            );
-      });
-      log('[SyncJobManager] 已为资产 ${entity.id} 创建手动上传任务。');
+  //   try {
+  //     await _db.transaction(() async {
+  //       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.uploading);
+  //       await _syncJobDao
+  //           .into(_syncJobDao.syncJobs)
+  //           .insert(
+  //             SyncJobsCompanion.insert(
+  //               assetId: Value(entity.id),
+  //               jobType: JobType.upload,
+  //               status: JobStatus.pending,
+  //               priority: Value(10),
+  //               payload: Value(payload), // [+] 存储 payload
+  //             ),
+  //           );
+  //     });
+  //     log('[SyncJobManager] 已为资产 ${entity.id} 创建手动上传任务。');
 
-      // 3. 触发后台服务立即处理任务队列
-      BackgroundServiceManager.triggerImmediateSync();
-    } catch (e, s) {
-      log('[SyncJobManager] 创建手动上传任务时出错', error: e, stackTrace: s);
-      // 如果失败，将状态恢复，避免UI卡在“上传中”
-      await _mediaAssetDao.updateAssetStatus(
-        entity.id,
-        SyncStatus.localOnlyNotSelected,
-      );
-    }
-  }
+  //     // 3. 触发后台服务立即处理任务队列
+  //     BackgroundServiceManager.triggerImmediateSync();
+  //   } catch (e, s) {
+  //     log('[SyncJobManager] 创建手动上传任务时出错', error: e, stackTrace: s);
+  //     // 如果失败，将状态恢复，避免UI卡在“上传中”
+  //     await _mediaAssetDao.updateAssetStatus(
+  //       entity.id,
+  //       SyncStatus.localOnlyNotSelected,
+  //     );
+  //   }
+  // }
 }

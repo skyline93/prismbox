@@ -3,14 +3,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
-import 'package:mobile/services/transfer_service.dart';
+import 'package:mobile/services/transfer/transfer_manager.dart';
 
 part 'transfer_providers.g.dart';
 
 // Provider for the TransferService singleton
 @Riverpod(keepAlive: true)
-TransferService transferService(TransferServiceRef ref) {
-  return getIt<TransferService>();
+TransferManager transferService(TransferServiceRef ref) {
+  return getIt<TransferManager>();
 }
 
 // Provider for the DownloadJobDao
