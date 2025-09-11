@@ -107,6 +107,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 			mediaRoutes := protected.Group("/media")
 			{
 				mediaRoutes.POST("/upload", mediaHandler.Upload)
+				mediaRoutes.POST("/upload-stream", mediaHandler.UploadStream)
 				// 分片上传路由
 				mediaRoutes.POST("/upload/initiate", mediaHandler.InitiateUpload)
 				mediaRoutes.POST("/upload/chunk", mediaHandler.UploadChunk)

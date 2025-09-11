@@ -262,7 +262,7 @@ func (h *MediaHandler) getAuthorizedMedia(c *gin.Context) (*models.Media, error)
 	if userExists {
 		// --- 路径 A: 私有访问 ---
 		// 上下文中有 userID，说明是已登录用户通过常规方式访问。
-		userID, ok := userIDValue.(string)
+		userID, ok := userIDValue.(uint)
 		if !ok {
 			// 这是一个服务器内部错误，userID的类型不应出错
 			return nil, errors.New("invalid userID type in context")
@@ -855,4 +855,108 @@ func (h *MediaHandler) CompleteUpload(c *gin.Context) {
 	// 8. 返回成功响应
 	mediaResponse := h.buildMediaResponse(userID, media)
 	core.Success(c, "File uploaded and merged successfully", mediaResponse)
+}
+
+// UploadStream godoc
+// @Summary      流式上传单个媒体文件 (推荐)
+// @Description  通过 multipart/form-data 流式上传文件，避免大文件消耗内存。服务器会先进行秒传检查。
+// @Tags         Media
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file formData file true "媒体文件本身"
+// @Param        hash formData string true "文件的SHA256哈希值"
+// @Param        item_type formData string true "媒体类型 (IMAGE 或 VIDEO)" Enums(IMAGE, VIDEO)
+// @Param        original_filename formData string false "文件的原始名称"
+// @Success      201  {object}  core.ApiResponse{data=MediaResponse} "上传成功，后台处理开始"
+// @Success      200  {object}  core.ApiResponse{data=MediaResponse} "文件已存在（秒传成功）"
+// @Failure      400  {object}  core.ApiResponse "请求参数错误或服务器内部错误"
+// @Failure      500  {object}  core.ApiResponse "服务器文件处理错误"
+// @Security     BearerAuth
+// @Router       /media/upload-stream [post]
+func (h *MediaHandler) UploadStream(c *gin.Context) {
+	// 1. 获取元数据和用户ID (这部分逻辑与非流式版本相同)
+	userID := c.MustGet("userID").(uint)
+	hash := c.PostForm("hash")
+	itemTypeStr := c.PostForm("item_type")
+	originalFilename := c.PostForm("original_filename")
+	cloudUuid := c.PostForm("cloud_uuid")
+
+	// 2. 校验元数据
+	if hash == "" {
+		core.Error(c, "Form field 'hash' is required")
+		return
+	}
+	itemType := constant.MediaType(itemTypeStr)
+	if itemType != constant.TypeImage && itemType != constant.TypeVideo {
+		core.Error(c, "Invalid 'item_type'. Must be 'IMAGE' or 'VIDEO'")
+		return
+	}
+
+	if cloudUuid == "" {
+		cloudUuid = uuid.New().String()
+	}
+
+	// 3. 秒传检查 (逻辑与非流式版本相同)
+	var existingMedia models.Media
+	if err := h.DB.First(&existingMedia, "hash = ? AND user_id = ?", hash, userID).Error; err == nil {
+		core.Success(c, "File already exists for this user", h.buildMediaResponse(userID, existingMedia))
+		return
+	}
+
+	// 4. 【核心区别】以流式方式处理文件
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		core.Error(c, "File retrieval failed: "+err.Error())
+		return
+	}
+	defer file.Close() // Multipart file part implements io.ReadCloser
+
+	// 5. 创建目标文件并准备写入
+	newFilename := cloudUuid + filepath.Ext(header.Filename)
+	filePath := filepath.Join(h.UploadDir, newFilename)
+
+	// 创建一个新的本地文件用于写入
+	dst, err := os.Create(filePath)
+	if err != nil {
+		core.Error(c, "Failed to create destination file on server")
+		return
+	}
+	defer dst.Close()
+
+	// 6. 【关键步骤】将上传流直接复制到文件中
+	// io.Copy 会使用缓冲区，高效地从源(上传的文件流)读取并写入到目标(磁盘文件)
+	// 这避免了将整个文件读入内存。
+	if _, err := io.Copy(dst, file); err != nil {
+		// 如果复制失败，删除可能已创建的不完整文件
+		os.Remove(filePath)
+		core.Error(c, "Failed to save file stream to disk")
+		return
+	}
+
+	// 7. 文件成功保存后，创建数据库记录 (逻辑与非流式版本相同)
+	media := models.Media{
+		UUID:             cloudUuid,
+		UserID:           userID,
+		Hash:             hash,
+		ItemType:         itemType,
+		OriginalFilename: originalFilename,
+		Filename:         newFilename,
+		ProcessingStatus: constant.StatusPending,
+	}
+	if err := h.DB.Create(&media).Error; err != nil {
+		// 如果数据库创建失败，删除已保存的文件以避免产生孤立文件
+		os.Remove(filePath)
+		core.Error(c, "Failed to save metadata to database")
+		return
+	}
+
+	// 8. 触发异步处理并返回成功响应 (逻辑与非流式版本相同)
+	if itemType == constant.TypeVideo {
+		go processing.ProcessVideo(h.DB, filePath, cloudUuid)
+	} else {
+		go processing.ProcessImage(h.DB, filePath, cloudUuid)
+	}
+
+	mediaResponse := h.buildMediaResponse(userID, media)
+	core.Created(c, "Upload successful, processing started", mediaResponse)
 }
