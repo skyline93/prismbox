@@ -4,6 +4,7 @@ package auth
 import (
 	"server/core"
 	"server/urlsigner"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -33,7 +34,7 @@ func Middleware(secretKey []byte) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", userID)
+		c.Set("userID", uint(userID))
 		c.Next()
 	}
 }
@@ -48,7 +49,7 @@ func FlexibleAuthMiddleware(secretKey []byte, signer *urlsigner.Signer) gin.Hand
 				// 假设 ValidateToken 返回 (userID, error)
 				userID, err := ValidateToken(parts[1], secretKey)
 				if err == nil {
-					c.Set("userID", userID)
+					c.Set("userID", uint(userID))
 					c.Next()
 					return
 				}
@@ -66,7 +67,13 @@ func FlexibleAuthMiddleware(secretKey []byte, signer *urlsigner.Signer) gin.Hand
 			// 关键：检查返回的 userID 是否非空
 			if userID != "" {
 				// 这是一个私有链接，我们将 userID 存入上下文
-				c.Set("userID", userID)
+				if uid, err := strconv.ParseUint(userID, 10, 64); err == nil {
+					c.Set("userID", uint(uid))
+				} else {
+					core.ErrorAuth(c, "Invalid userID in signed URL")
+					c.Abort()
+					return
+				}
 			}
 			// 如果 userID 为空，说明这是一个有效的公开链接。
 			// 我们不设置 userID，但仍然允许请求通过。

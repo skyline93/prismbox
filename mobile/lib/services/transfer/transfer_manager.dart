@@ -48,7 +48,7 @@ class TransferManager {
   ) {
     switch (task) {
       case DownloadTask():
-        _downloadService.handleDownloadStatusUpdate(task, status);
+        _downloadService.handleDownloadStatusUpdate(task, status, exception);
         break;
       case UploadTask():
         _uploadService.handleUploadStatusUpdate(task, status, exception);

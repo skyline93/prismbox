@@ -32,6 +32,7 @@ class DownloadService {
   Future<void> handleDownloadStatusUpdate(
     DownloadTask task,
     TaskStatus status,
+    TaskException? exception,
   ) async {
     final Map<String, dynamic> metaData;
     try {
@@ -127,8 +128,9 @@ class DownloadService {
         asset.id,
         SyncStatus.downloadFailed,
       );
-      _log.warning(
-        'Download for MediaAsset ${asset.id} failed or was canceled.',
+      _log.severe(
+        'Download for MediaAsset ${asset.id} failed or was canceled',
+        exception,
       );
     }
   }
