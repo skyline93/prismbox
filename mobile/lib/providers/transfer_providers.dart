@@ -8,8 +8,9 @@ import 'package:mobile/services/transfer/transfer_manager.dart';
 part 'transfer_providers.g.dart';
 
 // Provider for the TransferService singleton
+// [注意] transfer_providers.g.dart 中 transferService 名称应为 transferManager
 @Riverpod(keepAlive: true)
-TransferManager transferService(TransferServiceRef ref) {
+TransferManager transferManager(TransferManagerRef ref) {
   return getIt<TransferManager>();
 }
 

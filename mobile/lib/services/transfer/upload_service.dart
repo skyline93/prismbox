@@ -15,6 +15,7 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/data/services/dio_client.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
+import 'package:mobile/providers/upload_orchestrator.dart';
 
 Future<String> _calculateFileHash(String filePath) async {
   final file = File(filePath);
@@ -25,6 +26,7 @@ Future<String> _calculateFileHash(String filePath) async {
 
 @lazySingleton
 class UploadService {
+  final AppDatabase _db; // [新增] 保存数据库实例以使用事务
   final UploadJobDao _uploadJobDao;
   final MediaAssetDao _mediaAssetDao;
   final SecureStorageService _secureStorageService;
@@ -32,9 +34,70 @@ class UploadService {
   final _log = Logger('UploadService');
   final _uuid = const Uuid();
 
+  // [修改] 构造函数，保存 db 实例
   UploadService(AppDatabase db, this._secureStorageService)
-    : _uploadJobDao = db.uploadJobDao,
+    : _db = db,
+      _uploadJobDao = db.uploadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
+
+  Future<void> enqueueMultipleJobs(List<UploadTaskPayload> tasks) async {
+    _log.info('开始批量入队 ${tasks.length} 个上传任务。');
+    
+    // 用于存储需要在事务外启动的后台任务所需的信息
+    final List<Map<String, dynamic>> jobsToProcess = [];
+
+    // 步骤 1: 在一个事务中完成所有初始的数据库写入操作
+    await _db.transaction(() async {
+      for (final task in tasks) {
+        final jobId = _uuid.v4();
+        final cloudUuid = _uuid.v4();
+
+        // 标记媒体资源为“上传中”
+        await _mediaAssetDao.updateMediaAssetWithlocalId(
+          task.assetId,
+          MediaAssetsCompanion(
+            cloudUuid: d.Value(cloudUuid),
+            syncStatus: const d.Value(SyncStatus.uploading),
+          ),
+        );
+
+        // 在数据库中创建上传任务记录
+        await _uploadJobDao.insertJob(
+          UploadJobsCompanion(
+            jobId: d.Value(jobId),
+            filePath: d.Value(task.file.path),
+            status: const d.Value(UploadJobStatus.pending),
+            progress: const d.Value(0.0),
+            createdAt: d.Value(DateTime.now()),
+            fileHash: const d.Value(''),
+            totalSize: const d.Value(0),
+          ),
+        );
+
+        // 暂存任务信息，以便在事务成功后再进行处理
+        jobsToProcess.add({
+          'jobId': jobId,
+          'file': task.file,
+          'assetId': task.assetId,
+          'cloudUuid': cloudUuid,
+        });
+      }
+    });
+    _log.info('批量入队 ${tasks.length} 个任务的数据库操作已完成。');
+
+    // 步骤 2: 事务成功后，在事务外启动耗时的后台处理
+    for (final jobData in jobsToProcess) {
+      // “发射后不管”地启动每个文件的详细处理流程
+      // 由于这已经不在事务内部，所以 _processUploadQueue 中的数据库操作会使用新的、独立的连接。
+      _processUploadQueue(
+        jobData['jobId'],
+        jobData['file'],
+        jobData['assetId'],
+        jobData['cloudUuid'],
+      );
+    }
+  }
+
 
   Future<void> handleUploadStatusUpdate(Task task, TaskStatus status) async {
     if (task.metaData.isEmpty) return;
@@ -121,14 +184,13 @@ class UploadService {
 
   Future<void> enqueueUploadJob(File file, String assetId) async {
     final jobId = _uuid.v4();
-    final cloudUuid = _uuid.v4(); // [MODIFIED] 在客户端预先生成 UUID
+    final cloudUuid = _uuid.v4();
 
     try {
       _log.info(
         '为文件: ${file.path} (资源 ID: $assetId) 启动新的上传任务 ($jobId)，预分配云端 UUID: $cloudUuid',
       );
 
-      // [MODIFIED] 立即使用预生成的 cloudUuid 更新资源状态
       await _mediaAssetDao.updateMediaAssetWithlocalId(
         assetId,
         MediaAssetsCompanion(
@@ -165,7 +227,6 @@ class UploadService {
     }
   }
 
-  // [MODIFIED] 修改方法签名以接收 cloudUuid
   Future<void> _processUploadQueue(
     String jobId,
     File file,
@@ -211,7 +272,6 @@ class UploadService {
           ? 'VIDEO'
           : 'IMAGE';
 
-      // [MODIFIED] 将预生成的 uuid 添加到 fields 中
       final fields = {
         'cloud_uuid': cloudUuid,
         'hash': fileHash,

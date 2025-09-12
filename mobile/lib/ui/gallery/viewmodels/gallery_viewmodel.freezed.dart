@@ -77,9 +77,6 @@ class _$MediaDataCopyWithImpl<$Res, $Val extends MediaData>
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
-
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
 }
 
 /// @nodoc
@@ -99,8 +96,6 @@ class __$$MediaDataAssetImplCopyWithImpl<$Res>
       _$MediaDataAssetImpl _value, $Res Function(_$MediaDataAssetImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -149,9 +144,7 @@ class _$MediaDataAssetImpl
   @override
   int get hashCode => Object.hash(runtimeType, entity);
 
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaDataAssetImplCopyWith<_$MediaDataAssetImpl> get copyWith =>
@@ -232,10 +225,7 @@ abstract class _MediaDataAsset implements MediaData {
       _$MediaDataAssetImpl;
 
   AssetEntity get entity;
-
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaDataAssetImplCopyWith<_$MediaDataAssetImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -257,8 +247,6 @@ class __$$MediaDataBytesImplCopyWithImpl<$Res>
       _$MediaDataBytesImpl _value, $Res Function(_$MediaDataBytesImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -308,9 +296,7 @@ class _$MediaDataBytesImpl
   int get hashCode =>
       Object.hash(runtimeType, const DeepCollectionEquality().hash(bytes));
 
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaDataBytesImplCopyWith<_$MediaDataBytesImpl> get copyWith =>
@@ -390,10 +376,7 @@ abstract class _MediaDataBytes implements MediaData {
   const factory _MediaDataBytes(final Uint8List bytes) = _$MediaDataBytesImpl;
 
   Uint8List get bytes;
-
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaDataBytesImplCopyWith<_$MediaDataBytesImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -415,8 +398,6 @@ class __$$MediaDataFileImplCopyWithImpl<$Res>
       _$MediaDataFileImpl _value, $Res Function(_$MediaDataFileImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -465,9 +446,7 @@ class _$MediaDataFileImpl
   @override
   int get hashCode => Object.hash(runtimeType, file);
 
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MediaDataFileImplCopyWith<_$MediaDataFileImpl> get copyWith =>
@@ -546,10 +525,7 @@ abstract class _MediaDataFile implements MediaData {
   const factory _MediaDataFile(final File file) = _$MediaDataFileImpl;
 
   File get file;
-
-  /// Create a copy of MediaData
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MediaDataFileImplCopyWith<_$MediaDataFileImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

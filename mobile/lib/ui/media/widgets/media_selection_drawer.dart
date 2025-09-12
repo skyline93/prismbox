@@ -2,21 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/providers/providers.dart';
-import 'package:mobile/providers/transfer_providers.dart';
+import 'package:mobile/providers/upload_orchestrator.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:mobile/domain/entities/unified_media_entity.dart';
+
 
 class MediaSelectionDrawer extends ConsumerWidget {
   final ScrollController scrollController;
 
   const MediaSelectionDrawer({super.key, required this.scrollController});
-
-  // 定义大文件阈值 (1MB)
-  static const int largeFileThreshold = 1 * 1024 * 1024;
-
+  
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCount = ref.watch(
@@ -34,7 +30,7 @@ class MediaSelectionDrawer extends ConsumerWidget {
             borderRadius: const BorderRadius.all(Radius.circular(24.0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(1),
+                color: Colors.black.withAlpha(255),
                 offset: const Offset(0, 4),
                 blurRadius: 24,
                 spreadRadius: 2,
@@ -52,12 +48,11 @@ class MediaSelectionDrawer extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.4),
+                    ).colorScheme.onSurface.withAlpha(102),
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -66,59 +61,28 @@ class MediaSelectionDrawer extends ConsumerWidget {
                     icon: Icons.cloud_upload_outlined,
                     label: '上传',
                     isEnabled: hasSelection,
-                    onPressed: () async {
-                      final transferService = ref.read(transferServiceProvider);
-                      final selectionNotifier = ref.read(
-                        selectionProvider.notifier,
-                      );
-                      final selectedItems = ref
-                          .read(selectionProvider)
-                          .selectedItems;
-                      final messenger = ScaffoldMessenger.of(context);
+                    // [重大修改] onPressed 回调现在非常简洁和快速
+                    onPressed: () {
+                      // 1. 读取所需的状态和对象
+                      final selectionNotifier = ref.read(selectionProvider.notifier);
+                      final selectedItems = ref.read(selectionProvider).selectedItems;
                       final router = context.router;
 
-                      final itemsToUploadCount = selectedItems.length;
+                      if (selectedItems.isEmpty) return;
+                      
+                      // 2. 立即触发后台任务，不等待其完成
+                      ref
+                          .read(uploadOrchestratorProvider)
+                          .processAndEnqueueUploads(selectedItems.toList());
 
-                      for (final UnifiedMediaEntity entity in selectedItems) {
-                        AssetEntity? asset;
-                        if (entity.assetEntity != null) {
-                          asset = entity.assetEntity;
-                        } else if (entity.localId != null) {
-                          asset = await AssetEntity.fromId(entity.localId!);
-                        }
-
-                        if (asset != null) {
-                          final file = await asset.file;
-                          if (file != null) {
-                            final fileSize = await file.length();
-                            if (fileSize > largeFileThreshold) {
-                              transferService.uploadService.enqueueUploadJob(
-                                file,
-                                asset.id,
-                              );
-                            } else {
-                              // TODO: 实现小文件的直接上传逻辑
-                              debugPrint('小文件 (${file.path}) 将使用标准上传');
-                              // 暂时也用大文件通道
-                              transferService.uploadService.enqueueUploadJob(
-                                file,
-                                asset.id,
-                              );
-                            }
-                          }
-                        } else {
-                          debugPrint('无法找到实体 ${entity.id} 的本地文件，跳过上传。');
-                        }
-                      }
-
-                      if (!context.mounted) return;
-
+                      // 3. 立即更新UI：清空选择并导航到新页面
                       selectionNotifier.clearSelection();
                       router.push(const TransferManagerRoute());
 
-                      messenger.showSnackBar(
+                      // 4. 立即给用户反馈，告知任务已开始
+                      ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('$itemsToUploadCount 个文件已加入上传队列'),
+                          content: Text('已开始准备 ${selectedItems.length} 个文件以上传'),
                         ),
                       );
                     },
@@ -148,7 +112,6 @@ class MediaSelectionDrawer extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               const Divider(indent: 16, endIndent: 16),
-
               ListTile(
                 leading: const Icon(Icons.add_to_photos_outlined),
                 title: const Text('添加到相册'),
@@ -175,7 +138,7 @@ class MediaSelectionDrawer extends ConsumerWidget {
   }) {
     final color = isEnabled
         ? Theme.of(context).colorScheme.onSurface
-        : Theme.of(context).colorScheme.onSurface.withOpacity(0.38);
+        : Theme.of(context).colorScheme.onSurface.withAlpha(97);
 
     return InkWell(
       onTap: isEnabled ? onPressed : null,

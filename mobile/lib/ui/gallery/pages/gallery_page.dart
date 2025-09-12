@@ -179,7 +179,7 @@ class GalleryPage extends HookConsumerWidget {
 
             final file = await asset.file;
             ref
-                .read(transferServiceProvider)
+                .read(transferManagerProvider)
                 .uploadService
                 .enqueueUploadJob(file!, entity.localId!);
           },
@@ -203,7 +203,7 @@ class GalleryPage extends HookConsumerWidget {
 
             final file = await asset.file;
             ref
-                .read(transferServiceProvider)
+                .read(transferManagerProvider)
                 .uploadService
                 .enqueueUploadJob(file!, entity.localId!);
           },

@@ -76,7 +76,7 @@ class BackgroundServiceManager {
     await Workmanager().registerPeriodicTask(
       _periodicSyncTask,
       _periodicSyncTask,
-      frequency: const Duration(minutes: 1),
+      frequency: const Duration(minutes: 30),
       // constraints: Constraints(networkType: NetworkType.connected),
     );
     print("[BackgroundServiceManager] 周期性“创建云端同步任务”的作业已注册。");

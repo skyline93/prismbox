@@ -24,9 +24,7 @@ mixin _$PostDetailState {
       throw _privateConstructorUsedError; // 用于通知 UI 评论成功，以便执行滚动等一次性操作
   bool get commentPostedSuccessfully => throw _privateConstructorUsedError;
 
-  /// Create a copy of PostDetailState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $PostDetailStateCopyWith<PostDetailState> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -58,8 +56,6 @@ class _$PostDetailStateCopyWithImpl<$Res, $Val extends PostDetailState>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of PostDetailState
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -98,8 +94,6 @@ class _$PostDetailStateCopyWithImpl<$Res, $Val extends PostDetailState>
     ) as $Val);
   }
 
-  /// Create a copy of PostDetailState
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $CommentEntityCopyWith<$Res>? get replyingToComment {
@@ -141,8 +135,6 @@ class __$$PostDetailStateImplCopyWithImpl<$Res>
       _$PostDetailStateImpl _value, $Res Function(_$PostDetailStateImpl) _then)
       : super(_value, _then);
 
-  /// Create a copy of PostDetailState
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -252,9 +244,7 @@ class _$PostDetailStateImpl implements _PostDetailState {
       errorMessage,
       commentPostedSuccessfully);
 
-  /// Create a copy of PostDetailState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$PostDetailStateImplCopyWith<_$PostDetailStateImpl> get copyWith =>
@@ -280,14 +270,11 @@ abstract class _PostDetailState implements PostDetailState {
   @override
   CommentEntity? get replyingToComment;
   @override
-  String? get errorMessage; // 用于通知 UI 评论成功，以便执行滚动等一次性操作
-  @override
+  String? get errorMessage;
+  @override // 用于通知 UI 评论成功，以便执行滚动等一次性操作
   bool get commentPostedSuccessfully;
-
-  /// Create a copy of PostDetailState
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$PostDetailStateImplCopyWith<_$PostDetailStateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

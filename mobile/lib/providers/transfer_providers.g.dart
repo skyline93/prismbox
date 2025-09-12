@@ -6,23 +6,21 @@ part of 'transfer_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$transferServiceHash() => r'7f7d35bbec4c06c2208b2c23383c9063c50b4910';
+String _$transferManagerHash() => r'597fa1cea5b5cb233c83189371882b8c4bd5d897';
 
-/// See also [transferService].
-@ProviderFor(transferService)
-final transferServiceProvider = Provider<TransferManager>.internal(
-  transferService,
-  name: r'transferServiceProvider',
+/// See also [transferManager].
+@ProviderFor(transferManager)
+final transferManagerProvider = Provider<TransferManager>.internal(
+  transferManager,
+  name: r'transferManagerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$transferServiceHash,
+      : _$transferManagerHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TransferServiceRef = ProviderRef<TransferManager>;
+typedef TransferManagerRef = ProviderRef<TransferManager>;
 String _$downloadJobDaoHash() => r'87983842dfc4ab2e48c77fb6e54237e2cb44ab47';
 
 /// See also [downloadJobDao].
@@ -37,8 +35,6 @@ final downloadJobDaoProvider = AutoDisposeProvider<DownloadJobDao>.internal(
   allTransitiveDependencies: null,
 );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 typedef DownloadJobDaoRef = AutoDisposeProviderRef<DownloadJobDao>;
 String _$downloadJobsHash() => r'2080292b2012261d3fc9b1643e72cc2862afe849';
 
@@ -54,8 +50,6 @@ final downloadJobsProvider =
   allTransitiveDependencies: null,
 );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 typedef DownloadJobsRef = AutoDisposeStreamProviderRef<List<DownloadJob>>;
 String _$uploadJobDaoHash() => r'51912cfdfb546b1c1e67e701ba0cd95225df5951';
 
@@ -70,8 +64,6 @@ final uploadJobDaoProvider = AutoDisposeProvider<UploadJobDao>.internal(
   allTransitiveDependencies: null,
 );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 typedef UploadJobDaoRef = AutoDisposeProviderRef<UploadJobDao>;
 String _$uploadJobsHash() => r'1439e7b484b30b1f38062c5580abd2ca5bb7a5ce';
 
@@ -86,8 +78,6 @@ final uploadJobsProvider = AutoDisposeStreamProvider<List<UploadJob>>.internal(
   allTransitiveDependencies: null,
 );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 typedef UploadJobsRef = AutoDisposeStreamProviderRef<List<UploadJob>>;
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

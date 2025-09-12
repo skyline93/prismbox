@@ -81,7 +81,7 @@ class MediaDetailNotifier
   }
 
   Future<void> download() async {
-    final transferService = ref.read(transferServiceProvider);
+    final transferService = ref.read(transferManagerProvider);
     await transferService.downloadService.startDownloadForAsset(arg);
   }
 

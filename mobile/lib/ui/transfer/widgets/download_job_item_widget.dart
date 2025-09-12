@@ -15,7 +15,7 @@ class DownloadJobItemWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transferService = ref.read(transferServiceProvider);
+    final transferManager = ref.read(transferManagerProvider);
 
     return Card(
       child: Padding(
@@ -34,7 +34,7 @@ class DownloadJobItemWidget extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _buildActionButton(transferService),
+                _buildActionButton(transferManager),
               ],
             ),
             const SizedBox(height: 8),
