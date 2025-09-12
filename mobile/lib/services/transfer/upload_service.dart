@@ -42,7 +42,7 @@ class UploadService {
 
   Future<void> enqueueMultipleJobs(List<UploadTaskPayload> tasks) async {
     _log.info('开始批量入队 ${tasks.length} 个上传任务。');
-    
+
     // 用于存储需要在事务外启动的后台任务所需的信息
     final List<Map<String, dynamic>> jobsToProcess = [];
 
@@ -98,8 +98,12 @@ class UploadService {
     }
   }
 
-
-  Future<void> handleUploadStatusUpdate(Task task, TaskStatus status) async {
+  // [修改] 方法签名增加了 TaskException? exception 参数
+  Future<void> handleUploadStatusUpdate(
+    Task task,
+    TaskStatus status,
+    TaskException? exception, // 新增参数
+  ) async {
     if (task.metaData.isEmpty) return;
     final metadata = jsonDecode(task.metaData);
     final jobId = metadata['jobId'] as String?;
@@ -143,7 +147,16 @@ class UploadService {
         );
       }
     } else if (status == TaskStatus.failed || status == TaskStatus.canceled) {
-      _log.warning('上传任务 ${job.jobId} (资源 $assetId) 失败或已取消。');
+      // [修改] 使用传入的 exception 对象来记录详细错误
+      if (status == TaskStatus.failed) {
+        _log.severe(
+          '上传任务 ${job.jobId} (资源 $assetId) 失败。',
+          exception, // 使用传入的 exception 对象
+        );
+      } else {
+        _log.warning('上传任务 ${job.jobId} (资源 $assetId) 已被用户取消。');
+      }
+
       await _updateJobStatus(job.jobId, UploadJobStatus.failed);
       await _mediaAssetDao.updateMediaAssetWithlocalId(
         assetId,
