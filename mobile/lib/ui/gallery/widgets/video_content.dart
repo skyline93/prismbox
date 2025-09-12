@@ -16,7 +16,6 @@ class VideoContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaAsyncValue = ref.watch(mediaDetailProvider(entity));
 
-    // [修正] 移除 Scaffold, AppBar, 和 FloatingActionButton
     return mediaAsyncValue.when(
       data: (mediaData) => mediaData.when(
         file: (file) => MediaVideoViewer(videoFile: file),

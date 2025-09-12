@@ -3,19 +3,15 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // [新增]
-// import 'package:mobile/domain/entities/comment_entity.dart'; // [修改]
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
-import 'package:mobile/providers/group_providers.dart'; // [新增]
+import 'package:mobile/providers/group_providers.dart';
 import 'package:mobile/ui/group/widgets/comment_input_field.dart';
 import 'package:mobile/ui/group/widgets/comment_thread_widget.dart';
 import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
 
-// [删除] MockComment 类定义
-
 @RoutePage()
 class GroupPostDetailPage extends ConsumerStatefulWidget {
-  // [修改]
   final String groupUuid;
   final GroupFeedItemEntity post;
 
@@ -27,14 +23,11 @@ class GroupPostDetailPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<GroupPostDetailPage> createState() =>
-      _GroupPostDetailPageState(); // [修改]
+      _GroupPostDetailPageState();
 }
 
 class _GroupPostDetailPageState extends ConsumerState<GroupPostDetailPage> {
-  // [修改]
   final ScrollController _scrollController = ScrollController();
-
-  // [删除] 所有状态管理和业务逻辑 ( _comments, _replyingToComment, _currentUser, initState, _handleCommentSubmission 等)
 
   @override
   void dispose() {
@@ -44,13 +37,10 @@ class _GroupPostDetailPageState extends ConsumerState<GroupPostDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    // [新增] 获取 ViewModel provider
-    // 注意：我们使用 post.id 作为 family 的参数
     final viewModelProvider = postDetailViewModelProvider(widget.post.id);
     final state = ref.watch(viewModelProvider);
     final viewModel = ref.read(viewModelProvider.notifier);
 
-    // [新增] 监听一次性事件，例如滚动
     ref.listen<bool>(
       viewModelProvider.select((s) => s.commentPostedSuccessfully),
       (previous, isSuccess) {
@@ -64,7 +54,6 @@ class _GroupPostDetailPageState extends ConsumerState<GroupPostDetailPage> {
               );
             }
           });
-          // 通知 ViewModel 消耗掉这个事件
           viewModel.consumePostSuccess();
         }
       },
@@ -144,9 +133,7 @@ class _GroupPostDetailPageState extends ConsumerState<GroupPostDetailPage> {
               ),
             ),
           CommentInputField(
-            // 将提交操作转发给 ViewModel
             onSubmitted: viewModel.postComment,
-            // 根据状态禁用输入框
             enabled: !state.isPostingComment,
           ),
         ],

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mobile/providers/group_providers.dart'; // 假设Provider在此
+import 'package:mobile/providers/group_providers.dart';
 
 @RoutePage()
 class CreateGroupPage extends HookConsumerWidget {
@@ -15,17 +15,19 @@ class CreateGroupPage extends HookConsumerWidget {
     final nameController = useTextEditingController();
     final descriptionController = useTextEditingController();
     final formKey = useMemoized(() => GlobalKey<FormState>());
-    // 用于处理加载状态
+
     final isCreating = useState(false);
 
     Future<void> createGroup() async {
       if (formKey.currentState?.validate() ?? false) {
         isCreating.value = true;
         try {
-          await ref.read(groupRepositoryProvider).createGroup(
-            nameController.text,
-            description: descriptionController.text,
-          );
+          await ref
+              .read(groupRepositoryProvider)
+              .createGroup(
+                nameController.text,
+                description: descriptionController.text,
+              );
 
           // ignore: unused_result
           ref.refresh(groupListProvider);
@@ -46,9 +48,7 @@ class CreateGroupPage extends HookConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('创建新圈子'),
-      ),
+      appBar: AppBar(title: const Text('创建新圈子')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(

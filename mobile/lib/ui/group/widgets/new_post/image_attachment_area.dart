@@ -20,19 +20,16 @@ class ImageAttachmentArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (assets.isEmpty) {
-      // 状态一：未选择任何图片，显示虚线框占位符
       return GestureDetector(
         onTap: onPickAssets,
         child: DottedBorder(
-          // 修正：将所有样式参数移入 RectDottedBorderOptions 中
           options: RectDottedBorderOptions(
             color: Colors.grey.shade400,
             strokeWidth: 1.5,
             dashPattern: const [6, 4],
-            // radius: const Radius.circular(12),
           ),
           child: Container(
-            height: 150, // 给占位符一个固定高度
+            height: 150,
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
@@ -55,7 +52,6 @@ class ImageAttachmentArea extends StatelessWidget {
         ),
       );
     } else {
-      // 状态二：已选择图片，显示预览
       return SelectedAssetsPreview(
         assets: assets,
         onRemoveAsset: onRemoveAsset,

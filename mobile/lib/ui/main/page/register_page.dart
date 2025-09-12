@@ -13,20 +13,16 @@ class RegisterPage extends HookWidget {
     final passwordController = useTextEditingController();
     final confirmPasswordController = useTextEditingController();
 
-    // 为两个密码框分别创建可见性状态
     final isPasswordVisible = useState(false);
     final isConfirmPasswordVisible = useState(false);
 
-    // 统一的蓝色主题色
     const Color primaryBlue = Color(0xFF0095F6);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Stack(
-          // 使用 Stack 来放置返回按钮
           children: [
-            // 主要内容
             Center(
               child: SingleChildScrollView(
                 child: Padding(
@@ -34,11 +30,9 @@ class RegisterPage extends HookWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo (与登录页保持一致)
                       const FlutterLogo(size: 80),
                       const SizedBox(height: 48),
 
-                      // 用户名称输入框
                       TextFormField(
                         controller: usernameController,
                         decoration: InputDecoration(
@@ -57,7 +51,6 @@ class RegisterPage extends HookWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // 邮箱输入框
                       TextFormField(
                         controller: emailController,
                         decoration: InputDecoration(
@@ -77,7 +70,6 @@ class RegisterPage extends HookWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // 密码输入框
                       TextFormField(
                         controller: passwordController,
                         obscureText: !isPasswordVisible.value,
@@ -109,7 +101,6 @@ class RegisterPage extends HookWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // 确认密码输入框
                       TextFormField(
                         controller: confirmPasswordController,
                         obscureText: !isConfirmPasswordVisible.value,
@@ -141,7 +132,6 @@ class RegisterPage extends HookWidget {
                       ),
                       const SizedBox(height: 32),
 
-                      // 注册按钮
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -167,7 +157,6 @@ class RegisterPage extends HookWidget {
                       ),
                       const SizedBox(height: 48),
 
-                      // 底部返回登录链接
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -194,7 +183,6 @@ class RegisterPage extends HookWidget {
                 ),
               ),
             ),
-            // 返回按钮 (放在 Stack 的顶层)
             Positioned(
               top: 10,
               left: 10,

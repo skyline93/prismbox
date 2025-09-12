@@ -1,6 +1,5 @@
 // lib/ui/group/widgets/feed_card/post_image_carousel.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:tuple/tuple.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,18 +7,18 @@ import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
 import 'package:mobile/providers/group_providers.dart';
 import 'package:mobile/ui/group/widgets/photo_viewer_page.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart'; // 需要添加这个库
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class PostImageCarousel extends ConsumerStatefulWidget {
   final String groupUuid;
   final List<UnifiedMediaEntity> attachments;
-  final bool isDetailView; // [新增]
+  final bool isDetailView;
 
   const PostImageCarousel({
     super.key,
     required this.groupUuid,
     required this.attachments,
-    this.isDetailView = false, // [新增]
+    this.isDetailView = false,
   });
 
   @override
@@ -35,7 +34,6 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
     super.dispose();
   }
 
-  // 抽离出的图片构建逻辑
   Widget _buildImage(UnifiedMediaEntity attachment) {
     final thumbnailAsyncValue = ref.watch(
       groupPostThumbnailProvider(Tuple2(attachment, widget.groupUuid)),
@@ -87,7 +85,6 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
     );
   }
 
-  // 图片点击事件
   void _onImageTap(int index) {
     Navigator.push(
       context,
@@ -107,16 +104,13 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
       return const SizedBox.shrink();
     }
 
-    // [新增] 如果是详情页视图，使用 PageView
     if (widget.isDetailView) {
       return _buildDetailPageView();
     }
 
-    // 默认（Feed流）视图，使用 ListView
     return _buildFeedListView();
   }
 
-  // Feed 流中的横向滚动列表
   Widget _buildFeedListView() {
     const double imageHeight = 220.0;
     const double imageGap = 4.0;
@@ -153,7 +147,6 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
     );
   }
 
-  // [修改] 详情页中的全宽滑动视图
   Widget _buildDetailPageView() {
     final firstAttachment = widget.attachments.first;
     final viewHeight =
@@ -168,16 +161,13 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
             itemCount: widget.attachments.length,
             itemBuilder: (context, index) {
               final attachment = widget.attachments[index];
-              // [修改] 使用 Stack 来添加序号
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 图片本身
                   GestureDetector(
                     onTap: () => _onImageTap(index),
                     child: _buildImage(attachment),
                   ),
-                  // [新增] 序号指示器，仅在多张图片时显示
                   if (widget.attachments.length > 1)
                     Positioned(
                       top: 8,
@@ -206,7 +196,6 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
             },
           ),
         ),
-        // [修改] 指示器现在只用作底部的点，不再需要序号功能
         if (widget.attachments.length > 1)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),

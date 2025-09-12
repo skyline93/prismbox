@@ -16,7 +16,6 @@ enum SyncStatus {
 enum JobType {
   upload,
   deleteCloud,
-  // downloadOriginal,
   downloadThumbnail,
   syncCloudChanges,
   processCloudCreate,
@@ -29,7 +28,6 @@ enum NetworkConstraint { any, wifiOnly }
 
 enum AlbumSource { local, remote }
 
-/// 媒体类型枚举
 enum MediaType {
   @JsonValue('IMAGE')
   image,
@@ -37,7 +35,6 @@ enum MediaType {
   video,
 }
 
-/// 处理状态枚举
 enum ProcessingStatus {
   @JsonValue('PENDING')
   pending,
@@ -47,7 +44,6 @@ enum ProcessingStatus {
   failed,
 }
 
-/// 下载任务的状态枚举
 enum DownloadJobStatus {
   pending, // 待处理
   running, // 下载中
@@ -58,7 +54,6 @@ enum DownloadJobStatus {
   downloading, // 已取消
 }
 
-/// 上传任务的状态枚举
 enum UploadJobStatus {
   pending, // 待处理
   initiating, // 初始化中 (调用 /initiate)

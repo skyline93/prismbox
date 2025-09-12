@@ -72,7 +72,6 @@ class GroupMembersPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(groupMembersProvider(uuid));
-    // 同时获取圈子详情以判断当前用户的角色
     final groupDetailsAsync = ref.watch(groupDetailsProvider(uuid));
 
     return Scaffold(
@@ -82,7 +81,6 @@ class GroupMembersPage extends ConsumerWidget {
         error: (err, stack) => Center(child: Text('加载成员列表失败: $err')),
         data: (members) {
           return groupDetailsAsync.when(
-            // 只需要详情中的角色信息，所以 loading 和 error 状态可以简化处理
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (err, stack) => Center(child: Text('无法获取用户权限: $err')),
             data: (groupDetails) {
@@ -93,7 +91,6 @@ class GroupMembersPage extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final member = members[index];
 
-                  // 权限判断逻辑
                   bool canRemove = false;
                   if (currentUserRole == GroupRole.owner &&
                       member.role != GroupRole.owner) {
@@ -103,15 +100,12 @@ class GroupMembersPage extends ConsumerWidget {
                     canRemove = true;
                   }
 
-                  // 不能移除自己
                   if (member.userId == groupDetails.currentUserId) {
                     canRemove = false;
                   }
 
                   return ListTile(
                     leading: CircleAvatar(
-                      // 假设有头像 URL
-                      // backgroundImage: NetworkImage(member.avatarUrl ?? ''),
                       child: Text(member.username.substring(0, 1)),
                     ),
                     title: Text(member.username),

@@ -62,7 +62,6 @@ class ReplyPermissionSheet extends StatelessWidget {
   }
 }
 
-// 辅助函数，用于在外部调用
 void showReplyPermissionSheet(
   BuildContext context, {
   required ReplyPermission currentPermission,

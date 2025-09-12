@@ -9,7 +9,6 @@ class PostDetailViewModel extends StateNotifier<PostDetailState> {
   final GroupRepository _groupRepository;
   final int _postId;
 
-  // [修改] postId 参数类型从 String 变为 int
   PostDetailViewModel(this._groupRepository, this._postId)
     : super(const PostDetailState()) {
     _fetchComments();
@@ -29,20 +28,17 @@ class PostDetailViewModel extends StateNotifier<PostDetailState> {
     state = state.copyWith(isPostingComment: true, errorMessage: null);
     try {
       final parentId = state.replyingToComment?.id;
-      // 调用 repository 提交
       await _groupRepository.postComment(
         postId: _postId,
         content: content,
         parentCommentId: parentId,
       );
 
-      // 成功后，重新加载整个评论列表以获取最新数据
-      // 也可以做乐观更新 (Optimistic Update)，这里为了简单先做刷新
       await _fetchComments();
       state = state.copyWith(
         isPostingComment: false,
-        replyingToComment: null, // 清空回复状态
-        commentPostedSuccessfully: parentId == null, // 只有顶级评论才触发滚动
+        replyingToComment: null,
+        commentPostedSuccessfully: parentId == null,
       );
     } catch (e) {
       state = state.copyWith(
@@ -60,7 +56,6 @@ class PostDetailViewModel extends StateNotifier<PostDetailState> {
     state = state.copyWith(replyingToComment: null);
   }
 
-  // UI 调用此方法来重置一次性事件的标志
   void consumePostSuccess() {
     state = state.copyWith(commentPostedSuccessfully: false);
   }

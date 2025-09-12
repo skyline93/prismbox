@@ -14,7 +14,7 @@ class MediaViewModel extends StateNotifier<MediaState> {
   }
 
   void _listenToMediaStream() {
-    state = const MediaState.loading(); // Set initial state
+    state = const MediaState.loading();
     _mediaSubscription = _mediaRepository.getUnifiedMediaStream().listen(
       (entities) {
         state = MediaState.data(media: entities);

@@ -24,16 +24,14 @@ class CommentWidget extends StatelessWidget {
   static const double horizontalPadding = 7.0;
   static const double avatarColumnWidth = avatarRadius * 2;
   static const double avatarContentGap = 7.0;
-  static const double indentWidth = 20.0; // [新增] 每级回复的缩进量
+  static const double indentWidth = 20.0;
 
-  // [修改] 计算内容的左边距
   double get contentLeftPadding =>
       horizontalPadding +
       avatarColumnWidth +
       avatarContentGap +
       (depth * indentWidth);
 
-  // [修改] 计算头像和竖线的左边距
   double get avatarLeftPadding => horizontalPadding + (depth * indentWidth);
 
   @override
@@ -42,9 +40,8 @@ class CommentWidget extends StatelessWidget {
       padding: const EdgeInsets.only(top: 12.0),
       child: Stack(
         children: [
-          // --- 左侧: 头像和竖线 ---
           Positioned(
-            left: avatarLeftPadding, // [修改] 使用计算后的边距
+            left: avatarLeftPadding,
             top: 0,
             bottom: 0,
             width: avatarColumnWidth,
@@ -69,17 +66,15 @@ class CommentWidget extends StatelessWidget {
               ],
             ),
           ),
-          // --- 右侧: 评论内容区 ---
           Padding(
             padding: EdgeInsets.only(
-              left: contentLeftPadding, // [修改] 使用计算后的边距
+              left: contentLeftPadding,
               right: horizontalPadding,
               bottom: 12.0,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- 用户名和时间 ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -100,15 +95,12 @@ class CommentWidget extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                // --- 评论文本内容 ---
                 PostContent(text: comment.content),
                 const SizedBox(height: 12),
-                // --- [修改] 评论操作 (点赞和回复) ---
                 Row(
                   children: [
                     const Icon(Iconsax.heart, size: 22, color: Colors.black),
                     const SizedBox(width: 16),
-                    // [新增] 回复按钮
                     GestureDetector(
                       onTap: onReplyTapped,
                       child: const Icon(

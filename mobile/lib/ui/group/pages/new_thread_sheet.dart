@@ -100,11 +100,10 @@ class NewThreadSheet extends HookConsumerWidget {
                 ),
               ),
             ),
-            // 核心改动：将 isLoading 状态传递给 BottomBar
             NewThreadBottomBar(
               selectedPermission: state.selectedPermission,
               isPostButtonEnabled: state.isPostButtonEnabled,
-              isLoading: state.isLoading, // <-- 将状态传递下去
+              isLoading: state.isLoading,
               onPermissionTap: () => showReplyPermissionSheet(
                 context,
                 currentPermission: state.selectedPermission,

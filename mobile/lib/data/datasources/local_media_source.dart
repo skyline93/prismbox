@@ -72,14 +72,11 @@ class LocalMediaDataSource {
 
   Future<List<AssetEntity>> getMediaFromAlbum(String albumId) async {
     try {
-      // 1. 使用 fromId 方法精确查找指定ID的相册
       final AssetPathEntity album = await AssetPathEntity.fromId(albumId);
 
-      // 2. 获取该相册下的所有媒体资源
-      //    为了性能，这里也采用分页加载的方式
       final List<AssetEntity> assets = [];
       final int totalCount = await album.assetCountAsync;
-      const int pageSize = 200; // 可以根据需要调整分页大小
+      const int pageSize = 200;
       final int pageCount = (totalCount / pageSize).ceil();
 
       for (int i = 0; i < pageCount; i++) {
@@ -95,7 +92,6 @@ class LocalMediaDataSource {
       return assets;
     } catch (e, st) {
       _log.severe('Failed to get media from album $albumId.', e, st);
-      // 返回空列表表示加载失败或相册不存在
       return [];
     }
   }
@@ -116,7 +112,6 @@ class LocalMediaDataSource {
   Future<AssetEntity?> getLatestAssetFromAlbum(String albumId) async {
     try {
       final AssetPathEntity album = await AssetPathEntity.fromId(albumId);
-      // 只获取范围从 0 到 1 的资源，即最新的一张
       final List<AssetEntity> assets = await album.getAssetListRange(
         start: 0,
         end: 1,
@@ -124,7 +119,7 @@ class LocalMediaDataSource {
       if (assets.isNotEmpty) {
         return assets.first;
       }
-      return null; // 相册为空
+      return null;
     } catch (e) {
       print('Error getting latest asset from album $albumId: $e');
       return null;

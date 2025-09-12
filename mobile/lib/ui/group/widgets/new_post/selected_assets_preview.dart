@@ -12,15 +12,12 @@ class SelectedAssetsPreview extends StatelessWidget {
     super.key,
     required this.assets,
     required this.onRemoveAsset,
-    required this.onPickAssets, // 新增
+    required this.onPickAssets,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 这里不再需要 if (assets.isEmpty) 判断，因为调用它的父组件已经处理了
     return Padding(
-      // 移除顶部的 padding，让布局更紧凑，这个可以根据你的 UI 需求调整
-      // padding: const EdgeInsets.only(top: 16.0),
       padding: EdgeInsets.zero,
       child: SizedBox(
         height: 120,
@@ -31,9 +28,8 @@ class SelectedAssetsPreview extends StatelessWidget {
             final asset = assets[index];
             return Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              // 使用 GestureDetector 包裹整个图片项
               child: GestureDetector(
-                onTap: onPickAssets, // 点击图片时，重新打开照片选择器
+                onTap: onPickAssets,
                 child: Stack(
                   children: [
                     ClipRRect(
@@ -50,7 +46,7 @@ class SelectedAssetsPreview extends StatelessWidget {
                       top: 4,
                       right: 4,
                       child: GestureDetector(
-                        onTap: () => onRemoveAsset(index), // 这个 onTap 依然只负责移除
+                        onTap: () => onRemoveAsset(index),
                         child: Container(
                           padding: const EdgeInsets.all(2),
                           decoration: BoxDecoration(

@@ -84,9 +84,4 @@ class MediaDetailNotifier
     final transferService = ref.read(transferManagerProvider);
     await transferService.downloadService.startDownloadForAsset(arg);
   }
-
-  // Future<void> upload() async {
-  //   final repo = ref.read(mediaRepositoryProvider);
-  //   await repo.createUploadJobForExistingAsset(arg);
-  // }
 }

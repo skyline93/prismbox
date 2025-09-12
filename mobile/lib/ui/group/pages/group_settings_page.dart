@@ -26,7 +26,6 @@ class _GroupSettingsPageState extends ConsumerState<GroupSettingsPage> {
     _nameController = TextEditingController();
     _descriptionController = TextEditingController();
 
-    // 初始化表单数据
     final groupDetails = ref.read(groupDetailsProvider(widget.uuid));
     groupDetails.whenData((group) {
       _nameController.text = group.name;
@@ -51,7 +50,6 @@ class _GroupSettingsPageState extends ConsumerState<GroupSettingsPage> {
               name: _nameController.text,
               description: _descriptionController.text,
             );
-        // 刷新详情和列表
         ref.invalidate(groupDetailsProvider(widget.uuid));
         ref.invalidate(groupListProvider);
         if (mounted) {
@@ -145,7 +143,6 @@ class _GroupSettingsPageState extends ConsumerState<GroupSettingsPage> {
         await ref.read(groupRepositoryProvider).leaveGroup(widget.uuid);
         ref.invalidate(groupListProvider);
         if (mounted) {
-          // 退出成功后，跳转回圈子列表页
           AutoRouter.of(
             context,
           ).popUntil((route) => route.settings.name == GroupListRoute.name);
@@ -170,7 +167,6 @@ class _GroupSettingsPageState extends ConsumerState<GroupSettingsPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('加载失败: $err')),
         data: (group) {
-          // 假设 GroupModel 包含一个 `currentUserRole` 字段
           final bool isOwnerOrAdmin =
               group.currentUserRole == GroupRole.owner ||
               group.currentUserRole == GroupRole.admin;

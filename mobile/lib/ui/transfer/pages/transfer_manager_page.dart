@@ -6,7 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/providers/transfer_providers.dart';
 import 'package:mobile/ui/transfer/widgets/download_job_item_widget.dart';
-import 'package:mobile/ui/transfer/widgets/upload_job_item_widget.dart'; // [+] 新增
+import 'package:mobile/ui/transfer/widgets/upload_job_item_widget.dart';
 
 @RoutePage()
 class TransferManagerPage extends ConsumerWidget {
@@ -15,14 +15,13 @@ class TransferManagerPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final downloadJobsAsync = ref.watch(downloadJobsProvider);
-    final uploadJobsAsync = ref.watch(uploadJobsProvider); // [+] 监听上传任务
+    final uploadJobsAsync = ref.watch(uploadJobsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('传输管理'), leading: const BackButton()),
       body: uploadJobsAsync.when(
         data: (uploadJobs) => downloadJobsAsync.when(
           data: (downloadJobs) {
-            // 合并并排序所有任务
             final List<dynamic> allJobs = [...uploadJobs, ...downloadJobs];
             if (allJobs.isEmpty) {
               return const Center(child: Text('没有传输任务'));

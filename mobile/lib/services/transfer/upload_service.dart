@@ -26,7 +26,7 @@ Future<String> _calculateFileHash(String filePath) async {
 
 @lazySingleton
 class UploadService {
-  final AppDatabase _db; // [新增] 保存数据库实例以使用事务
+  final AppDatabase _db;
   final UploadJobDao _uploadJobDao;
   final MediaAssetDao _mediaAssetDao;
   final SecureStorageService _secureStorageService;
@@ -34,7 +34,6 @@ class UploadService {
   final _log = Logger('UploadService');
   final _uuid = const Uuid();
 
-  // [修改] 构造函数，保存 db 实例
   UploadService(AppDatabase db, this._secureStorageService)
     : _db = db,
       _uploadJobDao = db.uploadJobDao,
@@ -43,16 +42,13 @@ class UploadService {
   Future<void> enqueueMultipleJobs(List<UploadTaskPayload> tasks) async {
     _log.info('开始批量入队 ${tasks.length} 个上传任务。');
 
-    // 用于存储需要在事务外启动的后台任务所需的信息
     final List<Map<String, dynamic>> jobsToProcess = [];
 
-    // 步骤 1: 在一个事务中完成所有初始的数据库写入操作
     await _db.transaction(() async {
       for (final task in tasks) {
         final jobId = _uuid.v4();
         final cloudUuid = _uuid.v4();
 
-        // 标记媒体资源为“上传中”
         await _mediaAssetDao.updateMediaAssetWithlocalId(
           task.assetId,
           MediaAssetsCompanion(
@@ -61,7 +57,6 @@ class UploadService {
           ),
         );
 
-        // 在数据库中创建上传任务记录
         await _uploadJobDao.insertJob(
           UploadJobsCompanion(
             jobId: d.Value(jobId),
@@ -74,7 +69,6 @@ class UploadService {
           ),
         );
 
-        // 暂存任务信息，以便在事务成功后再进行处理
         jobsToProcess.add({
           'jobId': jobId,
           'file': task.file,
@@ -85,10 +79,7 @@ class UploadService {
     });
     _log.info('批量入队 ${tasks.length} 个任务的数据库操作已完成。');
 
-    // 步骤 2: 事务成功后，在事务外启动耗时的后台处理
     for (final jobData in jobsToProcess) {
-      // “发射后不管”地启动每个文件的详细处理流程
-      // 由于这已经不在事务内部，所以 _processUploadQueue 中的数据库操作会使用新的、独立的连接。
       _processUploadQueue(
         jobData['jobId'],
         jobData['file'],
@@ -98,11 +89,10 @@ class UploadService {
     }
   }
 
-  // [修改] 方法签名增加了 TaskException? exception 参数
   Future<void> handleUploadStatusUpdate(
     Task task,
     TaskStatus status,
-    TaskException? exception, // 新增参数
+    TaskException? exception,
   ) async {
     if (task.metaData.isEmpty) return;
     final metadata = jsonDecode(task.metaData);
@@ -147,12 +137,8 @@ class UploadService {
         );
       }
     } else if (status == TaskStatus.failed || status == TaskStatus.canceled) {
-      // [修改] 使用传入的 exception 对象来记录详细错误
       if (status == TaskStatus.failed) {
-        _log.severe(
-          '上传任务 ${job.jobId} (资源 $assetId) 失败。',
-          exception, // 使用传入的 exception 对象
-        );
+        _log.severe('上传任务 ${job.jobId} (资源 $assetId) 失败。', exception);
       } else {
         _log.warning('上传任务 ${job.jobId} (资源 $assetId) 已被用户取消。');
       }

@@ -7,20 +7,16 @@ import 'package:mobile/services/transfer/transfer_manager.dart';
 
 part 'transfer_providers.g.dart';
 
-// Provider for the TransferService singleton
-// [注意] transfer_providers.g.dart 中 transferService 名称应为 transferManager
 @Riverpod(keepAlive: true)
 TransferManager transferManager(TransferManagerRef ref) {
   return getIt<TransferManager>();
 }
 
-// Provider for the DownloadJobDao
 @riverpod
 DownloadJobDao downloadJobDao(DownloadJobDaoRef ref) {
   return getIt<AppDatabase>().downloadJobDao;
 }
 
-// [任务 3.2] StreamProvider, 监听所有下载任务
 @riverpod
 Stream<List<DownloadJob>> downloadJobs(DownloadJobsRef ref) {
   final dao = ref.watch(downloadJobDaoProvider);

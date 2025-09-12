@@ -53,17 +53,12 @@ class UserProfileDialog extends HookConsumerWidget {
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          // [修复 #2] 增强 CircleAvatar 以显示默认图标
                           CircleAvatar(
                             radius: 32,
-                            // 如果有头像，使用 NetworkImage；否则为 null
                             backgroundImage: hasAvatar
-                                ? NetworkImage(
-                                    avatarUrl,
-                                  ) // 使用 ! 是安全的，因为 hasAvatar 已经检查过 null
+                                ? NetworkImage(avatarUrl)
                                 : null,
                             backgroundColor: Colors.grey.shade200,
-                            // 如果没有头像，则显示一个默认的 person 图标作为 child
                             child: !hasAvatar
                                 ? Icon(
                                     Icons.person,
@@ -212,7 +207,6 @@ class UserProfileDialog extends HookConsumerWidget {
                     }
 
                     await authNotifier.logout();
-                    // 确保路由栈被正确替换
                     if (context.mounted) {
                       context.router.replaceAll([const LoginRoute()]);
                     }

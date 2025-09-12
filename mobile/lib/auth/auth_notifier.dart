@@ -13,9 +13,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _init() async {
-    // 启动时可以增加一个验证token有效性的API调用（例如/users/me）
-    // 如果失败（401），刷新机制会自动触发
-    // 这里我们保持简单，只检查token是否存在
     final token = await _ref
         .read(secureStorageServiceProvider)
         .getAccessToken();

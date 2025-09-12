@@ -1,7 +1,7 @@
 // lib/providers/user_profile_provider.dart
 
 import 'dart:io';
-import 'dart:developer'; // 引入 developer 库，使用 log 替代 print
+import 'dart:developer';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,7 +12,6 @@ import 'package:mobile/domain/repositories/user_repository.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/auth/auth_state.dart';
 
-// 这个 provider 定义没有问题
 final userRepositoryProvider = Provider<UserRepository>(
   (ref) => getIt<UserRepository>(),
 );
@@ -24,14 +23,12 @@ final userProvider = StateNotifierProvider<UserNotifier, UserProfileEntity>((
   return UserNotifier(ref, userRepository);
 });
 
-// [NEW] The Notifier for the global userProvider.
 class UserNotifier extends StateNotifier<UserProfileEntity> {
   final Ref _ref;
   final UserRepository _userRepository;
 
   UserNotifier(this._ref, this._userRepository)
     : super(UserProfileEntity.initial()) {
-    // Listen to authentication changes to fetch the user data once upon login.
     _ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       next.mapOrNull(
         authenticated: (_) => fetchUser(),
@@ -99,7 +96,6 @@ class UserProfileNotifier extends StateNotifier<UserProfileEntity> {
     }
   }
 
-  // The upload/update logic remains the same, refreshing its own state.
   Future<void> uploadNewAvatar() async {
     try {
       final picker = ImagePicker();
@@ -114,7 +110,6 @@ class UserProfileNotifier extends StateNotifier<UserProfileEntity> {
       final imageFile = File(pickedFile.path);
       await _userRepository.uploadAvatar(imageFile);
 
-      // After uploading, refresh this dialog's state with the absolute latest data.
       await fetchUserProfile();
 
       log(

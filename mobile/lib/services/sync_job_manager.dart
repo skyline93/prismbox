@@ -2,7 +2,6 @@
 
 import 'dart:io';
 import 'dart:developer';
-// import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
@@ -11,7 +10,6 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path/path.dart' as p;
-// import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/services/background_service_manager.dart';
 
 @lazySingleton
@@ -29,11 +27,8 @@ class SyncJobManager {
     required bool isAutoBackupEnabled,
   }) async {
     try {
-      // 1. 检查此“文件实例”是否已被记录。这是唯一的“重复”检查。
       final existingAsset = await _mediaAssetDao.getAssetByLocalId(asset.id);
       if (existingAsset != null) {
-        // 如果这个 localId 已经处理过，直接返回。
-        // 补录哈希的逻辑仍然可以保留，以防上次处理失败。
         if (existingAsset.contentHash == null) {
           final contentHash = await _calculateFileHash(asset);
           if (contentHash != null) {
@@ -49,22 +44,18 @@ class SyncJobManager {
         return;
       }
 
-      // 2. 为这个新文件计算哈希
       final contentHash = await _calculateFileHash(asset);
       if (contentHash == null) {
         log('[SyncJobManager] 无法计算资产 ${asset.id} 的哈希值，跳过。');
         return;
       }
 
-      // 3. 将 AssetEntity 转换为数据库实体
       final companion = await _assetEntityToCompanion(asset);
       if (companion == null) {
         log('[SyncJobManager] 无法处理资产 ${asset.id}，跳过。');
         return;
       }
 
-      // 4. 【核心逻辑】为这个新文件实例在本地数据库中创建一条全新的记录
-      // 注意：我们不再检查 contentHash 是否重复来阻止插入。
       await _mediaAssetDao.insertMediaAsset(
         companion.copyWith(
           contentHash: Value(contentHash),
@@ -76,7 +67,6 @@ class SyncJobManager {
         ),
       );
 
-      // 5. 创建同步任务
       if (isAutoBackupEnabled) {
         // TODO
       }
@@ -87,8 +77,6 @@ class SyncJobManager {
 
   Future<String?> _calculateFileHash(AssetEntity asset) async {
     try {
-      // 【根本性修改】使用 asset.originFile
-      // 它能可靠地提供一个文件对象，即使文件在云端也会先下载到本地。
       final File? file = await asset.originFile;
 
       if (file == null) {
@@ -96,7 +84,6 @@ class SyncJobManager {
         return null;
       }
 
-      // 既然我们有了一个可靠的 File 对象，就可以安全地使用文件流来计算哈希，避免OOM。
       final stream = file.openRead();
       final hash = await sha256.bind(stream).first;
       return hash.toString();
@@ -152,48 +139,6 @@ class SyncJobManager {
     BackgroundServiceManager.triggerImmediateSync();
   }
 
-  // Future<void> createDownloadJob(UnifiedMediaEntity entity) async {
-  //   final existingJob =
-  //       await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
-  //             (tbl) =>
-  //                 tbl.assetId.equals(entity.id) &
-  //                 tbl.jobType.equalsValue(JobType.downloadOriginal) &
-  //                 tbl.status.equalsValue(JobStatus.pending),
-  //           ))
-  //           .getSingleOrNull();
-
-  //   if (existingJob != null) {
-  //     log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的下载任务，跳过。');
-  //     return;
-  //   }
-
-  //   try {
-  //     await _db.transaction(() async {
-  //       await _mediaAssetDao.updateAssetStatus(
-  //         entity.id,
-  //         SyncStatus.downloading,
-  //       );
-
-  //       await _syncJobDao
-  //           .into(_syncJobDao.syncJobs)
-  //           .insert(
-  //             SyncJobsCompanion.insert(
-  //               assetId: Value(entity.id),
-  //               jobType: JobType.downloadOriginal,
-  //               status: JobStatus.pending,
-  //               priority: Value(10),
-  //             ),
-  //           );
-  //     });
-  //     log('[SyncJobManager] 已为资产 ${entity.id} 创建下载任务。');
-
-  //     BackgroundServiceManager.triggerImmediateSync();
-  //   } catch (e, s) {
-  //     log('[SyncJobManager] 创建下载任务时出错', error: e, stackTrace: s);
-  //     await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.cloudOnly);
-  //   }
-  // }
-
   Future<MediaAssetsCompanion?> _assetEntityToCompanion(
     AssetEntity asset,
   ) async {
@@ -217,61 +162,4 @@ class SyncJobManager {
       updatedAt: DateTime.now(),
     );
   }
-
-  // Future<void> createUploadJobForExistingAsset(
-  //   UnifiedMediaEntity entity,
-  // ) async {
-  //   // 1. 检查是否已有待处理的任务（上传或下载），避免重复
-  //   final existingJob =
-  //       await (_syncJobDao.select(_syncJobDao.syncJobs)..where(
-  //             (tbl) =>
-  //                 tbl.assetId.equals(entity.id) &
-  //                 (tbl.jobType.equalsValue(JobType.upload)) &
-  //                 (tbl.status.equalsValue(JobStatus.pending) |
-  //                     tbl.status.equalsValue(JobStatus.inProgress)),
-  //           ))
-  //           .getSingleOrNull();
-
-  //   if (existingJob != null) {
-  //     log('[SyncJobManager] 资产 ${entity.id} 已存在待处理的同步任务，跳过创建。');
-  //     return;
-  //   }
-
-  //   // [+] 确保文件路径存在
-  //   if (entity.filePath == null) {
-  //     log('[SyncJobManager] 资产 ${entity.id} 缺少文件路径，无法创建上传任务。');
-  //     return;
-  //   }
-
-  //   // [+] 准备 payload
-  //   final payload = jsonEncode({'filePath': entity.filePath});
-
-  //   try {
-  //     await _db.transaction(() async {
-  //       await _mediaAssetDao.updateAssetStatus(entity.id, SyncStatus.uploading);
-  //       await _syncJobDao
-  //           .into(_syncJobDao.syncJobs)
-  //           .insert(
-  //             SyncJobsCompanion.insert(
-  //               assetId: Value(entity.id),
-  //               jobType: JobType.upload,
-  //               status: JobStatus.pending,
-  //               priority: Value(10),
-  //               payload: Value(payload), // [+] 存储 payload
-  //             ),
-  //           );
-  //     });
-  //     log('[SyncJobManager] 已为资产 ${entity.id} 创建手动上传任务。');
-
-  //     // 3. 触发后台服务立即处理任务队列
-  //     BackgroundServiceManager.triggerImmediateSync();
-  //   } catch (e, s) {
-  //     log('[SyncJobManager] 创建手动上传任务时出错', error: e, stackTrace: s);
-  //     // 如果失败，将状态恢复，避免UI卡在“上传中”
-  //     await _mediaAssetDao.updateAssetStatus(
-  //       entity.id,
-  //       SyncStatus.localOnlyNotSelected,
-  //     );
-  //   }
-  // }
 }

@@ -22,9 +22,6 @@ import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/ui/album/viewmodel/album_detail_viewmodel.dart';
 
-
-/// 缩略图缓存提供者 - 用于内存缓存
-/// 包含缓存大小限制和清理机制
 final thumbnailCacheProvider =
     StateNotifierProvider<ThumbnailCacheNotifier, Map<String, Uint8List>>((
       ref,
@@ -32,20 +29,17 @@ final thumbnailCacheProvider =
       return ThumbnailCacheNotifier();
     });
 
-/// 缩略图缓存管理器
 class ThumbnailCacheNotifier extends StateNotifier<Map<String, Uint8List>> {
-  static const int _maxCacheSize = 100; // 最大缓存100个缩略图
-  static const int _maxMemorySize = 50 * 1024 * 1024; // 最大50MB内存
+  static const int _maxCacheSize = 100;
+  static const int _maxMemorySize = 50 * 1024 * 1024;
 
   ThumbnailCacheNotifier() : super({});
 
   void addToCache(String key, Uint8List data) {
-    // 检查缓存大小
     if (state.length >= _maxCacheSize) {
       _cleanupCache();
     }
 
-    // 检查内存使用
     final currentMemoryUsage = _calculateMemoryUsage();
     if (currentMemoryUsage + data.length > _maxMemorySize) {
       _cleanupCache();
@@ -55,7 +49,6 @@ class ThumbnailCacheNotifier extends StateNotifier<Map<String, Uint8List>> {
   }
 
   void _cleanupCache() {
-    // 简单的LRU策略：移除最旧的20%的缓存项
     final keysToRemove = state.keys.take((state.length * 0.2).round()).toList();
     final newCache = Map<String, Uint8List>.from(state);
     for (final key in keysToRemove) {
@@ -93,7 +86,6 @@ final dioClientProvider = Provider<DioClient>((ref) {
 });
 
 final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
-  print("[mediaRepositoryProvider] 初始化repo=================================");
   return MediaRepositoryImpl(
     cloudDataSource: getIt<RemoteMediaDataSource>(),
     db: getIt<AppDatabase>(),
@@ -142,9 +134,6 @@ final albumStreamProvider =
       return mediaRepository.watchAlbums();
     });
 
-// [新增] albumDetailViewModelProvider
-// 这是一个全新的 family Provider，专门为相册详情页服务。
-// 它接收相册ID和来源作为参数，创建独立的 ViewModel 实例。
 final albumDetailViewModelProvider = StateNotifierProvider.autoDispose
     .family<
       AlbumDetailViewModel,
@@ -167,7 +156,6 @@ final albumCoverProvider = FutureProvider.autoDispose
       return mediaRepository.getCoverForAlbum(album);
     });
 
-// --- 新增：选择状态管理的 Provider ---
 class SelectionState {
   final bool isSelecting;
   final Set<UnifiedMediaEntity> selectedItems;
@@ -188,21 +176,16 @@ class SelectionState {
 class SelectionNotifier extends StateNotifier<SelectionState> {
   SelectionNotifier() : super(SelectionState());
 
-  /// [正确添加回来] 明确地开始选择模式，通常由长按触发。
   void startSelection(UnifiedMediaEntity initialItem) {
     if (state.isSelecting) return;
     state = SelectionState(isSelecting: true, selectedItems: {initialItem});
   }
 
-  /// 用于同步来自 drag_select_grid_view 的选择状态。
   void setSelection(bool isSelecting, Set<UnifiedMediaEntity> items) {
     state = SelectionState(isSelecting: isSelecting, selectedItems: items);
   }
 
-  /// 切换单个项目的选中状态，通常由点击触发。
   void toggleItem(UnifiedMediaEntity item) {
-    // 如果不在选择模式下，则不执行任何操作。
-    // 启动选择必须通过 startSelection 或 setSelection 来完成。
     if (!state.isSelecting) return;
 
     final newSelectedItems = Set<UnifiedMediaEntity>.from(state.selectedItems);
@@ -212,7 +195,6 @@ class SelectionNotifier extends StateNotifier<SelectionState> {
       newSelectedItems.add(item);
     }
 
-    // 如果取消选择后列表为空，则自动退出选择模式
     if (newSelectedItems.isEmpty) {
       state = SelectionState(isSelecting: false, selectedItems: {});
     } else {
@@ -220,7 +202,6 @@ class SelectionNotifier extends StateNotifier<SelectionState> {
     }
   }
 
-  /// 清除所有选择并退出选择模式。
   void clearSelection() {
     state = SelectionState();
   }

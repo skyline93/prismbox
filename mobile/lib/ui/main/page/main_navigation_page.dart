@@ -59,7 +59,6 @@ class NavigationPage extends HookConsumerWidget {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,
-        // [关键改动] 添加此行以强制标题在所有平台上都靠左对齐
         centerTitle: false,
         title: Text(
           pageTitles[currentIndex.value],

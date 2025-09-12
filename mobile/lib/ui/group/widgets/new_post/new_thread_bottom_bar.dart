@@ -5,7 +5,7 @@ import 'package:mobile/domain/entities/reply_permission.dart';
 class NewThreadBottomBar extends StatelessWidget {
   final ReplyPermission selectedPermission;
   final bool isPostButtonEnabled;
-  final bool isLoading; // 新增: 接收加载状态
+  final bool isLoading;
   final VoidCallback onPermissionTap;
   final VoidCallback onPostTap;
 
@@ -13,14 +13,13 @@ class NewThreadBottomBar extends StatelessWidget {
     super.key,
     required this.selectedPermission,
     required this.isPostButtonEnabled,
-    required this.isLoading, // 新增
+    required this.isLoading,
     required this.onPermissionTap,
     required this.onPostTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 按钮是否可用的最终条件：外部传入的可用状态为true，且当前不处于加载中
     final isButtonActive = isPostButtonEnabled && !isLoading;
 
     return Column(
@@ -36,7 +35,6 @@ class NewThreadBottomBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TextButton(
-                  // 发布时禁用权限选择
                   onPressed: isLoading ? null : onPermissionTap,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.grey.shade600,
@@ -67,7 +65,6 @@ class NewThreadBottomBar extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  // 核心改动：根据isLoading状态显示不同内容
                   child: isLoading
                       ? const SizedBox(
                           width: 20,

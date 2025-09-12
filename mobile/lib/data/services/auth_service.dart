@@ -32,7 +32,6 @@ class AuthService {
     final refreshToken = await _storageService.getRefreshToken();
     if (refreshToken != null) {
       try {
-        // 使用一个独立的Dio实例来登出，避免登出请求本身因token问题被拦截
         final logoutDio = Dio();
         logoutDio.post(
           '$baseUrl/auth/logout',
@@ -45,7 +44,6 @@ class AuthService {
     await _storageService.clearTokens();
   }
 
-  // 注册逻辑保持不变
   Future<UserRegisterSuccessData> register(UserRegisterInput input) async {
     try {
       final response = await _dio.post(

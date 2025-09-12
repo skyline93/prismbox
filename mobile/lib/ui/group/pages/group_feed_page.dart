@@ -6,12 +6,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/providers/group_providers.dart';
-// import 'package:mobile/providers/providers.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:mobile/ui/group/pages/new_thread_sheet.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
 import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
-// import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
 @RoutePage()
 class GroupFeedPage extends ConsumerStatefulWidget {
@@ -33,7 +31,6 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
   }
 
   void _onScroll() {
-    // 浮动按钮的显示/隐藏逻辑
     if (_scrollController.position.userScrollDirection ==
             ScrollDirection.reverse &&
         _isUiVisible) {
@@ -48,7 +45,6 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
       });
     }
 
-    // 分页加载逻辑
     final notifier = ref.read(groupFeedViewModelProvider(widget.uuid).notifier);
     final state = ref.read(groupFeedViewModelProvider(widget.uuid));
 
@@ -120,7 +116,6 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // FIX 1: 'pop' is deprecated. Use 'maybePop'.
                         BackButton(
                           onPressed: () => AutoRouter.of(context).maybePop(),
                         ),
@@ -135,7 +130,6 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
-                            // FIX 2: The argument type 'SizedBox' can't be assigned to the parameter type 'Widget Function()'.
                             loading: () => const SizedBox.shrink(),
                             error: (e, s) => const SizedBox.shrink(),
                           ),
@@ -171,7 +165,6 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
                               ],
                             );
                           },
-                          // FIX 2: (Same as above)
                           loading: () => const SizedBox.shrink(),
                           error: (e, s) => const SizedBox.shrink(),
                         ),
@@ -221,7 +214,6 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
     }
 
     if (feedState.feedItems.isEmpty) {
-      // FIX 4: The 'child' argument should be last in widget constructor invocations.
       return SliverFillRemaining(
         hasScrollBody: false,
         child: Center(

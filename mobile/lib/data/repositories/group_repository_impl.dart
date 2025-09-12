@@ -75,7 +75,6 @@ class GroupRepositoryImpl implements GroupRepository {
       response.data,
       (json) => GroupModel.fromJson(json as Map<String, dynamic>),
     );
-    // 假设 GroupModel 中包含了当前用户的角色信息
     return apiResponse.data!;
   }
 
@@ -125,10 +124,8 @@ class GroupRepositoryImpl implements GroupRepository {
     int page = 1,
     int limit = 20,
   }) async {
-    // 1. 调用更新后的API服务 (假设它现在请求 GET /groups/{uuid}/feed)
     final response = await _apiService.getGroupFeed(groupUuid, page, limit);
 
-    // 2. 使用 ApiResponse 解析，但将内部转换器从 GroupMediaModel 切换为 GroupPostModel
     final apiResponse = ApiResponse.fromJson(
       response.data,
       (json) => (json as List<dynamic>)
@@ -136,11 +133,8 @@ class GroupRepositoryImpl implements GroupRepository {
           .toList(),
     );
 
-    // 3. 安全地获取解析后的数据模型列表
     final List<GroupPostModel> groupPostModels = apiResponse.data ?? [];
 
-    // 4. 将新的 `GroupPostModel` 列表映射为领域实体 `GroupFeedItemEntity` 列表
-    //    这里会调用我们在上一步改造好的 `fromGroupPostModel` 工厂方法
     return groupPostModels
         .map((model) => GroupFeedItemEntity.fromGroupPostModel(model))
         .toList();
@@ -151,29 +145,20 @@ class GroupRepositoryImpl implements GroupRepository {
     required String groupUuid,
     required String content,
     required List<String> mediaUuids,
-    // replyPermission 字段可以保留，如果后端支持的话
-    // ReplyPermission? replyPermission,
   }) async {
     try {
-      // 构建请求体以匹配新的 `POST /groups/{uuid}/posts` API
       final Map<String, dynamic> data = {
         'caption': content,
         'media_uuids': mediaUuids,
-        // 如果后端实现了 reply_permission，可以取消这行注释
-        // if (replyPermission != null) 'reply_permission': replyPermission.toJson(),
       };
-      // 调用更新后的 ApiService 方法
       await _apiService.createPost(groupUuid, data);
     } on DioException catch (e) {
-      // 良好的错误处理
       throw Exception('Failed to create post: ${e.message}');
     }
   }
 
   @override
   Future<List<CommentModel>> fetchComments(int postId) async {
-    // <-- 参数从 groupMediaId 变为 postId
-    // 假设 ApiService 也已更新
     final response = await _apiService.getComments(postId);
     final apiResponse = ApiResponse.fromJson(
       response.data,
@@ -186,8 +171,6 @@ class GroupRepositoryImpl implements GroupRepository {
 
   @override
   Future<CommentModel> addComment(int postId, String content) async {
-    // <-- 参数从 groupMediaId 变为 postId
-    // 假设 ApiService 也已更新
     final response = await _apiService.addComment(postId, content);
     final apiResponse = ApiResponse.fromJson(
       response.data,
@@ -223,7 +206,6 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<List<CommentEntity>> getComments(int postId) async {
     try {
-      // 在调用 API 时将 int 转换为 String
       final response = await _apiService.getPostComments(postId.toString());
       final apiResponse = ApiResponse.fromJson(
         response.data,
@@ -249,7 +231,6 @@ class GroupRepositoryImpl implements GroupRepository {
         'content': content,
         if (parentCommentId != null) 'parent_comment_id': parentCommentId,
       };
-      // 在调用 API 时将 int 转换为 String
       final response = await _apiService.createComment(postId.toString(), data);
       final apiResponse = ApiResponse.fromJson(
         response.data,

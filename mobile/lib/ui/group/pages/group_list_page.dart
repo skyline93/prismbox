@@ -110,14 +110,13 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
         },
         child: _isFabVisible
             ? FloatingActionButton(
-                // 使用 ValueKey 帮助 AnimatedSwitcher 识别子组件
                 key: const ValueKey('fab_visible'),
                 onPressed: () {
                   AutoRouter.of(context).push(const CreateGroupRoute());
                 },
                 tooltip: '创建新圈子',
                 shape: const CircleBorder(),
-                elevation: 8.0, // 保持一致的阴影
+                elevation: 8.0,
                 backgroundColor: theme.primaryColor,
                 child: const Icon(Icons.add, color: Colors.white),
               )

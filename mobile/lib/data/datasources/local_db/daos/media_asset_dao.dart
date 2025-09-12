@@ -103,7 +103,6 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     );
 
     await transaction(() async {
-      // 步骤 1: 处理云端要求删除的记录
       if (uuidsToDelete.isNotEmpty) {
         final count = await (delete(
           mediaAssets,
@@ -111,7 +110,6 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
         log("成功删除了 $count 条云端指定的记录。", name: 'MediaAssetDao');
       }
 
-      // 步骤 2: 处理需要新增或更新的记录
       if (toUpsert.isEmpty) return;
 
       int updatedByHash = 0;
@@ -122,7 +120,6 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
         final contentHashValue = companion.contentHash.value;
         final cloudUuidValue = companion.cloudUuid.value;
 
-        // 基本校验
         if (contentHashValue == null || cloudUuidValue == null) {
           log(
             "警告: 跳过一个没有有效 contentHash 或 cloudUuid 的云端资产。",
@@ -132,7 +129,6 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
           continue;
         }
 
-        // 步骤 2.1: 明确地检查 contentHash 是否已存在
         final existingAssetByHash =
             await (select(mediaAssets)
                   ..where((tbl) => tbl.contentHash.equals(contentHashValue)))
@@ -140,8 +136,6 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
 
         if (existingAssetByHash != null &&
             existingAssetByHash.syncStatus == SyncStatus.localOnlyNotSelected) {
-          // 决策: 存在匹配的 Hash -> 执行更新
-          // 我们将云端的数据（如 cloudUuid）同步到这条本地记录上，并标记为已同步。
           await (update(
             mediaAssets,
           )..where((tbl) => tbl.contentHash.equals(contentHashValue))).write(
@@ -152,19 +146,15 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
           );
           updatedByHash++;
         } else {
-          // 决策: 不存在匹配的 Hash -> 执行插入
-          // 在插入前，为保险起见，再次检查 cloudUuid 是否已存在，防止意外的重复。
           final existingAssetByUuid =
               await (select(mediaAssets)
                     ..where((tbl) => tbl.cloudUuid.equals(cloudUuidValue)))
                   .getSingleOrNull();
 
           if (existingAssetByUuid == null) {
-            // 确认是全新记录，执行插入
             await into(mediaAssets).insert(companion);
             newInserts++;
           } else {
-            // Uuid 已存在，但 Hash 不同。这是异常情况，跳过。
             skipped++;
           }
         }
@@ -226,7 +216,7 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
   }
 
   Stream<List<MediaAsset>> watchAssetsByLocalIds(List<String> ids) {
-    if (ids.isEmpty) return Stream.value([]); // [优化] 处理空列表，返回一个空的流
+    if (ids.isEmpty) return Stream.value([]);
     final query = select(mediaAssets)..where((tbl) => tbl.localId.isIn(ids));
     return query.watch();
   }

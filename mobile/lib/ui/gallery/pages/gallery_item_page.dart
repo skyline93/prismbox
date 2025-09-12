@@ -14,7 +14,6 @@ class GalleryItemPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [修正] 移除 Scaffold 和 AppBar, 直接根据媒体类型返回对应的内容组件
     return entity.assetType == MediaType.video
         ? VideoContent(entity: entity)
         : ImageContent(entity: entity);
