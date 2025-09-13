@@ -98,21 +98,33 @@ class AssetActionHandler {
     await _processInBatches(assetIds, _processSingleDeletedAsset);
   }
 
-  /// 处理单个被删除的本地媒体资源。
-  /// Logic migrated from `SyncJobManager.handleLocalAssetDeletion`.
   Future<void> _processSingleDeletedAsset(String localId) async {
-    final assetToDelete = await _mediaAssetDao.getAssetByLocalId(localId);
+    final asset = await _mediaAssetDao.getAssetByLocalId(localId);
 
-    if (assetToDelete != null) {
-      _log.info(
-        'Local asset $localId has been deleted. Performing optimistic delete...',
-      );
-      // DAO方法将处理数据库删除并为已同步的资产创建 "deleteCloud" 任务
-      await _mediaAssetDao.performOptimisticDelete(assetToDelete);
-    } else {
+    if (asset == null) {
       _log.warning(
-        'Tried to delete asset with localId $localId, but it was not found in the DB.',
+        'Tried to process deletion for local asset $localId, but it was not found in the DB.',
       );
+      return;
+    }
+
+    // 检查资产是否已与云端同步或正在同步
+    final bool isCloudAsset =
+        asset.syncStatus == SyncStatus.synced ||
+        asset.syncStatus == SyncStatus.uploading;
+
+    if (isCloudAsset) {
+      // 如果资产已同步到云端，则更新其状态为仅云端，并移除本地信息
+      _log.info(
+        'Local asset $localId deleted, but it is synced. Transitioning to cloud-only state.',
+      );
+      await _mediaAssetDao.transitionToCloudOnly(asset.id);
+    } else {
+      // 如果资产仅存在于本地，则直接从数据库中删除
+      _log.info(
+        'Local asset $localId deleted. It was local-only, so deleting from DB.',
+      );
+      await _mediaAssetDao.deleteLocalOnlyAsset(asset.id);
     }
   }
 

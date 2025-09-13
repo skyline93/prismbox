@@ -100,36 +100,29 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  Future<void> performOptimisticDelete(MediaAsset assetToDelete) async {
-    _log.info(
-      'Performing optimistic delete for asset ID: ${assetToDelete.id}, Cloud UUID: ${assetToDelete.cloudUuid}',
+  /// 将指定的媒体资源转换为“仅云端”状态。
+  /// 这会清除其本地 ID 和文件路径，并更新同步状态。
+  Future<void> transitionToCloudOnly(int assetId) async {
+    _log.info('Transitioning asset ID $assetId to cloud-only state.');
+    final companion = MediaAssetsCompanion(
+      localId: const Value(null),
+      filePath: const Value(null),
+      syncStatus: const Value(
+        SyncStatus.cloudOnly,
+      ), // 假设 SyncStatus 枚举中有 cloudOnly
+      updatedAt: Value(DateTime.now()),
     );
-    return transaction(() async {
-      _log.fine('Transaction started for performOptimisticDelete.');
-      await (delete(
-        mediaAssets,
-      )..where((tbl) => tbl.id.equals(assetToDelete.id))).go();
-      _log.fine('Deleted asset #${assetToDelete.id} from local DB.');
+    await (update(
+      mediaAssets,
+    )..where((tbl) => tbl.id.equals(assetId))).write(companion);
+    _log.fine('Successfully transitioned asset ID $assetId to cloud-only.');
+  }
 
-      if (assetToDelete.cloudUuid != null) {
-        await into(syncJobs).insert(
-          SyncJobsCompanion.insert(
-            assetId: Value(assetToDelete.id),
-            relatedCloudUuid: Value(assetToDelete.cloudUuid),
-            jobType: JobType.deleteCloud,
-            status: JobStatus.pending,
-          ),
-        );
-        _log.fine(
-          'Created deleteCloud job for Cloud UUID: ${assetToDelete.cloudUuid}.',
-        );
-      } else {
-        _log.info(
-          'Asset #${assetToDelete.id} had no cloud UUID, so no deleteCloud job was created.',
-        );
-      }
-      _log.fine('Transaction committed for performOptimisticDelete.');
-    });
+  /// 从数据库中永久删除一个仅本地存在的媒体资源记录。
+  Future<void> deleteLocalOnlyAsset(int assetId) async {
+    _log.info('Permanently deleting local-only asset with ID: $assetId');
+    await (delete(mediaAssets)..where((tbl) => tbl.id.equals(assetId))).go();
+    _log.fine('Successfully deleted local-only asset ID $assetId.');
   }
 
   Future<void> bulkUpsertCloudMedia(
