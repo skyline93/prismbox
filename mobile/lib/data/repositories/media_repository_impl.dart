@@ -9,7 +9,6 @@ import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
-import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/core/enums.dart';
@@ -26,7 +25,6 @@ class MediaRepositoryImpl implements MediaRepository {
   MediaRepositoryImpl({
     required RemoteMediaDataSource cloudDataSource,
     required AppDatabase db,
-    required SyncJobManager syncJobManager,
     required LocalMediaDataSource localMediaSource,
   }) : _cloudDataSource = cloudDataSource,
        _mediaAssetDao = db.mediaAssetDao,
@@ -51,12 +49,6 @@ class MediaRepositoryImpl implements MediaRepository {
   }
 
   @override
-  Future<Set<String>> getAllSyncedLocalAssetIds() async {
-    final idsList = await _mediaAssetDao.getAllLocalAssetIds();
-    return idsList.toSet();
-  }
-
-  @override
   Stream<UnifiedMediaEntity> watchMediaEntity(int id) {
     return _mediaAssetDao
         .watchMediaAssetById(id)
@@ -78,55 +70,6 @@ class MediaRepositoryImpl implements MediaRepository {
           )
           .toList();
     });
-  }
-
-  @override
-  Future<List<UnifiedMediaEntity>> getMediaFromAlbum(
-    String albumId,
-    AlbumSource source,
-  ) async {
-    switch (source) {
-      case AlbumSource.local:
-        final List<AssetEntity> localAssets = await _localMediaSource
-            .getMediaFromAlbum(albumId);
-
-        if (localAssets.isEmpty) {
-          return [];
-        }
-
-        final List<String> localAssetIds = localAssets
-            .map((a) => a.id)
-            .toList();
-
-        final List<MediaAsset> dbAssets = await _mediaAssetDao
-            .getAssetsByLocalIds(localAssetIds);
-
-        final Map<String, MediaAsset> dbAssetsMap = {
-          for (var dbAsset in dbAssets) dbAsset.localId!: dbAsset,
-        };
-
-        return localAssets.map((asset) {
-          final MediaAsset? correspondingDbAsset = dbAssetsMap[asset.id];
-
-          if (correspondingDbAsset != null) {
-            return UnifiedMediaEntity.fromDbModel(
-              correspondingDbAsset,
-            ).copyWith(assetEntity: asset);
-          } else {
-            return UnifiedMediaEntity.fromAssetEntity(asset);
-          }
-        }).toList();
-
-      case AlbumSource.remote:
-        throw UnimplementedError(
-          'Remote album fetching is not yet implemented.',
-        );
-    }
-  }
-
-  @override
-  Future<Uint8List?> getThumbnailForLocalAsset(String id) {
-    return _localMediaSource.getThumbnail(assetId: id);
   }
 
   @override

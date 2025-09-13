@@ -34,10 +34,6 @@ import '../features/sync/handlers/asset_action_handler.dart' as _i1008;
 import '../features/sync/synchronizers/album_synchronizer.dart' as _i54;
 import '../features/sync/synchronizers/cloud_media_synchronizer.dart' as _i907;
 import '../features/sync/synchronizers/local_media_synchronizer.dart' as _i730;
-import '../services/album_sync_service.dart' as _i166;
-import '../services/local_media_observer.dart' as _i538;
-import '../services/sync_job_manager.dart' as _i987;
-import '../services/sync_job_processor.dart' as _i642;
 import '../services/transfer/download_service.dart' as _i180;
 import '../services/transfer/transfer_manager.dart' as _i422;
 import '../services/transfer/upload_service.dart' as _i1069;
@@ -77,19 +73,12 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i54.AlbumSynchronizer(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i1008.AssetActionHandler>(
         () => _i1008.AssetActionHandler(gh<_i669.AppDatabase>()));
-    gh.lazySingleton<_i166.AlbumSyncService>(
-        () => _i166.AlbumSyncService(gh<_i669.AppDatabase>()));
-    gh.lazySingleton<_i987.SyncJobManager>(
-        () => _i987.SyncJobManager(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i305.DioClient>(
         () => _i305.DioClient(gh<_i65.SecureStorageService>()));
     gh.lazySingleton<_i730.LocalMediaSynchronizer>(
         () => _i730.LocalMediaSynchronizer(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i290.LocalMediaDataSource>(
-        () => _i290.LocalMediaDataSource(
-              gh<_i669.AppDatabase>(),
-              gh<_i987.SyncJobManager>(),
-            ));
+        () => _i290.LocalMediaDataSource(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i1069.UploadService>(() => _i1069.UploadService(
           gh<_i669.AppDatabase>(),
           gh<_i65.SecureStorageService>(),
@@ -104,20 +93,15 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i816.MediaApiService(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(
         () => injectableModule.getRemoteMediaSource(gh<_i305.DioClient>()));
+    gh.lazySingleton<_i957.GroupRepository>(
+        () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
     gh.lazySingleton<_i442.MediaRepository>(() => _i74.MediaRepositoryImpl(
           cloudDataSource: gh<_i527.RemoteMediaDataSource>(),
           db: gh<_i669.AppDatabase>(),
-          syncJobManager: gh<_i987.SyncJobManager>(),
           localMediaSource: gh<_i290.LocalMediaDataSource>(),
         ));
-    gh.lazySingleton<_i957.GroupRepository>(
-        () => _i875.GroupRepositoryImpl(gh<_i470.GroupApiService>()));
     gh.factory<_i907.CloudMediaSynchronizer>(
         () => _i907.CloudMediaSynchronizer(gh<_i527.RemoteMediaDataSource>()));
-    gh.factory<_i642.SyncJobProcessor>(() => _i642.SyncJobProcessor(
-          db: gh<_i669.AppDatabase>(),
-          remoteApi: gh<_i527.RemoteMediaDataSource>(),
-        ));
     gh.lazySingleton<_i544.UserRepository>(
         () => _i223.UserRepositoryImpl(gh<_i1052.UserApiService>()));
     gh.factoryParam<_i551.MediaSyncServiceCore, _i709.SendPort, dynamic>((
@@ -130,13 +114,6 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i907.CloudMediaSynchronizer>(),
           gh<_i54.AlbumSynchronizer>(),
           gh<_i1008.AssetActionHandler>(),
-        ));
-    gh.lazySingleton<_i538.LocalMediaObserver>(() => _i538.LocalMediaObserver(
-          gh<_i987.SyncJobManager>(),
-          gh<_i442.MediaRepository>(),
-          gh<_i518.SyncStateService>(),
-          gh<_i166.AlbumSyncService>(),
-          gh<_i669.AppDatabase>(),
         ));
     gh.lazySingleton<_i180.DownloadService>(() => _i180.DownloadService(
           gh<_i669.AppDatabase>(),

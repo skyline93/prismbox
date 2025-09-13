@@ -6,6 +6,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/ui/media/widgets/media_body.dart';
 import 'package:mobile/ui/media/widgets/media_selection_drawer.dart';
+import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
 
 @RoutePage()
 class MediaPage extends HookConsumerWidget {
@@ -23,8 +25,7 @@ class MediaPage extends HookConsumerWidget {
         children: [
           RefreshIndicator(
             onRefresh: () async {
-              final jobManager = ref.read(syncJobManagerProvider);
-              await jobManager.createCloudChangesSyncJob();
+              getIt<MediaSyncServiceProxy>().triggerCloudSync();
             },
             child: const MediaBody(),
           ),

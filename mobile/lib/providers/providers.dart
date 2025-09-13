@@ -15,7 +15,6 @@ import 'package:mobile/auth/auth_notifier.dart';
 import 'package:mobile/auth/auth_state.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/services/auth_service.dart';
-import 'package:mobile/services/sync_job_manager.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
@@ -66,10 +65,6 @@ class ThumbnailCacheNotifier extends StateNotifier<Map<String, Uint8List>> {
   }
 }
 
-final syncJobManagerProvider = Provider<SyncJobManager>((ref) {
-  return getIt<SyncJobManager>();
-});
-
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
   ref,
 ) {
@@ -89,7 +84,6 @@ final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
   return MediaRepositoryImpl(
     cloudDataSource: getIt<RemoteMediaDataSource>(),
     db: getIt<AppDatabase>(),
-    syncJobManager: ref.read(syncJobManagerProvider),
     localMediaSource: getIt<LocalMediaDataSource>(),
   );
 });
