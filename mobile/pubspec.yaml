@@ -85,6 +85,7 @@ dependencies:
   shimmer: ^3.0.0
   flutter_animate: ^4.5.2
   background_downloader: ^9.2.3
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:

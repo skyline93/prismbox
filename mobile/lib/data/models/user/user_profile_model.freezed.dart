@@ -20,14 +20,11 @@ UserProfileModel _$UserProfileModelFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$UserProfileModel {
-// [保留] 原有字段
   int get id => throw _privateConstructorUsedError;
-  String get username => throw _privateConstructorUsedError; // [新增] 添加 email 字段
-  String get email =>
-      throw _privateConstructorUsedError; // [保留] avatarUrl 字段，并确保 @JsonKey 正确
+  String get username => throw _privateConstructorUsedError;
+  String get email => throw _privateConstructorUsedError;
   @JsonKey(name: 'avatar_url')
-  String? get avatarUrl =>
-      throw _privateConstructorUsedError; // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  String? get avatarUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'used_storage')
   double get usedStorage => throw _privateConstructorUsedError;
   @JsonKey(name: 'total_storage')
@@ -182,19 +179,15 @@ class _$UserProfileModelImpl extends _UserProfileModel {
   factory _$UserProfileModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserProfileModelImplFromJson(json);
 
-// [保留] 原有字段
   @override
   final int id;
   @override
   final String username;
-// [新增] 添加 email 字段
   @override
   final String email;
-// [保留] avatarUrl 字段，并确保 @JsonKey 正确
   @override
   @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
-// [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
   @override
   @JsonKey(name: 'used_storage')
   final double usedStorage;
@@ -258,16 +251,16 @@ abstract class _UserProfileModel extends UserProfileModel {
   factory _UserProfileModel.fromJson(Map<String, dynamic> json) =
       _$UserProfileModelImpl.fromJson;
 
-  @override // [保留] 原有字段
+  @override
   int get id;
   @override
   String get username;
-  @override // [新增] 添加 email 字段
+  @override
   String get email;
-  @override // [保留] avatarUrl 字段，并确保 @JsonKey 正确
+  @override
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl;
-  @override // [新增] 添加存储信息的字段，并使用 @JsonKey 映射API响应的 snake_case 命名
+  @override
   @JsonKey(name: 'used_storage')
   double get usedStorage;
   @override
