@@ -81,11 +81,13 @@ class MediaSyncServiceProxy {
     }
 
     // 等待 Isolate 准备就绪
-    await _isolateReadyCompleter.future;
+    _isolateReadyCompleter.future;
 
     // Isolate 准备好之后，开始监听本地媒体变更
     _startListeningForChanges();
     _registerBackgroundTasks(); // WorkManager 注册
+
+    return _isolateReadyCompleter.future;
   }
 
   void _registerBackgroundTasks() {
