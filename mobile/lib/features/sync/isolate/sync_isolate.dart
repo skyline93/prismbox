@@ -18,6 +18,8 @@ enum SyncCommand {
   /// 仅触发一次云端同步
   triggerCloudSync,
 
+  triggerLocalMediaChangeSync,
+
   /// 停止服务并关闭 Isolate
   dispose,
 }

@@ -104,6 +104,14 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i907.CloudMediaSynchronizer(gh<_i527.RemoteMediaDataSource>()));
     gh.lazySingleton<_i544.UserRepository>(
         () => _i223.UserRepositoryImpl(gh<_i1052.UserApiService>()));
+    gh.lazySingleton<_i180.DownloadService>(() => _i180.DownloadService(
+          gh<_i669.AppDatabase>(),
+          gh<_i527.RemoteMediaDataSource>(),
+        ));
+    gh.lazySingleton<_i422.TransferManager>(() => _i422.TransferManager(
+          gh<_i180.DownloadService>(),
+          gh<_i1069.UploadService>(),
+        ));
     gh.factoryParam<_i551.MediaSyncServiceCore, _i709.SendPort, dynamic>((
       mainSendPort,
       _,
@@ -114,14 +122,7 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i907.CloudMediaSynchronizer>(),
           gh<_i54.AlbumSynchronizer>(),
           gh<_i1008.AssetActionHandler>(),
-        ));
-    gh.lazySingleton<_i180.DownloadService>(() => _i180.DownloadService(
           gh<_i669.AppDatabase>(),
-          gh<_i527.RemoteMediaDataSource>(),
-        ));
-    gh.lazySingleton<_i422.TransferManager>(() => _i422.TransferManager(
-          gh<_i180.DownloadService>(),
-          gh<_i1069.UploadService>(),
         ));
     return this;
   }

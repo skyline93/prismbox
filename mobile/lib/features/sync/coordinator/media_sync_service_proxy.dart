@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:isolate';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/features/sync/isolate/sync_isolate.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:workmanager/workmanager.dart';
@@ -24,6 +25,15 @@ class MediaSyncServiceProxy {
   final _syncStateController = BehaviorSubject<SyncState>.seeded(
     SyncState(SyncStatus.idle),
   );
+
+  // 用于接收原始变更事件的 StreamController
+  final _mediaChangeController = StreamController<void>.broadcast();
+
+  // 创建一个订阅，用于监听和处理防抖后的事件
+  StreamSubscription? _mediaChangeSubscription;
+
+  // 用于防止并发处理相册变更通知的锁
+  // bool _isChangeHandlingLocked = false;
 
   /// 向UI层暴露同步状态的Stream。
   Stream<SyncState> get syncStateStream => _syncStateController.stream;
@@ -66,15 +76,16 @@ class MediaSyncServiceProxy {
       _syncStateController.add(
         SyncState(SyncStatus.error, message: 'Failed to start sync service.'),
       );
+
+      return; // 提前返回，因为 Isolate 启动失败
     }
 
-    // Register background tasks once communication is established
-    _isolateReadyCompleter.future.then((_) {
-      _registerBackgroundTasks();
-    });
+    // 等待 Isolate 准备就绪
+    await _isolateReadyCompleter.future;
 
-    // 等待 Isolate 准备就绪并返回其 SendPort
-    return _isolateReadyCompleter.future;
+    // Isolate 准备好之后，开始监听本地媒体变更
+    _startListeningForChanges();
+    _registerBackgroundTasks(); // WorkManager 注册
   }
 
   void _registerBackgroundTasks() {
@@ -94,7 +105,11 @@ class MediaSyncServiceProxy {
     if (message is SendPort) {
       _isolateSendPort = message;
       // Isolate 已经准备好接收命令
-      _isolateReadyCompleter.complete();
+      if (!_isolateReadyCompleter.isCompleted) {
+        // 避免重复完成
+        _isolateReadyCompleter.complete();
+      }
+
       _log.info(
         'Received SendPort from Sync Isolate. Communication established.',
       );
@@ -119,15 +134,71 @@ class MediaSyncServiceProxy {
   Future<void> _sendCommand(SyncCommand command) async {
     if (_isolateSendPort == null) {
       _log.severe('Isolate is not ready. Cannot send command: ${command.name}');
-      return;
+      // 如果Isolate尚未准备好，尝试等待它准备好
+      if (!_isolateReadyCompleter.isCompleted) {
+        _log.info('Isolate not ready, waiting...');
+        await _isolateReadyCompleter.future;
+      }
+      // 再次检查_isolateSendPort，如果仍然为null，则Isolate启动失败
+      if (_isolateSendPort == null) {
+        _log.severe(
+          'Isolate failed to start after waiting. Cannot send command: ${command.name}',
+        );
+        return;
+      }
     }
     _log.info('Sending command to Sync Isolate: ${command.name}');
     _isolateSendPort!.send(command);
   }
 
+  /// 注册监听器以接收未来的媒体变更通知。
+  /// Logic from `LocalMediaObserver._startListeningForChanges`.
+  Future<void> _startListeningForChanges() async {
+    final ps = await PhotoManager.requestPermissionExtend();
+    if (ps.isAuth) {
+      _log.info(
+        'Photo library permission granted. Starting to listen for changes.',
+      );
+
+      // --- 设置防抖监听 ---
+      // 在启动时设置防抖监听
+      _mediaChangeSubscription = _mediaChangeController.stream
+          .debounceTime(const Duration(milliseconds: 800)) // 设置防抖时间，例如800毫秒
+          .listen((_) {
+            _log.info(
+              'Debounced media change detected. Triggering local sync.',
+            );
+            _sendCommand(SyncCommand.triggerLocalMediaChangeSync);
+          });
+
+      PhotoManager.addChangeCallback(_onMediaChangeNotified);
+      PhotoManager.startChangeNotify();
+    } else {
+      _log.warning(
+        'Photo library permission denied. Cannot listen for media changes.',
+      );
+    }
+  }
+
+  /// 处理来自 PhotoManager 的变更通知。
+  /// Logic from `LocalMediaObserver._onMediaChangeNotified`.
+  void _onMediaChangeNotified(MethodCall call) {
+    _log.fine('Raw media change notification received: ${call.method}');
+    // 4. 将事件添加到 StreamController，而不是直接处理
+    _mediaChangeController.add(null);
+  }
+
   /// 关闭Isolate和端口，释放资源。
   void dispose() {
     _log.info('Disposing MediaSyncService...');
+
+    _mediaChangeSubscription?.cancel();
+    _mediaChangeController.close();
+
+    // 停止监听相册变更
+    PhotoManager.removeChangeCallback(_onMediaChangeNotified);
+    PhotoManager.stopChangeNotify();
+
     if (_isolateSendPort != null) {
       _isolateSendPort!.send(SyncCommand.dispose);
     }
