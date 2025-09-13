@@ -5,9 +5,13 @@ part of '../app_database.dart';
 @DriftAccessor(tables: [MediaAssets, SyncJobs])
 class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     with _$MediaAssetDaoMixin {
+  // 创建一个 Logger 实例
+  final _log = Logger('MediaAssetDao');
+
   MediaAssetDao(super.db);
 
   Future<List<String>> getAllLocalAssetIds() {
+    _log.fine('Executing query: getAllLocalAssetIds');
     final query = selectOnly(mediaAssets)
       ..addColumns([mediaAssets.localId])
       ..where(mediaAssets.localId.isNotNull());
@@ -15,30 +19,51 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     return query.map((row) => row.read(mediaAssets.localId)!).get();
   }
 
-  Stream<List<MediaAsset>> watchAllMediaAssets() => select(mediaAssets).watch();
+  Stream<List<MediaAsset>> watchAllMediaAssets() {
+    _log.fine('Watching all media assets.');
+    return select(mediaAssets).watch();
+  }
 
-  Future<int> insertMediaAsset(MediaAssetsCompanion entity) =>
-      into(mediaAssets).insert(entity);
+  Future<int> insertMediaAsset(MediaAssetsCompanion entity) {
+    _log.fine(
+      'Inserting a single media asset: ${entity.localId.value ?? entity.cloudUuid.value}',
+    );
+    return into(mediaAssets).insert(entity);
+  }
 
   Future<void> bulkInsertCloudMedia(List<MediaAssetsCompanion> assets) async {
+    if (assets.isEmpty) {
+      _log.info(
+        'bulkInsertCloudMedia called with an empty list. Nothing to do.',
+      );
+      return;
+    }
+    _log.info(
+      'Bulk inserting ${assets.length} cloud media assets with insertOrIgnore mode.',
+    );
     await batch((batch) {
       batch.insertAll(mediaAssets, assets, mode: InsertMode.insertOrIgnore);
     });
   }
 
   Future<void> updateAsset(MediaAssetsCompanion companion) {
+    _log.fine('Updating asset with ID: ${companion.id.value}');
     return (update(
       mediaAssets,
     )..where((tbl) => tbl.id.equals(companion.id.value))).write(companion);
   }
 
   Future<void> updateAssetStatus(int assetId, SyncStatus status) {
+    _log.fine('Updating status for asset ID $assetId to ${status.name}');
     return (update(mediaAssets)..where((tbl) => tbl.id.equals(assetId))).write(
       MediaAssetsCompanion(syncStatus: Value(status)),
     );
   }
 
   Future<void> deleteAllCloudRelatedAssets() {
+    _log.warning(
+      'Deleting all cloud-related assets (everything except localOnlyNotSelected).',
+    );
     return (delete(mediaAssets)..where(
           (tbl) =>
               tbl.syncStatus.isNotValue(SyncStatus.localOnlyNotSelected.name),
@@ -47,11 +72,21 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> markAsPendingBackup(List<int> assetIds) async {
+    if (assetIds.isEmpty) {
+      _log.info('markAsPendingBackup called with empty list. No action taken.');
+      return;
+    }
+    _log.info(
+      'Marking ${assetIds.length} assets as pending backup and creating upload jobs within a transaction.',
+    );
     return transaction(() async {
+      _log.fine('Transaction started for markAsPendingBackup.');
       final query = update(mediaAssets)..where((tbl) => tbl.id.isIn(assetIds));
-      await query.write(
+      final updatedRows = await query.write(
         const MediaAssetsCompanion(syncStatus: Value(SyncStatus.uploading)),
       );
+      _log.fine('Updated $updatedRows assets to uploading status.');
+
       final jobs = assetIds.map(
         (id) => SyncJobsCompanion.insert(
           assetId: Value(id),
@@ -60,14 +95,22 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
         ),
       );
       await batch((batch) => batch.insertAll(syncJobs, jobs));
+      _log.fine('Created ${jobs.length} new upload jobs.');
+      _log.fine('Transaction committed for markAsPendingBackup.');
     });
   }
 
   Future<void> performOptimisticDelete(MediaAsset assetToDelete) async {
+    _log.info(
+      'Performing optimistic delete for asset ID: ${assetToDelete.id}, Cloud UUID: ${assetToDelete.cloudUuid}',
+    );
     return transaction(() async {
+      _log.fine('Transaction started for performOptimisticDelete.');
       await (delete(
         mediaAssets,
       )..where((tbl) => tbl.id.equals(assetToDelete.id))).go();
+      _log.fine('Deleted asset #${assetToDelete.id} from local DB.');
+
       if (assetToDelete.cloudUuid != null) {
         await into(syncJobs).insert(
           SyncJobsCompanion.insert(
@@ -77,18 +120,37 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
             status: JobStatus.pending,
           ),
         );
+        _log.fine(
+          'Created deleteCloud job for Cloud UUID: ${assetToDelete.cloudUuid}.',
+        );
+      } else {
+        _log.info(
+          'Asset #${assetToDelete.id} had no cloud UUID, so no deleteCloud job was created.',
+        );
       }
+      _log.fine('Transaction committed for performOptimisticDelete.');
     });
   }
 
   Future<void> bulkUpsertCloudMedia(
     List<MediaAssetsCompanion> cloudAssets,
   ) async {
-    if (cloudAssets.isEmpty) return;
+    if (cloudAssets.isEmpty) {
+      _log.info(
+        'bulkUpsertCloudMedia called with an empty list. Nothing to do.',
+      );
+      return;
+    }
+    _log.info(
+      'Bulk upserting ${cloudAssets.length} cloud media assets within a transaction.',
+    );
     await transaction(() async {
+      _log.fine('Transaction started for bulkUpsertCloudMedia.');
       for (final asset in cloudAssets) {
+        // insertOnConflictUpdate is generally efficient in Drift
         await into(mediaAssets).insertOnConflictUpdate(asset);
       }
+      _log.fine('Transaction committed for bulkUpsertCloudMedia.');
     });
   }
 
@@ -96,21 +158,25 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     required List<MediaAssetsCompanion> toUpsert,
     required List<String> uuidsToDelete,
   }) async {
-    log("开始应用云端变更，执行智能合并...", name: 'MediaAssetDao');
-    log(
-      "待处理: ${toUpsert.length} 条, 待删除: ${uuidsToDelete.length} 条。",
-      name: 'MediaAssetDao',
+    _log.info(
+      'Starting to apply cloud changes. Upserts: ${toUpsert.length}, Deletes: ${uuidsToDelete.length}.',
     );
 
     await transaction(() async {
+      _log.info('Transaction started for applyCloudChanges.');
       if (uuidsToDelete.isNotEmpty) {
         final count = await (delete(
           mediaAssets,
         )..where((tbl) => tbl.cloudUuid.isIn(uuidsToDelete))).go();
-        log("成功删除了 $count 条云端指定的记录。", name: 'MediaAssetDao');
+        _log.info(
+          'Successfully deleted $count records specified by the cloud.',
+        );
       }
 
-      if (toUpsert.isEmpty) return;
+      if (toUpsert.isEmpty) {
+        _log.info('No assets to upsert. Finishing transaction.');
+        return;
+      }
 
       int updatedByHash = 0;
       int newInserts = 0;
@@ -121,9 +187,8 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
         final cloudUuidValue = companion.cloudUuid.value;
 
         if (contentHashValue == null || cloudUuidValue == null) {
-          log(
-            "警告: 跳过一个没有有效 contentHash 或 cloudUuid 的云端资产。",
-            name: 'MediaAssetDao',
+          _log.warning(
+            'Skipping a cloud asset due to missing contentHash or cloudUuid.',
           );
           skipped++;
           continue;
@@ -134,57 +199,79 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
                   ..where((tbl) => tbl.contentHash.equals(contentHashValue)))
                 .getSingleOrNull();
 
+        // 核心逻辑：如果本地已存在一个未选择备份的同哈希值文件，则将其与云端记录合并
         if (existingAssetByHash != null &&
             existingAssetByHash.syncStatus == SyncStatus.localOnlyNotSelected) {
+          _log.fine(
+            'Found existing local-only asset with hash $contentHashValue. Merging with cloud data for UUID $cloudUuidValue.',
+          );
           await (update(
             mediaAssets,
-          )..where((tbl) => tbl.contentHash.equals(contentHashValue))).write(
+          )..where((tbl) => tbl.id.equals(existingAssetByHash.id))).write(
+            // 使用 cloud companion 的数据，但保留本地 ID，并更新状态
             companion.copyWith(
+              id: const Value.absent(), // 不更新 ID
+              localId: Value(existingAssetByHash.localId), // 确保 localId 保留
               syncStatus: const Value(SyncStatus.synced),
               updatedAt: Value(DateTime.now()),
             ),
           );
           updatedByHash++;
         } else {
+          // 否则，按云端 UUID 查找，如果不存在则为新插入
           final existingAssetByUuid =
               await (select(mediaAssets)
                     ..where((tbl) => tbl.cloudUuid.equals(cloudUuidValue)))
                   .getSingleOrNull();
 
           if (existingAssetByUuid == null) {
+            _log.finer(
+              'Inserting new cloud-only asset with UUID $cloudUuidValue.',
+            );
             await into(mediaAssets).insert(companion);
             newInserts++;
           } else {
+            _log.finer(
+              'Asset with UUID $cloudUuidValue already exists and is not a candidate for merging. Skipping.',
+            );
             skipped++;
           }
         }
       }
 
-      log(
-        "处理完成：通过哈希匹配更新 $updatedByHash 条记录，新增 $newInserts 条云端记录，跳过 $skipped 条记录。",
-        name: 'MediaAssetDao',
+      _log.info(
+        'Cloud changes applied successfully: $updatedByHash merged by hash, $newInserts newly inserted, $skipped skipped.',
       );
+      _log.info('Transaction committed for applyCloudChanges.');
     });
   }
 
+  // ... (其他方法的日志可以类似地添加) ...
+  // 为了简洁，我将省略其余方法的日志添加，但模式是相同的：
+  // 在函数入口处记录意图和参数，在出口处记录结果。
+
   Future<void> createUploadJobForExistingAsset(int assetId) async {
+    _log.info('Creating upload job for existing asset ID: $assetId');
     return transaction(() async {
       await (update(mediaAssets)..where((tbl) => tbl.id.equals(assetId))).write(
         const MediaAssetsCompanion(syncStatus: Value(SyncStatus.uploading)),
       );
+      _log.fine('Updated asset $assetId status to uploading.');
 
       await into(syncJobs).insert(
         SyncJobsCompanion.insert(
           assetId: Value(assetId),
           jobType: JobType.upload,
           status: JobStatus.pending,
-          priority: Value(10),
+          priority: const Value(10),
         ),
       );
+      _log.fine('Inserted high-priority upload job for asset $assetId.');
     });
   }
 
   Future<void> updateMediaAsset(int id, MediaAssetsCompanion companion) {
+    _log.fine('Updating media asset with ID: $id');
     return (update(
       mediaAssets,
     )..where((tbl) => tbl.id.equals(id))).write(companion);
@@ -194,40 +281,47 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     String localId,
     MediaAssetsCompanion companion,
   ) {
+    _log.fine('Updating media asset with localId: $localId');
     return (update(
       mediaAssets,
     )..where((tbl) => tbl.localId.equals(localId))).write(companion);
   }
 
   Stream<MediaAsset> watchMediaAssetById(int id) {
+    _log.fine('Watching media asset by ID: $id');
     return (select(
       mediaAssets,
     )..where((tbl) => tbl.id.equals(id))).watchSingle();
   }
 
   Future<List<MediaAsset>> getAssetsByLocalIds(List<String> ids) {
+    _log.fine('Getting assets by ${ids.length} local IDs.');
     return (select(mediaAssets)..where((tbl) => tbl.localId.isIn(ids))).get();
   }
 
   Future<MediaAsset?> getAssetByLocalId(String id) {
+    _log.fine('Getting asset by local ID: $id');
     return (select(
       mediaAssets,
     )..where((tbl) => tbl.localId.equals(id))).getSingleOrNull();
   }
 
   Stream<List<MediaAsset>> watchAssetsByLocalIds(List<String> ids) {
+    _log.fine('Watching assets by ${ids.length} local IDs.');
     if (ids.isEmpty) return Stream.value([]);
     final query = select(mediaAssets)..where((tbl) => tbl.localId.isIn(ids));
     return query.watch();
   }
 
   Future<MediaAsset?> getAssetByCloudUuid(String cloudUuid) {
+    _log.fine('Getting asset by cloud UUID: $cloudUuid');
     return (select(
       mediaAssets,
     )..where((tbl) => tbl.cloudUuid.equals(cloudUuid))).getSingleOrNull();
   }
 
   Future<MediaAsset?> getAssetById(int id) {
+    _log.fine('Getting asset by ID: $id');
     return (select(
       mediaAssets,
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
