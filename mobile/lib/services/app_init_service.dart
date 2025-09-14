@@ -60,8 +60,6 @@ class AppInitService {
 
     Logger.root.info('所有必要权限已获取。');
 
-    // ... 后续初始化代码保持不变 ...
-
     await getIt<TransferManager>().initialize();
     Logger.root.info('TransferManager initialized.');
 

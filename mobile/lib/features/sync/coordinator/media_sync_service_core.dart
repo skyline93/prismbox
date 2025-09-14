@@ -53,7 +53,7 @@ class MediaSyncServiceCore {
     }
   }
 
-  /// 执行完整的同步流程：本地对账 -> 云端同步
+  /// 执行完整的同步流程：云端同步 -> 本地对账 (优先处理相册)
   Future<void> _runFullSync() async {
     if (_isSyncInProgress) {
       _log.warning(
@@ -62,14 +62,38 @@ class MediaSyncServiceCore {
       return;
     }
     _isSyncInProgress = true;
-    _log.info('Starting full sync process...');
+    _log.info(
+      'Starting full sync process... (Cloud First, Albums Prioritized)',
+    );
 
     try {
-      // 1. 本地对账
+      // =======================================================
+      // 1. 云端同步 (前置)
+      // 这个阶段包含了云端媒体和云端相册的同步
+      // =======================================================
+      _sendStatus(SyncStatus.syncingCloud);
+      _log.info('Running cloud sync first (includes remote albums)...');
+      await _runCloudSync(isChained: true);
+      _log.info('Cloud sync finished.');
+
+      // =======================================================
+      // 2. 本地对账
+      // =======================================================
       _sendStatus(SyncStatus.syncingLocal);
+      _log.info('Running local reconciliation...');
       final localResult = await _localSync.runFullReconciliation();
 
-      // 2. 处理本地对账结果
+      // =======================================================
+      // 3. 优先处理本地相册同步
+      // =======================================================
+      _log.info('Synchronizing local albums first...');
+      await _albumSync.synchronizeLocalAlbums(localResult.localAlbums);
+      _log.info('Local albums synchronized.');
+
+      // =======================================================
+      // 4. 处理本地媒体文件变更
+      // =======================================================
+      _log.info('Processing local asset changes...');
       if (localResult.newAssetIds.isNotEmpty) {
         await _actionHandler.handleNewLocalAssets(localResult.newAssetIds);
       }
@@ -78,12 +102,11 @@ class MediaSyncServiceCore {
           localResult.deletedAssetIds,
         );
       }
-      await _albumSync.synchronizeLocalAlbums(localResult.localAlbums);
-      _log.info('Local reconciliation and processing finished.');
+      _log.info('Local reconciliation and asset processing finished.');
 
-      // 3. 云端同步
-      await _runCloudSync(isChained: true);
-
+      // =======================================================
+      // 5. 设置初始同步完成标志
+      // =======================================================
       await _userSettingDao.upsertSetting(
         UserSettingsCompanion(
           key: const Value(SettingKeys.initialReconciliationComplete),
