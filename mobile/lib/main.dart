@@ -11,11 +11,6 @@ import 'package:storage_inspector/storage_inspector.dart';
 import 'package:drift_local_storage_inspector/drift_local_storage_inspector.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/data/datasources/local_db/connection.dart';
-import 'package:mobile/services/transfer/transfer_manager.dart';
-import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
-import 'package:mobile/constants/settings_keys.dart';
-import 'package:workmanager/workmanager.dart';
-import 'package:mobile/features/sync/worker/sync_worker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,39 +31,6 @@ void main() async {
 
   await configureDependencies();
   await initializeDateFormatting('zh_CN', null);
-
-  await getIt<TransferManager>().initialize();
-
-  await Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: kDebugMode, // 在 debug 模式下启用日志，非常有用
-  );
-
-  // getIt<LocalMediaObserver>().startObserving();
-
-  final syncService = getIt<MediaSyncServiceProxy>();
-  await syncService.start();
-
-  final userSettingDao = getIt<AppDatabase>().userSettingDao;
-  final isInitialSyncComplete =
-      await userSettingDao.getSetting(
-        SettingKeys.initialReconciliationComplete,
-      ) ==
-      'true';
-  if (!isInitialSyncComplete) {
-    Logger.root.info(
-      'Initial full sync has not been completed. Triggering now...',
-    );
-    syncService.triggerFullSync();
-  } else {
-    Logger.root.info(
-      'Initial full sync already completed. Skipping automatic trigger on startup.',
-    );
-    // 后续同步将由 WorkManager 周期性触发，或用户手动触发
-  }
-
-  // await BackgroundServiceManager.initialize();
-  // await BackgroundServiceManager.registerPeriodicSync();
 
   if (kDebugMode) {
     final driver = StorageServerDriver(

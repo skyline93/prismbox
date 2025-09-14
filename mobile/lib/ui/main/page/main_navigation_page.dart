@@ -10,7 +10,7 @@ import 'package:mobile/ui/album/page/album_page.dart';
 import 'package:mobile/ui/group/pages/group_list_page.dart';
 import 'package:mobile/ui/main/widgets/user_profile_dialog.dart';
 import 'package:mobile/providers/user_profile_provider.dart';
-
+import 'package:mobile/services/app_init_service.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 
 @RoutePage()
@@ -19,6 +19,18 @@ class NavigationPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 使用 useEffect 来执行一次性初始化
+    useEffect(() {
+      // 在下一帧执行，以确保页面已经准备好
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // 调用初始化服务
+        AppInitService().initializeAppServices();
+      });
+
+      // 返回 null 表示没有清理工作需要执行
+      return null;
+    }, const []); // 空数组作为 keys，确保这个 effect 只运行一次
+
     final currentIndex = useState(0);
 
     final isSelecting = ref.watch(
