@@ -40,50 +40,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  Future<MediaResponse> uploadMedia({
-    required Uint8List file,
-    required String hash,
-    required MediaType itemType,
-    String? originalFilename,
-  }) async {
-    try {
-      final formData = FormData();
-
-      formData.files.add(
-        MapEntry(
-          'file',
-          MultipartFile.fromBytes(
-            file,
-            filename:
-                originalFilename ??
-                'upload_${DateTime.now().millisecondsSinceEpoch}',
-          ),
-        ),
-      );
-
-      formData.fields.addAll([
-        MapEntry('hash', hash),
-        MapEntry('item_type', itemType == MediaType.image ? 'IMAGE' : 'VIDEO'),
-        if (originalFilename != null)
-          MapEntry('original_filename', originalFilename),
-      ]);
-
-      final response = await _fileDio.post(
-        '$baseUrl/media/upload',
-        data: formData,
-        options: Options(contentType: 'multipart/form-data'),
-      );
-
-      if (response.statusCode == 200) {
-        return MediaResponse.fromJson(response.data['data']);
-      } else {
-        throw Exception('上传媒体失败: ${response.data['message']}');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e, '上传媒体');
-    }
-  }
-
   Future<bool> deleteMedia(String uuid) async {
     try {
       final response = await _dio.delete('$baseUrl/media/$uuid');
