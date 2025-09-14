@@ -177,11 +177,10 @@ class GalleryPage extends HookConsumerWidget {
               return;
             }
 
-            final file = await asset.file;
             ref
                 .read(transferManagerProvider)
                 .uploadService
-                .enqueueUploadJob(file!, entity.localId!);
+                .enqueueUploadJob(asset);
           },
         );
       case SyncStatus.uploadFailed:
@@ -201,11 +200,10 @@ class GalleryPage extends HookConsumerWidget {
               return;
             }
 
-            final file = await asset.file;
             ref
                 .read(transferManagerProvider)
                 .uploadService
-                .enqueueUploadJob(file!, entity.localId!);
+                .enqueueUploadJob(asset);
           },
         );
       case SyncStatus.uploading:

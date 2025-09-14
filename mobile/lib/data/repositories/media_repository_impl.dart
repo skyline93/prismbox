@@ -157,7 +157,7 @@ class MediaRepositoryImpl implements MediaRepository {
 
   @override
   Future<UnifiedMediaEntity> uploadMedia(AssetEntity asset) async {
-    final File? file = await asset.file;
+    final File? file = await asset.originFile;
     if (file == null) {
       throw Exception('Failed to get file from asset: ${asset.id}');
     }

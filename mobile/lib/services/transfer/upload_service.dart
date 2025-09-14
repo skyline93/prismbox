@@ -16,6 +16,7 @@ import 'package:mobile/data/services/dio_client.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:mobile/providers/upload_orchestrator.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 Future<String> _calculateFileHash(String filePath) async {
   final file = File(filePath);
@@ -181,13 +182,16 @@ class UploadService {
     );
   }
 
-  Future<void> enqueueUploadJob(File file, String assetId) async {
+  Future<void> enqueueUploadJob(AssetEntity asset) async {
     final jobId = _uuid.v4();
     final cloudUuid = _uuid.v4();
 
+    final file = await asset.originFile;
+    final assetId = asset.id;
+
     try {
       _log.info(
-        '为文件: ${file.path} (资源 ID: $assetId) 启动新的上传任务 ($jobId)，预分配云端 UUID: $cloudUuid',
+        '为文件: ${file!.path} (资源 ID: $assetId) 启动新的上传任务 ($jobId)，预分配云端 UUID: $cloudUuid',
       );
 
       await _mediaAssetDao.updateMediaAssetWithlocalId(
