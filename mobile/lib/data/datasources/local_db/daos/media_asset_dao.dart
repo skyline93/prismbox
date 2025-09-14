@@ -161,22 +161,15 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
         _log.finer(
           'Found existing asset by UUID $cloudUuid. Updating metadata.',
         );
-        await (update(
-          mediaAssets,
-        )..where((tbl) => tbl.id.equals(existingAsset.id))).write(companion);
-        updated++;
         continue;
       }
 
       // 策略 2: 按 Content Hash 匹配
       final potentialMatches = assetsByHash[contentHash] ?? [];
 
-      // ======================= ここが修正点です (This is the fix) =======================
-      // 使用 firstWhereOrNull，它会安全地返回 MediaAsset? 类型
       final assetToMerge = potentialMatches.firstWhereOrNull(
         (asset) => asset.syncStatus == SyncStatus.localOnlyNotSelected,
       );
-      // ==========================================================================
 
       if (assetToMerge != null) {
         _log.fine(
@@ -198,7 +191,12 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
 
       // 策略 3: 插入新记录
       _log.finer('Inserting new cloud-only asset with UUID $cloudUuid.');
-      await into(mediaAssets).insert(companion);
+      await into(mediaAssets).insert(
+        companion.copyWith(
+          syncStatus: const Value(SyncStatus.cloudOnly),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
       inserted++;
     }
 

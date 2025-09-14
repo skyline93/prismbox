@@ -58,8 +58,6 @@ class CloudMediaSynchronizer {
             contentHash: Value(media.hash),
             createdAt: Value(DateTime.parse(media.createdAt)),
             updatedAt: Value(DateTime.parse(media.updatedAt)),
-            // 默认为 cloudOnly，后续由 ActionHandler 的 applyCloudChanges 逻辑决定最终状态
-            syncStatus: const Value(SyncStatus.cloudOnly),
           ),
         );
       }
