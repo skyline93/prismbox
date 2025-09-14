@@ -1,5 +1,7 @@
 // lib/features/sync/isolate/sync_isolate.dart
 
+// ignore_for_file: avoid_print
+
 import 'dart:isolate';
 import 'package:logging/logging.dart';
 import 'package:mobile/core/service_locator.dart';
@@ -42,6 +44,20 @@ void syncIsolateEntrypoint(Map<String, dynamic> initialData) async {
   final token = initialData['token'] as RootIsolateToken;
 
   BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+
+  Logger.root.level = Level.ALL; // 监听所有级别的日志
+  Logger.root.onRecord.listen((record) {
+    // 将日志格式化并打印到控制台
+    print(
+      '[${record.level.name}] ${record.time}: ${record.loggerName}: ${record.message}',
+    );
+    if (record.error != null) {
+      print('ERROR: ${record.error}');
+    }
+    if (record.stackTrace != null) {
+      print('STACK TRACE: ${record.stackTrace}');
+    }
+  });
 
   final isolateReceivePort = ReceivePort();
 
