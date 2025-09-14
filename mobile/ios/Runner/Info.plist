@@ -40,7 +40,7 @@
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.example.mobile.processing_task</string>
+		<string>com.example.mobile.periodicCloudSync</string>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).bgDownloader</string>
 	</array>
 	<key>UILaunchStoryboardName</key>

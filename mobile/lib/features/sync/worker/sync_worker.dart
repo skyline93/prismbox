@@ -11,7 +11,7 @@ import 'package:workmanager/workmanager.dart';
 final _log = Logger('SyncWorker');
 
 // 确保这里的任务名称与 MediaSyncServiceProxy 中注册的名称一致
-const periodicCloudSyncTask = "com.example.app.periodicCloudSync";
+const periodicCloudSyncTask = "com.example.mobile.periodicCloudSync";
 
 /// 这是 workmanager 后台任务的入口点。
 /// 它本身在一个独立的 Isolate 中运行。

@@ -10,7 +10,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter/services.dart';
 
-const periodicCloudSyncTask = "com.example.app.periodicCloudSync";
+const periodicCloudSyncTask = "com.example.mobile.periodicCloudSync";
 
 @lazySingleton
 class MediaSyncServiceProxy {
@@ -94,7 +94,7 @@ class MediaSyncServiceProxy {
     Workmanager().registerPeriodicTask(
       "sync-1", // 唯一的任务名称
       periodicCloudSyncTask,
-      frequency: const Duration(hours: 6), // 例如，每6小时同步一次
+      frequency: const Duration(hours: 1), // 例如，每6小时同步一次
       constraints: Constraints(
         networkType: NetworkType.connected, // 仅在有网络时运行
         requiresBatteryNotLow: true, // 电池电量低时不运行
