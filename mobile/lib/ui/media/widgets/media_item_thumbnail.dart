@@ -50,12 +50,37 @@ class MediaItemThumbnail extends StatelessWidget {
       children: [
         imageWidget,
         if (entity.isVideo) VideoOverlay(durationSec: entity.durationSec ?? 0),
+
+        // 同步状态图标 (右上角)
         Positioned(
           top: 4,
           right: 4,
           child: SyncStatusIcon(status: entity.syncStatus),
         ),
+
+        // 如果 isRAW 为 true，则在左上角显示 RAW 标识
+        if (entity.isRAW)
+          Positioned(bottom: 4, right: 4, child: _buildRawBadge()),
       ],
+    );
+  }
+
+  /// 构建 RAW 标识的小部件
+  Widget _buildRawBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'RAW',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

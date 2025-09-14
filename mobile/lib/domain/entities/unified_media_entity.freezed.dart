@@ -24,6 +24,7 @@ mixin _$UnifiedMediaEntity {
   MediaType get assetType => throw _privateConstructorUsedError;
   String? get filePath => throw _privateConstructorUsedError;
   String? get fileName => throw _privateConstructorUsedError;
+  bool get isRAW => throw _privateConstructorUsedError;
   int? get width => throw _privateConstructorUsedError;
   int? get height => throw _privateConstructorUsedError;
   int? get durationSec => throw _privateConstructorUsedError;
@@ -50,6 +51,7 @@ abstract class $UnifiedMediaEntityCopyWith<$Res> {
       MediaType assetType,
       String? filePath,
       String? fileName,
+      bool isRAW,
       int? width,
       int? height,
       int? durationSec,
@@ -78,6 +80,7 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
     Object? assetType = null,
     Object? filePath = freezed,
     Object? fileName = freezed,
+    Object? isRAW = null,
     Object? width = freezed,
     Object? height = freezed,
     Object? durationSec = freezed,
@@ -117,6 +120,10 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
           ? _value.fileName
           : fileName // ignore: cast_nullable_to_non_nullable
               as String?,
+      isRAW: null == isRAW
+          ? _value.isRAW
+          : isRAW // ignore: cast_nullable_to_non_nullable
+              as bool,
       width: freezed == width
           ? _value.width
           : width // ignore: cast_nullable_to_non_nullable
@@ -158,6 +165,7 @@ abstract class _$$UnifiedMediaEntityImplCopyWith<$Res>
       MediaType assetType,
       String? filePath,
       String? fileName,
+      bool isRAW,
       int? width,
       int? height,
       int? durationSec,
@@ -184,6 +192,7 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
     Object? assetType = null,
     Object? filePath = freezed,
     Object? fileName = freezed,
+    Object? isRAW = null,
     Object? width = freezed,
     Object? height = freezed,
     Object? durationSec = freezed,
@@ -223,6 +232,10 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
           ? _value.fileName
           : fileName // ignore: cast_nullable_to_non_nullable
               as String?,
+      isRAW: null == isRAW
+          ? _value.isRAW
+          : isRAW // ignore: cast_nullable_to_non_nullable
+              as bool,
       width: freezed == width
           ? _value.width
           : width // ignore: cast_nullable_to_non_nullable
@@ -259,6 +272,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       required this.assetType,
       this.filePath,
       this.fileName,
+      this.isRAW = false,
       this.width,
       this.height,
       this.durationSec,
@@ -283,6 +297,9 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
   @override
   final String? fileName;
   @override
+  @JsonKey()
+  final bool isRAW;
+  @override
   final int? width;
   @override
   final int? height;
@@ -296,7 +313,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
 
   @override
   String toString() {
-    return 'UnifiedMediaEntity(id: $id, localId: $localId, cloudUuid: $cloudUuid, thumbnailUrl: $thumbnailUrl, syncStatus: $syncStatus, assetType: $assetType, filePath: $filePath, fileName: $fileName, width: $width, height: $height, durationSec: $durationSec, createdAt: $createdAt, assetEntity: $assetEntity)';
+    return 'UnifiedMediaEntity(id: $id, localId: $localId, cloudUuid: $cloudUuid, thumbnailUrl: $thumbnailUrl, syncStatus: $syncStatus, assetType: $assetType, filePath: $filePath, fileName: $fileName, isRAW: $isRAW, width: $width, height: $height, durationSec: $durationSec, createdAt: $createdAt, assetEntity: $assetEntity)';
   }
 
   @override
@@ -318,6 +335,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
                 other.filePath == filePath) &&
             (identical(other.fileName, fileName) ||
                 other.fileName == fileName) &&
+            (identical(other.isRAW, isRAW) || other.isRAW == isRAW) &&
             (identical(other.width, width) || other.width == width) &&
             (identical(other.height, height) || other.height == height) &&
             (identical(other.durationSec, durationSec) ||
@@ -339,6 +357,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       assetType,
       filePath,
       fileName,
+      isRAW,
       width,
       height,
       durationSec,
@@ -363,6 +382,7 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
       required final MediaType assetType,
       final String? filePath,
       final String? fileName,
+      final bool isRAW,
       final int? width,
       final int? height,
       final int? durationSec,
@@ -386,6 +406,8 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
   String? get filePath;
   @override
   String? get fileName;
+  @override
+  bool get isRAW;
   @override
   int? get width;
   @override

@@ -57,6 +57,8 @@ class AssetActionHandler {
         return;
       }
 
+      final isRaw = await isRawFile(asset);
+
       final contentHash = await _calculateFileHash(asset);
       if (contentHash == null) {
         _log.severe(
@@ -88,6 +90,7 @@ class AssetActionHandler {
           id: Value(cloudOnlyMatch.id),
           localId: Value(assetId),
           filePath: Value(file.path),
+          isRAW: Value(isRaw),
           syncStatus: const Value(SyncStatus.synced), // 状态更新为已同步
           updatedAt: Value(DateTime.now()),
         );
@@ -114,6 +117,7 @@ class AssetActionHandler {
         companion.copyWith(
           contentHash: Value(contentHash),
           syncStatus: const Value(SyncStatus.localOnlyNotSelected),
+          isRAW: Value(isRaw),
         ),
       );
       _log.info('Successfully inserted new asset with local ID: ${asset.id}');
@@ -241,5 +245,27 @@ class AssetActionHandler {
       await Future.wait(batch.map(processFunction));
       await Future.delayed(Duration.zero); // Yield to the event loop
     }
+  }
+
+  Future<bool> isRawFile(AssetEntity asset) async {
+    String? mimeType = await asset.mimeTypeAsync; // 或者使用同步的 asset.mimeType
+    if (mimeType == null) {
+      return false;
+    }
+
+    // 常见的 RAW MIME 类型列表 (可根据需要扩展)
+    const rawMimeTypes = [
+      'image/dng',
+      'image/x-adobe-dng',
+      'image/x-canon-cr2',
+      'image/x-canon-cr3',
+      'image/x-nikon-nef',
+      'image/x-sony-arw',
+      'image/x-olympus-orf',
+      'image/x-panasonic-rw2',
+      'image/x-fuji-raf',
+    ];
+
+    return rawMimeTypes.contains(mimeType.toLowerCase());
   }
 }

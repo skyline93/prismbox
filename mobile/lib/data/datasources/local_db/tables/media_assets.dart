@@ -15,6 +15,7 @@ class MediaAssets extends Table {
       text().map(const EnumNameConverter(MediaType.values))();
   TextColumn get filePath => text().nullable()();
   TextColumn get fileName => text().nullable()();
+  BoolColumn get isRAW => boolean().withDefault(const Constant(false))();
   IntColumn get width => integer().nullable()();
   IntColumn get height => integer().nullable()();
   IntColumn get durationSec => integer().nullable()();

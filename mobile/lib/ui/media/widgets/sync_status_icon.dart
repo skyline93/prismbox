@@ -46,7 +46,7 @@ class SyncStatusIcon extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Icon(icon, color: color, size: 12),
+          Icon(icon, color: color, size: 10),
           const SizedBox(
             width: 16,
             height: 16,
@@ -67,7 +67,7 @@ class SyncStatusIcon extends StatelessWidget {
         color: Colors.black.withOpacity(0.6),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: color, size: 16),
+      child: Icon(icon, color: color, size: 12),
     );
   }
 }

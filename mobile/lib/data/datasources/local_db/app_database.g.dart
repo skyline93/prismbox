@@ -66,6 +66,15 @@ class $MediaAssetsTable extends MediaAssets
   late final GeneratedColumn<String> fileName = GeneratedColumn<String>(
       'file_name', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isRAWMeta = const VerificationMeta('isRAW');
+  @override
+  late final GeneratedColumn<bool> isRAW = GeneratedColumn<bool>(
+      'is_r_a_w', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_r_a_w" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _widthMeta = const VerificationMeta('width');
   @override
   late final GeneratedColumn<int> width = GeneratedColumn<int>(
@@ -104,6 +113,7 @@ class $MediaAssetsTable extends MediaAssets
         assetType,
         filePath,
         fileName,
+        isRAW,
         width,
         height,
         durationSec,
@@ -146,6 +156,10 @@ class $MediaAssetsTable extends MediaAssets
     if (data.containsKey('file_name')) {
       context.handle(_fileNameMeta,
           fileName.isAcceptableOrUnknown(data['file_name']!, _fileNameMeta));
+    }
+    if (data.containsKey('is_r_a_w')) {
+      context.handle(_isRAWMeta,
+          isRAW.isAcceptableOrUnknown(data['is_r_a_w']!, _isRAWMeta));
     }
     if (data.containsKey('width')) {
       context.handle(
@@ -200,6 +214,8 @@ class $MediaAssetsTable extends MediaAssets
           .read(DriftSqlType.string, data['${effectivePrefix}file_path']),
       fileName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}file_name']),
+      isRAW: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_r_a_w'])!,
       width: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}width']),
       height: attachedDatabase.typeMapping
@@ -233,6 +249,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
   final MediaType assetType;
   final String? filePath;
   final String? fileName;
+  final bool isRAW;
   final int? width;
   final int? height;
   final int? durationSec;
@@ -247,6 +264,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       required this.assetType,
       this.filePath,
       this.fileName,
+      required this.isRAW,
       this.width,
       this.height,
       this.durationSec,
@@ -279,6 +297,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
     if (!nullToAbsent || fileName != null) {
       map['file_name'] = Variable<String>(fileName);
     }
+    map['is_r_a_w'] = Variable<bool>(isRAW);
     if (!nullToAbsent || width != null) {
       map['width'] = Variable<int>(width);
     }
@@ -313,6 +332,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       fileName: fileName == null && nullToAbsent
           ? const Value.absent()
           : Value(fileName),
+      isRAW: Value(isRAW),
       width:
           width == null && nullToAbsent ? const Value.absent() : Value(width),
       height:
@@ -339,6 +359,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           .fromJson(serializer.fromJson<String>(json['assetType'])),
       filePath: serializer.fromJson<String?>(json['filePath']),
       fileName: serializer.fromJson<String?>(json['fileName']),
+      isRAW: serializer.fromJson<bool>(json['isRAW']),
       width: serializer.fromJson<int?>(json['width']),
       height: serializer.fromJson<int?>(json['height']),
       durationSec: serializer.fromJson<int?>(json['durationSec']),
@@ -360,6 +381,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           $MediaAssetsTable.$converterassetType.toJson(assetType)),
       'filePath': serializer.toJson<String?>(filePath),
       'fileName': serializer.toJson<String?>(fileName),
+      'isRAW': serializer.toJson<bool>(isRAW),
       'width': serializer.toJson<int?>(width),
       'height': serializer.toJson<int?>(height),
       'durationSec': serializer.toJson<int?>(durationSec),
@@ -377,6 +399,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           MediaType? assetType,
           Value<String?> filePath = const Value.absent(),
           Value<String?> fileName = const Value.absent(),
+          bool? isRAW,
           Value<int?> width = const Value.absent(),
           Value<int?> height = const Value.absent(),
           Value<int?> durationSec = const Value.absent(),
@@ -391,6 +414,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
         assetType: assetType ?? this.assetType,
         filePath: filePath.present ? filePath.value : this.filePath,
         fileName: fileName.present ? fileName.value : this.fileName,
+        isRAW: isRAW ?? this.isRAW,
         width: width.present ? width.value : this.width,
         height: height.present ? height.value : this.height,
         durationSec: durationSec.present ? durationSec.value : this.durationSec,
@@ -409,6 +433,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       assetType: data.assetType.present ? data.assetType.value : this.assetType,
       filePath: data.filePath.present ? data.filePath.value : this.filePath,
       fileName: data.fileName.present ? data.fileName.value : this.fileName,
+      isRAW: data.isRAW.present ? data.isRAW.value : this.isRAW,
       width: data.width.present ? data.width.value : this.width,
       height: data.height.present ? data.height.value : this.height,
       durationSec:
@@ -429,6 +454,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           ..write('assetType: $assetType, ')
           ..write('filePath: $filePath, ')
           ..write('fileName: $fileName, ')
+          ..write('isRAW: $isRAW, ')
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
@@ -448,6 +474,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       assetType,
       filePath,
       fileName,
+      isRAW,
       width,
       height,
       durationSec,
@@ -465,6 +492,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           other.assetType == this.assetType &&
           other.filePath == this.filePath &&
           other.fileName == this.fileName &&
+          other.isRAW == this.isRAW &&
           other.width == this.width &&
           other.height == this.height &&
           other.durationSec == this.durationSec &&
@@ -481,6 +509,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
   final Value<MediaType> assetType;
   final Value<String?> filePath;
   final Value<String?> fileName;
+  final Value<bool> isRAW;
   final Value<int?> width;
   final Value<int?> height;
   final Value<int?> durationSec;
@@ -495,6 +524,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     this.assetType = const Value.absent(),
     this.filePath = const Value.absent(),
     this.fileName = const Value.absent(),
+    this.isRAW = const Value.absent(),
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.durationSec = const Value.absent(),
@@ -510,6 +540,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     required MediaType assetType,
     this.filePath = const Value.absent(),
     this.fileName = const Value.absent(),
+    this.isRAW = const Value.absent(),
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.durationSec = const Value.absent(),
@@ -528,6 +559,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     Expression<String>? assetType,
     Expression<String>? filePath,
     Expression<String>? fileName,
+    Expression<bool>? isRAW,
     Expression<int>? width,
     Expression<int>? height,
     Expression<int>? durationSec,
@@ -543,6 +575,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       if (assetType != null) 'asset_type': assetType,
       if (filePath != null) 'file_path': filePath,
       if (fileName != null) 'file_name': fileName,
+      if (isRAW != null) 'is_r_a_w': isRAW,
       if (width != null) 'width': width,
       if (height != null) 'height': height,
       if (durationSec != null) 'duration_sec': durationSec,
@@ -560,6 +593,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       Value<MediaType>? assetType,
       Value<String?>? filePath,
       Value<String?>? fileName,
+      Value<bool>? isRAW,
       Value<int?>? width,
       Value<int?>? height,
       Value<int?>? durationSec,
@@ -574,6 +608,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       assetType: assetType ?? this.assetType,
       filePath: filePath ?? this.filePath,
       fileName: fileName ?? this.fileName,
+      isRAW: isRAW ?? this.isRAW,
       width: width ?? this.width,
       height: height ?? this.height,
       durationSec: durationSec ?? this.durationSec,
@@ -611,6 +646,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     if (fileName.present) {
       map['file_name'] = Variable<String>(fileName.value);
     }
+    if (isRAW.present) {
+      map['is_r_a_w'] = Variable<bool>(isRAW.value);
+    }
     if (width.present) {
       map['width'] = Variable<int>(width.value);
     }
@@ -640,6 +678,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
           ..write('assetType: $assetType, ')
           ..write('filePath: $filePath, ')
           ..write('fileName: $fileName, ')
+          ..write('isRAW: $isRAW, ')
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
@@ -2615,6 +2654,7 @@ typedef $$MediaAssetsTableCreateCompanionBuilder = MediaAssetsCompanion
   required MediaType assetType,
   Value<String?> filePath,
   Value<String?> fileName,
+  Value<bool> isRAW,
   Value<int?> width,
   Value<int?> height,
   Value<int?> durationSec,
@@ -2631,6 +2671,7 @@ typedef $$MediaAssetsTableUpdateCompanionBuilder = MediaAssetsCompanion
   Value<MediaType> assetType,
   Value<String?> filePath,
   Value<String?> fileName,
+  Value<bool> isRAW,
   Value<int?> width,
   Value<int?> height,
   Value<int?> durationSec,
@@ -2663,6 +2704,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             Value<MediaType> assetType = const Value.absent(),
             Value<String?> filePath = const Value.absent(),
             Value<String?> fileName = const Value.absent(),
+            Value<bool> isRAW = const Value.absent(),
             Value<int?> width = const Value.absent(),
             Value<int?> height = const Value.absent(),
             Value<int?> durationSec = const Value.absent(),
@@ -2678,6 +2720,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             assetType: assetType,
             filePath: filePath,
             fileName: fileName,
+            isRAW: isRAW,
             width: width,
             height: height,
             durationSec: durationSec,
@@ -2693,6 +2736,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             required MediaType assetType,
             Value<String?> filePath = const Value.absent(),
             Value<String?> fileName = const Value.absent(),
+            Value<bool> isRAW = const Value.absent(),
             Value<int?> width = const Value.absent(),
             Value<int?> height = const Value.absent(),
             Value<int?> durationSec = const Value.absent(),
@@ -2708,6 +2752,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             assetType: assetType,
             filePath: filePath,
             fileName: fileName,
+            isRAW: isRAW,
             width: width,
             height: height,
             durationSec: durationSec,
@@ -2761,6 +2806,11 @@ class $$MediaAssetsTableFilterComposer
 
   ColumnFilters<String> get fileName => $state.composableBuilder(
       column: $state.table.fileName,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isRAW => $state.composableBuilder(
+      column: $state.table.isRAW,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -2843,6 +2893,11 @@ class $$MediaAssetsTableOrderingComposer
 
   ColumnOrderings<String> get fileName => $state.composableBuilder(
       column: $state.table.fileName,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isRAW => $state.composableBuilder(
+      column: $state.table.isRAW,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
