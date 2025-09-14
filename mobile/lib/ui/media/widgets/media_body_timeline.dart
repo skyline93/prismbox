@@ -107,6 +107,7 @@ class MediaTimelineBody extends HookConsumerWidget {
         );
       },
       child: ScrollablePositionedList.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         key: const PageStorageKey('media_timeline_body'),
         itemScrollController: itemScrollController,
         itemPositionsListener: itemPositionsListener,
