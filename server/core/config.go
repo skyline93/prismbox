@@ -36,6 +36,8 @@ func LoadConfig() (*Config, error) {
 	secret := getEnv("JWT_SECRET", "qwertyuiop")
 	urlSignerSecret := getEnv("URL_SIGNER_SECRET", "qazwsxedc")
 	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://127.0.0.1:8080")
+	serverAddress := getEnv("SERVER_ADDRESS", "0.0.0.0:8080")
+	uploadDir := getEnv("UPLOAD_DIR", "uploads")
 
 	ttlStr := getEnv("SIGNED_URL_LOAD_TTL", "30m")
 	signedURLLoadTTL, err := time.ParseDuration(ttlStr)
@@ -72,8 +74,8 @@ func LoadConfig() (*Config, error) {
 		PublicBaseURL:         publicBaseURL,
 		SignedURLLoadTTL:      signedURLLoadTTL,
 		DB:                    dbConfig,
-		ServerAddress:         "0.0.0.0:8080",
-		UploadDir:             "uploads",
+		ServerAddress:         serverAddress,
+		UploadDir:             uploadDir,
 	}, nil
 }
 
