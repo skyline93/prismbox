@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:drift/drift.dart';
+import 'package:collection/collection.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/data/datasources/local_db/tables/media_assets.dart';
 import 'package:mobile/data/datasources/local_db/tables/sync_jobs.dart';

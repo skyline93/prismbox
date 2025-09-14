@@ -66,7 +66,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i34.MediaSyncServiceProxy>(
         () => _i34.MediaSyncServiceProxy());
     gh.lazySingleton<_i518.SyncStateService>(
-        () => _i518.SyncStateService(gh<_i460.SharedPreferences>()));
+        () => _i518.SyncStateService(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i65.SecureStorageService>(
         () => _i65.SecureStorageService(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i54.AlbumSynchronizer>(
@@ -100,8 +100,10 @@ extension GetItInjectableX on _i174.GetIt {
           db: gh<_i669.AppDatabase>(),
           localMediaSource: gh<_i290.LocalMediaDataSource>(),
         ));
-    gh.factory<_i907.CloudMediaSynchronizer>(
-        () => _i907.CloudMediaSynchronizer(gh<_i527.RemoteMediaDataSource>()));
+    gh.factory<_i907.CloudMediaSynchronizer>(() => _i907.CloudMediaSynchronizer(
+          gh<_i527.RemoteMediaDataSource>(),
+          gh<_i518.SyncStateService>(),
+        ));
     gh.lazySingleton<_i544.UserRepository>(
         () => _i223.UserRepositoryImpl(gh<_i1052.UserApiService>()));
     gh.lazySingleton<_i180.DownloadService>(() => _i180.DownloadService(

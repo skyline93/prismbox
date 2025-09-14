@@ -32,22 +32,23 @@ class AssetActionHandler {
   }
 
   /// 处理单个新增的本地媒体资源。
-  /// Logic migrated and combined from:
-  /// - `LocalMediaObserver._processNewAsset`
-  /// - `SyncJobManager.createUploadJobForNewAsset`
+  /// 此方法严格遵循以下优先级规则：
+  /// 1. 如果存在相同 localId 的记录，则跳过。
+  /// 2. 如果不存在相同 localId，但存在相同哈希值且状态为“仅云端”的记录，则关联该记录并更新。
+  /// 3. 如果以上条件都不满足，则作为新记录插入。
   Future<void> _processSingleNewAsset(String assetId) async {
     _log.fine('Processing new asset with local ID: $assetId');
     try {
-      // 1. 检查数据库中是否已存在记录
-      final existingAsset = await _mediaAssetDao.getAssetByLocalId(assetId);
-      if (existingAsset != null) {
-        _log.warning(
-          'Asset with local ID $assetId already exists in DB. Skipping.',
+      // 规则 1: 检查是否存在同样 localId 的记录，如果存在则跳过
+      final existingByLocalId = await _mediaAssetDao.getAssetByLocalId(assetId);
+      if (existingByLocalId != null) {
+        _log.info(
+          'Rule 1: Asset with local ID $assetId already exists in DB. Skipping.',
         );
-        // 可选：未来可在此处添加哈希值校验和更新逻辑
         return;
       }
 
+      // 获取 AssetEntity 并计算文件哈希
       final asset = await AssetEntity.fromId(assetId);
       if (asset == null) {
         _log.warning(
@@ -56,7 +57,6 @@ class AssetActionHandler {
         return;
       }
 
-      // 2. 计算文件哈希值
       final contentHash = await _calculateFileHash(asset);
       if (contentHash == null) {
         _log.severe(
@@ -65,7 +65,43 @@ class AssetActionHandler {
         return;
       }
 
-      // 3. 将 AssetEntity 转换为数据库 Companion 对象
+      // 规则 2: 直接查询是否存在同样 hash 值的“仅云端”记录
+      final cloudOnlyMatch = await _mediaAssetDao.getFirstAssetByHashAndStatus(
+        contentHash,
+        SyncStatus.cloudOnly,
+      );
+
+      if (cloudOnlyMatch != null) {
+        // 如果找到，则关联这条记录并更新
+        _log.info(
+          'Rule 2: Found a cloud-only record (ID: ${cloudOnlyMatch.id}) with hash $contentHash. Associating with local asset $assetId.',
+        );
+        final file = await asset.file;
+        if (file == null) {
+          _log.warning(
+            "Cannot get file path for asset: ${asset.id} for association. Skipping.",
+          );
+          return;
+        }
+
+        final companion = MediaAssetsCompanion(
+          id: Value(cloudOnlyMatch.id),
+          localId: Value(assetId),
+          filePath: Value(file.path),
+          syncStatus: const Value(SyncStatus.synced), // 状态更新为已同步
+          updatedAt: Value(DateTime.now()),
+        );
+        await _mediaAssetDao.updateAsset(companion);
+        _log.info(
+          'Successfully associated local asset $assetId with record ${cloudOnlyMatch.id}.',
+        );
+        return;
+      }
+
+      // 规则 3: 如果以上条件都不满足，则新增记录
+      _log.info(
+        'Rule 3: No existing localId or suitable hash found. Inserting as a new asset.',
+      );
       final companion = await _assetEntityToCompanion(asset);
       if (companion == null) {
         _log.severe(
@@ -74,15 +110,13 @@ class AssetActionHandler {
         return;
       }
 
-      // 4. 插入数据库
       await _mediaAssetDao.insertMediaAsset(
         companion.copyWith(
           contentHash: Value(contentHash),
-          // 新发现的资产默认为 "仅本地" 状态
           syncStatus: const Value(SyncStatus.localOnlyNotSelected),
         ),
       );
-      _log.info('Successfully processed and inserted new asset: ${asset.id}');
+      _log.info('Successfully inserted new asset with local ID: ${asset.id}');
     } catch (e, s) {
       _log.severe('Error processing new asset ID $assetId.', e, s);
     }

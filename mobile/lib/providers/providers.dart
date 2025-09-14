@@ -7,8 +7,6 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import '../data/repositories/media_repository_impl.dart';
 import '../domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:mobile/core/storage/sync_state_service.dart';
 import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/auth/auth_notifier.dart';
@@ -96,11 +94,6 @@ final mediaViewTypeProvider = StateProvider<MediaViewType>(
 
 final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService(getIt<AppDatabase>());
-});
-
-final syncStateServiceProvider = Provider<SyncStateService>((ref) {
-  final prefs = getIt<SharedPreferences>();
-  return SyncStateService(prefs);
 });
 
 final authServiceProvider = Provider<AuthService>((ref) {
