@@ -1,7 +1,6 @@
 // lib/data/services/dio_client.dart
 
 import 'dart:developer';
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:injectable/injectable.dart';
@@ -209,65 +208,6 @@ class DioClient {
       log("--> Interceptor: Failed to refresh token. Logging out. Error: $e");
       await _storage.clearTokens();
       onAuthFailure?.call();
-      rethrow;
-    }
-  }
-
-  Future<Response> uploadPhoto(
-    String filePath, {
-    required String uploadUrl,
-    Function(int sent, int total)? onSendProgress,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      final file = File(filePath);
-      if (!await file.exists()) {
-        throw "File not found at path: $filePath";
-      }
-      String fileName = file.path.split('/').last;
-      FormData formData = FormData.fromMap({
-        "file": MultipartFileRecreatable.fromFileSync(
-          file.path,
-          filename: fileName,
-        ),
-      });
-      final options = Options(extra: {'dio_instance': 'file'});
-      final response = await fileDio.post(
-        uploadUrl,
-        data: formData,
-        onSendProgress: onSendProgress,
-        cancelToken: cancelToken,
-        options: options,
-      );
-      return response;
-    } on DioException catch (e) {
-      log("Upload failed: $e");
-      rethrow;
-    }
-  }
-
-  Future<void> downloadFile(
-    String url,
-    String savePath, {
-    Function(int received, int total)? onReceiveProgress,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      final options = Options(extra: {'dio_instance': 'file'});
-      await fileDio.download(
-        url,
-        savePath,
-        onReceiveProgress: onReceiveProgress,
-        cancelToken: cancelToken,
-        options: options,
-      );
-      log("File downloaded to: $savePath");
-    } on DioException catch (e) {
-      if (CancelToken.isCancel(e)) {
-        log("Download cancelled.");
-      } else {
-        log("Download failed: $e");
-      }
       rethrow;
     }
   }
