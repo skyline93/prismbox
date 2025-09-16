@@ -12,6 +12,7 @@ import 'package:mobile/ui/gallery/pages/gallery_item_page.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/providers/transfer_providers.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'photo_editor_page.dart';
 
 @RoutePage()
 class GalleryPage extends HookConsumerWidget {
@@ -50,6 +51,25 @@ class GalleryPage extends HookConsumerWidget {
       return () => pageController.removeListener(listener);
     }, [pageController]);
 
+    // 定义按钮的 onPressed 回调
+    final onEditPressed =
+        (currentEntity.isVideo || currentEntity.localId == null)
+        ? null // 禁用按钮
+        : () async {
+            final asset = await AssetEntity.fromId(currentEntity.localId!);
+
+            // 确保 asset 存在且 context 仍然有效
+            if (asset == null || !context.mounted) return;
+
+            // 导航到照片编辑页面
+            await Navigator.push<AssetEntity?>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PhotoEditorPage(assetEntity: asset),
+              ),
+            );
+          };
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -79,7 +99,6 @@ class GalleryPage extends HookConsumerWidget {
               onPressed: null,
             ),
           ),
-          // _buildAppBarActions(context, ref, currentEntity)
         ],
       ),
       body: PageView.builder(
@@ -88,6 +107,59 @@ class GalleryPage extends HookConsumerWidget {
         itemBuilder: (context, index) {
           return GalleryItemPage(entity: media[index]);
         },
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.black54,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            // START: MODIFIED SECTION
+            _buildBottomBarButton(
+              icon: Icons.edit_outlined,
+              label: '编辑',
+              onPressed: onEditPressed,
+            ),
+            _buildBottomBarButton(
+              icon: Icons.share_outlined,
+              label: '分享',
+              onPressed: () {
+                // 分享逻辑
+              },
+            ),
+            _buildBottomBarButton(
+              icon: Icons.delete_outline,
+              label: '删除',
+              onPressed: () {
+                // 删除逻辑
+              },
+            ),
+            // END: MODIFIED SECTION
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 辅助方法，用于创建带图标和文字的底部栏按钮
+  Widget _buildBottomBarButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white, // 设置按钮前景颜色（图标和文字）
+        disabledForegroundColor: Colors.grey[600], // 设置禁用时的颜色
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // 让 Column 高度自适应内容
+        children: <Widget>[
+          Icon(icon),
+          const SizedBox(height: 4), // 图标和文字之间的间距
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
       ),
     );
   }
