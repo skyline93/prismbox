@@ -7,12 +7,11 @@ import 'package:mobile/providers/upload_orchestrator.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:auto_route/auto_route.dart';
 
-
 class MediaSelectionDrawer extends ConsumerWidget {
   final ScrollController scrollController;
 
   const MediaSelectionDrawer({super.key, required this.scrollController});
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCount = ref.watch(
@@ -64,12 +63,16 @@ class MediaSelectionDrawer extends ConsumerWidget {
                     // [重大修改] onPressed 回调现在非常简洁和快速
                     onPressed: () {
                       // 1. 读取所需的状态和对象
-                      final selectionNotifier = ref.read(selectionProvider.notifier);
-                      final selectedItems = ref.read(selectionProvider).selectedItems;
+                      final selectionNotifier = ref.read(
+                        selectionProvider.notifier,
+                      );
+                      final selectedItems = ref
+                          .read(selectionProvider)
+                          .selectedItems;
                       final router = context.router;
 
                       if (selectedItems.isEmpty) return;
-                      
+
                       // 2. 立即触发后台任务，不等待其完成
                       ref
                           .read(uploadOrchestratorProvider)
@@ -106,7 +109,63 @@ class MediaSelectionDrawer extends ConsumerWidget {
                     icon: Icons.delete_outline,
                     label: '删除',
                     isEnabled: hasSelection,
-                    onPressed: () => debugPrint('删除'),
+                    onPressed: () async {
+                      final selectedItems = ref
+                          .read(selectionProvider)
+                          .selectedItems;
+                      if (selectedItems.isEmpty) return;
+
+                      // 弹出确认对话框
+                      final bool? shouldDelete = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('确认删除'),
+                            content: Text(
+                              '你确定要删除这 ${selectedItems.length} 个项目吗？\n它将在回收站中保存30天, 之后将被永久删除。',
+                            ),
+                            actions: <Widget>[
+                              TextButton(
+                                child: const Text('取消'),
+                                onPressed: () {
+                                  Navigator.of(
+                                    context,
+                                  ).pop(false); // 关闭对话框，返回 false
+                                },
+                              ),
+                              TextButton(
+                                child: Text(
+                                  '删除',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.of(
+                                    context,
+                                  ).pop(true); // 关闭对话框，返回 true
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      // 如果用户确认删除，则执行删除操作
+                      if (shouldDelete == true) {
+                        await ref
+                            .read(mediaRepositoryProvider)
+                            .moveAssetsToTrash(selectedItems.toList());
+
+                        // （可选）清空选择并给出反馈
+                        ref.read(selectionProvider.notifier).clearSelection();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${selectedItems.length} 个项目已移至回收站'),
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ],
               ),

@@ -27,6 +27,8 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
     int? durationSec,
     required DateTime createdAt,
     @Default(null) AssetEntity? assetEntity,
+    LifecycleState? lifecycleState,
+    String? trashPath,
   }) = _UnifiedMediaEntity;
 
   factory UnifiedMediaEntity.fromDbModel(MediaAsset dbAsset) {
@@ -43,6 +45,8 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       height: dbAsset.height,
       durationSec: dbAsset.durationSec,
       createdAt: dbAsset.createdAt,
+      lifecycleState: dbAsset.lifecycleState,
+      trashPath: dbAsset.trashPath,
     );
   }
 
@@ -75,6 +79,8 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       // 这允许UI层在需要时直接访问它来获取缩略图或原始文件，
       // 而无需再次查询 photo_manager。
       assetEntity: asset,
+
+      lifecycleState: LifecycleState.active,
     );
   }
 
@@ -120,6 +126,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       height: remoteMedia.height,
       durationSec: _parseDuration("0"),
       createdAt: DateTime.parse(remoteMedia.createdAt),
+      lifecycleState: LifecycleState.active,
     );
   }
 

@@ -141,6 +141,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const TransferManagerPage(),
       );
     },
+    TrashRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const TrashPage(),
+      );
+    },
   };
 }
 
@@ -517,6 +523,20 @@ class TransferManagerRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'TransferManagerRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [TrashPage]
+class TrashRoute extends PageRouteInfo<void> {
+  const TrashRoute({List<PageRouteInfo>? children})
+      : super(
+          TrashRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'TrashRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

@@ -12,6 +12,7 @@ import 'package:mobile/ui/main/widgets/user_profile_dialog.dart';
 import 'package:mobile/providers/user_profile_provider.dart';
 import 'package:mobile/services/app_init_service.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
+import 'package:mobile/routing/app_router.dart';
 
 @RoutePage()
 class NavigationPage extends HookConsumerWidget {
@@ -101,6 +102,23 @@ class NavigationPage extends HookConsumerWidget {
               ),
             ),
             actions: [
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'trash') {
+                    AutoRouter.of(context).push(const TrashRoute());
+                  }
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'trash',
+                    child: ListTile(
+                      leading: Icon(Icons.delete_outline),
+                      title: Text('回收站'),
+                    ),
+                  ),
+                ],
+                icon: const Icon(Icons.more_vert),
+              ),
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: GestureDetector(

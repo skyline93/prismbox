@@ -18,6 +18,8 @@ import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/ui/album/viewmodel/album_detail_viewmodel.dart';
+import 'package:mobile/ui/trash/viewmodels/trash_viewmodel.dart';
+import 'package:mobile/ui/trash/viewmodels/trash_state.dart';
 
 final thumbnailCacheProvider =
     StateNotifierProvider<ThumbnailCacheNotifier, Map<String, Uint8List>>((
@@ -197,4 +199,11 @@ class SelectionNotifier extends StateNotifier<SelectionState> {
 final selectionProvider =
     StateNotifierProvider<SelectionNotifier, SelectionState>((ref) {
       return SelectionNotifier();
+    });
+
+final trashViewModelProvider =
+    StateNotifierProvider.autoDispose<TrashViewModel, TrashState>((ref) {
+      // The TrashViewModel depends on the MediaRepository.
+      final mediaRepository = ref.watch(mediaRepositoryProvider);
+      return TrashViewModel(mediaRepository);
     });

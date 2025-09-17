@@ -21,7 +21,7 @@ import 'package:mobile/ui/group/pages/group_members_page.dart';
 import 'package:mobile/ui/group/pages/group_settings_page.dart';
 import 'package:mobile/ui/group/pages/group_post_detail_page.dart';
 import 'package:mobile/ui/transfer/pages/transfer_manager_page.dart';
-
+import 'package:mobile/ui/trash/pages/trash_page.dart';
 import 'package:mobile/domain/entities/group_feed_item_entity.dart';
 
 part 'app_router.gr.dart';
@@ -55,5 +55,7 @@ class AppRouter extends _$AppRouter {
     AutoRoute(page: GroupPostDetailRoute.page, path: '/group/:uuid/post'),
 
     AutoRoute(page: TransferManagerRoute.page, path: '/transfers'),
+
+    AutoRoute(page: TrashRoute.page, path: '/trash'),
   ];
 }

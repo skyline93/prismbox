@@ -21,4 +21,10 @@ class MediaAssets extends Table {
   IntColumn get durationSec => integer().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+
+  TextColumn get lifecycleState => text()
+      .map(const EnumNameConverter(LifecycleState.values))
+      .withDefault(const Constant('active'))();
+  DateTimeColumn get lifecycleModifiedDate => dateTime().nullable()();
+  TextColumn get trashPath => text().nullable()();
 }

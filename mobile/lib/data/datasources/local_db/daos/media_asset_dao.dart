@@ -21,7 +21,18 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
 
   Stream<List<MediaAsset>> watchAllMediaAssets() {
     _log.fine('Watching all media assets.');
-    return select(mediaAssets).watch();
+    return (select(mediaAssets)..where(
+          (tbl) => tbl.lifecycleState.equals(LifecycleState.active.name),
+        ))
+        .watch();
+  }
+
+  Stream<List<MediaAsset>> watchTrashedAssets() {
+    _log.fine('Watching trashed media assets.');
+    return (select(mediaAssets)..where(
+          (tbl) => tbl.lifecycleState.equals(LifecycleState.trashed.name),
+        ))
+        .watch();
   }
 
   Future<int> insertMediaAsset(MediaAssetsCompanion entity) {
@@ -68,6 +79,13 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     _log.info('Permanently deleting local-only asset with ID: $assetId');
     await (delete(mediaAssets)..where((tbl) => tbl.id.equals(assetId))).go();
     _log.fine('Successfully deleted local-only asset ID $assetId.');
+  }
+
+  /// 根据ID列表批量删除媒体资源记录。
+  Future<int> deleteAssetsByIds(List<int> ids) async {
+    if (ids.isEmpty) return 0;
+    _log.info('Permanently deleting ${ids.length} assets from database.');
+    return await (delete(mediaAssets)..where((tbl) => tbl.id.isIn(ids))).go();
   }
 
   /// 将云端的变化（删除、更新、插入）应用到本地数据库。

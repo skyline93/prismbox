@@ -65,30 +65,30 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i34.MediaSyncServiceProxy>(
         () => _i34.MediaSyncServiceProxy());
-    gh.lazySingleton<_i518.SyncStateService>(
-        () => _i518.SyncStateService(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i65.SecureStorageService>(
         () => _i65.SecureStorageService(gh<_i669.AppDatabase>()));
-    gh.lazySingleton<_i54.AlbumSynchronizer>(
-        () => _i54.AlbumSynchronizer(gh<_i669.AppDatabase>()));
+    gh.lazySingleton<_i518.SyncStateService>(
+        () => _i518.SyncStateService(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i1008.AssetActionHandler>(
         () => _i1008.AssetActionHandler(gh<_i669.AppDatabase>()));
+    gh.lazySingleton<_i54.AlbumSynchronizer>(
+        () => _i54.AlbumSynchronizer(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i305.DioClient>(
         () => _i305.DioClient(gh<_i65.SecureStorageService>()));
-    gh.lazySingleton<_i730.LocalMediaSynchronizer>(
-        () => _i730.LocalMediaSynchronizer(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i290.LocalMediaDataSource>(
         () => _i290.LocalMediaDataSource(gh<_i669.AppDatabase>()));
+    gh.lazySingleton<_i730.LocalMediaSynchronizer>(
+        () => _i730.LocalMediaSynchronizer(gh<_i669.AppDatabase>()));
     gh.lazySingleton<_i1069.UploadService>(() => _i1069.UploadService(
           gh<_i669.AppDatabase>(),
           gh<_i65.SecureStorageService>(),
         ));
     gh.lazySingleton<_i361.Dio>(
         () => injectableModule.getDio(gh<_i305.DioClient>()));
-    gh.lazySingleton<_i1052.UserApiService>(
-        () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i470.GroupApiService>(
         () => _i470.GroupApiService(gh<_i361.Dio>()));
+    gh.lazySingleton<_i1052.UserApiService>(
+        () => _i1052.UserApiService(gh<_i361.Dio>()));
     gh.lazySingleton<_i816.MediaApiService>(
         () => _i816.MediaApiService(gh<_i305.DioClient>()));
     gh.lazySingleton<_i527.RemoteMediaDataSource>(

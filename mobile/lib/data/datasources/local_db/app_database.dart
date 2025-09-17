@@ -43,7 +43,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -70,6 +70,12 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 7) {
         await m.addColumn(mediaAssets, mediaAssets.isRAW);
+      }
+
+      if (from < 8) {
+        await m.addColumn(mediaAssets, mediaAssets.lifecycleState);
+        await m.addColumn(mediaAssets, mediaAssets.lifecycleModifiedDate);
+        await m.addColumn(mediaAssets, mediaAssets.trashPath);
       }
     },
   );

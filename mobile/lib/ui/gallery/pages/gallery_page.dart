@@ -29,27 +29,47 @@ class GalleryPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pageController = usePageController(initialPage: initialIndex);
     final currentIndex = useState(initialIndex);
-    final currentEntity = media[currentIndex.value];
+    // 使用 a mutable list 来支持删除操作
+    final mediaList = useState(List<UnifiedMediaEntity>.from(media));
+
+    // 如果列表为空，直接返回
+    if (mediaList.value.isEmpty) {
+      // 可以在这里返回一个空状态的 widget，或者直接 pop
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      });
+      return const Scaffold(backgroundColor: Colors.black);
+    }
+
+    // 确保 currentIndex 不会越界
+    if (currentIndex.value >= mediaList.value.length) {
+      currentIndex.value = mediaList.value.length - 1;
+    }
+
+    final currentEntity = mediaList.value[currentIndex.value];
     final asyncCurrentEntity = ref.watch(mediaEntityProvider(currentEntity.id));
 
     useEffect(() {
       void listener() {
         final newIndex = pageController.page?.round() ?? initialIndex;
-        if (newIndex != currentIndex.value) {
+        if (newIndex != currentIndex.value &&
+            newIndex < mediaList.value.length) {
           currentIndex.value = newIndex;
-          _precacheAdjacent(ref, newIndex);
+          _precacheAdjacent(ref, newIndex, mediaList.value);
         }
       }
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
-          _initialLoad(ref, initialIndex);
+          _initialLoad(ref, initialIndex, mediaList.value);
         }
       });
 
       pageController.addListener(listener);
       return () => pageController.removeListener(listener);
-    }, [pageController]);
+    }, [pageController, mediaList.value.length]);
 
     // 定义按钮的 onPressed 回调
     final onEditPressed =
@@ -103,9 +123,9 @@ class GalleryPage extends HookConsumerWidget {
       ),
       body: PageView.builder(
         controller: pageController,
-        itemCount: media.length,
+        itemCount: mediaList.value.length,
         itemBuilder: (context, index) {
-          return GalleryItemPage(entity: media[index]);
+          return GalleryItemPage(entity: mediaList.value[index]);
         },
       ),
       bottomNavigationBar: BottomAppBar(
@@ -113,7 +133,6 @@ class GalleryPage extends HookConsumerWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
-            // START: MODIFIED SECTION
             _buildBottomBarButton(
               icon: Icons.edit_outlined,
               label: '编辑',
@@ -126,11 +145,64 @@ class GalleryPage extends HookConsumerWidget {
                 // 分享逻辑
               },
             ),
+            // START: MODIFIED SECTION
             _buildBottomBarButton(
               icon: Icons.delete_outline,
               label: '删除',
-              onPressed: () {
-                // 删除逻辑
+              onPressed: () async {
+                // 从 state 中获取当前实体
+                final entityToDelete = mediaList.value[currentIndex.value];
+
+                // 弹出确认对话框
+                final bool? shouldDelete = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('确认删除'),
+                      content: const Text(
+                        '你确定要删除这个项目吗？\n它将在回收站中保存30天, 之后将被永久删除。',
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          child: const Text('取消'),
+                          onPressed: () {
+                            Navigator.of(context).pop(false); // 关闭对话框，返回 false
+                          },
+                        ),
+                        TextButton(
+                          child: Text(
+                            '删除',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop(true); // 关闭对话框，返回 true
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                // 如果用户确认删除，则执行删除操作
+                if (shouldDelete == true) {
+                  // 在执行异步操作前检查 context 是否仍然有效
+                  if (!context.mounted) return;
+
+                  await ref.read(mediaRepositoryProvider).moveAssetsToTrash([
+                    entityToDelete,
+                  ]);
+
+                  // 从本地列表中移除
+                  final removedIndex = currentIndex.value;
+                  mediaList.value = List.from(mediaList.value)
+                    ..removeAt(removedIndex);
+
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('1 个项目已移至回收站')));
+                }
               },
             ),
             // END: MODIFIED SECTION
@@ -164,12 +236,16 @@ class GalleryPage extends HookConsumerWidget {
     );
   }
 
-  void _initialLoad(WidgetRef ref, int index) {
+  void _initialLoad(WidgetRef ref, int index, List<UnifiedMediaEntity> media) {
     _precacheEntity(ref, media[index]);
-    _precacheAdjacent(ref, index);
+    _precacheAdjacent(ref, index, media);
   }
 
-  void _precacheAdjacent(WidgetRef ref, int index) {
+  void _precacheAdjacent(
+    WidgetRef ref,
+    int index,
+    List<UnifiedMediaEntity> media,
+  ) {
     if (index + 1 < media.length) {
       _precacheEntity(ref, media[index + 1]);
     }

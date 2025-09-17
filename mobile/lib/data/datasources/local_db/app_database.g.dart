@@ -103,6 +103,29 @@ class $MediaAssetsTable extends MediaAssets
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _lifecycleStateMeta =
+      const VerificationMeta('lifecycleState');
+  @override
+  late final GeneratedColumnWithTypeConverter<LifecycleState, String>
+      lifecycleState = GeneratedColumn<String>(
+              'lifecycle_state', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('active'))
+          .withConverter<LifecycleState>(
+              $MediaAssetsTable.$converterlifecycleState);
+  static const VerificationMeta _lifecycleModifiedDateMeta =
+      const VerificationMeta('lifecycleModifiedDate');
+  @override
+  late final GeneratedColumn<DateTime> lifecycleModifiedDate =
+      GeneratedColumn<DateTime>('lifecycle_modified_date', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _trashPathMeta =
+      const VerificationMeta('trashPath');
+  @override
+  late final GeneratedColumn<String> trashPath = GeneratedColumn<String>(
+      'trash_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -118,7 +141,10 @@ class $MediaAssetsTable extends MediaAssets
         height,
         durationSec,
         createdAt,
-        updatedAt
+        updatedAt,
+        lifecycleState,
+        lifecycleModifiedDate,
+        trashPath
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -187,6 +213,17 @@ class $MediaAssetsTable extends MediaAssets
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    context.handle(_lifecycleStateMeta, const VerificationResult.success());
+    if (data.containsKey('lifecycle_modified_date')) {
+      context.handle(
+          _lifecycleModifiedDateMeta,
+          lifecycleModifiedDate.isAcceptableOrUnknown(
+              data['lifecycle_modified_date']!, _lifecycleModifiedDateMeta));
+    }
+    if (data.containsKey('trash_path')) {
+      context.handle(_trashPathMeta,
+          trashPath.isAcceptableOrUnknown(data['trash_path']!, _trashPathMeta));
+    }
     return context;
   }
 
@@ -226,6 +263,14 @@ class $MediaAssetsTable extends MediaAssets
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      lifecycleState: $MediaAssetsTable.$converterlifecycleState.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.string, data['${effectivePrefix}lifecycle_state'])!),
+      lifecycleModifiedDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime,
+          data['${effectivePrefix}lifecycle_modified_date']),
+      trashPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}trash_path']),
     );
   }
 
@@ -238,6 +283,8 @@ class $MediaAssetsTable extends MediaAssets
       const EnumNameConverter(SyncStatus.values);
   static JsonTypeConverter2<MediaType, String, String> $converterassetType =
       const EnumNameConverter(MediaType.values);
+  static JsonTypeConverter2<LifecycleState, String, String>
+      $converterlifecycleState = const EnumNameConverter(LifecycleState.values);
 }
 
 class MediaAsset extends DataClass implements Insertable<MediaAsset> {
@@ -255,6 +302,9 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
   final int? durationSec;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final LifecycleState lifecycleState;
+  final DateTime? lifecycleModifiedDate;
+  final String? trashPath;
   const MediaAsset(
       {required this.id,
       this.localId,
@@ -269,7 +319,10 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       this.height,
       this.durationSec,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.lifecycleState,
+      this.lifecycleModifiedDate,
+      this.trashPath});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -309,6 +362,17 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    {
+      map['lifecycle_state'] = Variable<String>(
+          $MediaAssetsTable.$converterlifecycleState.toSql(lifecycleState));
+    }
+    if (!nullToAbsent || lifecycleModifiedDate != null) {
+      map['lifecycle_modified_date'] =
+          Variable<DateTime>(lifecycleModifiedDate);
+    }
+    if (!nullToAbsent || trashPath != null) {
+      map['trash_path'] = Variable<String>(trashPath);
+    }
     return map;
   }
 
@@ -342,6 +406,13 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           : Value(durationSec),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      lifecycleState: Value(lifecycleState),
+      lifecycleModifiedDate: lifecycleModifiedDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lifecycleModifiedDate),
+      trashPath: trashPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trashPath),
     );
   }
 
@@ -365,6 +436,11 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       durationSec: serializer.fromJson<int?>(json['durationSec']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      lifecycleState: $MediaAssetsTable.$converterlifecycleState
+          .fromJson(serializer.fromJson<String>(json['lifecycleState'])),
+      lifecycleModifiedDate:
+          serializer.fromJson<DateTime?>(json['lifecycleModifiedDate']),
+      trashPath: serializer.fromJson<String?>(json['trashPath']),
     );
   }
   @override
@@ -387,6 +463,11 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       'durationSec': serializer.toJson<int?>(durationSec),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'lifecycleState': serializer.toJson<String>(
+          $MediaAssetsTable.$converterlifecycleState.toJson(lifecycleState)),
+      'lifecycleModifiedDate':
+          serializer.toJson<DateTime?>(lifecycleModifiedDate),
+      'trashPath': serializer.toJson<String?>(trashPath),
     };
   }
 
@@ -404,7 +485,10 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           Value<int?> height = const Value.absent(),
           Value<int?> durationSec = const Value.absent(),
           DateTime? createdAt,
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          LifecycleState? lifecycleState,
+          Value<DateTime?> lifecycleModifiedDate = const Value.absent(),
+          Value<String?> trashPath = const Value.absent()}) =>
       MediaAsset(
         id: id ?? this.id,
         localId: localId.present ? localId.value : this.localId,
@@ -420,6 +504,11 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
         durationSec: durationSec.present ? durationSec.value : this.durationSec,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        lifecycleState: lifecycleState ?? this.lifecycleState,
+        lifecycleModifiedDate: lifecycleModifiedDate.present
+            ? lifecycleModifiedDate.value
+            : this.lifecycleModifiedDate,
+        trashPath: trashPath.present ? trashPath.value : this.trashPath,
       );
   MediaAsset copyWithCompanion(MediaAssetsCompanion data) {
     return MediaAsset(
@@ -440,6 +529,13 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           data.durationSec.present ? data.durationSec.value : this.durationSec,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      lifecycleState: data.lifecycleState.present
+          ? data.lifecycleState.value
+          : this.lifecycleState,
+      lifecycleModifiedDate: data.lifecycleModifiedDate.present
+          ? data.lifecycleModifiedDate.value
+          : this.lifecycleModifiedDate,
+      trashPath: data.trashPath.present ? data.trashPath.value : this.trashPath,
     );
   }
 
@@ -459,7 +555,10 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lifecycleState: $lifecycleState, ')
+          ..write('lifecycleModifiedDate: $lifecycleModifiedDate, ')
+          ..write('trashPath: $trashPath')
           ..write(')'))
         .toString();
   }
@@ -479,7 +578,10 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       height,
       durationSec,
       createdAt,
-      updatedAt);
+      updatedAt,
+      lifecycleState,
+      lifecycleModifiedDate,
+      trashPath);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -497,7 +599,10 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           other.height == this.height &&
           other.durationSec == this.durationSec &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.lifecycleState == this.lifecycleState &&
+          other.lifecycleModifiedDate == this.lifecycleModifiedDate &&
+          other.trashPath == this.trashPath);
 }
 
 class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
@@ -515,6 +620,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
   final Value<int?> durationSec;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<LifecycleState> lifecycleState;
+  final Value<DateTime?> lifecycleModifiedDate;
+  final Value<String?> trashPath;
   const MediaAssetsCompanion({
     this.id = const Value.absent(),
     this.localId = const Value.absent(),
@@ -530,6 +638,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     this.durationSec = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.lifecycleState = const Value.absent(),
+    this.lifecycleModifiedDate = const Value.absent(),
+    this.trashPath = const Value.absent(),
   });
   MediaAssetsCompanion.insert({
     this.id = const Value.absent(),
@@ -546,6 +657,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     this.durationSec = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.lifecycleState = const Value.absent(),
+    this.lifecycleModifiedDate = const Value.absent(),
+    this.trashPath = const Value.absent(),
   })  : syncStatus = Value(syncStatus),
         assetType = Value(assetType),
         createdAt = Value(createdAt),
@@ -565,6 +679,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     Expression<int>? durationSec,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? lifecycleState,
+    Expression<DateTime>? lifecycleModifiedDate,
+    Expression<String>? trashPath,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -581,6 +698,10 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       if (durationSec != null) 'duration_sec': durationSec,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (lifecycleState != null) 'lifecycle_state': lifecycleState,
+      if (lifecycleModifiedDate != null)
+        'lifecycle_modified_date': lifecycleModifiedDate,
+      if (trashPath != null) 'trash_path': trashPath,
     });
   }
 
@@ -598,7 +719,10 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       Value<int?>? height,
       Value<int?>? durationSec,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<LifecycleState>? lifecycleState,
+      Value<DateTime?>? lifecycleModifiedDate,
+      Value<String?>? trashPath}) {
     return MediaAssetsCompanion(
       id: id ?? this.id,
       localId: localId ?? this.localId,
@@ -614,6 +738,10 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       durationSec: durationSec ?? this.durationSec,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lifecycleState: lifecycleState ?? this.lifecycleState,
+      lifecycleModifiedDate:
+          lifecycleModifiedDate ?? this.lifecycleModifiedDate,
+      trashPath: trashPath ?? this.trashPath,
     );
   }
 
@@ -664,6 +792,18 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (lifecycleState.present) {
+      map['lifecycle_state'] = Variable<String>($MediaAssetsTable
+          .$converterlifecycleState
+          .toSql(lifecycleState.value));
+    }
+    if (lifecycleModifiedDate.present) {
+      map['lifecycle_modified_date'] =
+          Variable<DateTime>(lifecycleModifiedDate.value);
+    }
+    if (trashPath.present) {
+      map['trash_path'] = Variable<String>(trashPath.value);
+    }
     return map;
   }
 
@@ -683,7 +823,10 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lifecycleState: $lifecycleState, ')
+          ..write('lifecycleModifiedDate: $lifecycleModifiedDate, ')
+          ..write('trashPath: $trashPath')
           ..write(')'))
         .toString();
   }
@@ -2660,6 +2803,9 @@ typedef $$MediaAssetsTableCreateCompanionBuilder = MediaAssetsCompanion
   Value<int?> durationSec,
   required DateTime createdAt,
   required DateTime updatedAt,
+  Value<LifecycleState> lifecycleState,
+  Value<DateTime?> lifecycleModifiedDate,
+  Value<String?> trashPath,
 });
 typedef $$MediaAssetsTableUpdateCompanionBuilder = MediaAssetsCompanion
     Function({
@@ -2677,7 +2823,266 @@ typedef $$MediaAssetsTableUpdateCompanionBuilder = MediaAssetsCompanion
   Value<int?> durationSec,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<LifecycleState> lifecycleState,
+  Value<DateTime?> lifecycleModifiedDate,
+  Value<String?> trashPath,
 });
+
+final class $$MediaAssetsTableReferences
+    extends BaseReferences<_$AppDatabase, $MediaAssetsTable, MediaAsset> {
+  $$MediaAssetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$SyncJobsTable, List<SyncJob>> _syncJobsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.syncJobs,
+          aliasName:
+              $_aliasNameGenerator(db.mediaAssets.id, db.syncJobs.assetId));
+
+  $$SyncJobsTableProcessedTableManager get syncJobsRefs {
+    final manager = $$SyncJobsTableTableManager($_db, $_db.syncJobs)
+        .filter((f) => f.assetId.id($_item.id));
+
+    final cache = $_typedResult.readTableOrNull(_syncJobsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$MediaAssetsTableFilterComposer
+    extends Composer<_$AppDatabase, $MediaAssetsTable> {
+  $$MediaAssetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get localId => $composableBuilder(
+      column: $table.localId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cloudUuid => $composableBuilder(
+      column: $table.cloudUuid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get contentHash => $composableBuilder(
+      column: $table.contentHash, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<SyncStatus, SyncStatus, String>
+      get syncStatus => $composableBuilder(
+          column: $table.syncStatus,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<MediaType, MediaType, String> get assetType =>
+      $composableBuilder(
+          column: $table.assetType,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+      column: $table.filePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fileName => $composableBuilder(
+      column: $table.fileName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isRAW => $composableBuilder(
+      column: $table.isRAW, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get width => $composableBuilder(
+      column: $table.width, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get height => $composableBuilder(
+      column: $table.height, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get durationSec => $composableBuilder(
+      column: $table.durationSec, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<LifecycleState, LifecycleState, String>
+      get lifecycleState => $composableBuilder(
+          column: $table.lifecycleState,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<DateTime> get lifecycleModifiedDate => $composableBuilder(
+      column: $table.lifecycleModifiedDate,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get trashPath => $composableBuilder(
+      column: $table.trashPath, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> syncJobsRefs(
+      Expression<bool> Function($$SyncJobsTableFilterComposer f) f) {
+    final $$SyncJobsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.syncJobs,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncJobsTableFilterComposer(
+              $db: $db,
+              $table: $db.syncJobs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$MediaAssetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MediaAssetsTable> {
+  $$MediaAssetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get localId => $composableBuilder(
+      column: $table.localId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cloudUuid => $composableBuilder(
+      column: $table.cloudUuid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get contentHash => $composableBuilder(
+      column: $table.contentHash, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+      column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get assetType => $composableBuilder(
+      column: $table.assetType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+      column: $table.filePath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fileName => $composableBuilder(
+      column: $table.fileName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isRAW => $composableBuilder(
+      column: $table.isRAW, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get width => $composableBuilder(
+      column: $table.width, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get height => $composableBuilder(
+      column: $table.height, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get durationSec => $composableBuilder(
+      column: $table.durationSec, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lifecycleState => $composableBuilder(
+      column: $table.lifecycleState,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lifecycleModifiedDate => $composableBuilder(
+      column: $table.lifecycleModifiedDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get trashPath => $composableBuilder(
+      column: $table.trashPath, builder: (column) => ColumnOrderings(column));
+}
+
+class $$MediaAssetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MediaAssetsTable> {
+  $$MediaAssetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get localId =>
+      $composableBuilder(column: $table.localId, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudUuid =>
+      $composableBuilder(column: $table.cloudUuid, builder: (column) => column);
+
+  GeneratedColumn<String> get contentHash => $composableBuilder(
+      column: $table.contentHash, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SyncStatus, String> get syncStatus =>
+      $composableBuilder(
+          column: $table.syncStatus, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<MediaType, String> get assetType =>
+      $composableBuilder(column: $table.assetType, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get fileName =>
+      $composableBuilder(column: $table.fileName, builder: (column) => column);
+
+  GeneratedColumn<bool> get isRAW =>
+      $composableBuilder(column: $table.isRAW, builder: (column) => column);
+
+  GeneratedColumn<int> get width =>
+      $composableBuilder(column: $table.width, builder: (column) => column);
+
+  GeneratedColumn<int> get height =>
+      $composableBuilder(column: $table.height, builder: (column) => column);
+
+  GeneratedColumn<int> get durationSec => $composableBuilder(
+      column: $table.durationSec, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<LifecycleState, String> get lifecycleState =>
+      $composableBuilder(
+          column: $table.lifecycleState, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lifecycleModifiedDate => $composableBuilder(
+      column: $table.lifecycleModifiedDate, builder: (column) => column);
+
+  GeneratedColumn<String> get trashPath =>
+      $composableBuilder(column: $table.trashPath, builder: (column) => column);
+
+  Expression<T> syncJobsRefs<T extends Object>(
+      Expression<T> Function($$SyncJobsTableAnnotationComposer a) f) {
+    final $$SyncJobsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.syncJobs,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncJobsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.syncJobs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
 
 class $$MediaAssetsTableTableManager extends RootTableManager<
     _$AppDatabase,
@@ -2685,16 +3090,22 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
     MediaAsset,
     $$MediaAssetsTableFilterComposer,
     $$MediaAssetsTableOrderingComposer,
+    $$MediaAssetsTableAnnotationComposer,
     $$MediaAssetsTableCreateCompanionBuilder,
-    $$MediaAssetsTableUpdateCompanionBuilder> {
+    $$MediaAssetsTableUpdateCompanionBuilder,
+    (MediaAsset, $$MediaAssetsTableReferences),
+    MediaAsset,
+    PrefetchHooks Function({bool syncJobsRefs})> {
   $$MediaAssetsTableTableManager(_$AppDatabase db, $MediaAssetsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$MediaAssetsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$MediaAssetsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$MediaAssetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MediaAssetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MediaAssetsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String?> localId = const Value.absent(),
@@ -2710,6 +3121,9 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             Value<int?> durationSec = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<LifecycleState> lifecycleState = const Value.absent(),
+            Value<DateTime?> lifecycleModifiedDate = const Value.absent(),
+            Value<String?> trashPath = const Value.absent(),
           }) =>
               MediaAssetsCompanion(
             id: id,
@@ -2726,6 +3140,9 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             durationSec: durationSec,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            lifecycleState: lifecycleState,
+            lifecycleModifiedDate: lifecycleModifiedDate,
+            trashPath: trashPath,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -2742,6 +3159,9 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             Value<int?> durationSec = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
+            Value<LifecycleState> lifecycleState = const Value.absent(),
+            Value<DateTime?> lifecycleModifiedDate = const Value.absent(),
+            Value<String?> trashPath = const Value.absent(),
           }) =>
               MediaAssetsCompanion.insert(
             id: id,
@@ -2758,175 +3178,54 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             durationSec: durationSec,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            lifecycleState: lifecycleState,
+            lifecycleModifiedDate: lifecycleModifiedDate,
+            trashPath: trashPath,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$MediaAssetsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({syncJobsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (syncJobsRefs) db.syncJobs],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (syncJobsRefs)
+                    await $_getPrefetchedData(
+                        currentTable: table,
+                        referencedTable:
+                            $$MediaAssetsTableReferences._syncJobsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$MediaAssetsTableReferences(db, table, p0)
+                                .syncJobsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
-class $$MediaAssetsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $MediaAssetsTable> {
-  $$MediaAssetsTableFilterComposer(super.$state);
-  ColumnFilters<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get localId => $state.composableBuilder(
-      column: $state.table.localId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get cloudUuid => $state.composableBuilder(
-      column: $state.table.cloudUuid,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get contentHash => $state.composableBuilder(
-      column: $state.table.contentHash,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<SyncStatus, SyncStatus, String>
-      get syncStatus => $state.composableBuilder(
-          column: $state.table.syncStatus,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<MediaType, MediaType, String> get assetType =>
-      $state.composableBuilder(
-          column: $state.table.assetType,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get filePath => $state.composableBuilder(
-      column: $state.table.filePath,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get fileName => $state.composableBuilder(
-      column: $state.table.fileName,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<bool> get isRAW => $state.composableBuilder(
-      column: $state.table.isRAW,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get width => $state.composableBuilder(
-      column: $state.table.width,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get height => $state.composableBuilder(
-      column: $state.table.height,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get durationSec => $state.composableBuilder(
-      column: $state.table.durationSec,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
-      column: $state.table.updatedAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ComposableFilter syncJobsRefs(
-      ComposableFilter Function($$SyncJobsTableFilterComposer f) f) {
-    final $$SyncJobsTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $state.db.syncJobs,
-        getReferencedColumn: (t) => t.assetId,
-        builder: (joinBuilder, parentComposers) =>
-            $$SyncJobsTableFilterComposer(ComposerState(
-                $state.db, $state.db.syncJobs, joinBuilder, parentComposers)));
-    return f(composer);
-  }
-}
-
-class $$MediaAssetsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $MediaAssetsTable> {
-  $$MediaAssetsTableOrderingComposer(super.$state);
-  ColumnOrderings<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get localId => $state.composableBuilder(
-      column: $state.table.localId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get cloudUuid => $state.composableBuilder(
-      column: $state.table.cloudUuid,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get contentHash => $state.composableBuilder(
-      column: $state.table.contentHash,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get syncStatus => $state.composableBuilder(
-      column: $state.table.syncStatus,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get assetType => $state.composableBuilder(
-      column: $state.table.assetType,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get filePath => $state.composableBuilder(
-      column: $state.table.filePath,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get fileName => $state.composableBuilder(
-      column: $state.table.fileName,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<bool> get isRAW => $state.composableBuilder(
-      column: $state.table.isRAW,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get width => $state.composableBuilder(
-      column: $state.table.width,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get height => $state.composableBuilder(
-      column: $state.table.height,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get durationSec => $state.composableBuilder(
-      column: $state.table.durationSec,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
-      column: $state.table.updatedAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-}
-
+typedef $$MediaAssetsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $MediaAssetsTable,
+    MediaAsset,
+    $$MediaAssetsTableFilterComposer,
+    $$MediaAssetsTableOrderingComposer,
+    $$MediaAssetsTableAnnotationComposer,
+    $$MediaAssetsTableCreateCompanionBuilder,
+    $$MediaAssetsTableUpdateCompanionBuilder,
+    (MediaAsset, $$MediaAssetsTableReferences),
+    MediaAsset,
+    PrefetchHooks Function({bool syncJobsRefs})>;
 typedef $$SyncJobsTableCreateCompanionBuilder = SyncJobsCompanion Function({
   Value<int> id,
   Value<int?> assetId,
@@ -2954,22 +3253,238 @@ typedef $$SyncJobsTableUpdateCompanionBuilder = SyncJobsCompanion Function({
   Value<String> payload,
 });
 
+final class $$SyncJobsTableReferences
+    extends BaseReferences<_$AppDatabase, $SyncJobsTable, SyncJob> {
+  $$SyncJobsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $MediaAssetsTable _assetIdTable(_$AppDatabase db) =>
+      db.mediaAssets.createAlias(
+          $_aliasNameGenerator(db.syncJobs.assetId, db.mediaAssets.id));
+
+  $$MediaAssetsTableProcessedTableManager? get assetId {
+    if ($_item.assetId == null) return null;
+    final manager = $$MediaAssetsTableTableManager($_db, $_db.mediaAssets)
+        .filter((f) => f.id($_item.assetId!));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$SyncJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncJobsTable> {
+  $$SyncJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<JobType, JobType, String> get jobType =>
+      $composableBuilder(
+          column: $table.jobType,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<JobStatus, JobStatus, String> get status =>
+      $composableBuilder(
+          column: $table.status,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+      column: $table.attempts, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get errorMessage => $composableBuilder(
+      column: $table.errorMessage, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get relatedCloudUuid => $composableBuilder(
+      column: $table.relatedCloudUuid,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<NetworkConstraint, NetworkConstraint, String>
+      get networkConstraint => $composableBuilder(
+          column: $table.networkConstraint,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnFilters(column));
+
+  $$MediaAssetsTableFilterComposer get assetId {
+    final $$MediaAssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.mediaAssets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$MediaAssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.mediaAssets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SyncJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncJobsTable> {
+  $$SyncJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get jobType => $composableBuilder(
+      column: $table.jobType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+      column: $table.attempts, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get errorMessage => $composableBuilder(
+      column: $table.errorMessage,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get relatedCloudUuid => $composableBuilder(
+      column: $table.relatedCloudUuid,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get networkConstraint => $composableBuilder(
+      column: $table.networkConstraint,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnOrderings(column));
+
+  $$MediaAssetsTableOrderingComposer get assetId {
+    final $$MediaAssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.mediaAssets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$MediaAssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.mediaAssets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SyncJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncJobsTable> {
+  $$SyncJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<JobType, String> get jobType =>
+      $composableBuilder(column: $table.jobType, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<JobStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<String> get errorMessage => $composableBuilder(
+      column: $table.errorMessage, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get relatedCloudUuid => $composableBuilder(
+      column: $table.relatedCloudUuid, builder: (column) => column);
+
+  GeneratedColumn<int> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<NetworkConstraint, String>
+      get networkConstraint => $composableBuilder(
+          column: $table.networkConstraint, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  $$MediaAssetsTableAnnotationComposer get assetId {
+    final $$MediaAssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.mediaAssets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$MediaAssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.mediaAssets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
 class $$SyncJobsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $SyncJobsTable,
     SyncJob,
     $$SyncJobsTableFilterComposer,
     $$SyncJobsTableOrderingComposer,
+    $$SyncJobsTableAnnotationComposer,
     $$SyncJobsTableCreateCompanionBuilder,
-    $$SyncJobsTableUpdateCompanionBuilder> {
+    $$SyncJobsTableUpdateCompanionBuilder,
+    (SyncJob, $$SyncJobsTableReferences),
+    SyncJob,
+    PrefetchHooks Function({bool assetId})> {
   $$SyncJobsTableTableManager(_$AppDatabase db, $SyncJobsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$SyncJobsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$SyncJobsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$SyncJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncJobsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int?> assetId = const Value.absent(),
@@ -3022,147 +3537,60 @@ class $$SyncJobsTableTableManager extends RootTableManager<
             networkConstraint: networkConstraint,
             payload: payload,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$SyncJobsTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: ({assetId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable:
+                        $$SyncJobsTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$SyncJobsTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ));
 }
 
-class $$SyncJobsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $SyncJobsTable> {
-  $$SyncJobsTableFilterComposer(super.$state);
-  ColumnFilters<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<JobType, JobType, String> get jobType =>
-      $state.composableBuilder(
-          column: $state.table.jobType,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<JobStatus, JobStatus, String> get status =>
-      $state.composableBuilder(
-          column: $state.table.status,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get attempts => $state.composableBuilder(
-      column: $state.table.attempts,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get errorMessage => $state.composableBuilder(
-      column: $state.table.errorMessage,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get relatedCloudUuid => $state.composableBuilder(
-      column: $state.table.relatedCloudUuid,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get priority => $state.composableBuilder(
-      column: $state.table.priority,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<NetworkConstraint, NetworkConstraint, String>
-      get networkConstraint => $state.composableBuilder(
-          column: $state.table.networkConstraint,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get payload => $state.composableBuilder(
-      column: $state.table.payload,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  $$MediaAssetsTableFilterComposer get assetId {
-    final $$MediaAssetsTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.assetId,
-        referencedTable: $state.db.mediaAssets,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) =>
-            $$MediaAssetsTableFilterComposer(ComposerState($state.db,
-                $state.db.mediaAssets, joinBuilder, parentComposers)));
-    return composer;
-  }
-}
-
-class $$SyncJobsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $SyncJobsTable> {
-  $$SyncJobsTableOrderingComposer(super.$state);
-  ColumnOrderings<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get jobType => $state.composableBuilder(
-      column: $state.table.jobType,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get status => $state.composableBuilder(
-      column: $state.table.status,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get attempts => $state.composableBuilder(
-      column: $state.table.attempts,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get errorMessage => $state.composableBuilder(
-      column: $state.table.errorMessage,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get relatedCloudUuid => $state.composableBuilder(
-      column: $state.table.relatedCloudUuid,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get priority => $state.composableBuilder(
-      column: $state.table.priority,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get networkConstraint => $state.composableBuilder(
-      column: $state.table.networkConstraint,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get payload => $state.composableBuilder(
-      column: $state.table.payload,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  $$MediaAssetsTableOrderingComposer get assetId {
-    final $$MediaAssetsTableOrderingComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.assetId,
-        referencedTable: $state.db.mediaAssets,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) =>
-            $$MediaAssetsTableOrderingComposer(ComposerState($state.db,
-                $state.db.mediaAssets, joinBuilder, parentComposers)));
-    return composer;
-  }
-}
-
+typedef $$SyncJobsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SyncJobsTable,
+    SyncJob,
+    $$SyncJobsTableFilterComposer,
+    $$SyncJobsTableOrderingComposer,
+    $$SyncJobsTableAnnotationComposer,
+    $$SyncJobsTableCreateCompanionBuilder,
+    $$SyncJobsTableUpdateCompanionBuilder,
+    (SyncJob, $$SyncJobsTableReferences),
+    SyncJob,
+    PrefetchHooks Function({bool assetId})>;
 typedef $$UserSettingsTableCreateCompanionBuilder = UserSettingsCompanion
     Function({
   required String key,
@@ -3176,22 +3604,79 @@ typedef $$UserSettingsTableUpdateCompanionBuilder = UserSettingsCompanion
   Value<int> rowid,
 });
 
+class $$UserSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $UserSettingsTable> {
+  $$UserSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
+}
+
+class $$UserSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserSettingsTable> {
+  $$UserSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
+}
+
+class $$UserSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserSettingsTable> {
+  $$UserSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
 class $$UserSettingsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $UserSettingsTable,
     UserSetting,
     $$UserSettingsTableFilterComposer,
     $$UserSettingsTableOrderingComposer,
+    $$UserSettingsTableAnnotationComposer,
     $$UserSettingsTableCreateCompanionBuilder,
-    $$UserSettingsTableUpdateCompanionBuilder> {
+    $$UserSettingsTableUpdateCompanionBuilder,
+    (
+      UserSetting,
+      BaseReferences<_$AppDatabase, $UserSettingsTable, UserSetting>
+    ),
+    UserSetting,
+    PrefetchHooks Function()> {
   $$UserSettingsTableTableManager(_$AppDatabase db, $UserSettingsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$UserSettingsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$UserSettingsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$UserSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserSettingsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> key = const Value.absent(),
             Value<String> value = const Value.absent(),
@@ -3212,37 +3697,28 @@ class $$UserSettingsTableTableManager extends RootTableManager<
             value: value,
             rowid: rowid,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
         ));
 }
 
-class $$UserSettingsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $UserSettingsTable> {
-  $$UserSettingsTableFilterComposer(super.$state);
-  ColumnFilters<String> get key => $state.composableBuilder(
-      column: $state.table.key,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get value => $state.composableBuilder(
-      column: $state.table.value,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-}
-
-class $$UserSettingsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $UserSettingsTable> {
-  $$UserSettingsTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get key => $state.composableBuilder(
-      column: $state.table.key,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get value => $state.composableBuilder(
-      column: $state.table.value,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-}
-
+typedef $$UserSettingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $UserSettingsTable,
+    UserSetting,
+    $$UserSettingsTableFilterComposer,
+    $$UserSettingsTableOrderingComposer,
+    $$UserSettingsTableAnnotationComposer,
+    $$UserSettingsTableCreateCompanionBuilder,
+    $$UserSettingsTableUpdateCompanionBuilder,
+    (
+      UserSetting,
+      BaseReferences<_$AppDatabase, $UserSettingsTable, UserSetting>
+    ),
+    UserSetting,
+    PrefetchHooks Function()>;
 typedef $$AlbumsTableCreateCompanionBuilder = AlbumsCompanion Function({
   required String id,
   required String name,
@@ -3260,22 +3736,105 @@ typedef $$AlbumsTableUpdateCompanionBuilder = AlbumsCompanion Function({
   Value<int> rowid,
 });
 
+class $$AlbumsTableFilterComposer
+    extends Composer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get assetCount => $composableBuilder(
+      column: $table.assetCount, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<AlbumSource, AlbumSource, int> get source =>
+      $composableBuilder(
+          column: $table.source,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get thumbnailId => $composableBuilder(
+      column: $table.thumbnailId, builder: (column) => ColumnFilters(column));
+}
+
+class $$AlbumsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get assetCount => $composableBuilder(
+      column: $table.assetCount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get thumbnailId => $composableBuilder(
+      column: $table.thumbnailId, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AlbumsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get assetCount => $composableBuilder(
+      column: $table.assetCount, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AlbumSource, int> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get thumbnailId => $composableBuilder(
+      column: $table.thumbnailId, builder: (column) => column);
+}
+
 class $$AlbumsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $AlbumsTable,
     Album,
     $$AlbumsTableFilterComposer,
     $$AlbumsTableOrderingComposer,
+    $$AlbumsTableAnnotationComposer,
     $$AlbumsTableCreateCompanionBuilder,
-    $$AlbumsTableUpdateCompanionBuilder> {
+    $$AlbumsTableUpdateCompanionBuilder,
+    (Album, BaseReferences<_$AppDatabase, $AlbumsTable, Album>),
+    Album,
+    PrefetchHooks Function()> {
   $$AlbumsTableTableManager(_$AppDatabase db, $AlbumsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$AlbumsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$AlbumsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$AlbumsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AlbumsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AlbumsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -3308,69 +3867,25 @@ class $$AlbumsTableTableManager extends RootTableManager<
             thumbnailId: thumbnailId,
             rowid: rowid,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
         ));
 }
 
-class $$AlbumsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $AlbumsTable> {
-  $$AlbumsTableFilterComposer(super.$state);
-  ColumnFilters<String> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get assetCount => $state.composableBuilder(
-      column: $state.table.assetCount,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<AlbumSource, AlbumSource, int> get source =>
-      $state.composableBuilder(
-          column: $state.table.source,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get thumbnailId => $state.composableBuilder(
-      column: $state.table.thumbnailId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-}
-
-class $$AlbumsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $AlbumsTable> {
-  $$AlbumsTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get assetCount => $state.composableBuilder(
-      column: $state.table.assetCount,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get source => $state.composableBuilder(
-      column: $state.table.source,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get thumbnailId => $state.composableBuilder(
-      column: $state.table.thumbnailId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-}
-
+typedef $$AlbumsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AlbumsTable,
+    Album,
+    $$AlbumsTableFilterComposer,
+    $$AlbumsTableOrderingComposer,
+    $$AlbumsTableAnnotationComposer,
+    $$AlbumsTableCreateCompanionBuilder,
+    $$AlbumsTableUpdateCompanionBuilder,
+    (Album, BaseReferences<_$AppDatabase, $AlbumsTable, Album>),
+    Album,
+    PrefetchHooks Function()>;
 typedef $$UploadJobsTableCreateCompanionBuilder = UploadJobsCompanion Function({
   required String jobId,
   required String filePath,
@@ -3392,22 +3907,123 @@ typedef $$UploadJobsTableUpdateCompanionBuilder = UploadJobsCompanion Function({
   Value<int> rowid,
 });
 
+class $$UploadJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $UploadJobsTable> {
+  $$UploadJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get jobId => $composableBuilder(
+      column: $table.jobId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+      column: $table.filePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fileHash => $composableBuilder(
+      column: $table.fileHash, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get totalSize => $composableBuilder(
+      column: $table.totalSize, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<UploadJobStatus, UploadJobStatus, String>
+      get status => $composableBuilder(
+          column: $table.status,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<double> get progress => $composableBuilder(
+      column: $table.progress, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$UploadJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $UploadJobsTable> {
+  $$UploadJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get jobId => $composableBuilder(
+      column: $table.jobId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+      column: $table.filePath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fileHash => $composableBuilder(
+      column: $table.fileHash, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get totalSize => $composableBuilder(
+      column: $table.totalSize, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get progress => $composableBuilder(
+      column: $table.progress, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$UploadJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UploadJobsTable> {
+  $$UploadJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get jobId =>
+      $composableBuilder(column: $table.jobId, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get fileHash =>
+      $composableBuilder(column: $table.fileHash, builder: (column) => column);
+
+  GeneratedColumn<int> get totalSize =>
+      $composableBuilder(column: $table.totalSize, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<UploadJobStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<double> get progress =>
+      $composableBuilder(column: $table.progress, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
 class $$UploadJobsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $UploadJobsTable,
     UploadJob,
     $$UploadJobsTableFilterComposer,
     $$UploadJobsTableOrderingComposer,
+    $$UploadJobsTableAnnotationComposer,
     $$UploadJobsTableCreateCompanionBuilder,
-    $$UploadJobsTableUpdateCompanionBuilder> {
+    $$UploadJobsTableUpdateCompanionBuilder,
+    (UploadJob, BaseReferences<_$AppDatabase, $UploadJobsTable, UploadJob>),
+    UploadJob,
+    PrefetchHooks Function()> {
   $$UploadJobsTableTableManager(_$AppDatabase db, $UploadJobsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$UploadJobsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$UploadJobsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$UploadJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UploadJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UploadJobsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> jobId = const Value.absent(),
             Value<String> filePath = const Value.absent(),
@@ -3448,89 +4064,25 @@ class $$UploadJobsTableTableManager extends RootTableManager<
             createdAt: createdAt,
             rowid: rowid,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
         ));
 }
 
-class $$UploadJobsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $UploadJobsTable> {
-  $$UploadJobsTableFilterComposer(super.$state);
-  ColumnFilters<String> get jobId => $state.composableBuilder(
-      column: $state.table.jobId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get filePath => $state.composableBuilder(
-      column: $state.table.filePath,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get fileHash => $state.composableBuilder(
-      column: $state.table.fileHash,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get totalSize => $state.composableBuilder(
-      column: $state.table.totalSize,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<UploadJobStatus, UploadJobStatus, String>
-      get status => $state.composableBuilder(
-          column: $state.table.status,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnFilters<double> get progress => $state.composableBuilder(
-      column: $state.table.progress,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-}
-
-class $$UploadJobsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $UploadJobsTable> {
-  $$UploadJobsTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get jobId => $state.composableBuilder(
-      column: $state.table.jobId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get filePath => $state.composableBuilder(
-      column: $state.table.filePath,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get fileHash => $state.composableBuilder(
-      column: $state.table.fileHash,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get totalSize => $state.composableBuilder(
-      column: $state.table.totalSize,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get status => $state.composableBuilder(
-      column: $state.table.status,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<double> get progress => $state.composableBuilder(
-      column: $state.table.progress,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-}
-
+typedef $$UploadJobsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $UploadJobsTable,
+    UploadJob,
+    $$UploadJobsTableFilterComposer,
+    $$UploadJobsTableOrderingComposer,
+    $$UploadJobsTableAnnotationComposer,
+    $$UploadJobsTableCreateCompanionBuilder,
+    $$UploadJobsTableUpdateCompanionBuilder,
+    (UploadJob, BaseReferences<_$AppDatabase, $UploadJobsTable, UploadJob>),
+    UploadJob,
+    PrefetchHooks Function()>;
 typedef $$DownloadJobsTableCreateCompanionBuilder = DownloadJobsCompanion
     Function({
   required String jobId,
@@ -3556,22 +4108,135 @@ typedef $$DownloadJobsTableUpdateCompanionBuilder = DownloadJobsCompanion
   Value<int> rowid,
 });
 
+class $$DownloadJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadJobsTable> {
+  $$DownloadJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get jobId => $composableBuilder(
+      column: $table.jobId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+      column: $table.taskId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mediaUuid => $composableBuilder(
+      column: $table.mediaUuid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get downloadUrl => $composableBuilder(
+      column: $table.downloadUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get savePath => $composableBuilder(
+      column: $table.savePath, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<DownloadJobStatus, DownloadJobStatus, String>
+      get status => $composableBuilder(
+          column: $table.status,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<double> get progress => $composableBuilder(
+      column: $table.progress, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$DownloadJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadJobsTable> {
+  $$DownloadJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get jobId => $composableBuilder(
+      column: $table.jobId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+      column: $table.taskId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mediaUuid => $composableBuilder(
+      column: $table.mediaUuid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get downloadUrl => $composableBuilder(
+      column: $table.downloadUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get savePath => $composableBuilder(
+      column: $table.savePath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get progress => $composableBuilder(
+      column: $table.progress, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DownloadJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadJobsTable> {
+  $$DownloadJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get jobId =>
+      $composableBuilder(column: $table.jobId, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaUuid =>
+      $composableBuilder(column: $table.mediaUuid, builder: (column) => column);
+
+  GeneratedColumn<String> get downloadUrl => $composableBuilder(
+      column: $table.downloadUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get savePath =>
+      $composableBuilder(column: $table.savePath, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DownloadJobStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<double> get progress =>
+      $composableBuilder(column: $table.progress, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
 class $$DownloadJobsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $DownloadJobsTable,
     DownloadJob,
     $$DownloadJobsTableFilterComposer,
     $$DownloadJobsTableOrderingComposer,
+    $$DownloadJobsTableAnnotationComposer,
     $$DownloadJobsTableCreateCompanionBuilder,
-    $$DownloadJobsTableUpdateCompanionBuilder> {
+    $$DownloadJobsTableUpdateCompanionBuilder,
+    (
+      DownloadJob,
+      BaseReferences<_$AppDatabase, $DownloadJobsTable, DownloadJob>
+    ),
+    DownloadJob,
+    PrefetchHooks Function()> {
   $$DownloadJobsTableTableManager(_$AppDatabase db, $DownloadJobsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$DownloadJobsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$DownloadJobsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$DownloadJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadJobsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> jobId = const Value.absent(),
             Value<String?> taskId = const Value.absent(),
@@ -3616,98 +4281,28 @@ class $$DownloadJobsTableTableManager extends RootTableManager<
             createdAt: createdAt,
             rowid: rowid,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
         ));
 }
 
-class $$DownloadJobsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $DownloadJobsTable> {
-  $$DownloadJobsTableFilterComposer(super.$state);
-  ColumnFilters<String> get jobId => $state.composableBuilder(
-      column: $state.table.jobId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get taskId => $state.composableBuilder(
-      column: $state.table.taskId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get mediaUuid => $state.composableBuilder(
-      column: $state.table.mediaUuid,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get downloadUrl => $state.composableBuilder(
-      column: $state.table.downloadUrl,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get savePath => $state.composableBuilder(
-      column: $state.table.savePath,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnWithTypeConverterFilters<DownloadJobStatus, DownloadJobStatus, String>
-      get status => $state.composableBuilder(
-          column: $state.table.status,
-          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
-              column,
-              joinBuilders: joinBuilders));
-
-  ColumnFilters<double> get progress => $state.composableBuilder(
-      column: $state.table.progress,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-}
-
-class $$DownloadJobsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $DownloadJobsTable> {
-  $$DownloadJobsTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get jobId => $state.composableBuilder(
-      column: $state.table.jobId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get taskId => $state.composableBuilder(
-      column: $state.table.taskId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get mediaUuid => $state.composableBuilder(
-      column: $state.table.mediaUuid,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get downloadUrl => $state.composableBuilder(
-      column: $state.table.downloadUrl,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get savePath => $state.composableBuilder(
-      column: $state.table.savePath,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get status => $state.composableBuilder(
-      column: $state.table.status,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<double> get progress => $state.composableBuilder(
-      column: $state.table.progress,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-}
+typedef $$DownloadJobsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DownloadJobsTable,
+    DownloadJob,
+    $$DownloadJobsTableFilterComposer,
+    $$DownloadJobsTableOrderingComposer,
+    $$DownloadJobsTableAnnotationComposer,
+    $$DownloadJobsTableCreateCompanionBuilder,
+    $$DownloadJobsTableUpdateCompanionBuilder,
+    (
+      DownloadJob,
+      BaseReferences<_$AppDatabase, $DownloadJobsTable, DownloadJob>
+    ),
+    DownloadJob,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;

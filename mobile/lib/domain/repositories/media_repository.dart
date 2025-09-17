@@ -25,4 +25,12 @@ abstract class MediaRepository {
   );
 
   Future<UnifiedMediaEntity> uploadMedia(AssetEntity asset);
+
+  Stream<List<UnifiedMediaEntity>> watchTrashedAssets();
+
+  Future<void> moveAssetsToTrash(List<UnifiedMediaEntity> assets);
+
+  Future<void> restoreAssetsFromTrash(List<UnifiedMediaEntity> assets);
+
+  Future<void> permanentlyDeleteAssets(List<UnifiedMediaEntity> assets);
 }
