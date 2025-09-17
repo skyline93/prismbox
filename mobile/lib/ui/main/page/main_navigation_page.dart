@@ -33,9 +33,9 @@ class NavigationPage extends HookConsumerWidget {
 
     final currentIndex = useState(0);
 
-    final isSelecting = ref.watch(
-      selectionProvider.select((s) => s.isSelecting),
-    );
+    final selectionState = ref.watch(selectionProvider);
+    final isSelecting = selectionState.isSelecting;
+    final selectedItemsCount = selectionState.selectedItems.length;
 
     final userProfile = ref.watch(userProvider);
     final avatarUrl = userProfile.avatarUrl;
@@ -66,39 +66,69 @@ class NavigationPage extends HookConsumerWidget {
       Icons.people,
     ];
 
-    return Scaffold(
-      extendBody: true,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        centerTitle: false,
-        title: Text(
-          pageTitles[currentIndex.value],
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: GestureDetector(
-              onTap: showUserProfileDialog,
-              child: CircleAvatar(
-                radius: 20,
-                backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
-                backgroundColor: Colors.grey.shade200,
-                child: !hasAvatar
-                    ? Icon(Icons.person, size: 20, color: Colors.grey.shade400)
-                    : null,
+    final PreferredSizeWidget? appBar = isSelecting
+        ? AppBar(
+            elevation: 0,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            centerTitle: false,
+            titleSpacing: 0,
+            leading: IconButton(
+              icon: Icon(
+                Icons.close,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              onPressed: () {
+                ref.read(selectionProvider.notifier).clearSelection();
+              },
+            ),
+            title: Text(
+              '已选择 $selectedItemsCount 项',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
-      ),
+          )
+        : AppBar(
+            elevation: 0,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            centerTitle: false,
+            title: Text(
+              pageTitles[currentIndex.value],
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: GestureDetector(
+                  onTap: showUserProfileDialog,
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+                    backgroundColor: Colors.grey.shade200,
+                    child: !hasAvatar
+                        ? Icon(
+                            Icons.person,
+                            size: 20,
+                            color: Colors.grey.shade400,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          );
+
+    return Scaffold(
+      extendBody: true,
+      appBar: appBar,
       body: SafeArea(
         top: false,
-        bottom: true,
+        // [MODIFIED] 当不在选择模式时，才启用底部安全区域
+        bottom: !isSelecting,
         child: IndexedStack(index: currentIndex.value, children: pages),
       ),
       bottomNavigationBar: isSelecting
