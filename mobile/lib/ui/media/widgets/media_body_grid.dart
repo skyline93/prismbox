@@ -13,9 +13,16 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:mobile/ui/media/widgets/draggable_scrollbar_custom.dart';
 
 class MediaGridBody extends HookConsumerWidget {
-  const MediaGridBody({super.key, required this.media});
-
+  // [NEW] 添加 bottomPadding 属性
+  final double bottomPadding;
   final List<UnifiedMediaEntity> media;
+
+  // [MODIFIED] 更新构造函数以接收 padding
+  const MediaGridBody({
+    super.key,
+    required this.media,
+    this.bottomPadding = 0.0,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,9 +34,7 @@ class MediaGridBody extends HookConsumerWidget {
 
     // --- 布局计算 ---
     const crossAxisCount = 4;
-    // 计算每个网格单元的精确尺寸（宽度和高度）
     final itemSize = MediaQuery.of(context).size.width / crossAxisCount;
-    // 计算总行数
     final rowCount = (media.length / crossAxisCount).ceil();
 
     return DraggableScrollbar.semicircle(
@@ -43,7 +48,6 @@ class MediaGridBody extends HookConsumerWidget {
         if (media.isEmpty) {
           return const Text('');
         }
-        // 根据行号计算出该行第一个媒体资源的索引
         final firstItemIndex = (rowIndex * crossAxisCount).clamp(
           0,
           media.length - 1,
@@ -64,12 +68,13 @@ class MediaGridBody extends HookConsumerWidget {
         );
       },
       child: ScrollablePositionedList.builder(
+        // [MODIFIED] 在这里应用 padding
+        padding: EdgeInsets.only(bottom: bottomPadding),
         key: const PageStorageKey('media_grid_body'),
         itemScrollController: itemScrollController,
         itemPositionsListener: itemPositionsListener,
         itemCount: rowCount,
         itemBuilder: (context, rowIndex) {
-          // 关键：为每一行提供固定的高度，确保滚动条计算精确
           return SizedBox(
             height: itemSize,
             child: _MediaRowWidget(
@@ -85,8 +90,9 @@ class MediaGridBody extends HookConsumerWidget {
   }
 }
 
-// [修改] 将 _MediaRowWidget 转换为 ConsumerWidget 以访问 Provider
+// _MediaRowWidget 不需要修改
 class _MediaRowWidget extends ConsumerWidget {
+  // ... (代码无变化)
   final int rowIndex;
   final List<UnifiedMediaEntity> media;
   final double itemSize;
@@ -103,7 +109,6 @@ class _MediaRowWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const spacing = 2.0;
 
-    // 监听当前是否处于选择模式
     final isSelecting = ref.watch(
       selectionProvider.select((s) => s.isSelecting),
     );
@@ -125,19 +130,15 @@ class _MediaRowWidget extends ConsumerWidget {
               entity: mediaEntity,
               index: index,
               totalCount: media.length,
-              // [修改] onTap 行为根据选择模式动态变化
               onTap: () {
                 if (isSelecting) {
-                  // 在选择模式下，点击是切换选择
                   ref.read(selectionProvider.notifier).toggleItem(mediaEntity);
                 } else {
-                  // 否则，是打开画廊
                   AutoRouter.of(
                     context,
                   ).push(GalleryRoute(media: media, initialIndex: index));
                 }
               },
-              // [新增] onLongPress 用于启动选择模式
               onLongPress: () {
                 if (!isSelecting) {
                   ref

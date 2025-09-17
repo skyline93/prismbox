@@ -12,7 +12,11 @@ import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
 
 class MediaBody extends HookConsumerWidget {
-  const MediaBody({super.key});
+  // [NEW] 添加 bottomPadding 属性
+  final double bottomPadding;
+
+  // [MODIFIED] 更新构造函数以接收 padding
+  const MediaBody({super.key, this.bottomPadding = 0.0});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,18 +27,13 @@ class MediaBody extends HookConsumerWidget {
     final viewMode = ref.watch(mediaViewTypeProvider);
 
     Widget makeScrollable(Widget widget) {
-      // 使用 ListView 是让单个内容块支持 RefreshIndicator 的一种非常稳健的方式。
       return LayoutBuilder(
         builder: (context, constraints) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               ConstrainedBox(
-                constraints: BoxConstraints(
-                  // 确保内容区域至少和视口一样高
-                  minHeight: constraints.maxHeight,
-                ),
-                // 将内容居中放置
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Center(child: widget),
               ),
             ],
@@ -45,7 +44,6 @@ class MediaBody extends HookConsumerWidget {
 
     return mediaAsyncValue.when(
       loading: () => makeScrollable(
-        // 将内容本身放入 Column 中，使其在 Center 中表现更好
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -78,10 +76,10 @@ class MediaBody extends HookConsumerWidget {
           );
         }
 
-        // 之前的 IndexedStack 索引安全检查依然保留
+        // [MODIFIED] 将 bottomPadding 传递给子组件
         final List<Widget> children = [
-          MediaGridBody(media: mediaList),
-          MediaTimelineBody(media: mediaList),
+          MediaGridBody(media: mediaList, bottomPadding: bottomPadding),
+          MediaTimelineBody(media: mediaList, bottomPadding: bottomPadding),
         ];
 
         int safeIndex = viewMode.index;

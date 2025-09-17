@@ -29,7 +29,15 @@ class MediaRowItem extends TimelineItem {
 
 class MediaTimelineBody extends HookConsumerWidget {
   final List<UnifiedMediaEntity> media;
-  const MediaTimelineBody({super.key, required this.media});
+  // [NEW] 添加 bottomPadding 属性
+  final double bottomPadding;
+
+  // [MODIFIED] 更新构造函数以接收 padding
+  const MediaTimelineBody({
+    super.key,
+    required this.media,
+    this.bottomPadding = 0.0,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,6 +115,8 @@ class MediaTimelineBody extends HookConsumerWidget {
         );
       },
       child: ScrollablePositionedList.builder(
+        // [MODIFIED] 在这里应用 padding
+        padding: EdgeInsets.only(bottom: bottomPadding),
         physics: const AlwaysScrollableScrollPhysics(),
         key: const PageStorageKey('media_timeline_body'),
         itemScrollController: itemScrollController,
@@ -143,8 +153,9 @@ class MediaTimelineBody extends HookConsumerWidget {
   }
 }
 
-// _TimelineMediaRow Widget: 修改为 ConsumerWidget 以便访问 provider
+// _TimelineMediaRow Widget 不需要修改
 class _TimelineMediaRow extends ConsumerWidget {
+  // ... (代码无变化)
   final List<UnifiedMediaEntity> mediaForRow;
   final double itemSize;
   final int globalStartIndex;
@@ -162,7 +173,6 @@ class _TimelineMediaRow extends ConsumerWidget {
     const crossAxisCount = 4;
     const spacing = 2.0;
 
-    // 监听选择模式，以决定 onTap 的行为
     final isSelecting = ref.watch(
       selectionProvider.select((s) => s.isSelecting),
     );
@@ -186,10 +196,8 @@ class _TimelineMediaRow extends ConsumerWidget {
               onTap: () {
                 final notifier = ref.read(selectionProvider.notifier);
                 if (isSelecting) {
-                  // 在选择模式下，点击是切换选择
                   notifier.toggleItem(mediaEntity);
                 } else {
-                  // 否则，是打开画廊
                   AutoRouter.of(context).push(
                     GalleryRoute(
                       media: sortedFullMedia,
@@ -198,7 +206,6 @@ class _TimelineMediaRow extends ConsumerWidget {
                   );
                 }
               },
-              // 将长按功能移到这里，用于启动选择模式
               onLongPress: () {
                 if (!isSelecting) {
                   ref

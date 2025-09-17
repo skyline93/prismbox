@@ -19,26 +19,32 @@ class MediaPage extends HookConsumerWidget {
       selectionProvider.select((s) => s.isSelecting),
     );
 
+    // [NEW] 定义抽屉的初始高度常量
+    const double drawerInitialSize = 0.22;
+
+    // [NEW] 计算当处于选择模式时，内容区域所需的底部内边距
+    final bottomPaddingForBody = isSelecting
+        ? MediaQuery.of(context).size.height * drawerInitialSize
+        : 0.0;
+
     return Scaffold(
-      // appBar: const MediaAppBar(),
       body: Stack(
         children: [
           RefreshIndicator(
             onRefresh: () async {
               getIt<MediaSyncServiceProxy>().triggerCloudSync();
             },
-            child: const MediaBody(),
+            // [MODIFIED] 将计算好的内边距传递给 MediaBody
+            child: MediaBody(bottomPadding: bottomPaddingForBody),
           ),
-
           IgnorePointer(
             ignoring: !isSelecting,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 250),
               opacity: isSelecting ? 1.0 : 0.0,
               child: DraggableScrollableSheet(
-                initialChildSize: 0.22,
-                minChildSize: 0.22,
-                // 最大可以拉到屏幕的 90%
+                initialChildSize: drawerInitialSize,
+                minChildSize: drawerInitialSize,
                 maxChildSize: 0.9,
                 builder: (context, scrollController) {
                   return MediaSelectionDrawer(
