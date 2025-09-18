@@ -54,27 +54,30 @@ class RemoteMediaDataSource {
     }
   }
 
-  Future<Uint8List> downloadOriginalMedia(String uuid) async {
-    final MediaResponse mediaItem;
+  Future<bool> restoreMedia(String uuid) async {
     try {
-      mediaItem = await getMediaDetail(uuid);
-    } on DioException catch (e) {
-      throw _handleDioError(e, '下载缩略图');
-    }
-
-    try {
-      final response = await _fileDio.get(
-        mediaItem.downloadUrl,
-        options: Options(responseType: ResponseType.bytes),
-      );
-
+      final response = await _dio.post('$baseUrl/media/$uuid/restore');
+      // 成功恢复通常返回 200 OK
       if (response.statusCode == 200) {
-        return response.data as Uint8List;
+        return true;
       } else {
-        throw Exception('下载原始文件失败: ${response.statusCode}');
+        throw Exception('恢复媒体失败: ${response.data?['message']}');
       }
     } on DioException catch (e) {
-      throw _handleDioError(e, '下载原始文件');
+      throw _handleDioError(e, '恢复媒体');
+    }
+  }
+
+  Future<bool> purgeMedia(String uuid) async {
+    try {
+      final response = await _dio.delete('$baseUrl/media/$uuid/purge');
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw Exception('永久删除媒体失败: ${response.data?['message']}');
+      }
+    } on DioException catch (e) {
+      throw _handleDioError(e, '永久删除媒体');
     }
   }
 

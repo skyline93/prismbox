@@ -28,7 +28,7 @@ class MediaViewModel extends StateNotifier<MediaState> {
 
   /// 将指定的媒体资源移动到回收站
   Future<void> moveAssetsToTrash(List<UnifiedMediaEntity> assets) async {
-    await _mediaRepository.moveAssetsToTrash(assets);
+    await _mediaRepository.deleteAssets(assets);
   }
 
   Future<void> retry() async {

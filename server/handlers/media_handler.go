@@ -229,8 +229,12 @@ func (h *MediaHandler) Delete(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	mediaUUID := c.Param("uuid")
 
-	// 使用 user_id 和 uuid 双重条件来删除，确保用户只能删除自己的照片
-	result := h.DB.Where("uuid = ? AND user_id = ?", mediaUUID, userID).Delete(&models.Media{})
+	// 不再使用 gorm.Delete()，而是将 deleted 字段更新为 true
+	// 同时确保只操作 deleted = false 的记录
+	result := h.DB.Model(&models.Media{}).
+		Where("uuid = ? AND user_id = ? AND deleted = ?", mediaUUID, userID, false).
+		Update("deleted", true)
+
 	if result.Error != nil {
 		core.Error(c, "Database error")
 		return
@@ -241,6 +245,132 @@ func (h *MediaHandler) Delete(c *gin.Context) {
 	}
 
 	core.Success(c, "Media moved to bin", nil)
+}
+
+// Restore godoc
+// @Summary      恢复指定的媒体文件
+// @Description  将指定媒体文件从回收站中恢复
+// @Tags         Media
+// @Produce      json
+// @Param        uuid path string true "媒体文件的UUID" format(uuid)
+// @Success      200  {object}  core.ApiResponse "成功恢复"
+// @Failure      404  {object}  core.ApiResponse "在回收站中未找到媒体或权限不足"
+// @Failure      500  {object}  core.ApiResponse "数据库错误"
+// @Security     BearerAuth
+// @Router       /media/{uuid}/restore [post]
+func (h *MediaHandler) Restore(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	mediaUUID := c.Param("uuid")
+
+	// 不再需要 Unscoped()，直接查询 deleted = true 的记录，并将其更新为 false
+	result := h.DB.Model(&models.Media{}).
+		Where("uuid = ? AND user_id = ? AND deleted = ?", mediaUUID, userID, true).
+		Update("deleted", false)
+
+	if result.Error != nil {
+		core.Error(c, "Database error")
+		return
+	}
+	if result.RowsAffected == 0 {
+		core.Error(c, "Media not found in bin or permission denied")
+		return
+	}
+
+	core.Success(c, "Media restored successfully", nil)
+}
+
+// Purge godoc
+// @Summary      永久删除媒体资源
+// @Description  从数据库和文件系统中彻底删除一个媒体资源及其所有关联数据（缩略图、预览图、分享链接、相册关联等）。此操作不可逆。通常用于清空回收站中的项目。
+// @Tags         Media
+// @Produce      json
+// @Param        uuid path string true "要永久删除的媒体文件的UUID" format(uuid)
+// @Success      200  {object}  core.ApiResponse "成功永久删除"
+// @Failure      404  {object}  core.ApiResponse "媒体资源未找到或权限不足"
+// @Failure      500  {object}  core.ApiResponse "数据库或文件系统操作失败"
+// @Security     BearerAuth
+// @Router       /media/{uuid}/purge [delete]
+func (h *MediaHandler) Purge(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	mediaUUID := c.Param("uuid")
+
+	var media models.Media
+	if err := h.DB.Where("uuid = ? AND user_id = ? AND deleted = ?", mediaUUID, userID, true).First(&media).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			core.Error(c, "Media not found or permission denied")
+		} else {
+			core.Error(c, "Database error while finding media")
+		}
+		return
+	}
+
+	// 启动数据库事务，确保所有数据库操作的原子性
+	err := h.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. 删除与相册的关联 (多对多关系)
+		// 直接执行SQL从中间表删除关联关系
+		if err := tx.Exec("DELETE FROM album_items WHERE media_id = ?", media.ID).Error; err != nil {
+			return fmt.Errorf("failed to disassociate from albums: %w", err)
+		}
+
+		// 2. 删除相关的分享记录
+		if err := tx.Unscoped().Where("media_id = ?", media.ID).Delete(&models.Share{}).Error; err != nil {
+			return fmt.Errorf("failed to delete shares: %w", err)
+		}
+
+		// 3. 删除相关的圈子媒体引用 (GroupMedia)
+		if err := tx.Unscoped().Where("media_uuid = ?", media.UUID).Delete(&models.GroupMedia{}).Error; err != nil {
+			return fmt.Errorf("failed to delete group media references: %w", err)
+		}
+
+		// 4. 将使用此媒体作为封面的相册和圈子的封面字段置空
+		if err := tx.Model(&models.Album{}).Where("cover_media_uuid = ?", media.UUID).Update("cover_media_uuid", nil).Error; err != nil {
+			return fmt.Errorf("failed to nullify album covers: %w", err)
+		}
+		if err := tx.Model(&models.Group{}).Where("cover_media_uuid = ?", media.UUID).Update("cover_media_uuid", "").Error; err != nil {
+			return fmt.Errorf("failed to clear group covers: %w", err)
+		}
+
+		// 5. 永久删除媒体记录本身
+		// 使用 Unscoped() 来确保执行的是物理删除 (DELETE FROM media WHERE id = ...)，
+		// 而不是GORM的软删除（即使模型没有gorm.DeletedAt，这也是最明确的写法）。
+		if err := tx.Unscoped().Delete(&models.Media{}, media.ID).Error; err != nil {
+			return fmt.Errorf("failed to permanently delete media record: %w", err)
+		}
+
+		// 返回 nil 以提交事务
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("Failed to purge media %s: %v", mediaUUID, err)
+		core.Error(c, "Failed to purge media due to a database transaction error")
+		return
+	}
+
+	// 6. 在数据库事务成功后，从文件系统删除物理文件
+	// 删除原始文件
+	originalPath := filepath.Join(h.UploadDir, media.Filename)
+	if err := os.Remove(originalPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: failed to delete original file %s: %v", originalPath, err)
+	}
+
+	// 删除缩略图
+	thumbPath := filepath.Join(h.UploadDir, media.UUID+constant.ThumbSuffix)
+	if err := os.Remove(thumbPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: failed to delete thumbnail file %s: %v", thumbPath, err)
+	}
+
+	// 删除预览图/视频
+	previewSuffix := constant.PreviewImageSuffix
+	if media.ItemType == constant.TypeVideo {
+		previewSuffix = constant.PreviewVideoSuffix
+	}
+	previewPath := filepath.Join(h.UploadDir, media.UUID+previewSuffix)
+	if err := os.Remove(previewPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: failed to delete preview file %s: %v", previewPath, err)
+	}
+
+	core.Success(c, "Media permanently deleted", nil)
 }
 
 // getAuthorizedMedia 是一个核心的私有辅助函数，用于统一处理照片的授权逻辑。

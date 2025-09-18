@@ -58,6 +58,7 @@ type Media struct {
 	Latitude         *float64                  `json:"latitude"`
 	Longitude        *float64                  `json:"longitude"`
 	ProcessingStatus constant.ProcessingStatus `json:"processing_status"`
+	Deleted          bool                      `gorm:"default:false" json:"deleted"`
 }
 
 type Album struct {

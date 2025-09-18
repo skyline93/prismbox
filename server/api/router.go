@@ -118,6 +118,8 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 				mediaRoutes.GET("/changes", mediaHandler.GetChanges)
 				mediaRoutes.GET("/:uuid", mediaHandler.GetMediaDetail)
 				mediaRoutes.DELETE("/:uuid", mediaHandler.Delete)
+				mediaRoutes.POST("/:uuid/restore", mediaHandler.Restore)
+				mediaRoutes.DELETE("/:uuid/purge", mediaHandler.Purge)
 			}
 
 			// 相册相关路由

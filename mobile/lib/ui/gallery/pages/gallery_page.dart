@@ -190,7 +190,7 @@ class GalleryPage extends HookConsumerWidget {
                   // 在执行异步操作前检查 context 是否仍然有效
                   if (!context.mounted) return;
 
-                  await ref.read(mediaRepositoryProvider).moveAssetsToTrash([
+                  await ref.read(mediaRepositoryProvider).deleteAssets([
                     entityToDelete,
                   ]);
 

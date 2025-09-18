@@ -1635,6 +1635,109 @@ const docTemplate = `{
                 }
             }
         },
+        "/media/upload-stream": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "通过 multipart/form-data 流式上传文件，避免大文件消耗内存。服务器会先进行秒传检查。",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "流式上传单个媒体文件 (推荐)",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "媒体文件本身",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "文件的SHA256哈希值",
+                        "name": "hash",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "IMAGE",
+                            "VIDEO"
+                        ],
+                        "type": "string",
+                        "description": "媒体类型 (IMAGE 或 VIDEO)",
+                        "name": "item_type",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "文件的原始名称",
+                        "name": "original_filename",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文件已存在（秒传成功）",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.MediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "201": {
+                        "description": "上传成功，后台处理开始",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.MediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器文件处理错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/media/upload/chunk": {
             "post": {
                 "security": [
@@ -1677,14 +1780,23 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "分片上传成功",
+                    "204": {
+                        "description": "分片上传成功 (无返回内容)"
+                    },
+                    "400": {
+                        "description": "请求参数错误、任务状态无效或任务已过期",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误或作业无效",
+                    "404": {
+                        "description": "上传作业不存在",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -2078,6 +2190,100 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "文件未就绪或服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/{uuid}/purge": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "从数据库和文件系统中彻底删除一个媒体资源及其所有关联数据（缩略图、预览图、分享链接、相册关联等）。此操作不可逆。通常用于清空回收站中的项目。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "永久删除媒体资源",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "要永久删除的媒体文件的UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功永久删除",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "媒体资源未找到或权限不足",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "数据库或文件系统操作失败",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/{uuid}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "将指定媒体文件从回收站中恢复",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "恢复指定的媒体文件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "媒体文件的UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功恢复",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "在回收站中未找到媒体或权限不足",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "数据库错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -3229,6 +3435,9 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
                 },
                 "duration": {
                     "type": "number"

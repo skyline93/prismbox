@@ -35,7 +35,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	secret := getEnv("JWT_SECRET", "qwertyuiop")
 	urlSignerSecret := getEnv("URL_SIGNER_SECRET", "qazwsxedc")
-	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://127.0.0.1:8080")
+	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://10.0.2.2:8080")
 	serverAddress := getEnv("SERVER_ADDRESS", "0.0.0.0:8080")
 	uploadDir := getEnv("UPLOAD_DIR", "uploads")
 

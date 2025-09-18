@@ -155,7 +155,7 @@ class MediaSelectionDrawer extends ConsumerWidget {
                       if (shouldDelete == true) {
                         await ref
                             .read(mediaRepositoryProvider)
-                            .moveAssetsToTrash(selectedItems.toList());
+                            .deleteAssets(selectedItems.toList());
 
                         // （可选）清空选择并给出反馈
                         ref.read(selectionProvider.notifier).clearSelection();
