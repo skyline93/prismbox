@@ -88,7 +88,6 @@ dependencies:
   rxdart: ^0.28.0
   image: ^4.5.4
   pro_image_editor: ^11.5.6
-  video_thumbnail: ^0.5.6
 
 dev_dependencies:
   flutter_test:
