@@ -61,6 +61,18 @@ type Media struct {
 	Deleted          bool                      `gorm:"default:false" json:"deleted"`
 }
 
+// GetRecordID 实现了 replicator.SyncedModel 接口。
+// 我们使用 UUID 作为客户端和服务端之间唯一的、可识别的记录ID。
+func (m *Media) GetRecordID() string {
+	return m.UUID
+}
+
+// GetTableName 实现了 replicator.SyncedModel 接口。
+// 返回 GORM 对应的表名。
+func (m *Media) GetTableName() string {
+	return "media"
+}
+
 type Album struct {
 	ID             uint           `gorm:"primarykey" json:"id"`
 	CreatedAt      time.Time      `json:"created_at"`

@@ -7,6 +7,8 @@ import (
 	"server/core"
 	"server/handlers"
 	"server/handlers/group"
+	"server/replicator"
+	"server/repositories"
 	"server/routing"
 	"server/urlsigner"
 	"time"
@@ -51,13 +53,24 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 	urlSigner := urlsigner.NewSigner(cfg.URLSignerSecret)
 	urlBuilder := routing.NewURLBuilder(cfg.PublicBaseURL)
 
-	mediaHandler := &handlers.MediaHandler{
-		DB:               db,
-		UploadDir:        cfg.UploadDir,
-		URLSigner:        urlSigner,
-		URLBuilder:       urlBuilder,
-		SignedURLLoadTTL: cfg.SignedURLLoadTTL,
+	mediaRepo := repositories.NewMediaRepository(db)
+	replConfig := replicator.DefaultConfig()
+	replConfig.FullSyncTables["media"] = replicator.FullSyncTableConfig{
+		PrimaryKeyColumn: "uuid", // 为全量同步指定客户端可识别的主键
 	}
+	repl := replicator.New(db, replConfig)
+	syncedWritableRepo := replicator.WithChangelog(db, mediaRepo)
+	compositeMediaRepo := repositories.NewReplicatorAwareMediaRepository(syncedWritableRepo, mediaRepo)
+
+	mediaHandler := handlers.NewMediaHandler(
+		compositeMediaRepo, // 注入包装后的仓储，而不是裸的 DB
+		db,                 // 仍然传入 db，用于后台 processing 任务
+		cfg.UploadDir,
+		urlSigner,
+		urlBuilder,
+		cfg.SignedURLLoadTTL,
+	)
+
 	albumHandler := &handlers.AlbumHandler{DB: db}
 
 	shareHandler := &handlers.ShareHandler{
@@ -103,15 +116,12 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 			protected.GET("/auth/profile", authHandler.GetProfile)
 			protected.POST("/auth/avatar", authHandler.UploadAvatar)
 
+			repl.RegisterRoutesAndJobs(protected)
 			// 媒体相关路由
 			mediaRoutes := protected.Group("/media")
 			{
 				mediaRoutes.POST("/upload", mediaHandler.Upload)
 				mediaRoutes.POST("/upload-stream", mediaHandler.UploadStream)
-				// 分片上传路由
-				mediaRoutes.POST("/upload/initiate", mediaHandler.InitiateUpload)
-				mediaRoutes.POST("/upload/chunk", mediaHandler.UploadChunk)
-				mediaRoutes.POST("/upload/complete", mediaHandler.CompleteUpload)
 
 				mediaRoutes.GET("", mediaHandler.GetMedias)
 				mediaRoutes.POST("/check_hashes", mediaHandler.CheckHashes)
