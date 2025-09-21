@@ -8,6 +8,7 @@ import 'package:mobile/ui/media/widgets/media_body.dart';
 import 'package:mobile/ui/media/widgets/media_selection_drawer.dart';
 import 'package:mobile/core/service_locator.dart';
 import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
+import 'package:mobile/features/replicator/media_sync_provider.dart';
 
 @RoutePage()
 class MediaPage extends HookConsumerWidget {
@@ -32,7 +33,11 @@ class MediaPage extends HookConsumerWidget {
         children: [
           RefreshIndicator(
             onRefresh: () async {
-              getIt<MediaSyncServiceProxy>().triggerCloudSync();
+              // getIt<MediaSyncServiceProxy>().triggerCloudSync();
+              final mediaSyncService = await ref.read(
+                mediaSyncServiceProvider.future,
+              );
+              await mediaSyncService.syncMediaAssets();
             },
             // [MODIFIED] 将计算好的内边距传递给 MediaBody
             child: MediaBody(bottomPadding: bottomPaddingForBody),

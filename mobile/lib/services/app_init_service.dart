@@ -10,6 +10,8 @@ import 'package:mobile/constants/settings_keys.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:mobile/features/sync/worker/sync_worker.dart';
 import 'package:photo_manager/photo_manager.dart'; // 1. 导入 photo_manager
+import 'package:mobile/features/replicator/media_sync_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppInitService {
   static final AppInitService _instance = AppInitService._internal();
@@ -43,7 +45,7 @@ class AppInitService {
     }
   }
 
-  Future<void> initializeAppServices() async {
+  Future<void> initializeAppServices(WidgetRef ref) async {
     if (_isInitialized) {
       Logger.root.info('App services already initialized. Skipping.');
       return;
@@ -59,6 +61,16 @@ class AppInitService {
     }
 
     Logger.root.info('所有必要权限已获取。');
+
+    Logger.root.info('正在触发启动时的媒体资源同步 (replicator)...');
+    try {
+      // 使用 ref.read 来执行一次性操作，获取 MediaSyncService 实例并调用同步方法
+      final mediaSyncService = await ref.read(mediaSyncServiceProvider.future);
+      await mediaSyncService.syncMediaAssets();
+    } catch (e) {
+      // 即使同步失败，也不应阻塞应用启动，仅记录错误
+      Logger.root.severe('启动时媒体资源同步 (replicator) 失败: $e');
+    }
 
     await getIt<TransferManager>().initialize();
     Logger.root.info('TransferManager initialized.');

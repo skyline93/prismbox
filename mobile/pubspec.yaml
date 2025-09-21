@@ -88,6 +88,10 @@ dependencies:
   rxdart: ^0.28.0
   image: ^4.5.4
   pro_image_editor: ^11.5.6
+  device_info_plus: ^12.1.0
+  flutter_replicator:
+    path: ./packages/flutter_replicator
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:

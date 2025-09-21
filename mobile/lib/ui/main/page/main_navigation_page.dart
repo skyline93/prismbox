@@ -25,7 +25,7 @@ class NavigationPage extends HookConsumerWidget {
       // 在下一帧执行，以确保页面已经准备好
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // 调用初始化服务
-        AppInitService().initializeAppServices();
+        AppInitService().initializeAppServices(ref);
       });
 
       // 返回 null 表示没有清理工作需要执行

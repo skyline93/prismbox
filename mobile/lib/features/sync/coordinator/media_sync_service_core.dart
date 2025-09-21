@@ -42,8 +42,8 @@ class MediaSyncServiceCore {
         _runFullSync();
         break;
       case SyncCommand.triggerCloudSync:
-        _runCloudSync();
-        break;
+      //   _runCloudSync();
+      // break;
       case SyncCommand.triggerLocalMediaChangeSync:
         _runLocalMediaChangeSync();
         break;
@@ -71,10 +71,10 @@ class MediaSyncServiceCore {
       // 1. 云端同步 (前置)
       // 这个阶段包含了云端媒体和云端相册的同步
       // =======================================================
-      _sendStatus(SyncStatus.syncingCloud);
-      _log.info('Running cloud sync first (includes remote albums)...');
-      await _runCloudSync(isChained: true);
-      _log.info('Cloud sync finished.');
+      // _sendStatus(SyncStatus.syncingCloud);
+      // _log.info('Running cloud sync first (includes remote albums)...');
+      // await _runCloudSync(isChained: true);
+      // _log.info('Cloud sync finished.');
 
       // =======================================================
       // 2. 本地对账
@@ -171,41 +171,41 @@ class MediaSyncServiceCore {
   }
 
   /// 仅执行云端同步
-  Future<void> _runCloudSync({bool isChained = false}) async {
-    if (!isChained) {
-      // 如果是独立调用，需要检查锁
-      if (_isSyncInProgress) {
-        _log.warning(
-          'Sync is already in progress. Ignoring triggerCloudSync command.',
-        );
-        return;
-      }
-      _isSyncInProgress = true;
-      _log.info('Starting cloud-only sync process...');
-    }
+  // Future<void> _runCloudSync({bool isChained = false}) async {
+  //   if (!isChained) {
+  //     // 如果是独立调用，需要检查锁
+  //     if (_isSyncInProgress) {
+  //       _log.warning(
+  //         'Sync is already in progress. Ignoring triggerCloudSync command.',
+  //       );
+  //       return;
+  //     }
+  //     _isSyncInProgress = true;
+  //     _log.info('Starting cloud-only sync process...');
+  //   }
 
-    try {
-      // 1. 获取云端变更
-      _sendStatus(SyncStatus.syncingCloud);
-      final cloudResult = await _cloudSync.run();
+  //   try {
+  //     // 1. 获取云端变更
+  //     _sendStatus(SyncStatus.syncingCloud);
+  //     final cloudResult = await _cloudSync.run();
 
-      // 2. 应用云端变更
-      await _actionHandler.handleCloudChanges(cloudResult);
-      // 3. 同步云端相册（如果实现）
-      await _albumSync.synchronizeRemoteAlbums();
-      _log.info('Cloud sync and processing finished.');
-    } catch (e, s) {
-      _log.severe('An error occurred during the cloud sync process.', e, s);
-      _sendStatus(SyncStatus.error, message: e.toString());
-    } finally {
-      if (!isChained) {
-        // 如果是独立调用，需要释放锁并更新状态
-        _isSyncInProgress = false;
-        _sendStatus(SyncStatus.idle);
-        _log.info('Cloud-only sync process finished.');
-      }
-    }
-  }
+  //     // 2. 应用云端变更
+  //     await _actionHandler.handleCloudChanges(cloudResult);
+  //     // 3. 同步云端相册（如果实现）
+  //     await _albumSync.synchronizeRemoteAlbums();
+  //     _log.info('Cloud sync and processing finished.');
+  //   } catch (e, s) {
+  //     _log.severe('An error occurred during the cloud sync process.', e, s);
+  //     _sendStatus(SyncStatus.error, message: e.toString());
+  //   } finally {
+  //     if (!isChained) {
+  //       // 如果是独立调用，需要释放锁并更新状态
+  //       _isSyncInProgress = false;
+  //       _sendStatus(SyncStatus.idle);
+  //       _log.info('Cloud-only sync process finished.');
+  //     }
+  //   }
+  // }
 
   /// 向主 Isolate 发送状态更新
   void _sendStatus(SyncStatus status, {String? message}) {
