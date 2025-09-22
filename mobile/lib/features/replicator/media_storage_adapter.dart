@@ -12,7 +12,7 @@ enum _CloudEvent {
   created,
   updated,
   updatedDeleted, // 软删除
-  deleted,      // 硬删除
+  deleted, // 硬删除
 }
 
 // 定义本地资源的当前状态
@@ -41,21 +41,22 @@ class _LocalState {
     // 为了简化逻辑，我们主要关心 active 和 trashed 两种状态下的变化
     // 您的矩阵显示 localOnly_trashed 和 synced_trashed 的行为非常相似
     if (isTrashed) {
-       switch (currentStatus) {
+      switch (currentStatus) {
         case SyncStatus.synced:
-           if (event == _CloudEvent.deleted) {
-             return SyncStatus.localOnly;
-           }
-           return SyncStatus.synced; // 保持不变
+          if (event == _CloudEvent.deleted) {
+            return SyncStatus.localOnly;
+          }
+          return SyncStatus.synced; // 保持不变
         case SyncStatus.cloudOnly:
-           if (event == _CloudEvent.deleted) {
-             return null; // 状态: x (删除)
-           }
-           return SyncStatus.cloudOnly;
+          if (event == _CloudEvent.deleted) {
+            return null; // 状态: x (删除)
+          }
+          return SyncStatus.cloudOnly;
         default:
           return currentStatus; // localOnly_trashed 状态不变
-       }
-    } else { // Active State
+      }
+    } else {
+      // Active State
       switch (currentStatus) {
         case SyncStatus.localOnly:
           if (event == _CloudEvent.created || event == _CloudEvent.updated) {
@@ -63,12 +64,14 @@ class _LocalState {
           }
           return SyncStatus.localOnly; // 保持不变
         case SyncStatus.synced:
-          if (event == _CloudEvent.updatedDeleted || event == _CloudEvent.deleted) {
+          if (event == _CloudEvent.updatedDeleted ||
+              event == _CloudEvent.deleted) {
             return SyncStatus.localOnly;
           }
           return SyncStatus.synced; // 保持不变
         case SyncStatus.cloudOnly:
-          if (event == _CloudEvent.updatedDeleted || event == _CloudEvent.deleted) {
+          if (event == _CloudEvent.updatedDeleted ||
+              event == _CloudEvent.deleted) {
             return null; // 状态: x (删除)
           }
           return SyncStatus.cloudOnly; // 保持不变
@@ -78,7 +81,6 @@ class _LocalState {
     }
   }
 }
-
 
 class MediaStorageAdapter extends StorageAdapter {
   final AppDatabase _db;
@@ -226,83 +228,108 @@ class MediaStorageAdapter extends StorageAdapter {
 
     // 2. 一次性查询本地数据库，获取所有可能受影响的资源
     final query = _db.select(_db.mediaAssets)
-      ..where((tbl) =>
-          tbl.cloudUuid.isIn(cloudUuids) | tbl.contentHash.isIn(hashes));
+      ..where(
+        (tbl) => tbl.cloudUuid.isIn(cloudUuids) | tbl.contentHash.isIn(hashes),
+      );
     final localAssets = await query.get();
-    
+
     // 3. 构建高效的查找映射
     final localAssetByUuid = {for (var a in localAssets) a.cloudUuid: a};
     final localAssetByHash = {for (var a in localAssets) a.contentHash: a};
-    
+
     // 4. 准备数据库操作列表
-    final List<MediaAssetsCompanion> toUpsert = [];
+    final List<MediaAssetsCompanion> toInsert = [];
+    final List<MediaAssetsCompanion> toUpdate = [];
     final List<int> toDelete = [];
 
     // 5. 遍历云端变更，根据矩阵决定最终状态和操作
     for (final change in changes) {
       // 确定云端事件
       final event = _getCloudEvent(change);
-      
+
       // 查找本地资源，优先使用 UUID，其次是 Hash
-      final localAsset = localAssetByUuid[change.recordId] ??
+      final localAsset =
+          localAssetByUuid[change.recordId] ??
           (change.payload?['hash'] == null
               ? null
               : localAssetByHash[change.payload!['hash']]);
-      
+
       final localState = _LocalState(localAsset);
 
       // 使用表驱动逻辑计算下一个状态
       final nextStatus = localState.determineNextSyncStatus(event);
 
+      var nextLifecycleState = localState.exists
+          ? localState
+                .asset!
+                .lifecycleState // 默认保持本地状态
+          : LifecycleState.active;
+
       final companion = _changelogToCompanion(change);
-      
-      if (nextStatus == null) { // 对应矩阵中的 'x' (删除或忽略)
-        if (localState.exists && localState.asset!.syncStatus == SyncStatus.cloudOnly) {
-           toDelete.add(localState.asset!.id);
+
+      if (nextStatus == null) {
+        // 对应矩阵中的 'x' (删除或忽略)
+        if (localState.exists &&
+            localState.asset!.syncStatus == SyncStatus.cloudOnly) {
+          toDelete.add(localState.asset!.id);
         }
         // 如果本地不存在，或者不是 cloudOnly，则忽略该事件
       } else {
-        if (localState.exists) { // 更新现有记录
+        var finalCompanion = companion.copyWith(
+          syncStatus: Value(nextStatus),
+          lifecycleState: Value(nextLifecycleState),
+        );
+        if (localState.exists) {
+          // 更新现有记录
           // 只有当状态实际发生变化时才执行更新
-          if (localState.asset!.syncStatus != nextStatus) {
-            toUpsert.add(
-              companion.copyWith(
-                id: Value(localState.asset!.id),
-                syncStatus: Value(nextStatus),
-                // 如果从 synced 变回 localOnly，需要清除 cloudUuid
-                cloudUuid: Value(nextStatus == SyncStatus.localOnly ? null : change.recordId),
+          // if (localState.asset!.syncStatus != nextStatus) {
+          toUpdate.add(
+            finalCompanion.copyWith(
+              id: Value(localState.asset!.id),
+              cloudUuid: Value(
+                nextStatus == SyncStatus.localOnly ? null : change.recordId,
               ),
-            );
-          }
-        } else { // 插入新记录
-          toUpsert.add(
-            companion.copyWith(syncStatus: Value(nextStatus)),
+            ),
           );
+          // }
+        } else {
+          // 插入新记录
+          toInsert.add(finalCompanion);
         }
       }
     }
 
     // 6. 在一个事务中批量执行所有数据库操作
-    if (toUpsert.isEmpty && toDelete.isEmpty) {
-       _log.info('增量变更分析完成，无需执行数据库操作。');
-       return;
+    if (toInsert.isEmpty && toUpdate.isEmpty && toDelete.isEmpty) {
+      _log.info('增量变更分析完成，无需执行数据库操作。');
+      return;
     }
 
     await _db.transaction(() async {
-      if (toUpsert.isNotEmpty) {
+      // 使用 batch.insertAll 明确执行批量插入
+      if (toInsert.isNotEmpty) {
+        await _db.batch((batch) => batch.insertAll(_db.mediaAssets, toInsert));
+        _log.info('成功插入 ${toInsert.length} 条新的媒体资源记录。');
+      }
+
+      // 使用 batch.replace 明确执行批量更新 (因为每个 companion 都有 id)
+      if (toUpdate.isNotEmpty) {
         await _db.batch((batch) {
-          for (final companion in toUpsert) {
+          for (final companion in toUpdate) {
             batch.replace(_db.mediaAssets, companion);
           }
         });
-        _log.info('成功新增或更新了 ${toUpsert.length} 条媒体资源记录。');
+        _log.info('成功更新了 ${toUpdate.length} 条媒体资源记录。');
       }
+
       if (toDelete.isNotEmpty) {
-        await (_db.delete(_db.mediaAssets)..where((tbl) => tbl.id.isIn(toDelete))).go();
-        _log.info('根据矩阵规则，永久删除了 ${toDelete.length} 条“仅云上”的记录。');
+        await (_db.delete(
+          _db.mediaAssets,
+        )..where((tbl) => tbl.id.isIn(toDelete))).go();
+        _log.info('根据矩阵规则，永久删除了 ${toDelete.length} 条记录。');
       }
     });
-     _log.info('增量变更应用完成。');
+    _log.info('增量变更应用完成。');
   }
 
   // 从 Changelog 解析出对应的云端事件
@@ -317,7 +344,6 @@ class MediaStorageAdapter extends StorageAdapter {
       return _CloudEvent.created;
     }
     return _CloudEvent.updated;
-    
   }
 
   MediaAssetsCompanion _changelogToCompanion(Changelog change) {
@@ -343,9 +369,11 @@ class MediaStorageAdapter extends StorageAdapter {
       height: Value(parseInt(payload['height'])),
       durationSec: Value(parseInt(payload['duration'])),
       // 如果云端没有提供 created_at，则使用当前时间作为备用
-      createdAt: Value(payload['created_at'] != null
-          ? DateTime.parse(payload['created_at'] as String)
-          : DateTime.now()),
+      createdAt: Value(
+        payload['created_at'] != null
+            ? DateTime.parse(payload['created_at'] as String)
+            : DateTime.now(),
+      ),
       updatedAt: Value(DateTime.now()),
       // 根据 payload 'deleted' 字段设置生命周期状态
       // lifecycleState: Value(
