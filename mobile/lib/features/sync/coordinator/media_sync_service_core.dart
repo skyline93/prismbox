@@ -7,7 +7,6 @@ import 'package:drift/drift.dart';
 import 'package:mobile/features/sync/handlers/asset_action_handler.dart';
 import 'package:mobile/features/sync/isolate/sync_isolate.dart';
 import 'package:mobile/features/sync/synchronizers/album_synchronizer.dart';
-import 'package:mobile/features/sync/synchronizers/cloud_media_synchronizer.dart';
 import 'package:mobile/features/sync/synchronizers/local_media_synchronizer.dart';
 import 'package:mobile/constants/settings_keys.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
@@ -16,7 +15,6 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 class MediaSyncServiceCore {
   final SendPort _mainSendPort; // 用于向主 Isolate 发送状态更新
   final LocalMediaSynchronizer _localSync;
-  final CloudMediaSynchronizer _cloudSync;
   final AlbumSynchronizer _albumSync;
   final AssetActionHandler _actionHandler;
   final UserSettingDao _userSettingDao;
@@ -28,7 +26,6 @@ class MediaSyncServiceCore {
   MediaSyncServiceCore(
     @factoryParam SendPort mainSendPort,
     this._localSync,
-    this._cloudSync,
     this._albumSync,
     this._actionHandler,
     AppDatabase db,

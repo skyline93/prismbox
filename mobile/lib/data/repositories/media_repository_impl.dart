@@ -219,7 +219,7 @@ class MediaRepositoryImpl implements MediaRepository {
 
     for (final asset in assets) {
       switch (asset.syncStatus) {
-        case SyncStatus.localOnlyNotSelected:
+        case SyncStatus.localOnly:
           localOnlyAssets.add(asset);
           break;
         case SyncStatus.cloudOnly:

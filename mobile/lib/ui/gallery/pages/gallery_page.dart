@@ -311,7 +311,7 @@ class GalleryPage extends HookConsumerWidget {
         );
       case SyncStatus.downloading:
         return buildInProgressIndicator('下载中...', icon: Icons.download);
-      case SyncStatus.localOnlyNotSelected:
+      case SyncStatus.localOnly:
         return IconButton(
           icon: const Icon(Icons.cloud_upload_outlined),
           tooltip: '上传到云端',

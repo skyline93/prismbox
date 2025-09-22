@@ -186,7 +186,7 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       final potentialMatches = assetsByHash[contentHash] ?? [];
 
       final assetToMerge = potentialMatches.firstWhereOrNull(
-        (asset) => asset.syncStatus == SyncStatus.localOnlyNotSelected,
+        (asset) => asset.syncStatus == SyncStatus.localOnly,
       );
 
       if (assetToMerge != null) {

@@ -116,7 +116,7 @@ class AssetActionHandler {
       await _mediaAssetDao.insertMediaAsset(
         companion.copyWith(
           contentHash: Value(contentHash),
-          syncStatus: const Value(SyncStatus.localOnlyNotSelected),
+          syncStatus: const Value(SyncStatus.localOnly),
           isRAW: Value(isRaw),
         ),
       );
@@ -214,7 +214,7 @@ class AssetActionHandler {
     }
     return MediaAssetsCompanion.insert(
       localId: Value(asset.id),
-      syncStatus: SyncStatus.localOnlyNotSelected,
+      syncStatus: SyncStatus.localOnly,
       // Default status is set by the calling method
       assetType: asset.type == AssetType.video
           ? MediaType.video

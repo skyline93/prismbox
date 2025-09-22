@@ -31,7 +31,7 @@ class SyncStatusIcon extends StatelessWidget {
         );
       case SyncStatus.error:
         return _buildIconWithBackground(Icons.error_outline, Colors.redAccent);
-      case SyncStatus.localOnlyNotSelected:
+      case SyncStatus.localOnly:
         return const SizedBox.shrink();
     }
   }

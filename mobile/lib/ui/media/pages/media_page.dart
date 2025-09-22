@@ -6,8 +6,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/ui/media/widgets/media_body.dart';
 import 'package:mobile/ui/media/widgets/media_selection_drawer.dart';
-import 'package:mobile/core/service_locator.dart';
-import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
 import 'package:mobile/features/replicator/media_sync_provider.dart';
 
 @RoutePage()

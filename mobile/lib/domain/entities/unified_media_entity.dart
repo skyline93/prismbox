@@ -62,8 +62,8 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       // 这个 id 不应该被用于任何持久化操作。
       id: 0,
 
-      // 这个实体只存在于本地，且尚未同步，所以状态是 localOnlyNotSelected
-      syncStatus: SyncStatus.localOnlyNotSelected,
+      // 这个实体只存在于本地，且尚未同步，所以状态是 localOnly
+      syncStatus: SyncStatus.localOnly,
 
       // 填充来自 AssetEntity 的字段
       localId: asset.id,

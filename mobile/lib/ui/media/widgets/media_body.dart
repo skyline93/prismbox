@@ -8,8 +8,6 @@ import 'package:mobile/ui/media/widgets/media_body_timeline.dart';
 import 'package:mobile/ui/media/widgets/media_body_empty.dart';
 import 'package:mobile/ui/media/widgets/media_body_error.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/core/service_locator.dart';
-import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
 import 'package:mobile/features/replicator/media_sync_provider.dart';
 
 class MediaBody extends HookConsumerWidget {
