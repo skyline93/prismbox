@@ -77,6 +77,7 @@ class UploadService {
         headers: {'Authorization': 'Bearer $accessToken'},
         group: 'uploads',
         displayName: filename, // Name used for notifications
+        priority: 1,
       );
       tasks.add(task);
     }

@@ -21,6 +21,7 @@ class DownloadService {
             filename: asset.originalFilename,
             directory: directoryPath,
             group: 'downloads',
+            priority: 0,
           ),
         )
         .toList();

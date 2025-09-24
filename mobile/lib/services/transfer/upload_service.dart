@@ -292,6 +292,7 @@ class UploadService {
         metaData: jsonEncode({'jobId': jobId, 'assetId': assetId}),
         updates: Updates.statusAndProgress,
         displayName: filename,
+        priority: 1,
       );
 
       await FileDownloader().enqueue(task);

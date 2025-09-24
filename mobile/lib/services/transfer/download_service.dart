@@ -232,6 +232,7 @@ class DownloadService {
         updates: Updates.statusAndProgress,
         requiresWiFi: false,
         metaData: jsonEncode({'mediaUuid': mediaUuid, 'itemType': itemType}),
+        priority: 0,
       );
 
       final result = await FileDownloader().enqueue(task);
