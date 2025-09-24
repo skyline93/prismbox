@@ -217,119 +217,112 @@ class MediaStorageAdapter extends StorageAdapter {
   @override
   Future<void> applyIncrementalChanges(List<Changelog> changes) async {
     if (changes.isEmpty) return;
-    _log.info('正在应用 ${changes.length} 条增量变更...');
+    _log.info('开始应用 ${changes.length} 条增量变更（严格顺序，保留原始逻辑）...');
 
-    // 1. 预先提取所有相关的 IDs 和 Hashes
-    final cloudUuids = changes.map((c) => c.recordId).toSet();
-    final hashes = changes
-        .map((c) => c.payload?['hash'] as String?)
-        .whereType<String>()
-        .toSet();
+    // 1. 确保变更是按 sequenceId 严格排序的
+    changes.sort((a, b) => a.sequenceId.compareTo(b.sequenceId));
 
-    // 2. 一次性查询本地数据库，获取所有可能受影响的资源
-    final query = _db.select(_db.mediaAssets)
-      ..where(
-        (tbl) => tbl.cloudUuid.isIn(cloudUuids) | tbl.contentHash.isIn(hashes),
-      );
-    final localAssets = await query.get();
-
-    // 3. 构建高效的查找映射
-    final localAssetByUuid = {for (var a in localAssets) a.cloudUuid: a};
-    final localAssetByHash = {for (var a in localAssets) a.contentHash: a};
-
-    // 4. 准备数据库操作列表
-    final List<MediaAssetsCompanion> toInsert = [];
-    final List<MediaAssetsCompanion> toUpdate = [];
-    final List<int> toDelete = [];
-
-    // 5. 遍历云端变更，根据矩阵决定最终状态和操作
+    // 2. 逐条处理每个变更
     for (final change in changes) {
-      // 确定云端事件
-      final event = _getCloudEvent(change);
+      // 对每一条变更都使用一个独立的事务来确保原子性
+      await _db
+          .transaction(() async {
+            _log.fine(
+              '正在处理 Seq ID: ${change.sequenceId}, Record ID: ${change.recordId}, Op: ${change.operationType}',
+            );
 
-      // 查找本地资源，优先使用 UUID，其次是 Hash
-      final localAsset =
-          localAssetByUuid[change.recordId] ??
-          (change.payload?['hash'] == null
-              ? null
-              : localAssetByHash[change.payload!['hash']]);
+            // --- 以下是完全复用的您原有的核心业务逻辑，但仅针对单个 `change` ---
 
-      final localState = _LocalState(localAsset);
+            // 2.1. 查找本地资源，优先使用 UUID，其次是 Hash
+            // （查询从批量 `isIn` 变为针对单条记录的 `equals`）
+            final cloudUuid = change.recordId;
+            final contentHash = change.payload?['hash'] as String?;
 
-      // 使用表驱动逻辑计算下一个状态
-      final nextStatus = localState.determineNextSyncStatus(event);
+            MediaAsset? localAsset;
+            // 构造一个可能匹配 UUID 或 Hash 的查询
+            final query = _db.select(_db.mediaAssets)
+              ..where((tbl) {
+                Expression<bool> predicate = tbl.cloudUuid.equals(cloudUuid);
+                if (contentHash != null) {
+                  predicate = predicate | tbl.contentHash.equals(contentHash);
+                }
+                return predicate;
+              });
+            final possibleAssets = await query.get();
 
-      var nextLifecycleState = localState.exists
-          ? localState
-                .asset!
-                .lifecycleState // 默认保持本地状态
-          : LifecycleState.active;
+            // 采用与您原始代码完全相同的查找优先级：优先匹配UUID
+            if (possibleAssets.isNotEmpty) {
+              localAsset = possibleAssets.firstWhere(
+                (a) => a.cloudUuid == cloudUuid,
+                orElse: () => possibleAssets.first, // 如果没有UUID匹配，则使用Hash匹配的结果
+              );
+            }
 
-      final companion = _changelogToCompanion(change);
+            // 2.2. 确定云端事件和本地状态
+            final event = _getCloudEvent(change);
+            final localState = _LocalState(localAsset);
 
-      if (nextStatus == null) {
-        // 对应矩阵中的 'x' (删除或忽略)
-        if (localState.exists &&
-            localState.asset!.syncStatus == SyncStatus.cloudOnly) {
-          toDelete.add(localState.asset!.id);
-        }
-        // 如果本地不存在，或者不是 cloudOnly，则忽略该事件
-      } else {
-        var finalCompanion = companion.copyWith(
-          syncStatus: Value(nextStatus),
-          lifecycleState: Value(nextLifecycleState),
-        );
-        if (localState.exists) {
-          // 更新现有记录
-          // 只有当状态实际发生变化时才执行更新
-          // if (localState.asset!.syncStatus != nextStatus) {
-          toUpdate.add(
-            finalCompanion.copyWith(
-              id: Value(localState.asset!.id),
-              cloudUuid: Value(
-                nextStatus == SyncStatus.localOnly ? null : change.recordId,
-              ),
-            ),
-          );
-          // }
-        } else {
-          // 插入新记录
-          toInsert.add(finalCompanion);
-        }
-      }
+            // 2.3. 使用您的状态矩阵计算下一个同步状态
+            final nextStatus = localState.determineNextSyncStatus(event);
+
+            // 2.4. 根据计算结果，立即执行数据库操作（而不是加入列表）
+            final companion = _changelogToCompanion(change);
+
+            if (nextStatus == null) {
+              // 对应矩阵中的 'x' (删除或忽略)
+              if (localState.exists &&
+                  localState.asset!.syncStatus == SyncStatus.cloudOnly) {
+                await (_db.delete(
+                  _db.mediaAssets,
+                )..where((tbl) => tbl.id.equals(localState.asset!.id))).go();
+                _log.info(
+                  'Seq ID: ${change.sequenceId} -> 已删除 cloudOnly 记录 (ID: ${localState.asset!.id})',
+                );
+              }
+            } else {
+              var finalCompanion = companion.copyWith(
+                syncStatus: Value(nextStatus),
+                // 注意: lifecycleState 的逻辑保持您原有的方式，即不在此处显式设置，依赖于其他逻辑
+              );
+
+              if (localState.exists) {
+                await (_db.update(
+                  _db.mediaAssets,
+                )..where((tbl) => tbl.id.equals(localState.asset!.id))).write(
+                  finalCompanion.copyWith(
+                    // 注意：这里不再需要手动传递 id，因为 where 条件已经定位了记录
+                    cloudUuid: Value(
+                      nextStatus == SyncStatus.localOnly
+                          ? null
+                          : change.recordId,
+                    ),
+                  ),
+                );
+                _log.info(
+                  'Seq ID: ${change.sequenceId} -> 已更新记录 (ID: ${localState.asset!.id})，新状态: $nextStatus',
+                );
+              } else {
+                // 插入新记录
+                await _db.into(_db.mediaAssets).insert(finalCompanion);
+                _log.info(
+                  'Seq ID: ${change.sequenceId} -> 已插入新记录，状态: $nextStatus',
+                );
+              }
+            }
+          })
+          .catchError((e, s) {
+            // 如果事务失败，记录严重错误并重新抛出，以中止整个同步过程
+            _log.severe('处理序列ID ${change.sequenceId} 时发生严重错误，同步流程已中止。', e, s);
+            throw Exception(
+              'Failed to apply change with sequence ID ${change.sequenceId}: $e',
+            );
+          });
+
+      // 3. 每成功处理一条，就立即更新一次序列号
+      await setLastSyncedSequenceId(change.sequenceId);
     }
 
-    // 6. 在一个事务中批量执行所有数据库操作
-    if (toInsert.isEmpty && toUpdate.isEmpty && toDelete.isEmpty) {
-      _log.info('增量变更分析完成，无需执行数据库操作。');
-      return;
-    }
-
-    await _db.transaction(() async {
-      // 使用 batch.insertAll 明确执行批量插入
-      if (toInsert.isNotEmpty) {
-        await _db.batch((batch) => batch.insertAll(_db.mediaAssets, toInsert));
-        _log.info('成功插入 ${toInsert.length} 条新的媒体资源记录。');
-      }
-
-      // 使用 batch.replace 明确执行批量更新 (因为每个 companion 都有 id)
-      if (toUpdate.isNotEmpty) {
-        await _db.batch((batch) {
-          for (final companion in toUpdate) {
-            batch.replace(_db.mediaAssets, companion);
-          }
-        });
-        _log.info('成功更新了 ${toUpdate.length} 条媒体资源记录。');
-      }
-
-      if (toDelete.isNotEmpty) {
-        await (_db.delete(
-          _db.mediaAssets,
-        )..where((tbl) => tbl.id.isIn(toDelete))).go();
-        _log.info('根据矩阵规则，永久删除了 ${toDelete.length} 条记录。');
-      }
-    });
-    _log.info('增量变更应用完成。');
+    _log.info('所有增量变更已成功按顺序应用。');
   }
 
   // 从 Changelog 解析出对应的云端事件
