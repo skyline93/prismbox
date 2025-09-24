@@ -15,6 +15,26 @@ class TransferManager {
   TransferManager(this._downloadService, this._uploadService);
 
   Future<void> initialize() async {
+    // 检查当前的通知权限状态.
+    final permissionStatus = await FileDownloader().permissions.status(
+      PermissionType.notifications,
+    );
+    _log.info('Current notification permission status is $permissionStatus');
+
+    // 如果权限不是“已授予”，则向用户发起请求.
+    // 这会触发一个系统级别的弹窗.
+    if (permissionStatus != PermissionStatus.granted) {
+      _log.info('Requesting notification permission from the user...');
+      final newStatus = await FileDownloader().permissions.request(
+        PermissionType.notifications,
+      );
+      _log.info('Notification permission status after request: $newStatus');
+      // 如果用户拒绝，可以考虑给出提示，但不应强迫.
+      if (newStatus != PermissionStatus.granted) {
+        _log.warning('User did not grant notification permission.');
+      }
+    }
+
     // 1) plugin 配置：使用 record 列表传入 global/android 配置
     final configResult = await FileDownloader().configure(
       globalConfig: [

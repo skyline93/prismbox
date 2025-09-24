@@ -2,6 +2,8 @@ PODS:
   - Flutter (1.0.0)
   - flutter_isolate (0.0.1):
     - Flutter
+  - flutter_secure_storage (6.0.0):
+    - Flutter
   - photo_manager (3.7.1):
     - Flutter
     - FlutterMacOS
@@ -11,6 +13,7 @@ PODS:
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_isolate (from `.symlinks/plugins/flutter_isolate/ios`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - photo_manager (from `.symlinks/plugins/photo_manager/ios`)
   - workmanager_apple (from `.symlinks/plugins/workmanager_apple/ios`)
 
@@ -19,6 +22,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_isolate:
     :path: ".symlinks/plugins/flutter_isolate/ios"
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
   photo_manager:
     :path: ".symlinks/plugins/photo_manager/ios"
   workmanager_apple:
@@ -27,6 +32,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_isolate: ca1a284bbb8dcfeb26c4764794e0206f58ffa984
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   photo_manager: 1d80ae07a89a67dfbcae95953a1e5a24af7c3e62
   workmanager_apple: 904529ae31e97fc5be632cf628507652294a0778
 
