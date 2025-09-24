@@ -293,6 +293,7 @@ class UploadService {
         updates: Updates.statusAndProgress,
         displayName: filename,
         priority: 1,
+        group: 'upload',
       );
 
       await FileDownloader().enqueue(task);

@@ -15,9 +15,59 @@ class TransferManager {
   TransferManager(this._downloadService, this._uploadService);
 
   Future<void> initialize() async {
-    await FileDownloader().configure(
-      androidConfig: [('logLevel', 'verbose'), ('network', 'any')],
+    // 1) plugin 配置：使用 record 列表传入 global/android 配置
+    final configResult = await FileDownloader().configure(
+      globalConfig: [
+        // 要在后台显示前台服务通知（Android）时通常设置 runInForeground
+        (Config.runInForeground, Config.always),
+        // 当文件较大时也可强制前台模式（可选，单位字节）
+        (Config.runInForegroundIfFileLargerThan, 5 * 1024 * 1024),
+      ],
+      androidConfig: [
+        // 本地化通知 channel 名称/描述（可选）
+        (
+          Config.localize,
+          {
+            'bg_downloader_notification_channel_name': '文件传输',
+            'bg_downloader_notification_channel_description': '后台上传/下载任务',
+            'bg_downloader_cancel': '取消',
+            'bg_downloader_pause': '暂停',
+            'bg_downloader_resume': '继续',
+          },
+        ),
+        // Android 平台也再次确保运行前台服务
+        (Config.runInForeground, Config.always),
+      ],
     );
+    _log.info('FileDownloader.configure returned: $configResult');
+
+    // 2) 通用的通知样式（影响所有任务 / 除非单独为 group/task 覆盖）
+    FileDownloader().configureNotification(
+      running: TaskNotification('传输中', '{displayName} — {progress}'),
+      complete: TaskNotification('传输完成', '{displayName}'),
+      error: TaskNotification('传输失败', '{displayName}'),
+      paused: TaskNotification('已暂停', '{displayName}'),
+      canceled: TaskNotification('已取消', '{displayName}'),
+      progressBar: true,
+      // tapOpensFile: false // 若希望点击由自己处理，可设为 false 并注册回调
+    );
+
+    // 3) 注册通知点击回调（可选：点击通知打开文件或打开 app 的特定页面）
+    FileDownloader().registerCallbacks(
+      taskNotificationTapCallback: (task, type) async {
+        _log.info('通知被点击: taskId=${task.taskId}, type=$type');
+        try {
+          if (type == NotificationType.complete) {
+            // 尝试打开文件（可根据需要改成跳转到 app 页面）
+            await FileDownloader().openFile(task: task);
+          }
+        } catch (e) {
+          _log.warning('打开文件失败: $e');
+        }
+      },
+    );
+
+    // 4) 启动并监听更新（start 需要在 configure/notification 后启动）
     await FileDownloader().start();
     FileDownloader().updates.listen(_onTaskUpdate);
     _log.info("TransferManager initialized and listening for updates.");
