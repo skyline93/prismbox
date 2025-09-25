@@ -129,6 +129,17 @@ class RemoteMediaDataSource {
     }
   }
 
+  Future<String> getThumbnailUrl(String uuid) async {
+    try {
+      // 我们可以优化这个调用，如果 thumbnail URL 可以直接拼接，就不需要先获取详情
+      // 但为了保持与现有逻辑一致，我们先调用 getMediaDetail
+      final mediaItem = await getMediaDetail(uuid);
+      return mediaItem.thumbnailUrl;
+    } on DioException catch (e) {
+      throw _handleDioError(e, '获取缩略图URL');
+    }
+  }
+
   Future<MediaResponse> getMediaDetail(String uuid) async {
     try {
       final response = await _dio.get('$baseUrl/media/$uuid');

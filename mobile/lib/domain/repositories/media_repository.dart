@@ -11,6 +11,8 @@ abstract class MediaRepository {
 
   Future<Uint8List> downloadThumbnail(String uuid);
 
+  Future<String> getThumbnailUrl(String uuid);
+
   Future<Uint8List> downloadPreview(String uuid);
 
   Stream<UnifiedMediaEntity> watchMediaEntity(int id);

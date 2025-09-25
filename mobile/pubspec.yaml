@@ -92,6 +92,8 @@ dependencies:
   flutter_replicator:
     path: ./packages/flutter_replicator
   flutter_secure_storage: ^9.2.4
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
 
 dev_dependencies:
   flutter_test:

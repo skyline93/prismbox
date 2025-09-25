@@ -37,13 +37,13 @@ class AlbumItemWidget extends ConsumerWidget {
 
     return thumbnailAsyncValue.when(
       data: (imageData) {
-        if (imageData != null) {
-          return Image.memory(
-            imageData,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          );
-        }
+        // if (imageData != null) {
+        //   return Image.memory(
+        //     imageData,
+        //     fit: BoxFit.cover,
+        //     gaplessPlayback: true,
+        //   );
+        // }
         return _buildPlaceholder(context); // 图片数据为空
       },
       loading: () => _buildPlaceholder(context), // 正在加载图片数据

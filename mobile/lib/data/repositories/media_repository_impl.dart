@@ -47,6 +47,11 @@ class MediaRepositoryImpl implements MediaRepository {
   }
 
   @override
+  Future<String> getThumbnailUrl(String uuid) {
+    return _cloudDataSource.getThumbnailUrl(uuid);
+  }
+
+  @override
   Future<Uint8List> downloadPreview(String uuid) async {
     return _cloudDataSource.downloadPreviewMedia(uuid);
   }

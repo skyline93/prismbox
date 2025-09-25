@@ -68,10 +68,8 @@ class MediaItem extends ConsumerWidget {
                 children: [
                   // 图片本体
                   thumbnailAsyncValue.when(
-                    data: (thumbnailData) => MediaItemThumbnail(
-                      thumbnailData: thumbnailData,
-                      entity: entity,
-                    ),
+                    data: (strategy) =>
+                        MediaItemThumbnail(strategy: strategy, entity: entity),
                     loading: () => MediaItemPlaceholder(
                       icon: entity.isVideo ? Icons.videocam : Icons.image,
                     ),
