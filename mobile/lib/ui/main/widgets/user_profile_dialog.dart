@@ -187,6 +187,12 @@ class UserProfileDialog extends HookConsumerWidget {
                   leading: const Icon(Icons.settings_outlined),
                   title: const Text('设置'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () {
+                    // Close the dialog before navigating
+                    context.router.pop();
+                    // Navigate to the new Settings page
+                    context.router.push(const SettingsRoute());
+                  },
                 ),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),

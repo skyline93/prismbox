@@ -88,7 +88,7 @@ class AppInitService {
     final userSettingDao = getIt<AppDatabase>().userSettingDao;
     final isInitialSyncComplete =
         await userSettingDao.getSetting(
-          SettingKeys.initialReconciliationComplete,
+          SettingsKeys.initialReconciliationComplete,
         ) ==
         'true';
 

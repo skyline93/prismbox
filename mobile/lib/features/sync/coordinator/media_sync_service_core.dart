@@ -106,7 +106,7 @@ class MediaSyncServiceCore {
       // =======================================================
       await _userSettingDao.upsertSetting(
         UserSettingsCompanion(
-          key: const Value(SettingKeys.initialReconciliationComplete),
+          key: const Value(SettingsKeys.initialReconciliationComplete),
           value: const Value('true'),
         ),
       );

@@ -1,3 +1,5 @@
+// lib/data/datasources/local_db/tables/user_settings.dart
+
 import 'package:drift/drift.dart';
 
 @DataClassName('UserSetting')
