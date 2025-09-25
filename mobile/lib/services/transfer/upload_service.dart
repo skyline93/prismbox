@@ -35,10 +35,22 @@ class UploadService {
   final _log = Logger('UploadService');
   final _uuid = const Uuid();
 
+  // --- ADDED ---
+  // 持有从 TransferManager 传入的任务队列
+  late final MemoryTaskQueue _taskQueue;
+  // --- END ADDED ---
+
   UploadService(AppDatabase db, this._secureStorageService)
     : _db = db,
       _uploadJobDao = db.uploadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
+
+  // --- ADDED ---
+  // 用于接收 TransferManager 传递的队列实例
+  void setTaskQueue(MemoryTaskQueue queue) {
+    _taskQueue = queue;
+  }
+  // --- END ADDED ---
 
   Future<void> enqueueMultipleJobs(List<UploadTaskPayload> tasks) async {
     _log.info('开始批量入队 ${tasks.length} 个上传任务。');
@@ -296,7 +308,11 @@ class UploadService {
         group: 'upload',
       );
 
-      await FileDownloader().enqueue(task);
+      // --- CHANGED ---
+      // 将任务添加到上传队列中
+      _taskQueue.add(task);
+      // --- END CHANGED ---
+
       _log.info('已将任务 $jobId (资源 $assetId) 的单文件上传任务加入队列。');
     } catch (e, st) {
       _log.severe('处理上传任务 $jobId (资源 $assetId) 时出错', e, st);

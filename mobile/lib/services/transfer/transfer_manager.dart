@@ -12,11 +12,33 @@ class TransferManager {
   final UploadService _uploadService;
   final _log = Logger('TransferManager');
 
+  // 持有一个 FileDownloader 单例，确保整个应用使用同一个实例
+  final _downloader = FileDownloader();
+  // 为下载和上传分别创建任务队列
+  final _downloadQueue = MemoryTaskQueue();
+  final _uploadQueue = MemoryTaskQueue();
+
   TransferManager(this._downloadService, this._uploadService);
 
   Future<void> initialize() async {
+    // 1) 配置队列的并发限制
+    _downloadQueue.maxConcurrent = 3; // 最多同时下载3个文件
+    _uploadQueue.maxConcurrent = 2; // 最多同时上传2个文件（上传通常更耗资源）
+    _log.info(
+      'Task queues configured: Downloads maxConcurrent=3, Uploads maxConcurrent=2',
+    );
+
+    // 2) 将队列注册到下载器，以便任务完成后能收到通知
+    _downloader.addTaskQueue(_downloadQueue);
+    _downloader.addTaskQueue(_uploadQueue);
+
+    // 3) 将队列实例传递给对应的服务
+    _downloadService.setTaskQueue(_downloadQueue);
+    _uploadService.setTaskQueue(_uploadQueue);
+    _log.info('Task queues have been set for Download and Upload services.');
+
     // 检查当前的通知权限状态.
-    final permissionStatus = await FileDownloader().permissions.status(
+    final permissionStatus = await _downloader.permissions.status(
       PermissionType.notifications,
     );
     _log.info('Current notification permission status is $permissionStatus');
@@ -25,7 +47,7 @@ class TransferManager {
     // 这会触发一个系统级别的弹窗.
     if (permissionStatus != PermissionStatus.granted) {
       _log.info('Requesting notification permission from the user...');
-      final newStatus = await FileDownloader().permissions.request(
+      final newStatus = await _downloader.permissions.request(
         PermissionType.notifications,
       );
       _log.info('Notification permission status after request: $newStatus');
@@ -36,7 +58,7 @@ class TransferManager {
     }
 
     // 1) plugin 配置：使用 record 列表传入 global/android 配置
-    final configResult = await FileDownloader().configure(
+    final configResult = await _downloader.configure(
       globalConfig: [
         // 要在后台显示前台服务通知（Android）时通常设置 runInForeground
         (Config.runInForeground, Config.always),
@@ -62,7 +84,7 @@ class TransferManager {
     _log.info('FileDownloader.configure returned: $configResult');
 
     // 2) 通用的通知样式（影响所有任务 / 除非单独为 group/task 覆盖）
-    FileDownloader().configureNotification(
+    _downloader.configureNotification(
       running: TaskNotification('传输中', '{displayName} — {progress}'),
       complete: TaskNotification('传输完成', '{displayName}'),
       error: TaskNotification('传输失败', '{displayName}'),
@@ -73,13 +95,13 @@ class TransferManager {
     );
 
     // 3) 注册通知点击回调（可选：点击通知打开文件或打开 app 的特定页面）
-    FileDownloader().registerCallbacks(
+    _downloader.registerCallbacks(
       taskNotificationTapCallback: (task, type) async {
         _log.info('通知被点击: taskId=${task.taskId}, type=$type');
         try {
           if (type == NotificationType.complete) {
             // 尝试打开文件（可根据需要改成跳转到 app 页面）
-            await FileDownloader().openFile(task: task);
+            await _downloader.openFile(task: task);
           }
         } catch (e) {
           _log.warning('打开文件失败: $e');
@@ -88,9 +110,40 @@ class TransferManager {
     );
 
     // 4) 启动并监听更新（start 需要在 configure/notification 后启动）
-    await FileDownloader().start();
-    FileDownloader().updates.listen(_onTaskUpdate);
+    await _downloader.start();
+    _downloader.updates.listen(_onTaskUpdate);
     _log.info("TransferManager initialized and listening for updates.");
+  }
+
+  /// 动态更新上传和下载的并发限制
+  ///
+  /// [downloadLimit] - 新的下载并发数。如果为 null，则不改变。
+  /// [uploadLimit] - 新的上传并发数。如果为 null，则不改变。
+  void updateConcurrencyLimits({int? downloadLimit, int? uploadLimit}) {
+    if (downloadLimit != null) {
+      final oldLimit = _downloadQueue.maxConcurrent;
+      _downloadQueue.maxConcurrent = downloadLimit;
+      _log.info(
+        'Download concurrency limit changed from $oldLimit to $downloadLimit',
+      );
+      // 如果新限制大于旧限制，主动触发一次队列推进，
+      // 以便立即开始新的任务（如果队列中有等待的任务）。
+      if (downloadLimit > oldLimit) {
+        _downloadQueue.advanceQueue();
+      }
+    }
+
+    if (uploadLimit != null) {
+      final oldLimit = _uploadQueue.maxConcurrent;
+      _uploadQueue.maxConcurrent = uploadLimit;
+      _log.info(
+        'Upload concurrency limit changed from $oldLimit to $uploadLimit',
+      );
+      // 同样，如果新限制变大，主动触发队列
+      if (uploadLimit > oldLimit) {
+        _uploadQueue.advanceQueue();
+      }
+    }
   }
 
   void _onTaskUpdate(dynamic update) {

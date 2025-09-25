@@ -25,9 +25,17 @@ class DownloadService {
   final _log = Logger('DownloadService');
   final _uuid = const Uuid();
 
+  // 持有从 TransferManager 传入的任务队列
+  late final MemoryTaskQueue _taskQueue;
+
   DownloadService(AppDatabase db, this._remoteMediaSource)
     : _downloadJobDao = db.downloadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
+
+  // 用于接收 TransferManager 传递的队列实例
+  void setTaskQueue(MemoryTaskQueue queue) {
+    _taskQueue = queue;
+  }
 
   Future<void> handleDownloadStatusUpdate(
     DownloadTask task,
@@ -235,20 +243,19 @@ class DownloadService {
         priority: 0,
       );
 
-      final result = await FileDownloader().enqueue(task);
-      if (result) {
-        await _downloadJobDao.updateJob(
-          DownloadJobsCompanion(
-            jobId: d.Value(jobId),
-            taskId: d.Value(task.taskId),
-          ),
-        );
-        _log.info(
-          'Task enqueued with taskId: ${task.taskId} for jobId: $jobId',
-        );
-      } else {
-        throw Exception('FileDownloader failed to enqueue the task.');
-      }
+      // 将任务添加到我们自己的队列中，由队列来管理并发和调用 enqueue
+      _taskQueue.add(task);
+
+      // 任务ID在创建Task对象时就已经生成了，直接用于更新数据库
+      await _downloadJobDao.updateJob(
+        DownloadJobsCompanion(
+          jobId: d.Value(jobId),
+          taskId: d.Value(task.taskId),
+        ),
+      );
+      _log.info(
+        'Task added to download queue with taskId: ${task.taskId} for jobId: $jobId',
+      );
     } catch (e) {
       _log.severe(
         'Failed to create or enqueue download for mediaUuid: $mediaUuid. Error: $e',
