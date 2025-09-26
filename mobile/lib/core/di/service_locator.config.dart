@@ -35,8 +35,6 @@ import '../../features/background_jobs/impl/media_sync/domain/orchestrator.dart'
     as _i91;
 import '../../features/background_jobs/impl/media_sync/domain/synchronizers/album_synchronizer.dart'
     as _i799;
-import '../../features/background_jobs/impl/media_sync/domain/synchronizers/cloud_media_synchronizer.dart'
-    as _i48;
 import '../../features/background_jobs/impl/media_sync/domain/synchronizers/local_media_synchronizer.dart'
     as _i137;
 import '../../features/background_jobs/impl/media_sync/service/media_sync_service.dart'
@@ -120,10 +118,6 @@ Future<_i174.GetIt> init(
         cloudDataSource: gh<_i200.RemoteMediaDataSource>(),
         db: gh<_i870.AppDatabase>(),
         localMediaSource: gh<_i273.LocalMediaDataSource>(),
-      ));
-  gh.factory<_i48.CloudMediaSynchronizer>(() => _i48.CloudMediaSynchronizer(
-        gh<_i200.RemoteMediaDataSource>(),
-        gh<_i446.SyncStateService>(),
       ));
   gh.lazySingleton<_i271.UserRepository>(
       () => _i790.UserRepositoryImpl(gh<_i663.UserApiService>()));
