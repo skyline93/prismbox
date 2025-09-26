@@ -1,7 +1,7 @@
 // lib/providers/transfer_providers.dart
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/transfer/transfer_manager.dart';
 

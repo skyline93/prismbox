@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:tuple/tuple.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/data/models/group/group_models.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/repositories/group_repository.dart';

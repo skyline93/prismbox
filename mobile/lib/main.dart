@@ -6,7 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 import 'package:storage_inspector/storage_inspector.dart';
 import 'package:drift_local_storage_inspector/drift_local_storage_inspector.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';

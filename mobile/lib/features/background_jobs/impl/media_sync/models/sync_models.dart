@@ -1,6 +1,22 @@
-// lib/features/sync/models/sync_models.dart
+// lib/features/background_jobs/impl/media_sync/models/sync_models.dart
 
 import 'package:mobile/data/datasources/local_db/app_database.dart';
+
+enum SyncCommand {
+  triggerFullSync,
+  triggerCloudSync,
+  triggerLocalMediaChangeSync,
+  dispose,
+}
+
+enum SyncStatus { idle, syncingLocal, syncingCloud, error }
+
+/// 从 Isolate 发送回来的特定业务进度更新
+class SyncProgressUpdate {
+  final SyncStatus status;
+  final String? message;
+  SyncProgressUpdate(this.status, {this.message});
+}
 
 /// 云端同步器返回的结构化结果
 class CloudSyncResult {

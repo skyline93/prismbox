@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_replicator/flutter_replicator.dart';
 import 'package:logging/logging.dart';
 import 'package:mobile/core/enums.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 
 final mediaTableName = 'media';

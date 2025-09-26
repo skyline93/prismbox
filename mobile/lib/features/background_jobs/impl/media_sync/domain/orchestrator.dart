@@ -1,36 +1,37 @@
-// lib/features/sync/coordinator/media_sync_service_core.dart
+// lib/features/background_jobs/impl/media_sync/coordinator/media_sync_service_core.dart
 
 import 'dart:isolate';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
 import 'package:drift/drift.dart';
-import 'package:mobile/features/sync/handlers/asset_action_handler.dart';
-import 'package:mobile/features/sync/isolate/sync_isolate.dart';
-import 'package:mobile/features/sync/synchronizers/album_synchronizer.dart';
-import 'package:mobile/features/sync/synchronizers/local_media_synchronizer.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/domain/synchronizers/album_synchronizer.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/domain/synchronizers/local_media_synchronizer.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/domain/asset_change_executor.dart';
 import 'package:mobile/constants/settings_keys.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/models/sync_models.dart';
 
 @injectable
-class MediaSyncServiceCore {
-  final SendPort _mainSendPort; // 用于向主 Isolate 发送状态更新
+class MediaSyncOrchestrator {
+  SendPort? _mainSendPort; // 用于向主 Isolate 发送状态更新
   final LocalMediaSynchronizer _localSync;
   final AlbumSynchronizer _albumSync;
-  final AssetActionHandler _actionHandler;
+  final AssetChangeExecutor _assetChangeExecutor;
   final UserSettingDao _userSettingDao;
 
-  final _log = Logger('MediaSyncServiceCore');
+  final _log = Logger('MediaSyncOrchestrator');
   bool _isSyncInProgress = false;
 
-  // 使用 @factoryParam 注入从 Isolate 入口传来的 SendPort
-  MediaSyncServiceCore(
-    @factoryParam SendPort mainSendPort,
+  MediaSyncOrchestrator(
     this._localSync,
     this._albumSync,
-    this._actionHandler,
+    this._assetChangeExecutor,
     AppDatabase db,
-  ) : _mainSendPort = mainSendPort,
-      _userSettingDao = db.userSettingDao;
+  ) : _userSettingDao = db.userSettingDao;
+
+  void setMainSendPort(SendPort port) {
+    _mainSendPort = port;
+  }
 
   /// 统一的命令处理入口
   void handleCommand(SyncCommand command) {
@@ -92,10 +93,12 @@ class MediaSyncServiceCore {
       // =======================================================
       _log.info('Processing local asset changes...');
       if (localResult.newAssetIds.isNotEmpty) {
-        await _actionHandler.handleNewLocalAssets(localResult.newAssetIds);
+        await _assetChangeExecutor.handleNewLocalAssets(
+          localResult.newAssetIds,
+        );
       }
       if (localResult.deletedAssetIds.isNotEmpty) {
-        await _actionHandler.handleDeletedLocalAssets(
+        await _assetChangeExecutor.handleDeletedLocalAssets(
           localResult.deletedAssetIds,
         );
       }
@@ -140,10 +143,12 @@ class MediaSyncServiceCore {
 
       // 2. 处理本地对账结果
       if (localResult.newAssetIds.isNotEmpty) {
-        await _actionHandler.handleNewLocalAssets(localResult.newAssetIds);
+        await _assetChangeExecutor.handleNewLocalAssets(
+          localResult.newAssetIds,
+        );
       }
       if (localResult.deletedAssetIds.isNotEmpty) {
-        await _actionHandler.handleDeletedLocalAssets(
+        await _assetChangeExecutor.handleDeletedLocalAssets(
           localResult.deletedAssetIds,
         );
       }
@@ -206,7 +211,8 @@ class MediaSyncServiceCore {
 
   /// 向主 Isolate 发送状态更新
   void _sendStatus(SyncStatus status, {String? message}) {
-    final state = SyncState(status, message: message);
-    _mainSendPort.send(state);
+    if (_mainSendPort == null) return;
+    final state = SyncProgressUpdate(status, message: message);
+    _mainSendPort!.send(state);
   }
 }

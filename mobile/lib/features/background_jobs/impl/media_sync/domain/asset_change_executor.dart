@@ -1,4 +1,4 @@
-// lib/features/sync/handlers/asset_action_handler.dart
+// lib/features/background_jobs/impl/media_sync/handlers/asset_action_handler.dart
 
 import 'dart:io';
 import 'package:crypto/crypto.dart';
@@ -7,20 +7,20 @@ import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
-import 'package:mobile/features/sync/models/sync_models.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/models/sync_models.dart' hide SyncStatus;
 import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 
 @lazySingleton
-class AssetActionHandler {
+class AssetChangeExecutor {
   // ignore: unused_field
   final AppDatabase _db;
   final MediaAssetDao _mediaAssetDao;
-  final _log = Logger('AssetActionHandler');
+  final _log = Logger('AssetChangeExecutor');
 
-  AssetActionHandler(this._db) : _mediaAssetDao = _db.mediaAssetDao;
+  AssetChangeExecutor(this._db) : _mediaAssetDao = _db.mediaAssetDao;
 
-  /// ---------------------------------------------------------------------------
+  /// --------------------------------------------------------------------------
   /// 处理本地新增的媒体资源
   /// ---------------------------------------------------------------------------
 

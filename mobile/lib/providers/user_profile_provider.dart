@@ -5,7 +5,7 @@ import 'dart:developer';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 
 import 'package:mobile/domain/entities/user_profile_entity.dart';
 import 'package:mobile/domain/repositories/user_repository.dart';

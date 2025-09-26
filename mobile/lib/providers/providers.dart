@@ -7,7 +7,7 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import '../data/repositories/media_repository_impl.dart';
 import '../domain/repositories/media_repository.dart';
 import 'package:mobile/data/datasources/remote_media_source.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/auth/auth_notifier.dart';
 import 'package:mobile/auth/auth_state.dart';

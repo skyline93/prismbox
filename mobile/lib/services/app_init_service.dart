@@ -1,17 +1,18 @@
 // lib/services/app_init_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:mobile/core/service_locator.dart';
+import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/services/transfer/transfer_manager.dart';
-import 'package:mobile/features/sync/coordinator/media_sync_service_proxy.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/constants/settings_keys.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:mobile/features/sync/worker/sync_worker.dart';
-import 'package:photo_manager/photo_manager.dart'; // 1. 导入 photo_manager
+import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/features/replicator/media_sync_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/features/background_jobs/core/task_dispatcher.dart';
+import 'package:mobile/features/background_jobs/core/task_registrar.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/service/media_sync_service.dart'
+    as mss;
 
 class AppInitService {
   static final AppInitService _instance = AppInitService._internal();
@@ -75,15 +76,15 @@ class AppInitService {
     await getIt<TransferManager>().initialize();
     Logger.root.info('TransferManager initialized.');
 
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: kDebugMode,
-    );
+    // ignore: deprecated_member_use
+    await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
     Logger.root.info('Workmanager initialized.');
 
-    final syncService = getIt<MediaSyncServiceProxy>();
-    await syncService.start();
-    Logger.root.info('MediaSyncServiceProxy started.');
+    TaskRegistrar.registerAllTasks();
+
+    final mediaSyncEntryService = getIt<mss.MediaSyncService>();
+    await mediaSyncEntryService.start();
+    Logger.root.info('MediaSyncEntryService started.');
 
     final userSettingDao = getIt<AppDatabase>().userSettingDao;
     final isInitialSyncComplete =
@@ -96,7 +97,7 @@ class AppInitService {
       Logger.root.info(
         'Initial full sync has not been completed. Triggering now...',
       );
-      syncService.triggerFullSync();
+      mediaSyncEntryService.triggerFullSync();
     } else {
       Logger.root.info(
         'Initial full sync already completed. Skipping automatic trigger on startup.',

@@ -1,9 +1,9 @@
-// lib/features/sync/synchronizers/local_media_synchronizer.dart
+// lib/features/background_jobs/impl/media_sync/synchronizers/local_media_synchronizer.dart
 
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
-import 'package:mobile/features/sync/models/sync_models.dart';
+import 'package:mobile/features/background_jobs/impl/media_sync/models/sync_models.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 @lazySingleton
