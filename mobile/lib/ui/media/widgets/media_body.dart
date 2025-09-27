@@ -8,7 +8,7 @@ import 'package:mobile/ui/media/widgets/media_body_timeline.dart';
 import 'package:mobile/ui/media/widgets/media_body_empty.dart';
 import 'package:mobile/ui/media/widgets/media_body_error.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/features/replicator/media_sync_provider.dart';
+import 'package:mobile/features/replicator/cloud_data_replicator_provider.dart';
 
 class MediaBody extends HookConsumerWidget {
   // [NEW] 添加 bottomPadding 属性
@@ -70,10 +70,10 @@ class MediaBody extends HookConsumerWidget {
             EmptyMediaView(
               onSync: () async {
                 // getIt<MediaSyncServiceProxy>().triggerCloudSync();
-                final mediaSyncService = await ref.read(
-                  mediaSyncServiceProvider.future,
+                final cloudDataReplicatorService = await ref.read(
+                  cloudDataReplicatorServiceProvider.future,
                 );
-                await mediaSyncService.syncMediaAssets();
+                await cloudDataReplicatorService.syncMediaAssets();
               },
             ),
           );

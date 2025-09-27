@@ -6,7 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/ui/media/widgets/media_body.dart';
 import 'package:mobile/ui/media/widgets/media_selection_drawer.dart';
-import 'package:mobile/features/replicator/media_sync_provider.dart';
+import 'package:mobile/features/replicator/cloud_data_replicator_provider.dart';
 
 @RoutePage()
 class MediaPage extends HookConsumerWidget {
@@ -33,7 +33,7 @@ class MediaPage extends HookConsumerWidget {
             onRefresh: () async {
               // getIt<MediaSyncServiceProxy>().triggerCloudSync();
               final mediaSyncService = await ref.read(
-                mediaSyncServiceProvider.future,
+                cloudDataReplicatorServiceProvider.future,
               );
               await mediaSyncService.syncMediaAssets();
             },

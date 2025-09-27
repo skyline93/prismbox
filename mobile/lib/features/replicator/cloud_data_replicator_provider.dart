@@ -11,8 +11,8 @@ import 'package:mobile/providers/providers.dart'; // 假设您的 dioClientProvi
 import 'package:mobile/providers/user_profile_provider.dart';
 import 'package:mobile/utils/device_utils.dart';
 
-/// Riverpod Provider，用于创建和提供 MediaSyncService 的单例。
-final mediaSyncServiceProvider = FutureProvider<MediaSyncService>((ref) async {
+/// Riverpod Provider，用于创建和提供 CloudDataReplicatorService 的单例。
+final cloudDataReplicatorServiceProvider = FutureProvider<CloudDataReplicatorService>((ref) async {
   // 1. 按照您提供的范例，从 Riverpod 监听并获取 Dio 实例
   final dio = ref.watch(dioClientProvider).dio;
 
@@ -32,21 +32,21 @@ final mediaSyncServiceProvider = FutureProvider<MediaSyncService>((ref) async {
   // const String deviceId = 'your_actual_device_id'; // TODO: 替换为真实的设备ID
   // const String userId = 'your_actual_user_id'; // TODO: 替换为真实的用户ID
 
-  return MediaSyncService(
+  return CloudDataReplicatorService(
     dio,
     deviceId: info["deviceId"]!,
     userId: '${user.id}',
   );
 });
 
-/// MediaSyncService 负责管理媒体资源的同步流程。
+/// CloudDataReplicatorService 负责管理媒体资源的同步流程。
 /// 它初始化并协调 Replicator 实例来执行与后端的同步。
-class MediaSyncService {
+class CloudDataReplicatorService {
   late final Replicator _replicator;
-  final _log = Logger('MediaSyncService');
+  final _log = Logger('CloudDataReplicatorService');
   bool _isInitialized = false;
 
-  MediaSyncService(
+  CloudDataReplicatorService(
     Dio dio, {
     required String deviceId,
     required String userId,

@@ -7,12 +7,11 @@ import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/constants/settings_keys.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:mobile/features/replicator/media_sync_provider.dart';
+import 'package:mobile/features/replicator/cloud_data_replicator_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/features/background_jobs/core/task_dispatcher.dart';
 import 'package:mobile/features/background_jobs/core/task_registrar.dart';
-import 'package:mobile/features/background_jobs/impl/media_sync/service/media_sync_service.dart'
-    as mss;
+import 'package:mobile/features/background_jobs/impl/media_sync/service/media_sync_service.dart';
 
 class AppInitService {
   static final AppInitService _instance = AppInitService._internal();
@@ -65,9 +64,9 @@ class AppInitService {
 
     Logger.root.info('正在触发启动时的媒体资源同步 (replicator)...');
     try {
-      // 使用 ref.read 来执行一次性操作，获取 MediaSyncService 实例并调用同步方法
-      final mediaSyncService = await ref.read(mediaSyncServiceProvider.future);
-      await mediaSyncService.syncMediaAssets();
+      // 使用 ref.read 来执行一次性操作，获取 CloudDataReplicatorService 实例并调用同步方法
+      final cloudDataReplicatorService = await ref.read(cloudDataReplicatorServiceProvider.future);
+      await cloudDataReplicatorService.syncMediaAssets();
     } catch (e) {
       // 即使同步失败，也不应阻塞应用启动，仅记录错误
       Logger.root.severe('启动时媒体资源同步 (replicator) 失败: $e');
@@ -82,9 +81,9 @@ class AppInitService {
 
     TaskRegistrar.registerAllTasks();
 
-    final mediaSyncEntryService = getIt<mss.MediaSyncService>();
-    await mediaSyncEntryService.start();
-    Logger.root.info('MediaSyncEntryService started.');
+    final mediaSyncService = getIt<MediaSyncService>();
+    await mediaSyncService.start();
+    Logger.root.info('MediaSyncService started.');
 
     final userSettingDao = getIt<AppDatabase>().userSettingDao;
     final isInitialSyncComplete =
@@ -97,7 +96,7 @@ class AppInitService {
       Logger.root.info(
         'Initial full sync has not been completed. Triggering now...',
       );
-      mediaSyncEntryService.triggerFullSync();
+      mediaSyncService.triggerFullSync();
     } else {
       Logger.root.info(
         'Initial full sync already completed. Skipping automatic trigger on startup.',
