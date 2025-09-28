@@ -69,5 +69,9 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>FLTEnableImpeller</key>
+	<true/>
+	<key>FLTEnableWideGamut</key>
+	<true/>
 </dict>
 </plist>
