@@ -8,8 +8,13 @@ import 'package:video_player_hdr/video_player_hdr.dart';
 
 class MediaVideoViewer extends HookConsumerWidget {
   final File videoFile;
+  final VoidCallback onTap;
 
-  const MediaVideoViewer({super.key, required this.videoFile});
+  const MediaVideoViewer({
+    super.key,
+    required this.videoFile,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,33 +44,53 @@ class MediaVideoViewer extends HookConsumerWidget {
       );
     }
 
-    return Center(
-      child: AspectRatio(
-        aspectRatio: controller.value.aspectRatio,
-        child: GestureDetector(
-          onTap: () => controller.value.isPlaying
-              ? controller.pause()
-              : controller.play(),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              VideoPlayerHdr(controller),
-              if (!controller.value.isPlaying)
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.black45,
-                    shape: BoxShape.circle,
+    // --- START: FINAL AND CORRECT SOLUTION ---
+
+    // 使用 GestureDetector 包裹整个 Column，以便在屏幕任何位置（包括上下黑边）
+    // 点击都能触发沉浸式切换。
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onDoubleTap: () {
+        controller.value.isPlaying ? controller.pause() : controller.play();
+      },
+      child: Column(
+        // mainAxisAlignment: MainAxisAlignment.center, // 使用 Spacer 效果更好
+        children: [
+          // 上方的 Spacer，会占据所有可用空间的一部分
+          const Spacer(),
+
+          // AspectRatio 会自动使用 Column 提供的宽度（即屏幕宽度）
+          // 并根据视频的宽高比来确定自己的高度。
+          AspectRatio(
+            aspectRatio: controller.value.aspectRatio,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                VideoPlayerHdr(controller),
+                if (!controller.value.isPlaying)
+                  IgnorePointer(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow,
+                        color: Colors.white,
+                        size: 60,
+                      ),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.play_arrow,
-                    color: Colors.white,
-                    size: 60,
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
+
+          // 下方的 Spacer，会与上方的 Spacer 平分剩余空间
+          const Spacer(),
+        ],
       ),
     );
+    // --- END: FINAL AND CORRECT SOLUTION ---
   }
 }

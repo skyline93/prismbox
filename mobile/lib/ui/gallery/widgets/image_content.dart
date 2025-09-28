@@ -10,8 +10,13 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
 class ImageContent extends ConsumerWidget {
   final UnifiedMediaEntity entity;
+  final VoidCallback onTap; // 新增：接收 onTap 回调
 
-  const ImageContent({super.key, required this.entity});
+  const ImageContent({
+    super.key,
+    required this.entity,
+    required this.onTap, // 新增：在构造函数中接收
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,6 +37,7 @@ class ImageContent extends ConsumerWidget {
           key: ValueKey(entity.id),
           imageProvider: imageProvider,
           heroTag: entity.id.toString(),
+          onTap: onTap, // 新增：将 onTap 回调继续传递给 ImageViewer
         );
       },
       loading: () =>

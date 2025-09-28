@@ -9,8 +9,13 @@ import 'package:mobile/ui/gallery/widgets/video_viewer.dart';
 
 class VideoContent extends ConsumerWidget {
   final UnifiedMediaEntity entity;
+  final VoidCallback onTap; // 新增：接收 onTap 回调
 
-  const VideoContent({super.key, required this.entity});
+  const VideoContent({
+    super.key,
+    required this.entity,
+    required this.onTap, // 新增：在构造函数中接收
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,7 +23,8 @@ class VideoContent extends ConsumerWidget {
 
     return mediaAsyncValue.when(
       data: (mediaData) => mediaData.when(
-        file: (file) => MediaVideoViewer(videoFile: file),
+        // 将 onTap 回调继续传递给 VideoViewer
+        file: (file) => MediaVideoViewer(videoFile: file, onTap: onTap),
         asset: (_) => const ErrorDisplay(
           title: '逻辑错误',
           message: '收到了媒体库资产（Asset），但此处需要一个视频文件（File）。',
