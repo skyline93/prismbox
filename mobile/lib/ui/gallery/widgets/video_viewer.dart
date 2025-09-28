@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:video_player/video_player.dart';
+import 'package:video_player_hdr/video_player_hdr.dart';
 
 class MediaVideoViewer extends HookConsumerWidget {
   final File videoFile;
@@ -14,28 +14,26 @@ class MediaVideoViewer extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = useMemoized(
-      () => VideoPlayerController.file(videoFile),
+      () => VideoPlayerHdrController.file(videoFile),
       [videoFile.path],
     );
 
     useEffect(() {
       controller.setLooping(true);
+      controller.initialize();
       return controller.dispose;
     }, [controller]);
 
-    final snapshot = useFuture(
-      useMemoized(() => controller.initialize(), [controller]),
-    );
-
     useListenable(controller);
 
-    if (snapshot.connectionState == ConnectionState.waiting) {
+    if (!controller.value.isInitialized) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
 
-    if (snapshot.hasError) {
+    if (controller.value.hasError) {
+      debugPrint("视频播放器错误: ${controller.value.errorDescription}");
       return const Center(
         child: Text('视频播放失败', style: TextStyle(color: Colors.red)),
       );
@@ -51,7 +49,7 @@ class MediaVideoViewer extends HookConsumerWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              VideoPlayer(controller),
+              VideoPlayerHdr(controller),
               if (!controller.value.isPlaying)
                 Container(
                   decoration: const BoxDecoration(

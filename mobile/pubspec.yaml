@@ -54,7 +54,6 @@ dependencies:
   intl: ^0.20.2
   shared_preferences: ^2.0.15
   pool: ^1.5.1
-  video_player: ^2.10.0
   transparent_image: ^2.0.1
   crypto: ^3.0.6
   photo_view: ^0.15.0
@@ -94,6 +93,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
+  video_player_hdr: ^1.0.0
 
 dev_dependencies:
   flutter_test:
