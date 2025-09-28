@@ -32,6 +32,16 @@ class GalleryPage extends HookConsumerWidget {
     final mediaList = useState(List<UnifiedMediaEntity>.from(media));
     final areBarsVisible = useState(true);
 
+    final bool isImmersive = !areBarsVisible.value;
+    final Color backgroundColor = isImmersive ? Colors.black : Colors.white;
+    final Color foregroundColor = isImmersive ? Colors.white : Colors.black;
+    final Color barBackgroundColor = isImmersive
+        ? Colors.black54
+        : Colors.white.withOpacity(0.9);
+    final Brightness statusBarBrightness = isImmersive
+        ? Brightness.dark
+        : Brightness.light;
+
     void toggleBarsVisibility() {
       areBarsVisible.value = !areBarsVisible.value;
       if (areBarsVisible.value) {
@@ -43,18 +53,14 @@ class GalleryPage extends HookConsumerWidget {
 
     useEffect(() {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      return () {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      };
+      return () => SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }, const []);
 
     if (mediaList.value.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
+        if (context.mounted) Navigator.of(context).pop();
       });
-      return const Scaffold(backgroundColor: Colors.black);
+      return Scaffold(backgroundColor: backgroundColor);
     }
 
     if (currentIndex.value >= mediaList.value.length) {
@@ -75,11 +81,8 @@ class GalleryPage extends HookConsumerWidget {
       }
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          _initialLoad(ref, initialIndex, mediaList.value);
-        }
+        if (context.mounted) _initialLoad(ref, initialIndex, mediaList.value);
       });
-
       pageController.addListener(listener);
       return () => pageController.removeListener(listener);
     }, [pageController, mediaList.value.length]);
@@ -99,7 +102,7 @@ class GalleryPage extends HookConsumerWidget {
           };
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: backgroundColor,
       extendBodyBehindAppBar: true,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -109,22 +112,27 @@ class GalleryPage extends HookConsumerWidget {
           child: IgnorePointer(
             ignoring: !areBarsVisible.value,
             child: AppBar(
-              backgroundColor: Colors.black54,
-              foregroundColor: Colors.white,
+              backgroundColor: barBackgroundColor,
+              foregroundColor: foregroundColor,
               elevation: 0,
-              systemOverlayStyle: const SystemUiOverlayStyle(
-                statusBarBrightness: Brightness.dark,
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarBrightness: statusBarBrightness,
               ),
               actions: [
                 asyncCurrentEntity.when(
-                  data: (entity) => _buildAppBarActions(context, ref, entity),
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(16.0),
+                  data: (entity) => _buildAppBarActions(
+                    context,
+                    ref,
+                    entity,
+                    foregroundColor: foregroundColor,
+                  ),
+                  loading: () => Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: foregroundColor,
                         strokeWidth: 2.5,
                       ),
                     ),
@@ -140,29 +148,30 @@ class GalleryPage extends HookConsumerWidget {
           ),
         ),
       ),
-      // START: --- MODIFICATION ---
-      // 使用 SafeArea 包裹 PageView，以确保内容显示在屏幕的可视区域内，
-      // 从而实现真正的垂直居中。
-      body: SafeArea(
-        child: PageView.builder(
-          controller: pageController,
-          itemCount: mediaList.value.length,
-          itemBuilder: (context, index) {
-            return GalleryItemPage(
-              entity: mediaList.value[index],
-              onTap: toggleBarsVisibility,
-            );
-          },
-        ),
+      body: PageView.builder(
+        controller: pageController,
+        itemCount: mediaList.value.length,
+        itemBuilder: (context, index) {
+          return Container(
+            color: backgroundColor,
+            child: SafeArea(
+              child: GalleryItemPage(
+                entity: mediaList.value[index],
+                onTap: toggleBarsVisibility,
+                foregroundColor: foregroundColor,
+                backgroundColor: backgroundColor,
+              ),
+            ),
+          );
+        },
       ),
-      // END: --- MODIFICATION ---
       bottomNavigationBar: AnimatedOpacity(
         opacity: areBarsVisible.value ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 200),
         child: IgnorePointer(
           ignoring: !areBarsVisible.value,
           child: BottomAppBar(
-            color: Colors.black54,
+            color: barBackgroundColor,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: <Widget>[
@@ -170,13 +179,13 @@ class GalleryPage extends HookConsumerWidget {
                   icon: Icons.edit_outlined,
                   label: '编辑',
                   onPressed: onEditPressed,
+                  foregroundColor: foregroundColor,
                 ),
                 _buildBottomBarButton(
                   icon: Icons.share_outlined,
                   label: '分享',
-                  onPressed: () {
-                    // 分享逻辑
-                  },
+                  onPressed: () {},
+                  foregroundColor: foregroundColor,
                 ),
                 _buildBottomBarButton(
                   icon: Icons.delete_outline,
@@ -185,33 +194,27 @@ class GalleryPage extends HookConsumerWidget {
                     final entityToDelete = mediaList.value[currentIndex.value];
                     final bool? shouldDelete = await showDialog<bool>(
                       context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('确认删除'),
-                          content: const Text(
-                            '你确定要删除这个项目吗？\n它将在回收站中保存30天, 之后将被永久删除。',
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('确认删除'),
+                        content: const Text(
+                          '你确定要删除这个项目吗？\n它将在回收站中保存30天, 之后将被永久删除。',
+                        ),
+                        actions: <Widget>[
+                          TextButton(
+                            child: const Text('取消'),
+                            onPressed: () => Navigator.of(ctx).pop(false),
                           ),
-                          actions: <Widget>[
-                            TextButton(
-                              child: const Text('取消'),
-                              onPressed: () {
-                                Navigator.of(context).pop(false);
-                              },
-                            ),
-                            TextButton(
-                              child: Text(
-                                '删除',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
+                          TextButton(
+                            child: Text(
+                              '删除',
+                              style: TextStyle(
+                                color: Theme.of(ctx).colorScheme.error,
                               ),
-                              onPressed: () {
-                                Navigator.of(context).pop(true);
-                              },
                             ),
-                          ],
-                        );
-                      },
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                          ),
+                        ],
+                      ),
                     );
 
                     if (shouldDelete == true) {
@@ -227,6 +230,7 @@ class GalleryPage extends HookConsumerWidget {
                       );
                     }
                   },
+                  foregroundColor: foregroundColor,
                 ),
               ],
             ),
@@ -240,11 +244,12 @@ class GalleryPage extends HookConsumerWidget {
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
+    required Color foregroundColor,
   }) {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: Colors.white,
+        foregroundColor: foregroundColor,
         disabledForegroundColor: Colors.grey[600],
         padding: const EdgeInsets.symmetric(vertical: 8.0),
       ),
@@ -269,12 +274,8 @@ class GalleryPage extends HookConsumerWidget {
     int index,
     List<UnifiedMediaEntity> media,
   ) {
-    if (index + 1 < media.length) {
-      _precacheEntity(ref, media[index + 1]);
-    }
-    if (index - 1 >= 0) {
-      _precacheEntity(ref, media[index - 1]);
-    }
+    if (index + 1 < media.length) _precacheEntity(ref, media[index + 1]);
+    if (index - 1 >= 0) _precacheEntity(ref, media[index - 1]);
   }
 
   void _precacheEntity(WidgetRef ref, UnifiedMediaEntity entity) {
@@ -286,8 +287,9 @@ class GalleryPage extends HookConsumerWidget {
   Widget _buildAppBarActions(
     BuildContext context,
     WidgetRef ref,
-    UnifiedMediaEntity entity,
-  ) {
+    UnifiedMediaEntity entity, {
+    required Color foregroundColor,
+  }) {
     Widget buildInProgressIndicator(String tooltip, {required IconData icon}) {
       return Padding(
         padding: const EdgeInsets.all(16.0),
@@ -299,11 +301,11 @@ class GalleryPage extends HookConsumerWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const CircularProgressIndicator(
-                  color: Colors.white,
+                CircularProgressIndicator(
+                  color: foregroundColor,
                   strokeWidth: 2.5,
                 ),
-                Icon(icon, color: Colors.white, size: 16),
+                Icon(icon, color: foregroundColor, size: 16),
               ],
             ),
           ),
@@ -316,9 +318,8 @@ class GalleryPage extends HookConsumerWidget {
         return IconButton(
           icon: const Icon(Icons.cloud_download_outlined),
           tooltip: '下载到设备',
-          onPressed: () {
-            ref.read(mediaDetailProvider(entity).notifier).download();
-          },
+          onPressed: () =>
+              ref.read(mediaDetailProvider(entity).notifier).download(),
         );
       case SyncStatus.downloadFailed:
         return IconButton(
@@ -327,9 +328,8 @@ class GalleryPage extends HookConsumerWidget {
             color: Colors.orangeAccent,
           ),
           tooltip: '下载失败，点击重试',
-          onPressed: () {
-            ref.read(mediaDetailProvider(entity).notifier).download();
-          },
+          onPressed: () =>
+              ref.read(mediaDetailProvider(entity).notifier).download(),
         );
       case SyncStatus.downloading:
         return buildInProgressIndicator('下载中...', icon: Icons.download);
@@ -375,11 +375,15 @@ class GalleryPage extends HookConsumerWidget {
       case SyncStatus.uploading:
         return buildInProgressIndicator('上传中...', icon: Icons.upload);
       case SyncStatus.synced:
-        return const IconButton(
-          icon: Icon(Icons.cloud_done, color: Colors.white),
+        // --- START: FINAL FIX ---
+        // 新增 disabledColor 属性，使其在禁用时也使用我们指定的前景色
+        return IconButton(
+          icon: const Icon(Icons.cloud_done),
           tooltip: '已同步',
           onPressed: null,
+          disabledColor: foregroundColor.withOpacity(0.6),
         );
+      // --- END: FINAL FIX ---
       case SyncStatus.error:
         return const IconButton(
           icon: Icon(Icons.error_outline, color: Colors.red),

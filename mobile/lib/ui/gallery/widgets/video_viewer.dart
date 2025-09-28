@@ -9,11 +9,16 @@ import 'package:video_player_hdr/video_player_hdr.dart';
 class MediaVideoViewer extends HookConsumerWidget {
   final File videoFile;
   final VoidCallback onTap;
+  // 新增：接收背景色和前景色
+  final Color backgroundColor;
+  final Color foregroundColor;
 
   const MediaVideoViewer({
     super.key,
     required this.videoFile,
     required this.onTap,
+    required this.backgroundColor,
+    required this.foregroundColor,
   });
 
   @override
@@ -31,64 +36,69 @@ class MediaVideoViewer extends HookConsumerWidget {
 
     useListenable(controller);
 
+    // 当视频控制器还未初始化时，显示加载动画
     if (!controller.value.isInitialized) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+      // 使用 Container 来确保背景色被应用
+      return Container(
+        color: backgroundColor,
+        child: Center(
+          // 使用动态的前景色
+          child: CircularProgressIndicator(color: foregroundColor),
+        ),
       );
     }
 
     if (controller.value.hasError) {
       debugPrint("视频播放器错误: ${controller.value.errorDescription}");
-      return const Center(
-        child: Text('视频播放失败', style: TextStyle(color: Colors.red)),
+      return Container(
+        color: backgroundColor,
+        child: const Center(
+          child: Text('视频播放失败', style: TextStyle(color: Colors.red)),
+        ),
       );
     }
 
     // --- START: FINAL AND CORRECT SOLUTION ---
 
-    // 使用 GestureDetector 包裹整个 Column，以便在屏幕任何位置（包括上下黑边）
-    // 点击都能触发沉浸式切换。
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      onDoubleTap: () {
-        controller.value.isPlaying ? controller.pause() : controller.play();
-      },
-      child: Column(
-        // mainAxisAlignment: MainAxisAlignment.center, // 使用 Spacer 效果更好
-        children: [
-          // 上方的 Spacer，会占据所有可用空间的一部分
-          const Spacer(),
-
-          // AspectRatio 会自动使用 Column 提供的宽度（即屏幕宽度）
-          // 并根据视频的宽高比来确定自己的高度。
-          AspectRatio(
-            aspectRatio: controller.value.aspectRatio,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                VideoPlayerHdr(controller),
-                if (!controller.value.isPlaying)
-                  IgnorePointer(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black45,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 60,
+    // 使用 Container 作为根组件，并强制设置背景色。
+    // 这将确保视频上下方的空白区域（"黑边"）始终是我们想要的颜色。
+    return Container(
+      color: backgroundColor,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onDoubleTap: () {
+          controller.value.isPlaying ? controller.pause() : controller.play();
+        },
+        child: Column(
+          children: [
+            const Spacer(),
+            AspectRatio(
+              aspectRatio: controller.value.aspectRatio,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  VideoPlayerHdr(controller),
+                  if (!controller.value.isPlaying)
+                    IgnorePointer(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.black45,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 60,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-
-          // 下方的 Spacer，会与上方的 Spacer 平分剩余空间
-          const Spacer(),
-        ],
+            const Spacer(),
+          ],
+        ),
       ),
     );
     // --- END: FINAL AND CORRECT SOLUTION ---

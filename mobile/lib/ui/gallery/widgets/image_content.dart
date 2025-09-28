@@ -11,11 +11,15 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 class ImageContent extends ConsumerWidget {
   final UnifiedMediaEntity entity;
   final VoidCallback onTap; // 新增：接收 onTap 回调
+  final Color foregroundColor;
+  final Color backgroundColor;
 
   const ImageContent({
     super.key,
     required this.entity,
     required this.onTap, // 新增：在构造函数中接收
+    required this.foregroundColor,
+    required this.backgroundColor,
   });
 
   @override
@@ -38,10 +42,11 @@ class ImageContent extends ConsumerWidget {
           imageProvider: imageProvider,
           heroTag: entity.id.toString(),
           onTap: onTap, // 新增：将 onTap 回调继续传递给 ImageViewer
+          backgroundColor: backgroundColor,
         );
       },
       loading: () =>
-          const Center(child: CircularProgressIndicator(color: Colors.white)),
+          Center(child: CircularProgressIndicator(color: foregroundColor)),
       error: (err, _) => ErrorDisplay(title: '无法加载媒体', message: err.toString()),
     );
   }

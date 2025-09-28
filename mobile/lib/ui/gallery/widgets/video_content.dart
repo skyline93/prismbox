@@ -9,12 +9,16 @@ import 'package:mobile/ui/gallery/widgets/video_viewer.dart';
 
 class VideoContent extends ConsumerWidget {
   final UnifiedMediaEntity entity;
-  final VoidCallback onTap; // 新增：接收 onTap 回调
+  final VoidCallback onTap;
+  final Color foregroundColor;
+  final Color backgroundColor;
 
   const VideoContent({
     super.key,
     required this.entity,
-    required this.onTap, // 新增：在构造函数中接收
+    required this.onTap,
+    required this.foregroundColor,
+    required this.backgroundColor,
   });
 
   @override
@@ -23,8 +27,13 @@ class VideoContent extends ConsumerWidget {
 
     return mediaAsyncValue.when(
       data: (mediaData) => mediaData.when(
-        // 将 onTap 回调继续传递给 VideoViewer
-        file: (file) => MediaVideoViewer(videoFile: file, onTap: onTap),
+        file: (file) => MediaVideoViewer(
+          videoFile: file,
+          onTap: onTap,
+          // 将两种颜色都传递给 VideoViewer
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+        ),
         asset: (_) => const ErrorDisplay(
           title: '逻辑错误',
           message: '收到了媒体库资产（Asset），但此处需要一个视频文件（File）。',
@@ -32,8 +41,9 @@ class VideoContent extends ConsumerWidget {
         bytes: (_) =>
             const ErrorDisplay(title: '数据类型错误', message: '应为视频文件，但收到了字节数据。'),
       ),
+      // 这个加载动画是用于加载视频文件本身
       loading: () =>
-          const Center(child: CircularProgressIndicator(color: Colors.white)),
+          Center(child: CircularProgressIndicator(color: foregroundColor)),
       error: (err, _) => ErrorDisplay(title: '无法加载视频', message: err.toString()),
     );
   }

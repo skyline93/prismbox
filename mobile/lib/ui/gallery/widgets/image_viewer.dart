@@ -7,12 +7,14 @@ class MediaImageViewer extends StatelessWidget {
   final ImageProvider imageProvider;
   final String heroTag;
   final VoidCallback onTap; // 新增：接收 onTap 回调
+  final Color backgroundColor;
 
   const MediaImageViewer({
     super.key,
     required this.imageProvider,
     required this.heroTag,
     required this.onTap, // 新增：在构造函数中接收
+    required this.backgroundColor,
   });
 
   @override
@@ -26,7 +28,8 @@ class MediaImageViewer extends StatelessWidget {
         minScale: PhotoViewComputedScale.contained,
         maxScale: PhotoViewComputedScale.covered * 2.5,
         heroAttributes: PhotoViewHeroAttributes(tag: heroTag),
-        loadingBuilder: (context, event) => Container(color: Colors.black),
+        backgroundDecoration: BoxDecoration(color: backgroundColor),
+        loadingBuilder: (context, event) => Container(color: backgroundColor),
         errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
       ),
     );
