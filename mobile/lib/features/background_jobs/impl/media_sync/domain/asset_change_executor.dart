@@ -78,7 +78,7 @@ class AssetChangeExecutor {
         _log.info(
           'Rule 2: Found a cloud-only record (ID: ${cloudOnlyMatch.id}) with hash $contentHash. Associating with local asset $assetId.',
         );
-        final file = await asset.file;
+        final file = await asset.originFile;
         if (file == null) {
           _log.warning(
             "Cannot get file path for asset: ${asset.id} for association. Skipping.",
@@ -207,7 +207,7 @@ class AssetChangeExecutor {
   Future<MediaAssetsCompanion?> _assetEntityToCompanion(
     AssetEntity asset,
   ) async {
-    final File? file = await asset.file;
+    final File? file = await asset.originFile;
     if (file == null) {
       _log.warning("Cannot get file path for asset: ${asset.id}");
       return null;

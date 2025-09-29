@@ -115,7 +115,7 @@ class NewThread extends _$NewThread {
       final mediaRepo = ref.read(mediaRepositoryProvider);
 
       final uploadFutures = state.selectedAssets.map((asset) async {
-        final file = await asset.file;
+        final file = await asset.originFile;
         if (file == null) {
           throw Exception('无法获取资产文件: ${asset.id}');
         }

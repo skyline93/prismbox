@@ -68,7 +68,7 @@ class UploadOrchestrator {
           return null;
         }
 
-        final File? file = await asset.file;
+        final File? file = await asset.originFile;
 
         if (file != null) {
           return UploadTaskPayload(file: file, assetId: asset.id);
