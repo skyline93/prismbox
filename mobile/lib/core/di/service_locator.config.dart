@@ -86,12 +86,12 @@ Future<_i174.GetIt> init(
   );
   gh.lazySingleton<_i153.DioClient>(
       () => _i153.DioClient(gh<_i666.SecureStorageService>()));
+  gh.lazySingleton<_i137.LocalMediaSynchronizer>(
+      () => _i137.LocalMediaSynchronizer(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i273.LocalMediaDataSource>(
       () => _i273.LocalMediaDataSource(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i583.SettingsService>(
       () => _i583.SettingsService(gh<_i870.AppDatabase>()));
-  gh.lazySingleton<_i137.LocalMediaSynchronizer>(
-      () => _i137.LocalMediaSynchronizer(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i851.UploadService>(() => _i851.UploadService(
         gh<_i870.AppDatabase>(),
         gh<_i666.SecureStorageService>(),

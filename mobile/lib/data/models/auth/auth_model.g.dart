@@ -104,3 +104,43 @@ Map<String, dynamic> _$$GetProfileSuccessDataImplToJson(
       'email': instance.email,
       'created_at': instance.createdAt.toIso8601String(),
     };
+
+_$AppleLoginInputImpl _$$AppleLoginInputImplFromJson(
+        Map<String, dynamic> json) =>
+    _$AppleLoginInputImpl(
+      identityToken: json['identityToken'] as String,
+      fullName: json['fullName'] == null
+          ? null
+          : FullName.fromJson(json['fullName'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$$AppleLoginInputImplToJson(
+        _$AppleLoginInputImpl instance) =>
+    <String, dynamic>{
+      'identityToken': instance.identityToken,
+      'fullName': instance.fullName,
+    };
+
+_$FullNameImpl _$$FullNameImplFromJson(Map<String, dynamic> json) =>
+    _$FullNameImpl(
+      givenName: json['givenName'] as String?,
+      familyName: json['familyName'] as String?,
+    );
+
+Map<String, dynamic> _$$FullNameImplToJson(_$FullNameImpl instance) =>
+    <String, dynamic>{
+      'givenName': instance.givenName,
+      'familyName': instance.familyName,
+    };
+
+_$SetPasswordInputImpl _$$SetPasswordInputImplFromJson(
+        Map<String, dynamic> json) =>
+    _$SetPasswordInputImpl(
+      password: json['password'] as String,
+    );
+
+Map<String, dynamic> _$$SetPasswordInputImplToJson(
+        _$SetPasswordInputImpl instance) =>
+    <String, dynamic>{
+      'password': instance.password,
+    };

@@ -43,13 +43,7 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	authHandler := &auth.AuthHandler{
-		DB:                    db,
-		AvatarBaseURL:         cfg.PublicBaseURL + "/static/avatars/",
-		JWTSecret:             cfg.JWTSecret,
-		AccessTokenExpiresIn:  cfg.AccessTokenExpiresIn,
-		RefreshTokenExpiresIn: cfg.RefreshTokenExpiresIn,
-	}
+	authHandler, _ := auth.NewAuthHandler(db, cfg)
 	urlSigner := urlsigner.NewSigner(cfg.URLSignerSecret)
 	urlBuilder := routing.NewURLBuilder(cfg.PublicBaseURL)
 
@@ -107,14 +101,19 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 			authRoutes.POST("/login", authHandler.Login)
 			authRoutes.POST("/refresh", authHandler.RefreshToken)
 			authRoutes.POST("/logout", authHandler.Logout)
+			// --- 新增: Apple 登录路由 ---
+			authRoutes.POST("/apple/login", authHandler.AppleLogin)
 		}
 
 		// 受保护的路由组
 		protected := apiV1.Group("/")
 		protected.Use(auth.Middleware(cfg.JWTSecret)) // 中间件保持不变
 		{
+			// 认证相关受保护路由
 			protected.GET("/auth/profile", authHandler.GetProfile)
 			protected.POST("/auth/avatar", authHandler.UploadAvatar)
+			// --- 新增: 设置密码路由 ---
+			protected.POST("/auth/password/set", authHandler.SetPassword)
 
 			repl.RegisterRoutesAndJobs(protected)
 			// 媒体相关路由
@@ -122,7 +121,6 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 			{
 				mediaRoutes.POST("/upload", mediaHandler.Upload)
 				mediaRoutes.POST("/upload-stream", mediaHandler.UploadStream)
-
 				mediaRoutes.GET("", mediaHandler.GetMedias)
 				mediaRoutes.POST("/check_hashes", mediaHandler.CheckHashes)
 				mediaRoutes.GET("/changes", mediaHandler.GetChanges)

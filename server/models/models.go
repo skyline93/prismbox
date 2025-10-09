@@ -9,15 +9,32 @@ import (
 	"gorm.io/gorm"
 )
 
+// User 模型代表系统中的一个用户账户
 type User struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"-"`
+	CreatedAt time.Time      `json:"created_at"` // 修改: 暴露 created_at
 	UpdatedAt time.Time      `json:"-"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-	Username  string         `gorm:"type:varchar(100);uniqueIndex" json:"username"`
-	Email     string         `gorm:"type:varchar(255);uniqueIndex" json:"email"`
-	Password  string         `json:"-"`
-	Avatar    string         `gorm:"type:varchar(255)" json:"avatar"`
+
+	// 关键修改: Username 和 Password 变为可选
+	Username string `gorm:"type:varchar(100);uniqueIndex;null" json:"username,omitempty"` // 修改: 允许为空 (NULL)
+	Email    string `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`          // Email 是关键锚点，始终唯一且必须存在
+	Password string `gorm:"type:varchar(255);null" json:"-"`                              // 修改: 允许密码为空 (NULL)
+
+	Avatar string `gorm:"type:varchar(255)" json:"avatar"`
+
+	// 关系
+	AuthProviders []AuthProvider `json:"-"` // 一个用户可以有多个认证方式
+}
+
+// AuthProvider 模型用于存储不同的登录方式凭证
+type AuthProvider struct {
+	gorm.Model
+	UserID uint `gorm:"not null;uniqueIndex:idx_provider_user_id"`
+	User   User `gorm:"foreignKey:UserID"`
+
+	ProviderName   string `gorm:"type:varchar(50);not null;uniqueIndex:idx_provider_user_id"` // e.g., "apple", "google"
+	ProviderUserID string `gorm:"type:text;not null"`                                         // 从 Apple 返回的 'sub' 字段
 }
 
 type RefreshToken struct {

@@ -42,6 +42,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> loginWithApple() async {
+    state = const AuthState.loading();
+    try {
+      final authService = _ref.read(authServiceProvider);
+      await authService.loginWithApple();
+      state = const AuthState.authenticated();
+    } catch (e) {
+      state = AuthState.error("Apple 登录失败: ${e.toString()}");
+    }
+  }
+
   void resetToUnauthenticated() {
     state = const AuthState.unauthenticated();
   }

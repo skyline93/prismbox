@@ -85,3 +85,36 @@ class GetProfileSuccessData with _$GetProfileSuccessData {
   factory GetProfileSuccessData.fromJson(Map<String, dynamic> json) =>
       _$GetProfileSuccessDataFromJson(json);
 }
+
+// 新增：用于 Apple 登录请求体
+@freezed
+class AppleLoginInput with _$AppleLoginInput {
+  const factory AppleLoginInput({
+    required String identityToken,
+    FullName? fullName,
+  }) = _AppleLoginInput;
+
+  // 2. 修复 fromJson 的实现
+  factory AppleLoginInput.fromJson(Map<String, dynamic> json) =>
+      AppleLoginInput.fromJson(json);
+}
+
+@freezed
+class FullName with _$FullName {
+  const factory FullName({String? givenName, String? familyName}) = _FullName;
+
+  // 3. 修复 fromJson 的实现
+  factory FullName.fromJson(Map<String, dynamic> json) =>
+      FullName.fromJson(json);
+}
+
+// 新增：用于设置密码请求体
+@freezed
+class SetPasswordInput with _$SetPasswordInput {
+  const factory SetPasswordInput({required String password}) =
+      _SetPasswordInput;
+
+  // 4. 修复 fromJson 的实现
+  factory SetPasswordInput.fromJson(Map<String, dynamic> json) =>
+      SetPasswordInput.fromJson(json);
+}

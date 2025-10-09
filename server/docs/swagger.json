@@ -269,6 +269,64 @@
                 }
             }
         },
+        "/auth/apple/login": {
+            "post": {
+                "description": "使用从 Apple 获取的 identityToken 进行登录。如果用户不存在，则创建新用户；如果邮箱已存在，则关联账户。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "通过 Apple ID 登录或注册",
+                "parameters": [
+                    {
+                        "description": "Apple 登录凭证",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.AppleLoginInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "登录成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.UserLoginSuccessData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Apple Token 验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/avatar": {
             "post": {
                 "security": [
@@ -338,7 +396,7 @@
         },
         "/auth/login": {
             "post": {
-                "description": "使用用户名和密码进行登录，成功后返回访问令牌和刷新令牌",
+                "description": "使用邮箱和密码进行登录，成功后返回访问令牌和刷新令牌",
                 "consumes": [
                     "application/json"
                 ],
@@ -380,7 +438,13 @@
                         }
                     },
                     "400": {
-                        "description": "请求参数错误、用户名或密码无效或服务器内部错误",
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "邮箱或密码无效，或该账户需通过 Apple 登录",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -421,6 +485,54 @@
                     },
                     "400": {
                         "description": "请求参数错误或令牌无效",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password/set": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "允许通过第三方登录且未设置密码的用户创建一个密码",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "为账户设置密码",
+                "parameters": [
+                    {
+                        "description": "新密码",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.SetPasswordInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "密码设置成功"
+                    },
+                    "400": {
+                        "description": "请求参数错误或用户已设置密码",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -470,58 +582,6 @@
                     },
                     "404": {
                         "description": "用户不存在（Token有效但用户已被删除）",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/refresh": {
-            "post": {
-                "description": "使用一个有效的、未过期的刷新令牌来获取一个新的访问令牌",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "刷新访问令牌",
-                "parameters": [
-                    {
-                        "description": "刷新令牌",
-                        "name": "token",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/auth.RefreshTokenInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功刷新令牌",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/auth.RefreshTokenSuccessData"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或刷新令牌无效、已过期或已被撤销",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1678,6 +1738,12 @@
                         "description": "文件的原始名称",
                         "name": "original_filename",
                         "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "客户端预生成的UUID (可选)",
+                        "name": "cloud_uuid",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -1725,204 +1791,6 @@
                     },
                     "500": {
                         "description": "服务器文件处理错误",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/media/upload/chunk": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "上传指定 upload_id 和 chunk_index 的文件分片。",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Media"
-                ],
-                "summary": "上传单个文件分片",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "上传作业ID",
-                        "name": "upload_id",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "分片索引 (从0开始)",
-                        "name": "chunk_index",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "分片文件本身",
-                        "name": "chunk",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "分片上传成功 (无返回内容)"
-                    },
-                    "400": {
-                        "description": "请求参数错误、任务状态无效或任务已过期",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "上传作业不存在",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/media/upload/complete": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "通知服务器所有分片已上传完毕，请求合并文件并创建媒体记录。",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Media"
-                ],
-                "summary": "完成分片上传",
-                "parameters": [
-                    {
-                        "description": "完成上传所需的信息",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.CompleteUploadRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "文件合并成功",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.MediaResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求错误、分片不完整或哈希校验失败",
-                        "schema": {
-                            "$ref": "#/definitions/core.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/media/upload/initiate": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "请求开始一个大文件的上传。服务器会先进行秒传检查，如果文件不存在，则创建一个上传作业并返回 upload_id。",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Media"
-                ],
-                "summary": "初始化大文件分片上传",
-                "parameters": [
-                    {
-                        "description": "文件元数据",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.InitiateUploadRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "文件已存在（秒传成功）",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.MediaResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "201": {
-                        "description": "初始化成功，可以开始上传分片",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/core.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.InitiateUploadResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -1988,14 +1856,14 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "将指定的媒体文件移入回收站（软删除）",
+                "description": "将指定的媒体文件移入回收站。此操作会被 replicator 捕获为一次 UPDATE。",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "删除指定的媒体文件",
+                "summary": "删除指定的媒体文件 (软删除)",
                 "parameters": [
                     {
                         "type": "string",
@@ -2008,13 +1876,19 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功删除",
+                        "description": "成功移入回收站",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
                     },
-                    "400": {
-                        "description": "错误信息可能为 'Media not found or permission denied' 或 'Database error'",
+                    "404": {
+                        "description": "错误信息：'Media not found or permission denied'",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "数据库错误",
                         "schema": {
                             "$ref": "#/definitions/core.ApiResponse"
                         }
@@ -2198,7 +2072,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "从数据库和文件系统中彻底删除一个媒体资源及其所有关联数据（缩略图、预览图、分享链接、相册关联等）。此操作不可逆。通常用于清空回收站中的项目。",
+                "description": "从数据库和文件系统中彻底删除一个媒体资源及其所有关联数据。此操作不可逆，并会被 replicator 捕获为一次 DELETE。",
                 "produces": [
                     "application/json"
                 ],
@@ -2245,7 +2119,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "将指定媒体文件从回收站中恢复",
+                "description": "将指定媒体文件从回收站中恢复。此操作会被 replicator 捕获为一次 UPDATE。",
                 "produces": [
                     "application/json"
                 ],
@@ -2607,6 +2481,29 @@
         }
     },
     "definitions": {
+        "auth.AppleLoginInput": {
+            "type": "object",
+            "required": [
+                "identityToken"
+            ],
+            "properties": {
+                "fullName": {
+                    "description": "首次授权时客户端传递，可能为 null",
+                    "type": "object",
+                    "properties": {
+                        "familyName": {
+                            "type": "string"
+                        },
+                        "givenName": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "identityToken": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.LogoutInput": {
             "type": "object",
             "required": [
@@ -2619,24 +2516,15 @@
                 }
             }
         },
-        "auth.RefreshTokenInput": {
+        "auth.SetPasswordInput": {
             "type": "object",
             "required": [
-                "refresh_token"
+                "password"
             ],
             "properties": {
-                "refresh_token": {
+                "password": {
                     "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                }
-            }
-        },
-        "auth.RefreshTokenSuccessData": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    "minLength": 8
                 }
             }
         },
@@ -2652,17 +2540,18 @@
         "auth.UserLoginInput": {
             "type": "object",
             "required": [
-                "password",
-                "username"
+                "email",
+                "password"
             ],
             "properties": {
+                "email": {
+                    "description": "修改: 使用 Email 登录",
+                    "type": "string",
+                    "example": "user@example.com"
+                },
                 "password": {
                     "type": "string",
                     "example": "aVeryStrongPassword123"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "newuser"
                 }
             }
         },
@@ -2693,6 +2582,10 @@
                 "email": {
                     "type": "string",
                     "example": "testuser@example.com"
+                },
+                "has_password": {
+                    "description": "新增: 便于前端判断",
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "integer",
@@ -3004,29 +2897,6 @@
                 }
             }
         },
-        "handlers.CompleteUploadRequest": {
-            "type": "object",
-            "required": [
-                "hash",
-                "item_type",
-                "original_filename",
-                "upload_id"
-            ],
-            "properties": {
-                "hash": {
-                    "type": "string"
-                },
-                "item_type": {
-                    "$ref": "#/definitions/constant.MediaType"
-                },
-                "original_filename": {
-                    "type": "string"
-                },
-                "upload_id": {
-                    "type": "string"
-                }
-            }
-        },
         "handlers.CreateAlbumInput": {
             "type": "object",
             "required": [
@@ -3059,46 +2929,6 @@
                 },
                 "target_user_id": {
                     "type": "integer"
-                }
-            }
-        },
-        "handlers.InitiateUploadRequest": {
-            "type": "object",
-            "required": [
-                "hash",
-                "item_type",
-                "original_filename",
-                "total_size"
-            ],
-            "properties": {
-                "hash": {
-                    "type": "string"
-                },
-                "item_type": {
-                    "$ref": "#/definitions/constant.MediaType"
-                },
-                "original_filename": {
-                    "type": "string"
-                },
-                "total_size": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.InitiateUploadResponse": {
-            "type": "object",
-            "properties": {
-                "chunk_size": {
-                    "type": "integer"
-                },
-                "upload_id": {
-                    "type": "string"
-                },
-                "uploaded_chunks": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 }
             }
         },
@@ -3545,13 +3375,19 @@
                 "avatar": {
                     "type": "string"
                 },
+                "created_at": {
+                    "description": "修改: 暴露 created_at",
+                    "type": "string"
+                },
                 "email": {
+                    "description": "Email 是关键锚点，始终唯一且必须存在",
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "username": {
+                    "description": "关键修改: Username 和 Password 变为可选",
                     "type": "string"
                 }
             }

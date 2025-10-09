@@ -26,6 +26,7 @@ type Config struct {
 	RefreshTokenExpiresIn time.Duration
 	PublicBaseURL         string
 	SignedURLLoadTTL      time.Duration
+	AppleAppBundleID      string // 新增: 用于 Apple 登录验证
 
 	DB            DBConfig
 	ServerAddress string
@@ -38,6 +39,8 @@ func LoadConfig() (*Config, error) {
 	publicBaseURL := getEnv("PUBLIC_BASE_URL", "http://10.0.2.2:8080")
 	serverAddress := getEnv("SERVER_ADDRESS", "0.0.0.0:8080")
 	uploadDir := getEnv("UPLOAD_DIR", "uploads")
+	// 新增: 从环境变量加载 Apple App Bundle ID
+	appleAppBundleID := getEnv("APPLE_APP_BUNDLE_ID", "com.example.gbox.mobile") // !!! 警告: 生产环境请务必设置正确的 Bundle ID
 
 	ttlStr := getEnv("SIGNED_URL_LOAD_TTL", "30m")
 	signedURLLoadTTL, err := time.ParseDuration(ttlStr)
@@ -73,6 +76,7 @@ func LoadConfig() (*Config, error) {
 		RefreshTokenExpiresIn: time.Hour * 24 * 30,
 		PublicBaseURL:         publicBaseURL,
 		SignedURLLoadTTL:      signedURLLoadTTL,
+		AppleAppBundleID:      appleAppBundleID, // 新增: 赋值
 		DB:                    dbConfig,
 		ServerAddress:         serverAddress,
 		UploadDir:             uploadDir,

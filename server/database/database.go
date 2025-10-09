@@ -65,6 +65,7 @@ func ConnectAndMigrate(cfg *core.DBConfig) (*gorm.DB, error) {
 	log.Println("Running auto migration...")
 	err = db.AutoMigrate(
 		&models.User{},
+		&models.AuthProvider{},
 		&models.Media{},
 		&models.Album{},
 		&models.RefreshToken{},

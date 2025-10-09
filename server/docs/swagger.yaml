@@ -1,5 +1,20 @@
 basePath: /api/v1
 definitions:
+  auth.AppleLoginInput:
+    properties:
+      fullName:
+        description: 首次授权时客户端传递，可能为 null
+        properties:
+          familyName:
+            type: string
+          givenName:
+            type: string
+        type: object
+      identityToken:
+        type: string
+    required:
+    - identityToken
+    type: object
   auth.LogoutInput:
     properties:
       refresh_token:
@@ -8,19 +23,13 @@ definitions:
     required:
     - refresh_token
     type: object
-  auth.RefreshTokenInput:
+  auth.SetPasswordInput:
     properties:
-      refresh_token:
-        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      password:
+        minLength: 8
         type: string
     required:
-    - refresh_token
-    type: object
-  auth.RefreshTokenSuccessData:
-    properties:
-      access_token:
-        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-        type: string
+    - password
     type: object
   auth.UploadAvatarSuccessData:
     properties:
@@ -30,15 +39,16 @@ definitions:
     type: object
   auth.UserLoginInput:
     properties:
+      email:
+        description: '修改: 使用 Email 登录'
+        example: user@example.com
+        type: string
       password:
         example: aVeryStrongPassword123
         type: string
-      username:
-        example: newuser
-        type: string
     required:
+    - email
     - password
-    - username
     type: object
   auth.UserLoginSuccessData:
     properties:
@@ -60,6 +70,9 @@ definitions:
       email:
         example: testuser@example.com
         type: string
+      has_password:
+        description: '新增: 便于前端判断'
+        type: boolean
       id:
         example: 1
         type: integer
@@ -270,22 +283,6 @@ definitions:
           type: string
         type: array
     type: object
-  handlers.CompleteUploadRequest:
-    properties:
-      hash:
-        type: string
-      item_type:
-        $ref: '#/definitions/constant.MediaType'
-      original_filename:
-        type: string
-      upload_id:
-        type: string
-    required:
-    - hash
-    - item_type
-    - original_filename
-    - upload_id
-    type: object
   handlers.CreateAlbumInput:
     properties:
       description:
@@ -309,33 +306,6 @@ definitions:
     required:
     - duration_minute
     - media_uuid
-    type: object
-  handlers.InitiateUploadRequest:
-    properties:
-      hash:
-        type: string
-      item_type:
-        $ref: '#/definitions/constant.MediaType'
-      original_filename:
-        type: string
-      total_size:
-        type: integer
-    required:
-    - hash
-    - item_type
-    - original_filename
-    - total_size
-    type: object
-  handlers.InitiateUploadResponse:
-    properties:
-      chunk_size:
-        type: integer
-      upload_id:
-        type: string
-      uploaded_chunks:
-        items:
-          type: integer
-        type: array
     type: object
   handlers.MediaChangesResponse:
     properties:
@@ -633,11 +603,16 @@ definitions:
     properties:
       avatar:
         type: string
+      created_at:
+        description: '修改: 暴露 created_at'
+        type: string
       email:
+        description: Email 是关键锚点，始终唯一且必须存在
         type: string
       id:
         type: integer
       username:
+        description: '关键修改: Username 和 Password 变为可选'
         type: string
     type: object
 host: localhost:8080
@@ -807,6 +782,41 @@ paths:
       summary: 向相册添加媒体
       tags:
       - Albums
+  /auth/apple/login:
+    post:
+      consumes:
+      - application/json
+      description: 使用从 Apple 获取的 identityToken 进行登录。如果用户不存在，则创建新用户；如果邮箱已存在，则关联账户。
+      parameters:
+      - description: Apple 登录凭证
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AppleLoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/core.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.UserLoginSuccessData'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "401":
+          description: Apple Token 验证失败
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      summary: 通过 Apple ID 登录或注册
+      tags:
+      - Authentication
   /auth/avatar:
     post:
       consumes:
@@ -851,7 +861,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 使用用户名和密码进行登录，成功后返回访问令牌和刷新令牌
+      description: 使用邮箱和密码进行登录，成功后返回访问令牌和刷新令牌
       parameters:
       - description: 用户登录凭证
         in: body
@@ -872,7 +882,11 @@ paths:
                   $ref: '#/definitions/auth.UserLoginSuccessData'
               type: object
         "400":
-          description: 请求参数错误、用户名或密码无效或服务器内部错误
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "401":
+          description: 邮箱或密码无效，或该账户需通过 Apple 登录
           schema:
             $ref: '#/definitions/core.ApiResponse'
       summary: 用户登录
@@ -904,6 +918,36 @@ paths:
       summary: 用户登出
       tags:
       - Authentication
+  /auth/password/set:
+    post:
+      consumes:
+      - application/json
+      description: 允许通过第三方登录且未设置密码的用户创建一个密码
+      parameters:
+      - description: 新密码
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/auth.SetPasswordInput'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 密码设置成功
+        "400":
+          description: 请求参数错误或用户已设置密码
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 为账户设置密码
+      tags:
+      - Authentication
   /auth/profile:
     get:
       description: 获取当前已认证用户的个人资料（不含敏感信息）
@@ -930,37 +974,6 @@ paths:
       security:
       - BearerAuth: []
       summary: 获取当前用户信息
-      tags:
-      - Authentication
-  /auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: 使用一个有效的、未过期的刷新令牌来获取一个新的访问令牌
-      parameters:
-      - description: 刷新令牌
-        in: body
-        name: token
-        required: true
-        schema:
-          $ref: '#/definitions/auth.RefreshTokenInput'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 成功刷新令牌
-          schema:
-            allOf:
-            - $ref: '#/definitions/core.ApiResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/auth.RefreshTokenSuccessData'
-              type: object
-        "400":
-          description: 请求参数错误或刷新令牌无效、已过期或已被撤销
-          schema:
-            $ref: '#/definitions/core.ApiResponse'
-      summary: 刷新访问令牌
       tags:
       - Authentication
   /auth/register:
@@ -1509,7 +1522,7 @@ paths:
       - Media
   /media/{uuid}:
     delete:
-      description: 将指定的媒体文件移入回收站（软删除）
+      description: 将指定的媒体文件移入回收站。此操作会被 replicator 捕获为一次 UPDATE。
       parameters:
       - description: 媒体文件的UUID
         format: uuid
@@ -1521,17 +1534,20 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功删除
+          description: 成功移入回收站
           schema:
             $ref: '#/definitions/core.ApiResponse'
-        "400":
-          description: 错误信息可能为 'Media not found or permission denied' 或 'Database
-            error'
+        "404":
+          description: 错误信息：'Media not found or permission denied'
+          schema:
+            $ref: '#/definitions/core.ApiResponse'
+        "500":
+          description: 数据库错误
           schema:
             $ref: '#/definitions/core.ApiResponse'
       security:
       - BearerAuth: []
-      summary: 删除指定的媒体文件
+      summary: 删除指定的媒体文件 (软删除)
       tags:
       - Media
     get:
@@ -1673,7 +1689,7 @@ paths:
       - Media
   /media/{uuid}/purge:
     delete:
-      description: 从数据库和文件系统中彻底删除一个媒体资源及其所有关联数据（缩略图、预览图、分享链接、相册关联等）。此操作不可逆。通常用于清空回收站中的项目。
+      description: 从数据库和文件系统中彻底删除一个媒体资源及其所有关联数据。此操作不可逆，并会被 replicator 捕获为一次 DELETE。
       parameters:
       - description: 要永久删除的媒体文件的UUID
         format: uuid
@@ -1703,7 +1719,7 @@ paths:
       - Media
   /media/{uuid}/restore:
     post:
-      description: 将指定媒体文件从回收站中恢复
+      description: 将指定媒体文件从回收站中恢复。此操作会被 replicator 捕获为一次 UPDATE。
       parameters:
       - description: 媒体文件的UUID
         format: uuid
@@ -1879,6 +1895,10 @@ paths:
         in: formData
         name: original_filename
         type: string
+      - description: 客户端预生成的UUID (可选)
+        in: formData
+        name: cloud_uuid
+        type: string
       produces:
       - application/json
       responses:
@@ -1911,124 +1931,6 @@ paths:
       security:
       - BearerAuth: []
       summary: 流式上传单个媒体文件 (推荐)
-      tags:
-      - Media
-  /media/upload/chunk:
-    post:
-      consumes:
-      - multipart/form-data
-      description: 上传指定 upload_id 和 chunk_index 的文件分片。
-      parameters:
-      - description: 上传作业ID
-        in: formData
-        name: upload_id
-        required: true
-        type: string
-      - description: 分片索引 (从0开始)
-        in: formData
-        name: chunk_index
-        required: true
-        type: integer
-      - description: 分片文件本身
-        in: formData
-        name: chunk
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: 分片上传成功 (无返回内容)
-        "400":
-          description: 请求参数错误、任务状态无效或任务已过期
-          schema:
-            $ref: '#/definitions/core.ApiResponse'
-        "404":
-          description: 上传作业不存在
-          schema:
-            $ref: '#/definitions/core.ApiResponse'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/core.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: 上传单个文件分片
-      tags:
-      - Media
-  /media/upload/complete:
-    post:
-      consumes:
-      - application/json
-      description: 通知服务器所有分片已上传完毕，请求合并文件并创建媒体记录。
-      parameters:
-      - description: 完成上传所需的信息
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CompleteUploadRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 文件合并成功
-          schema:
-            allOf:
-            - $ref: '#/definitions/core.ApiResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.MediaResponse'
-              type: object
-        "400":
-          description: 请求错误、分片不完整或哈希校验失败
-          schema:
-            $ref: '#/definitions/core.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: 完成分片上传
-      tags:
-      - Media
-  /media/upload/initiate:
-    post:
-      consumes:
-      - application/json
-      description: 请求开始一个大文件的上传。服务器会先进行秒传检查，如果文件不存在，则创建一个上传作业并返回 upload_id。
-      parameters:
-      - description: 文件元数据
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.InitiateUploadRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 文件已存在（秒传成功）
-          schema:
-            allOf:
-            - $ref: '#/definitions/core.ApiResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.MediaResponse'
-              type: object
-        "201":
-          description: 初始化成功，可以开始上传分片
-          schema:
-            allOf:
-            - $ref: '#/definitions/core.ApiResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.InitiateUploadResponse'
-              type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/core.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: 初始化大文件分片上传
       tags:
       - Media
   /posts/{postId}/comments:

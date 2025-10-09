@@ -1,6 +1,8 @@
+// auth/handler.go
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,14 +12,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
+// AppleAuthKeysURL 是 Apple 用于签发 Identity Token 的公钥集地址
+const AppleAuthKeysURL = "https://appleid.apple.com/auth/keys"
+
 const (
 	AvatarSavePath = "./public/avatars/"
-	// AvatarBaseURL  = "http://localhost:8080/static/avatars/" // 您的服务基础URL
-	MaxAvatarSize = 5 << 20 // 5 MB
+	MaxAvatarSize  = 5 << 20 // 5 MB
 )
 
 type AuthHandler struct {
@@ -26,9 +32,11 @@ type AuthHandler struct {
 	JWTSecret             []byte
 	AccessTokenExpiresIn  time.Duration
 	RefreshTokenExpiresIn time.Duration
+	AppleAppBundleID      string
+	appleKeyFunc          keyfunc.Keyfunc // <-- 持有 keyfunc.Keyfunc 接口
 }
 
-// --- DTOs (Data Transfer Objects) for Swagger ---
+// --- DTOs (Data Transfer Objects) ---
 
 type UserRegisterInput struct {
 	Username string `json:"username" binding:"required" example:"newuser"`
@@ -42,13 +50,27 @@ type UserRegisterSuccessData struct {
 }
 
 type UserLoginInput struct {
-	Username string `json:"username" binding:"required" example:"newuser"`
+	Email    string `json:"email" binding:"required,email" example:"user@example.com"` // 修改: 使用 Email 登录
 	Password string `json:"password" binding:"required" example:"aVeryStrongPassword123"`
 }
 
 type UserLoginSuccessData struct {
 	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+}
+
+// 新增: Apple 登录 DTO
+type AppleLoginInput struct {
+	IdentityToken string `json:"identityToken" binding:"required"`
+	FullName      *struct {
+		GivenName  string `json:"givenName"`
+		FamilyName string `json:"familyName"`
+	} `json:"fullName"` // 首次授权时客户端传递，可能为 null
+}
+
+// 新增: 设置密码 DTO
+type SetPasswordInput struct {
+	Password string `json:"password" binding:"required,min=8"`
 }
 
 type RefreshTokenInput struct {
@@ -63,11 +85,13 @@ type LogoutInput struct {
 	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
+// 修改: 用户信息 DTO
 type UserProfileResponse struct {
 	ID           uint      `json:"id" example:"1"`
-	Username     string    `json:"username" example:"testuser"`
+	Username     string    `json:"username,omitempty" example:"testuser"`
 	Email        string    `json:"email" example:"testuser@example.com"`
 	AvatarURL    string    `json:"avatar_url,omitempty" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
+	HasPassword  bool      `json:"has_password"` // 新增: 便于前端判断
 	UsedStorage  int64     `json:"used_storage,omitempty"`
 	TotalStorage int64     `json:"total_storage,omitempty"`
 	CreatedAt    time.Time `json:"created_at" example:"2023-10-27T10:00:00Z"`
@@ -75,6 +99,67 @@ type UserProfileResponse struct {
 
 type UploadAvatarSuccessData struct {
 	AvatarURL string `json:"avatar_url" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
+}
+
+// --- 辅助函数 (Apple Token 验证) ---
+
+// AppleClaims 定义了从 Apple Identity Token 中解析出的数据结构
+type AppleClaims struct {
+	jwt.RegisteredClaims
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	IsPrivate     bool   `json:"is_private_email"`
+}
+
+func NewAuthHandler(db *gorm.DB, cfg *core.Config) (*AuthHandler, error) {
+	// 1. 使用 keyfunc.NewDefault 创建一个 Keyfunc 实例。
+	//    它接收一个 URL 的 slice。
+	//    这个函数会自动处理 JWKS 的获取、缓存和后台刷新。
+	jwks, err := keyfunc.NewDefault([]string{AppleAuthKeysURL})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create JWKS from Apple URL: %w", err)
+	}
+
+	return &AuthHandler{
+		DB:                    db,
+		AvatarBaseURL:         cfg.PublicBaseURL + "/static/avatars/",
+		JWTSecret:             cfg.JWTSecret,
+		AccessTokenExpiresIn:  cfg.AccessTokenExpiresIn,
+		RefreshTokenExpiresIn: cfg.RefreshTokenExpiresIn,
+		AppleAppBundleID:      cfg.AppleAppBundleID,
+		// 2. 将创建的 jwks 实例（它实现了 keyfunc.Keyfunc 接口）赋值给字段。
+		appleKeyFunc: jwks,
+	}, nil
+}
+
+func (h *AuthHandler) ValidateAppleToken(ctx context.Context, identityToken string) (*AppleClaims, error) {
+	var claims AppleClaims
+	// h.appleKeyFunc 实现了 Keyfunc 方法，可以直接作为参数传递给 jwt.ParseWithClaims
+	token, err := jwt.ParseWithClaims(identityToken, &claims, h.appleKeyFunc.Keyfunc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse or validate apple token signature: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, errors.New("apple token is invalid")
+	}
+
+	if claims.Issuer != "https://appleid.apple.com" {
+		return nil, fmt.Errorf("invalid token issuer. expected 'https://appleid.apple.com', got '%s'", claims.Issuer)
+	}
+
+	isAudienceValid := false
+	for _, aud := range claims.Audience {
+		if aud == h.AppleAppBundleID {
+			isAudienceValid = true
+			break
+		}
+	}
+	if !isAudienceValid {
+		return nil, fmt.Errorf("invalid token audience. expected '%s', got '%v'", h.AppleAppBundleID, claims.Audience)
+	}
+
+	return &claims, nil
 }
 
 // --- Handlers ---
@@ -122,51 +207,44 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 // Login godoc
 // @Summary      用户登录
-// @Description  使用用户名和密码进行登录，成功后返回访问令牌和刷新令牌
+// @Description  使用邮箱和密码进行登录，成功后返回访问令牌和刷新令牌
 // @Tags         Authentication
 // @Accept       json
 // @Produce      json
 // @Param        credentials body UserLoginInput true "用户登录凭证"
 // @Success      200 {object} core.ApiResponse{data=UserLoginSuccessData} "登录成功"
-// @Failure      400 {object} core.ApiResponse "请求参数错误、用户名或密码无效或服务器内部错误"
+// @Failure      400 {object} core.ApiResponse "请求参数错误"
+// @Failure      401 {object} core.ApiResponse "邮箱或密码无效，或该账户需通过 Apple 登录"
 // @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var input UserLoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		core.ErrorAuth(c, "Invalid input: "+err.Error())
+		core.Error(c, "Invalid input: "+err.Error())
 		return
 	}
 
 	var user models.User
-	if err := h.DB.Where("username = ?", input.Username).First(&user).Error; err != nil {
-		core.ErrorAuth(c, "Invalid username or password")
+	// --- 关键修改: 使用 Email 进行查询 ---
+	if err := h.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		core.ErrorAuth(c, "Invalid email or password")
+		return
+	}
+
+	// --- 关键修改: 检查用户是否设置了密码 ---
+	if user.Password == "" {
+		core.ErrorAuth(c, "Please log in with Apple or set a password for your account.")
 		return
 	}
 
 	if !CheckPasswordHash(input.Password, user.Password) {
-		core.ErrorAuth(c, "Invalid username or password")
+		core.ErrorAuth(c, "Invalid email or password")
 		return
 	}
 
-	accessToken, err := GenerateAccessToken(user.ID, h.JWTSecret, h.AccessTokenExpiresIn)
+	// 生成并保存 tokens (逻辑不变)
+	accessToken, refreshToken, err := h.generateAndSaveTokens(user.ID)
 	if err != nil {
-		core.ErrorAuth(c, "Failed to generate access token")
-		return
-	}
-
-	refreshToken, err := GenerateRefreshToken(user.ID, h.JWTSecret, h.RefreshTokenExpiresIn)
-	if err != nil {
-		core.ErrorAuth(c, "Failed to generate refresh token")
-		return
-	}
-
-	rtRecord := models.RefreshToken{
-		UserID:    user.ID,
-		Token:     refreshToken,
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 30),
-	}
-	if err := h.DB.Create(&rtRecord).Error; err != nil {
-		core.ErrorAuth(c, "Failed to save refresh token")
+		core.Error(c, "Failed to process tokens: "+err.Error())
 		return
 	}
 
@@ -176,16 +254,170 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-// RefreshToken godoc
-// @Summary      刷新访问令牌
-// @Description  使用一个有效的、未过期的刷新令牌来获取一个新的访问令牌
+// AppleLogin godoc
+// @Summary      通过 Apple ID 登录或注册
+// @Description  使用从 Apple 获取的 identityToken 进行登录。如果用户不存在，则创建新用户；如果邮箱已存在，则关联账户。
 // @Tags         Authentication
 // @Accept       json
 // @Produce      json
-// @Param        token body RefreshTokenInput true "刷新令牌"
-// @Success      200 {object} core.ApiResponse{data=RefreshTokenSuccessData} "成功刷新令牌"
-// @Failure      400 {object} core.ApiResponse "请求参数错误或刷新令牌无效、已过期或已被撤销"
-// @Router       /auth/refresh [post]
+// @Param        credentials body AppleLoginInput true "Apple 登录凭证"
+// @Success      200 {object} core.ApiResponse{data=UserLoginSuccessData} "登录成功"
+// @Failure      400 {object} core.ApiResponse "请求参数错误"
+// @Failure      401 {object} core.ApiResponse "Apple Token 验证失败"
+// @Router       /auth/apple/login [post]
+func (h *AuthHandler) AppleLogin(c *gin.Context) {
+	var input AppleLoginInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		core.Error(c, "Invalid input: "+err.Error())
+		return
+	}
+
+	// 1. 验证 Apple Identity Token
+	claims, err := h.ValidateAppleToken(c, input.IdentityToken)
+	if err != nil {
+		core.ErrorAuth(c, "Invalid Apple token: "+err.Error())
+		return
+	}
+
+	appleUserID := claims.Subject // Apple 用户的唯一 ID ('sub')
+	email := claims.Email
+
+	// 2. 核心逻辑：通过邮箱查找用户
+	var user models.User
+	err = h.DB.Where("email = ?", email).First(&user).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 场景 A: 邮箱不存在 -> 全新注册
+		tx := h.DB.Begin()
+
+		// 创建 User，Password 为空
+		newUser := models.User{
+			Email: email,
+			// 如果客户端首次提供了姓名，则使用
+			Username: func() string {
+				if input.FullName != nil && input.FullName.GivenName != "" {
+					return input.FullName.GivenName
+				}
+				// 否则可以留空或基于 email 生成一个临时的
+				return ""
+			}(),
+		}
+		if err := tx.Create(&newUser).Error; err != nil {
+			tx.Rollback()
+			core.Error(c, "Failed to create user account")
+			return
+		}
+
+		// 创建 AuthProvider 链接
+		provider := models.AuthProvider{
+			UserID:         newUser.ID,
+			ProviderName:   "apple",
+			ProviderUserID: appleUserID,
+		}
+		if err := tx.Create(&provider).Error; err != nil {
+			tx.Rollback()
+			core.Error(c, "Failed to link Apple account")
+			return
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			core.Error(c, "Failed to complete registration transaction")
+			return
+		}
+		user = newUser // 后续JWT生成使用此新用户
+
+	} else if err != nil {
+		// 其他数据库错误
+		core.Error(c, "Database error")
+		return
+
+	} else {
+		// 场景 B: 邮箱已存在 -> 账户链接
+		// 检查此 Apple ID 是否已链接到其他账户 (防止恶意操作)
+		var existingProvider models.AuthProvider
+		if res := h.DB.Where("provider_name = ? AND provider_user_id = ?", "apple", appleUserID).First(&existingProvider); res.Error == nil {
+			if existingProvider.UserID != user.ID {
+				core.Error(c, "This Apple ID is already linked to another account.")
+				return
+			}
+			// 如果已链接到当前账户，则直接走登录流程，无需操作
+		} else if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			// 如果 Apple ID 未被任何账户链接，则为当前用户创建新的链接
+			provider := models.AuthProvider{
+				UserID:         user.ID,
+				ProviderName:   "apple",
+				ProviderUserID: appleUserID,
+			}
+			if err := h.DB.Create(&provider).Error; err != nil {
+				core.Error(c, "Failed to link Apple ID to existing account")
+				return
+			}
+		} else {
+			core.Error(c, "Database error while checking provider")
+			return
+		}
+	}
+
+	// 3. 为找到的或新创建的用户生成 JWT
+	accessToken, refreshToken, err := h.generateAndSaveTokens(user.ID)
+	if err != nil {
+		core.Error(c, "Failed to process tokens: "+err.Error())
+		return
+	}
+
+	core.Success(c, "Apple login successful", UserLoginSuccessData{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+// SetPassword godoc
+// @Summary      为账户设置密码
+// @Description  允许通过第三方登录且未设置密码的用户创建一个密码
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        password body SetPasswordInput true "新密码"
+// @Success      204 "密码设置成功"
+// @Failure      400 {object} core.ApiResponse "请求参数错误或用户已设置密码"
+// @Failure      401 {object} core.ApiResponse "未授权"
+// @Security     BearerAuth
+// @Router       /auth/password/set [post]
+func (h *AuthHandler) SetPassword(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var input SetPasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		core.Error(c, "Invalid input: "+err.Error())
+		return
+	}
+
+	var user models.User
+	if err := h.DB.First(&user, userID).Error; err != nil {
+		core.Error(c, "User not found")
+		return
+	}
+
+	if user.Password != "" {
+		core.Error(c, "Password has already been set for this account.")
+		return
+	}
+
+	hashedPassword, err := HashPassword(input.Password)
+	if err != nil {
+		core.Error(c, "Failed to hash password")
+		return
+	}
+
+	if err := h.DB.Model(&user).Update("password", string(hashedPassword)).Error; err != nil {
+		core.Error(c, "Failed to update password")
+		return
+	}
+
+	core.NoContent(c)
+}
+
+// RefreshToken 保持不变
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var input RefreshTokenInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -281,19 +513,18 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 		avatarURL = h.AvatarBaseURL + user.Avatar
 	}
 
-	// 3. 将数据库模型映射到安全的响应DTO
-	// 这是非常关键的一步，确保不会泄露密码哈希等敏感字段
+	// 映射到安全的响应DTO
 	userProfile := UserProfileResponse{
 		ID:           user.ID,
 		Username:     user.Username,
 		Email:        user.Email,
 		AvatarURL:    avatarURL,
+		HasPassword:  user.Password != "", // 新增字段的赋值
 		UsedStorage:  20,
 		TotalStorage: 100,
 		CreatedAt:    user.CreatedAt,
 	}
 
-	// 4. 返回成功响应
 	core.Success(c, "User profile retrieved successfully", userProfile)
 }
 
@@ -311,17 +542,14 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /auth/avatar [post]
 func (h *AuthHandler) UploadAvatar(c *gin.Context) {
-	// 1. 从认证中间件获取用户ID
 	userID := c.MustGet("userID").(uint)
 
-	// 2. 从表单中获取上传的文件
 	file, err := c.FormFile("avatar")
 	if err != nil {
 		core.Error(c, "Failed to get file from form: "+err.Error())
 		return
 	}
 
-	// 3. 校验文件大小和类型
 	if file.Size > MaxAvatarSize {
 		core.Error(c, "File size exceeds the limit of 5MB")
 		return
@@ -333,36 +561,50 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// 4. 生成唯一的文件名，避免冲突和覆盖
-	// 格式：{userID}-{timestamp}{extension}，例如: 123-1678886400.png
 	newFilename := fmt.Sprintf("%d-%d%s", userID, time.Now().Unix(), ext)
 	savePath := filepath.Join(AvatarSavePath, newFilename)
 
-	// 5. 确保目标目录存在
 	if err := os.MkdirAll(AvatarSavePath, 0755); err != nil {
 		core.Error(c, "Failed to create save directory: "+err.Error())
 		return
 	}
 
-	// 6. 保存文件到服务器指定目录
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
 		core.Error(c, "Failed to save file: "+err.Error())
 		return
 	}
 
-	// 7. 将新的文件名更新到数据库
-	// 注意：这里只保存文件名，不保存完整路径，这样更灵活
 	if err := h.DB.Model(&models.User{}).Where("id = ?", userID).Update("avatar", newFilename).Error; err != nil {
 		core.Error(c, "Failed to update user avatar in database")
-		// (可选) 在数据库更新失败时，可以尝试删除刚刚保存的文件以保持数据一致性
-		// os.Remove(savePath)
 		return
 	}
 
-	// 8. 构建可公开访问的URL并返回给客户端
 	fullAvatarURL := h.AvatarBaseURL + newFilename
-
 	core.Success(c, "Avatar uploaded successfully", UploadAvatarSuccessData{
 		AvatarURL: fullAvatarURL,
 	})
+}
+
+// 封装 Token 生成和存储逻辑
+func (h *AuthHandler) generateAndSaveTokens(userID uint) (string, string, error) {
+	accessToken, err := GenerateAccessToken(userID, h.JWTSecret, h.AccessTokenExpiresIn)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate access token")
+	}
+
+	refreshToken, err := GenerateRefreshToken(userID, h.JWTSecret, h.RefreshTokenExpiresIn)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate refresh token")
+	}
+
+	rtRecord := models.RefreshToken{
+		UserID:    userID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(h.RefreshTokenExpiresIn),
+	}
+	if err := h.DB.Create(&rtRecord).Error; err != nil {
+		return "", "", fmt.Errorf("failed to save refresh token")
+	}
+
+	return accessToken, refreshToken, nil
 }

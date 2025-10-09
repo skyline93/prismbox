@@ -23,6 +23,7 @@ mixin _$UserProfileModel {
   int get id => throw _privateConstructorUsedError;
   String get username => throw _privateConstructorUsedError;
   String get email => throw _privateConstructorUsedError;
+  bool get hasPassword => throw _privateConstructorUsedError;
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'used_storage')
@@ -46,6 +47,7 @@ abstract class $UserProfileModelCopyWith<$Res> {
       {int id,
       String username,
       String email,
+      bool hasPassword,
       @JsonKey(name: 'avatar_url') String? avatarUrl,
       @JsonKey(name: 'used_storage') double usedStorage,
       @JsonKey(name: 'total_storage') double totalStorage});
@@ -67,6 +69,7 @@ class _$UserProfileModelCopyWithImpl<$Res, $Val extends UserProfileModel>
     Object? id = null,
     Object? username = null,
     Object? email = null,
+    Object? hasPassword = null,
     Object? avatarUrl = freezed,
     Object? usedStorage = null,
     Object? totalStorage = null,
@@ -84,6 +87,10 @@ class _$UserProfileModelCopyWithImpl<$Res, $Val extends UserProfileModel>
           ? _value.email
           : email // ignore: cast_nullable_to_non_nullable
               as String,
+      hasPassword: null == hasPassword
+          ? _value.hasPassword
+          : hasPassword // ignore: cast_nullable_to_non_nullable
+              as bool,
       avatarUrl: freezed == avatarUrl
           ? _value.avatarUrl
           : avatarUrl // ignore: cast_nullable_to_non_nullable
@@ -112,6 +119,7 @@ abstract class _$$UserProfileModelImplCopyWith<$Res>
       {int id,
       String username,
       String email,
+      bool hasPassword,
       @JsonKey(name: 'avatar_url') String? avatarUrl,
       @JsonKey(name: 'used_storage') double usedStorage,
       @JsonKey(name: 'total_storage') double totalStorage});
@@ -131,6 +139,7 @@ class __$$UserProfileModelImplCopyWithImpl<$Res>
     Object? id = null,
     Object? username = null,
     Object? email = null,
+    Object? hasPassword = null,
     Object? avatarUrl = freezed,
     Object? usedStorage = null,
     Object? totalStorage = null,
@@ -148,6 +157,10 @@ class __$$UserProfileModelImplCopyWithImpl<$Res>
           ? _value.email
           : email // ignore: cast_nullable_to_non_nullable
               as String,
+      hasPassword: null == hasPassword
+          ? _value.hasPassword
+          : hasPassword // ignore: cast_nullable_to_non_nullable
+              as bool,
       avatarUrl: freezed == avatarUrl
           ? _value.avatarUrl
           : avatarUrl // ignore: cast_nullable_to_non_nullable
@@ -171,6 +184,7 @@ class _$UserProfileModelImpl extends _UserProfileModel {
       {required this.id,
       required this.username,
       required this.email,
+      required this.hasPassword,
       @JsonKey(name: 'avatar_url') this.avatarUrl,
       @JsonKey(name: 'used_storage') required this.usedStorage,
       @JsonKey(name: 'total_storage') required this.totalStorage})
@@ -186,6 +200,8 @@ class _$UserProfileModelImpl extends _UserProfileModel {
   @override
   final String email;
   @override
+  final bool hasPassword;
+  @override
   @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
   @override
@@ -197,7 +213,7 @@ class _$UserProfileModelImpl extends _UserProfileModel {
 
   @override
   String toString() {
-    return 'UserProfileModel(id: $id, username: $username, email: $email, avatarUrl: $avatarUrl, usedStorage: $usedStorage, totalStorage: $totalStorage)';
+    return 'UserProfileModel(id: $id, username: $username, email: $email, hasPassword: $hasPassword, avatarUrl: $avatarUrl, usedStorage: $usedStorage, totalStorage: $totalStorage)';
   }
 
   @override
@@ -209,6 +225,8 @@ class _$UserProfileModelImpl extends _UserProfileModel {
             (identical(other.username, username) ||
                 other.username == username) &&
             (identical(other.email, email) || other.email == email) &&
+            (identical(other.hasPassword, hasPassword) ||
+                other.hasPassword == hasPassword) &&
             (identical(other.avatarUrl, avatarUrl) ||
                 other.avatarUrl == avatarUrl) &&
             (identical(other.usedStorage, usedStorage) ||
@@ -219,8 +237,8 @@ class _$UserProfileModelImpl extends _UserProfileModel {
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-      runtimeType, id, username, email, avatarUrl, usedStorage, totalStorage);
+  int get hashCode => Object.hash(runtimeType, id, username, email, hasPassword,
+      avatarUrl, usedStorage, totalStorage);
 
   @JsonKey(ignore: true)
   @override
@@ -242,6 +260,7 @@ abstract class _UserProfileModel extends UserProfileModel {
           {required final int id,
           required final String username,
           required final String email,
+          required final bool hasPassword,
           @JsonKey(name: 'avatar_url') final String? avatarUrl,
           @JsonKey(name: 'used_storage') required final double usedStorage,
           @JsonKey(name: 'total_storage') required final double totalStorage}) =
@@ -257,6 +276,8 @@ abstract class _UserProfileModel extends UserProfileModel {
   String get username;
   @override
   String get email;
+  @override
+  bool get hasPassword;
   @override
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl;

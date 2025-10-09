@@ -1,11 +1,13 @@
 // lib/ui/main/page/login_page.dart
 
+import 'dart:io' show Platform; // 1. 导入 Platform 类
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/routing/app_router.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 @RoutePage()
 class LoginPage extends HookConsumerWidget {
@@ -123,33 +125,60 @@ class LoginPage extends HookConsumerWidget {
 
                   authState.maybeWhen(
                     loading: () => const CircularProgressIndicator(),
-                    orElse: () => SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          ref
-                              .read(authNotifierProvider.notifier)
-                              .login(
-                                emailController.text,
-                                passwordController.text,
-                              );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryBlue, // 应用蓝色背景
-                          foregroundColor: Colors.white, // 白色文字
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
-                          shape: const StadiumBorder(), // 胶囊形状
-                        ),
-                        child: const Text(
-                          '登录',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                    orElse: () => Column(
+                      // 包装在一个 Column 中
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              ref
+                                  .read(authNotifierProvider.notifier)
+                                  .login(
+                                    emailController.text,
+                                    passwordController.text,
+                                  );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryBlue, // 应用蓝色背景
+                              foregroundColor: Colors.white, // 白色文字
+                              elevation: 0,
+                              shadowColor: Colors.transparent,
+                              shape: const StadiumBorder(), // 胶囊形状
+                            ),
+                            child: const Text(
+                              '登录',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+
+                        // 2. 使用 if 集合 (collection if) 来条件性地添加 Apple 登录按钮
+                        // 仅在 iOS 或 macOS 平台上显示
+                        if (Platform.isIOS || Platform.isMacOS) ...[
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: SignInWithAppleButton(
+                              text: "使用 Apple 登录",
+                              onPressed: () {
+                                ref
+                                    .read(authNotifierProvider.notifier)
+                                    .loginWithApple();
+                              },
+                              style: SignInWithAppleButtonStyle.black,
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(50),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
 

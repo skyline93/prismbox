@@ -1186,3 +1186,470 @@ abstract class _GetProfileSuccessData implements GetProfileSuccessData {
   _$$GetProfileSuccessDataImplCopyWith<_$GetProfileSuccessDataImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
+
+AppleLoginInput _$AppleLoginInputFromJson(Map<String, dynamic> json) {
+  return _AppleLoginInput.fromJson(json);
+}
+
+/// @nodoc
+mixin _$AppleLoginInput {
+  String get identityToken => throw _privateConstructorUsedError;
+  FullName? get fullName => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $AppleLoginInputCopyWith<AppleLoginInput> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $AppleLoginInputCopyWith<$Res> {
+  factory $AppleLoginInputCopyWith(
+          AppleLoginInput value, $Res Function(AppleLoginInput) then) =
+      _$AppleLoginInputCopyWithImpl<$Res, AppleLoginInput>;
+  @useResult
+  $Res call({String identityToken, FullName? fullName});
+
+  $FullNameCopyWith<$Res>? get fullName;
+}
+
+/// @nodoc
+class _$AppleLoginInputCopyWithImpl<$Res, $Val extends AppleLoginInput>
+    implements $AppleLoginInputCopyWith<$Res> {
+  _$AppleLoginInputCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? identityToken = null,
+    Object? fullName = freezed,
+  }) {
+    return _then(_value.copyWith(
+      identityToken: null == identityToken
+          ? _value.identityToken
+          : identityToken // ignore: cast_nullable_to_non_nullable
+              as String,
+      fullName: freezed == fullName
+          ? _value.fullName
+          : fullName // ignore: cast_nullable_to_non_nullable
+              as FullName?,
+    ) as $Val);
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $FullNameCopyWith<$Res>? get fullName {
+    if (_value.fullName == null) {
+      return null;
+    }
+
+    return $FullNameCopyWith<$Res>(_value.fullName!, (value) {
+      return _then(_value.copyWith(fullName: value) as $Val);
+    });
+  }
+}
+
+/// @nodoc
+abstract class _$$AppleLoginInputImplCopyWith<$Res>
+    implements $AppleLoginInputCopyWith<$Res> {
+  factory _$$AppleLoginInputImplCopyWith(_$AppleLoginInputImpl value,
+          $Res Function(_$AppleLoginInputImpl) then) =
+      __$$AppleLoginInputImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String identityToken, FullName? fullName});
+
+  @override
+  $FullNameCopyWith<$Res>? get fullName;
+}
+
+/// @nodoc
+class __$$AppleLoginInputImplCopyWithImpl<$Res>
+    extends _$AppleLoginInputCopyWithImpl<$Res, _$AppleLoginInputImpl>
+    implements _$$AppleLoginInputImplCopyWith<$Res> {
+  __$$AppleLoginInputImplCopyWithImpl(
+      _$AppleLoginInputImpl _value, $Res Function(_$AppleLoginInputImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? identityToken = null,
+    Object? fullName = freezed,
+  }) {
+    return _then(_$AppleLoginInputImpl(
+      identityToken: null == identityToken
+          ? _value.identityToken
+          : identityToken // ignore: cast_nullable_to_non_nullable
+              as String,
+      fullName: freezed == fullName
+          ? _value.fullName
+          : fullName // ignore: cast_nullable_to_non_nullable
+              as FullName?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$AppleLoginInputImpl implements _AppleLoginInput {
+  const _$AppleLoginInputImpl({required this.identityToken, this.fullName});
+
+  factory _$AppleLoginInputImpl.fromJson(Map<String, dynamic> json) =>
+      _$$AppleLoginInputImplFromJson(json);
+
+  @override
+  final String identityToken;
+  @override
+  final FullName? fullName;
+
+  @override
+  String toString() {
+    return 'AppleLoginInput(identityToken: $identityToken, fullName: $fullName)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$AppleLoginInputImpl &&
+            (identical(other.identityToken, identityToken) ||
+                other.identityToken == identityToken) &&
+            (identical(other.fullName, fullName) ||
+                other.fullName == fullName));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, identityToken, fullName);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$AppleLoginInputImplCopyWith<_$AppleLoginInputImpl> get copyWith =>
+      __$$AppleLoginInputImplCopyWithImpl<_$AppleLoginInputImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$AppleLoginInputImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _AppleLoginInput implements AppleLoginInput {
+  const factory _AppleLoginInput(
+      {required final String identityToken,
+      final FullName? fullName}) = _$AppleLoginInputImpl;
+
+  factory _AppleLoginInput.fromJson(Map<String, dynamic> json) =
+      _$AppleLoginInputImpl.fromJson;
+
+  @override
+  String get identityToken;
+  @override
+  FullName? get fullName;
+  @override
+  @JsonKey(ignore: true)
+  _$$AppleLoginInputImplCopyWith<_$AppleLoginInputImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+FullName _$FullNameFromJson(Map<String, dynamic> json) {
+  return _FullName.fromJson(json);
+}
+
+/// @nodoc
+mixin _$FullName {
+  String? get givenName => throw _privateConstructorUsedError;
+  String? get familyName => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $FullNameCopyWith<FullName> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $FullNameCopyWith<$Res> {
+  factory $FullNameCopyWith(FullName value, $Res Function(FullName) then) =
+      _$FullNameCopyWithImpl<$Res, FullName>;
+  @useResult
+  $Res call({String? givenName, String? familyName});
+}
+
+/// @nodoc
+class _$FullNameCopyWithImpl<$Res, $Val extends FullName>
+    implements $FullNameCopyWith<$Res> {
+  _$FullNameCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? givenName = freezed,
+    Object? familyName = freezed,
+  }) {
+    return _then(_value.copyWith(
+      givenName: freezed == givenName
+          ? _value.givenName
+          : givenName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      familyName: freezed == familyName
+          ? _value.familyName
+          : familyName // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$FullNameImplCopyWith<$Res>
+    implements $FullNameCopyWith<$Res> {
+  factory _$$FullNameImplCopyWith(
+          _$FullNameImpl value, $Res Function(_$FullNameImpl) then) =
+      __$$FullNameImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String? givenName, String? familyName});
+}
+
+/// @nodoc
+class __$$FullNameImplCopyWithImpl<$Res>
+    extends _$FullNameCopyWithImpl<$Res, _$FullNameImpl>
+    implements _$$FullNameImplCopyWith<$Res> {
+  __$$FullNameImplCopyWithImpl(
+      _$FullNameImpl _value, $Res Function(_$FullNameImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? givenName = freezed,
+    Object? familyName = freezed,
+  }) {
+    return _then(_$FullNameImpl(
+      givenName: freezed == givenName
+          ? _value.givenName
+          : givenName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      familyName: freezed == familyName
+          ? _value.familyName
+          : familyName // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$FullNameImpl implements _FullName {
+  const _$FullNameImpl({this.givenName, this.familyName});
+
+  factory _$FullNameImpl.fromJson(Map<String, dynamic> json) =>
+      _$$FullNameImplFromJson(json);
+
+  @override
+  final String? givenName;
+  @override
+  final String? familyName;
+
+  @override
+  String toString() {
+    return 'FullName(givenName: $givenName, familyName: $familyName)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FullNameImpl &&
+            (identical(other.givenName, givenName) ||
+                other.givenName == givenName) &&
+            (identical(other.familyName, familyName) ||
+                other.familyName == familyName));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, givenName, familyName);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FullNameImplCopyWith<_$FullNameImpl> get copyWith =>
+      __$$FullNameImplCopyWithImpl<_$FullNameImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$FullNameImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _FullName implements FullName {
+  const factory _FullName({final String? givenName, final String? familyName}) =
+      _$FullNameImpl;
+
+  factory _FullName.fromJson(Map<String, dynamic> json) =
+      _$FullNameImpl.fromJson;
+
+  @override
+  String? get givenName;
+  @override
+  String? get familyName;
+  @override
+  @JsonKey(ignore: true)
+  _$$FullNameImplCopyWith<_$FullNameImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+SetPasswordInput _$SetPasswordInputFromJson(Map<String, dynamic> json) {
+  return _SetPasswordInput.fromJson(json);
+}
+
+/// @nodoc
+mixin _$SetPasswordInput {
+  String get password => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $SetPasswordInputCopyWith<SetPasswordInput> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $SetPasswordInputCopyWith<$Res> {
+  factory $SetPasswordInputCopyWith(
+          SetPasswordInput value, $Res Function(SetPasswordInput) then) =
+      _$SetPasswordInputCopyWithImpl<$Res, SetPasswordInput>;
+  @useResult
+  $Res call({String password});
+}
+
+/// @nodoc
+class _$SetPasswordInputCopyWithImpl<$Res, $Val extends SetPasswordInput>
+    implements $SetPasswordInputCopyWith<$Res> {
+  _$SetPasswordInputCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? password = null,
+  }) {
+    return _then(_value.copyWith(
+      password: null == password
+          ? _value.password
+          : password // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$SetPasswordInputImplCopyWith<$Res>
+    implements $SetPasswordInputCopyWith<$Res> {
+  factory _$$SetPasswordInputImplCopyWith(_$SetPasswordInputImpl value,
+          $Res Function(_$SetPasswordInputImpl) then) =
+      __$$SetPasswordInputImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String password});
+}
+
+/// @nodoc
+class __$$SetPasswordInputImplCopyWithImpl<$Res>
+    extends _$SetPasswordInputCopyWithImpl<$Res, _$SetPasswordInputImpl>
+    implements _$$SetPasswordInputImplCopyWith<$Res> {
+  __$$SetPasswordInputImplCopyWithImpl(_$SetPasswordInputImpl _value,
+      $Res Function(_$SetPasswordInputImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? password = null,
+  }) {
+    return _then(_$SetPasswordInputImpl(
+      password: null == password
+          ? _value.password
+          : password // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$SetPasswordInputImpl implements _SetPasswordInput {
+  const _$SetPasswordInputImpl({required this.password});
+
+  factory _$SetPasswordInputImpl.fromJson(Map<String, dynamic> json) =>
+      _$$SetPasswordInputImplFromJson(json);
+
+  @override
+  final String password;
+
+  @override
+  String toString() {
+    return 'SetPasswordInput(password: $password)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SetPasswordInputImpl &&
+            (identical(other.password, password) ||
+                other.password == password));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, password);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SetPasswordInputImplCopyWith<_$SetPasswordInputImpl> get copyWith =>
+      __$$SetPasswordInputImplCopyWithImpl<_$SetPasswordInputImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$SetPasswordInputImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _SetPasswordInput implements SetPasswordInput {
+  const factory _SetPasswordInput({required final String password}) =
+      _$SetPasswordInputImpl;
+
+  factory _SetPasswordInput.fromJson(Map<String, dynamic> json) =
+      _$SetPasswordInputImpl.fromJson;
+
+  @override
+  String get password;
+  @override
+  @JsonKey(ignore: true)
+  _$$SetPasswordInputImplCopyWith<_$SetPasswordInputImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
