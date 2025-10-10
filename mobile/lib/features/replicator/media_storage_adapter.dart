@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'package:mobile/domain/repositories/user_repository.dart';
 
 final mediaTableName = 'media';
 
@@ -147,6 +148,9 @@ class MediaStorageAdapter extends StorageAdapter {
 
   @override
   Future<void> applyFullSyncData(String tableName, List<Changelog> data) async {
+    final userRepo = getIt<UserRepository>();
+    final user = await userRepo.getCurrentUser();
+
     if (tableName != mediaTableName || data.isEmpty) {
       return;
     }
@@ -178,6 +182,10 @@ class MediaStorageAdapter extends StorageAdapter {
         if (payload == null ||
             payload['hash'] == null ||
             payload['deleted'] == true) {
+          continue;
+        }
+
+        if (payload["user_id"] != user.id) {
           continue;
         }
 
@@ -216,6 +224,9 @@ class MediaStorageAdapter extends StorageAdapter {
 
   @override
   Future<void> applyIncrementalChanges(List<Changelog> changes) async {
+    final userRepo = getIt<UserRepository>();
+    final user = await userRepo.getCurrentUser();
+
     if (changes.isEmpty) return;
     _log.info('开始应用 ${changes.length} 条增量变更（严格顺序，保留原始逻辑）...');
 
@@ -224,6 +235,15 @@ class MediaStorageAdapter extends StorageAdapter {
 
     // 2. 逐条处理每个变更
     for (final change in changes) {
+      final payload = change.payload;
+      if (payload == null) {
+        continue;
+      }
+
+      if (payload["user_id"] != user.id) {
+        continue;
+      }
+
       // 对每一条变更都使用一个独立的事务来确保原子性
       await _db
           .transaction(() async {
