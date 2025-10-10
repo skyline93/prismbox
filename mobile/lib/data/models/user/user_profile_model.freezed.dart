@@ -23,6 +23,7 @@ mixin _$UserProfileModel {
   int get id => throw _privateConstructorUsedError;
   String get username => throw _privateConstructorUsedError;
   String get email => throw _privateConstructorUsedError;
+  @JsonKey(name: 'has_password')
   bool get hasPassword => throw _privateConstructorUsedError;
   @JsonKey(name: 'avatar_url')
   String? get avatarUrl => throw _privateConstructorUsedError;
@@ -47,7 +48,7 @@ abstract class $UserProfileModelCopyWith<$Res> {
       {int id,
       String username,
       String email,
-      bool hasPassword,
+      @JsonKey(name: 'has_password') bool hasPassword,
       @JsonKey(name: 'avatar_url') String? avatarUrl,
       @JsonKey(name: 'used_storage') double usedStorage,
       @JsonKey(name: 'total_storage') double totalStorage});
@@ -119,7 +120,7 @@ abstract class _$$UserProfileModelImplCopyWith<$Res>
       {int id,
       String username,
       String email,
-      bool hasPassword,
+      @JsonKey(name: 'has_password') bool hasPassword,
       @JsonKey(name: 'avatar_url') String? avatarUrl,
       @JsonKey(name: 'used_storage') double usedStorage,
       @JsonKey(name: 'total_storage') double totalStorage});
@@ -184,7 +185,7 @@ class _$UserProfileModelImpl extends _UserProfileModel {
       {required this.id,
       required this.username,
       required this.email,
-      required this.hasPassword,
+      @JsonKey(name: 'has_password') required this.hasPassword,
       @JsonKey(name: 'avatar_url') this.avatarUrl,
       @JsonKey(name: 'used_storage') required this.usedStorage,
       @JsonKey(name: 'total_storage') required this.totalStorage})
@@ -200,6 +201,7 @@ class _$UserProfileModelImpl extends _UserProfileModel {
   @override
   final String email;
   @override
+  @JsonKey(name: 'has_password')
   final bool hasPassword;
   @override
   @JsonKey(name: 'avatar_url')
@@ -260,7 +262,7 @@ abstract class _UserProfileModel extends UserProfileModel {
           {required final int id,
           required final String username,
           required final String email,
-          required final bool hasPassword,
+          @JsonKey(name: 'has_password') required final bool hasPassword,
           @JsonKey(name: 'avatar_url') final String? avatarUrl,
           @JsonKey(name: 'used_storage') required final double usedStorage,
           @JsonKey(name: 'total_storage') required final double totalStorage}) =
@@ -277,6 +279,7 @@ abstract class _UserProfileModel extends UserProfileModel {
   @override
   String get email;
   @override
+  @JsonKey(name: 'has_password')
   bool get hasPassword;
   @override
   @JsonKey(name: 'avatar_url')

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
+	ung "github.com/dillonstreator/go-unique-name-generator"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
@@ -88,7 +89,7 @@ type LogoutInput struct {
 // 修改: 用户信息 DTO
 type UserProfileResponse struct {
 	ID           uint      `json:"id" example:"1"`
-	Username     string    `json:"username,omitempty" example:"testuser"`
+	Username     string    `json:"username" example:"testuser"`
 	Email        string    `json:"email" example:"testuser@example.com"`
 	AvatarURL    string    `json:"avatar_url,omitempty" example:"http://localhost:8080/static/avatars/1-1678886400.png"`
 	HasPassword  bool      `json:"has_password"` // 新增: 便于前端判断
@@ -298,8 +299,8 @@ func (h *AuthHandler) AppleLogin(c *gin.Context) {
 				if input.FullName != nil && input.FullName.GivenName != "" {
 					return input.FullName.GivenName
 				}
-				// 否则可以留空或基于 email 生成一个临时的
-				return ""
+				generator := ung.NewUniqueNameGenerator()
+				return fmt.Sprintf("%d", generator.UniquenessCount())
 			}(),
 		}
 		if err := tx.Create(&newUser).Error; err != nil {

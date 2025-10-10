@@ -2,12 +2,13 @@
 
 module server
 
-go 1.23.0
+go 1.24.6
 
-toolchain go1.23.11
+toolchain go1.24.8
 
 require (
 	github.com/MicahParks/keyfunc/v3 v3.7.0
+	github.com/dillonstreator/go-unique-name-generator v1.0.2
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.3.0

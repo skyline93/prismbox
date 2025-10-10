@@ -14,7 +14,7 @@ class UserProfileModel with _$UserProfileModel {
     required int id,
     required String username,
     required String email,
-    required bool hasPassword,
+    @JsonKey(name: 'has_password') required bool hasPassword,
 
     @JsonKey(name: 'avatar_url') String? avatarUrl,
     @JsonKey(name: 'used_storage') required double usedStorage,
