@@ -13,6 +13,7 @@ import 'package:mobile/providers/providers.dart';
 import 'package:mobile/providers/transfer_providers.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'photo_editor_page.dart';
+import 'package:mobile/providers/upload_orchestrator.dart';
 
 @RoutePage()
 class GalleryPage extends HookConsumerWidget {
@@ -345,10 +346,19 @@ class GalleryPage extends HookConsumerWidget {
               ).showSnackBar(const SnackBar(content: Text('无法找到本地媒体资源，上传失败')));
               return;
             }
+
+            final file = await asset.originFile;
+
             ref
                 .read(transferManagerProvider)
                 .uploadService
-                .enqueueUploadJob(asset);
+                .enqueueMultipleJobs([
+                  UploadTaskPayload(
+                    file: file!,
+                    assetId: asset.id,
+                    mediaType: entity.assetType,
+                  ),
+                ]);
           },
         );
       case SyncStatus.uploadFailed:
@@ -366,24 +376,30 @@ class GalleryPage extends HookConsumerWidget {
               ).showSnackBar(const SnackBar(content: Text('无法找到本地媒体资源，上传失败')));
               return;
             }
+
+            final file = await asset.originFile;
+
             ref
                 .read(transferManagerProvider)
                 .uploadService
-                .enqueueUploadJob(asset);
+                .enqueueMultipleJobs([
+                  UploadTaskPayload(
+                    file: file!,
+                    assetId: asset.id,
+                    mediaType: entity.assetType,
+                  ),
+                ]);
           },
         );
       case SyncStatus.uploading:
         return buildInProgressIndicator('上传中...', icon: Icons.upload);
       case SyncStatus.synced:
-        // --- START: FINAL FIX ---
-        // 新增 disabledColor 属性，使其在禁用时也使用我们指定的前景色
         return IconButton(
           icon: const Icon(Icons.cloud_done),
           tooltip: '已同步',
           onPressed: null,
           disabledColor: foregroundColor.withOpacity(0.6),
         );
-      // --- END: FINAL FIX ---
       case SyncStatus.error:
         return const IconButton(
           icon: Icon(Icons.error_outline, color: Colors.red),
