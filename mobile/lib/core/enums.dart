@@ -31,10 +31,26 @@ enum NetworkConstraint { any, wifiOnly }
 enum AlbumSource { local, remote }
 
 enum MediaType {
-  @JsonValue('IMAGE')
   image,
-  @JsonValue('VIDEO')
-  video,
+  video; // Dart 3 中枚举成员末尾可以用分号
+
+  /// 从字符串解析，如果找不到匹配项则返回 null
+  static MediaType? fromString(String value) {
+    for (final type in MediaType.values) {
+      if (type.name == value) {
+        return type;
+      }
+    }
+    return null;
+  }
+
+  /// 从字符串解析，如果找不到匹配项则抛出异常
+  static MediaType fromStringStrict(String value) {
+    return MediaType.values.firstWhere(
+      (type) => type.name == value,
+      orElse: () => throw ArgumentError('"$value" 不是一个有效的 MediaType'),
+    );
+  }
 }
 
 enum ProcessingStatus {

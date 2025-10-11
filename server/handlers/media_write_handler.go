@@ -176,7 +176,7 @@ func (h *MediaHandler) UploadStream(c *gin.Context) {
 	}
 	itemType := constant.MediaType(itemTypeStr)
 	if itemType != constant.TypeImage && itemType != constant.TypeVideo {
-		core.Error(c, "Invalid 'item_type'. Must be 'IMAGE' or 'VIDEO'")
+		core.Error(c, "Invalid 'item_type'. Must be 'image' or 'video'")
 		return
 	}
 	if cloudUuid == "" {

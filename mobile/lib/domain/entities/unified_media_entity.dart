@@ -5,6 +5,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/data/models/media/media_model.dart';
+import 'package:mobile/extensions/asset_type_extensions.dart';
 
 part 'unified_media_entity.freezed.dart';
 
@@ -52,9 +53,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
 
   factory UnifiedMediaEntity.fromAssetEntity(AssetEntity asset) {
     // 将 photo_manager 的 AssetType 转换为我们自己的 MediaType
-    final MediaType type = asset.type == AssetType.video
-        ? MediaType.video
-        : MediaType.image;
+    final MediaType type = asset.type.toMediaType();
 
     return UnifiedMediaEntity(
       // 重要: 当从 AssetEntity 直接创建时，它尚未进入我们的数据库，
@@ -117,9 +116,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       // 从 remoteMedia 对象映射字段
       cloudUuid: remoteMedia.uuid,
       thumbnailUrl: remoteMedia.thumbnailUrl,
-      assetType: remoteMedia.itemType == 'VIDEO'
-          ? MediaType.video
-          : MediaType.image,
+      assetType: MediaType.fromStringStrict(remoteMedia.itemType),
       fileName: remoteMedia.filename,
       isRAW: false,
       width: remoteMedia.width,

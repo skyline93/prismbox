@@ -214,7 +214,7 @@ class RemoteMediaDataSource {
 
       final formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
-        'item_type': itemType == MediaType.image ? 'IMAGE' : 'VIDEO',
+        'item_type': itemType.name,
         'original_filename': fileName,
         'hash': hash,
       });

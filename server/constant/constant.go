@@ -9,8 +9,8 @@ const (
 type MediaType string
 
 const (
-	TypeImage MediaType = "IMAGE"
-	TypeVideo MediaType = "VIDEO"
+	TypeImage MediaType = "image"
+	TypeVideo MediaType = "video"
 )
 
 type ProcessingStatus string

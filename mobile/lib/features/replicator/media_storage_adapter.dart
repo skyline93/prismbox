@@ -368,15 +368,10 @@ class MediaStorageAdapter extends StorageAdapter {
       return null;
     }
 
-    MediaType mapMediaType(String? type) {
-      if (type == null) return MediaType.image; // 提供一个默认值
-      return MediaType.values.byName(type.toLowerCase());
-    }
-
     return MediaAssetsCompanion(
       cloudUuid: Value(change.recordId),
       contentHash: Value(payload['hash'] as String?),
-      assetType: Value(mapMediaType(payload['item_type'] as String?)),
+      assetType: Value(MediaType.fromStringStrict(payload['item_type'])),
       fileName: Value(payload['original_filename'] as String?),
       width: Value(parseInt(payload['width'])),
       height: Value(parseInt(payload['height'])),

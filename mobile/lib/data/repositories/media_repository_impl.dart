@@ -16,6 +16,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:mobile/extensions/asset_type_extensions.dart';
 
 @LazySingleton(as: MediaRepository)
 class MediaRepositoryImpl implements MediaRepository {
@@ -170,13 +171,9 @@ class MediaRepositoryImpl implements MediaRepository {
       throw Exception('Failed to get file from asset: ${asset.id}');
     }
 
-    final mediaType = asset.type == AssetType.video
-        ? MediaType.video
-        : MediaType.image;
-
     final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(
       file,
-      mediaType,
+      asset.type.toMediaType(),
     );
 
     return UnifiedMediaEntity.fromRemoteMedia(remoteMedia);

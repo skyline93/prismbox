@@ -17,6 +17,7 @@ import 'package:uuid/uuid.dart';
 import 'package:mobile/providers/upload_orchestrator.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/config/app_config.dart';
+import 'package:mobile/extensions/asset_type_extensions.dart';
 
 Future<String> _calculateFileHash(String filePath) async {
   final file = File(filePath);
@@ -87,6 +88,7 @@ class UploadService {
           'file': task.file,
           'assetId': task.assetId,
           'cloudUuid': cloudUuid,
+          "mediaType": task.mediaType,
         });
       }
     });
@@ -98,6 +100,7 @@ class UploadService {
         jobData['file'],
         jobData['assetId'],
         jobData['cloudUuid'],
+        jobData['mediaType'],
       );
     }
   }
@@ -226,7 +229,13 @@ class UploadService {
         ),
       );
 
-      _processUploadQueue(jobId, file, assetId, cloudUuid);
+      _processUploadQueue(
+        jobId,
+        file,
+        assetId,
+        cloudUuid,
+        asset.type.toMediaType(),
+      );
     } catch (e, st) {
       _log.severe('入队上传任务 $jobId (资源 $assetId) 失败', e, st);
       await _mediaAssetDao.updateMediaAssetWithlocalId(
@@ -247,6 +256,7 @@ class UploadService {
     File file,
     String assetId,
     String cloudUuid,
+    MediaType mediaType,
   ) async {
     try {
       await _updateJobStatus(jobId, UploadJobStatus.initiating);
@@ -281,16 +291,10 @@ class UploadService {
       }
       final headers = {'Authorization': 'Bearer $accessToken'};
 
-      final itemType =
-          filename.toLowerCase().endsWith('.mp4') ||
-              filename.toLowerCase().endsWith('.mov')
-          ? 'VIDEO'
-          : 'IMAGE';
-
       final fields = {
         'cloud_uuid': cloudUuid,
         'hash': fileHash,
-        'item_type': itemType,
+        'item_type': mediaType.name,
         'original_filename': filename,
       };
 

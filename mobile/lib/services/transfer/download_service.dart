@@ -94,7 +94,7 @@ class DownloadService {
 
       final savedAssetEntity = await _registerMediaToGallery(
         realFilePath,
-        itemType,
+        MediaType.fromStringStrict(itemType),
       );
 
       if (savedAssetEntity != null) {
@@ -189,7 +189,7 @@ class DownloadService {
       await _enqueueDownloadJob(
         mediaUuid: asset.cloudUuid!,
         originalFilename: asset.fileName ?? 'untitled_${asset.cloudUuid}',
-        itemType: asset.assetType.name,
+        itemType: asset.assetType,
       );
     } catch (e, stacktrace) {
       _log.severe(
@@ -207,7 +207,7 @@ class DownloadService {
   Future<void> _enqueueDownloadJob({
     required String mediaUuid,
     required String originalFilename,
-    required String itemType,
+    required MediaType itemType,
   }) async {
     final jobId = _uuid.v4();
     final saveDir = await getApplicationDocumentsDirectory();
@@ -239,7 +239,10 @@ class DownloadService {
         group: 'download',
         updates: Updates.statusAndProgress,
         requiresWiFi: false,
-        metaData: jsonEncode({'mediaUuid': mediaUuid, 'itemType': itemType}),
+        metaData: jsonEncode({
+          'mediaUuid': mediaUuid,
+          'itemType': itemType.name,
+        }),
         priority: 0,
       );
 
@@ -274,7 +277,7 @@ class DownloadService {
 
   Future<AssetEntity?> _registerMediaToGallery(
     String originalFilePath,
-    String itemType,
+    MediaType itemType,
   ) async {
     final sourceFile = File(originalFilePath);
     if (!await sourceFile.exists()) {
@@ -295,12 +298,12 @@ class DownloadService {
 
       _log.info('Registering file ($originalFilePath) to system gallery...');
       AssetEntity? asset;
-      if (itemType.toUpperCase() == 'IMAGE') {
+      if (itemType == MediaType.image) {
         asset = await PhotoManager.editor.saveImageWithPath(
           tempFile.path,
           title: tempFileName,
         );
-      } else if (itemType.toUpperCase() == 'VIDEO') {
+      } else if (itemType == MediaType.video) {
         asset = await PhotoManager.editor.saveVideo(
           tempFile,
           title: tempFileName,

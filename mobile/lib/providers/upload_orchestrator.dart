@@ -7,12 +7,19 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/providers/transfer_providers.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:mobile/core/enums.dart';
+import 'package:mobile/extensions/asset_type_extensions.dart';
 
 class UploadTaskPayload {
   final File file;
   final String assetId;
+  final MediaType mediaType;
 
-  UploadTaskPayload({required this.file, required this.assetId});
+  UploadTaskPayload({
+    required this.file,
+    required this.assetId,
+    required this.mediaType,
+  });
 }
 
 final uploadOrchestratorProvider = Provider((ref) {
@@ -71,7 +78,11 @@ class UploadOrchestrator {
         final File? file = await asset.originFile;
 
         if (file != null) {
-          return UploadTaskPayload(file: file, assetId: asset.id);
+          return UploadTaskPayload(
+            file: file,
+            assetId: asset.id,
+            mediaType: asset.type.toMediaType(),
+          );
         } else {
           debugPrint('无法为 Asset ${asset.id} 获取文件，跳过上传。');
           return null;

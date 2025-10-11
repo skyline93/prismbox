@@ -7,9 +7,11 @@ import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/core/enums.dart';
-import 'package:mobile/features/background_jobs/impl/media_sync/models/sync_models.dart' hide SyncStatus;
+import 'package:mobile/features/background_jobs/impl/media_sync/models/sync_models.dart'
+    hide SyncStatus;
 import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
+import 'package:mobile/extensions/asset_type_extensions.dart';
 
 @lazySingleton
 class AssetChangeExecutor {
@@ -216,9 +218,7 @@ class AssetChangeExecutor {
       localId: Value(asset.id),
       syncStatus: SyncStatus.localOnly,
       // Default status is set by the calling method
-      assetType: asset.type == AssetType.video
-          ? MediaType.video
-          : MediaType.image,
+      assetType: asset.type.toMediaType(),
       filePath: Value(file.path),
       fileName: Value(p.basename(file.path)),
       width: Value(asset.width),
