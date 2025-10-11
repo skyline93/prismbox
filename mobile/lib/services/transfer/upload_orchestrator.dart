@@ -22,10 +22,6 @@ class UploadTaskPayload {
   });
 }
 
-final uploadOrchestratorProvider = Provider((ref) {
-  return UploadOrchestrator(ref);
-});
-
 class UploadOrchestrator {
   final Ref _ref;
 

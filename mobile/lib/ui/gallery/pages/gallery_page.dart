@@ -10,10 +10,9 @@ import 'package:mobile/core/enums.dart';
 import 'package:mobile/ui/gallery/viewmodels/gallery_viewmodel.dart';
 import 'package:mobile/ui/gallery/pages/gallery_item_page.dart';
 import 'package:mobile/providers/providers.dart';
-import 'package:mobile/providers/transfer_providers.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'photo_editor_page.dart';
-import 'package:mobile/providers/upload_orchestrator.dart';
+import 'package:mobile/providers/transfer_providers.dart';
 
 @RoutePage()
 class GalleryPage extends HookConsumerWidget {
@@ -339,26 +338,9 @@ class GalleryPage extends HookConsumerWidget {
           icon: const Icon(Icons.cloud_upload_outlined),
           tooltip: '上传到云端',
           onPressed: () async {
-            final asset = await AssetEntity.fromId(entity.localId!);
-            if (asset == null) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('无法找到本地媒体资源，上传失败')));
-              return;
-            }
-
-            final file = await asset.originFile;
-
-            ref
-                .read(transferManagerProvider)
-                .uploadService
-                .enqueueMultipleJobs([
-                  UploadTaskPayload(
-                    file: file!,
-                    assetId: asset.id,
-                    mediaType: entity.assetType,
-                  ),
-                ]);
+            ref.read(uploadOrchestratorProvider).processAndEnqueueUploads([
+              entity,
+            ]);
           },
         );
       case SyncStatus.uploadFailed:
@@ -369,26 +351,9 @@ class GalleryPage extends HookConsumerWidget {
           ),
           tooltip: '上传失败，点击重试',
           onPressed: () async {
-            final asset = await AssetEntity.fromId(entity.localId!);
-            if (asset == null) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('无法找到本地媒体资源，上传失败')));
-              return;
-            }
-
-            final file = await asset.originFile;
-
-            ref
-                .read(transferManagerProvider)
-                .uploadService
-                .enqueueMultipleJobs([
-                  UploadTaskPayload(
-                    file: file!,
-                    assetId: asset.id,
-                    mediaType: entity.assetType,
-                  ),
-                ]);
+            ref.read(uploadOrchestratorProvider).processAndEnqueueUploads([
+              entity,
+            ]);
           },
         );
       case SyncStatus.uploading:

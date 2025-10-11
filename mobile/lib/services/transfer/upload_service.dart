@@ -12,7 +12,7 @@ import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
-import 'package:mobile/providers/upload_orchestrator.dart';
+import 'package:mobile/services/transfer/upload_orchestrator.dart';
 import 'package:mobile/config/app_config.dart';
 import 'package:mobile/utils/hash.dart';
 
