@@ -12,11 +12,11 @@ import 'package:logging/logging.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
-import 'package:mobile/data/services/dio_client.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:mobile/providers/upload_orchestrator.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:mobile/config/app_config.dart';
 
 Future<String> _calculateFileHash(String filePath) async {
   final file = File(filePath);
@@ -296,7 +296,7 @@ class UploadService {
 
       final task = UploadTask.fromFile(
         file: file,
-        url: '${DioClient.getBaseUrl()}/media/upload-stream',
+        url: '${ApiConfig.baseUrl}/media/upload-stream',
         fileField: 'file',
         fields: fields,
         headers: headers,

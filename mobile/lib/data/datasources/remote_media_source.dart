@@ -7,13 +7,14 @@ import 'package:crypto/crypto.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/core/enums.dart';
+import 'package:mobile/config/app_config.dart';
 
 class RemoteMediaDataSource {
   // ignore: unused_field
   final DioClient _dioClient;
   final Dio _dio;
   final Dio _fileDio;
-  final String baseUrl = DioClient.getBaseUrl();
+  final String baseUrl = ApiConfig.baseUrl;
 
   RemoteMediaDataSource(this._dioClient)
     : _dio = _dioClient.dio,

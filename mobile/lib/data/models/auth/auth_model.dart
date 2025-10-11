@@ -9,7 +9,7 @@ part 'auth_model.g.dart';
 @freezed
 class UserLoginInput with _$UserLoginInput {
   const factory UserLoginInput({
-    required String username,
+    required String email,
     required String password,
   }) = _UserLoginInput;
 

@@ -8,14 +8,14 @@ part of 'auth_model.dart';
 
 _$UserLoginInputImpl _$$UserLoginInputImplFromJson(Map<String, dynamic> json) =>
     _$UserLoginInputImpl(
-      username: json['username'] as String,
+      email: json['email'] as String,
       password: json['password'] as String,
     );
 
 Map<String, dynamic> _$$UserLoginInputImplToJson(
         _$UserLoginInputImpl instance) =>
     <String, dynamic>{
-      'username': instance.username,
+      'email': instance.email,
       'password': instance.password,
     };
 

@@ -20,7 +20,7 @@ UserLoginInput _$UserLoginInputFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$UserLoginInput {
-  String get username => throw _privateConstructorUsedError;
+  String get email => throw _privateConstructorUsedError;
   String get password => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -35,7 +35,7 @@ abstract class $UserLoginInputCopyWith<$Res> {
           UserLoginInput value, $Res Function(UserLoginInput) then) =
       _$UserLoginInputCopyWithImpl<$Res, UserLoginInput>;
   @useResult
-  $Res call({String username, String password});
+  $Res call({String email, String password});
 }
 
 /// @nodoc
@@ -51,13 +51,13 @@ class _$UserLoginInputCopyWithImpl<$Res, $Val extends UserLoginInput>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? username = null,
+    Object? email = null,
     Object? password = null,
   }) {
     return _then(_value.copyWith(
-      username: null == username
-          ? _value.username
-          : username // ignore: cast_nullable_to_non_nullable
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
               as String,
       password: null == password
           ? _value.password
@@ -75,7 +75,7 @@ abstract class _$$UserLoginInputImplCopyWith<$Res>
       __$$UserLoginInputImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String username, String password});
+  $Res call({String email, String password});
 }
 
 /// @nodoc
@@ -89,13 +89,13 @@ class __$$UserLoginInputImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? username = null,
+    Object? email = null,
     Object? password = null,
   }) {
     return _then(_$UserLoginInputImpl(
-      username: null == username
-          ? _value.username
-          : username // ignore: cast_nullable_to_non_nullable
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
               as String,
       password: null == password
           ? _value.password
@@ -108,19 +108,19 @@ class __$$UserLoginInputImplCopyWithImpl<$Res>
 /// @nodoc
 @JsonSerializable()
 class _$UserLoginInputImpl implements _UserLoginInput {
-  const _$UserLoginInputImpl({required this.username, required this.password});
+  const _$UserLoginInputImpl({required this.email, required this.password});
 
   factory _$UserLoginInputImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserLoginInputImplFromJson(json);
 
   @override
-  final String username;
+  final String email;
   @override
   final String password;
 
   @override
   String toString() {
-    return 'UserLoginInput(username: $username, password: $password)';
+    return 'UserLoginInput(email: $email, password: $password)';
   }
 
   @override
@@ -128,15 +128,14 @@ class _$UserLoginInputImpl implements _UserLoginInput {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$UserLoginInputImpl &&
-            (identical(other.username, username) ||
-                other.username == username) &&
+            (identical(other.email, email) || other.email == email) &&
             (identical(other.password, password) ||
                 other.password == password));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, username, password);
+  int get hashCode => Object.hash(runtimeType, email, password);
 
   @JsonKey(ignore: true)
   @override
@@ -155,14 +154,14 @@ class _$UserLoginInputImpl implements _UserLoginInput {
 
 abstract class _UserLoginInput implements UserLoginInput {
   const factory _UserLoginInput(
-      {required final String username,
+      {required final String email,
       required final String password}) = _$UserLoginInputImpl;
 
   factory _UserLoginInput.fromJson(Map<String, dynamic> json) =
       _$UserLoginInputImpl.fromJson;
 
   @override
-  String get username;
+  String get email;
   @override
   String get password;
   @override

@@ -29,12 +29,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String email, String password) async {
     state = const AuthState.loading();
     try {
       final authService = _ref.read(authServiceProvider);
       await authService.login(
-        UserLoginInput(username: username, password: password),
+        UserLoginInput(email: email, password: password),
       );
       state = const AuthState.authenticated();
     } catch (e) {

@@ -28,11 +28,9 @@ class DioClient {
   /// 专门用于刷新Token的Dio实例，避免拦截器循环
   final Dio _tokenDio = Dio();
 
-  final String baseUrl = DioClient.getBaseUrl();
-
   DioClient(this._storage) : dio = Dio(), fileDio = Dio() {
     // ---- 1. 配置常规API的Dio实例 (dio) ----
-    dio.options.baseUrl = baseUrl;
+    dio.options.baseUrl = ApiConfig.baseUrl;
     dio.options.connectTimeout = const Duration(seconds: 60);
     dio.options.receiveTimeout = const Duration(minutes: 30);
     dio.options.responseType = ResponseType.json;
@@ -118,11 +116,7 @@ class DioClient {
     ]);
 
     // ---- 3. 配置用于刷新Token的Dio实例 (_tokenDio) ----
-    _tokenDio.options.baseUrl = baseUrl;
-  }
-
-  static String getBaseUrl() {
-    return "${ApiConfig.defaultServerAddr}/api/v1";
+    _tokenDio.options.baseUrl = ApiConfig.baseUrl;
   }
 
   InterceptorsWrapper _createAuthInterceptor() {

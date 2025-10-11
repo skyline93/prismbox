@@ -3,13 +3,13 @@
 import 'package:dio/dio.dart';
 import '../../core/storage/secure_storage_service.dart';
 import '../models/auth/auth_model.dart';
-import 'package:mobile/data/services/dio_client.dart';
+import 'package:mobile/config/app_config.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthService {
   final Dio _dio;
   final SecureStorageService _storageService;
-  final baseUrl = DioClient.getBaseUrl();
+  final baseUrl = ApiConfig.baseUrl;
 
   AuthService(this._dio, this._storageService);
 
