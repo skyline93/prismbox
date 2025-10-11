@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:background_downloader/background_downloader.dart';
-import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart' as d;
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
@@ -18,13 +17,7 @@ import 'package:mobile/providers/upload_orchestrator.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/config/app_config.dart';
 import 'package:mobile/extensions/asset_type_extensions.dart';
-
-Future<String> _calculateFileHash(String filePath) async {
-  final file = File(filePath);
-  final stream = file.openRead();
-  final hash = await sha256.bind(stream).first;
-  return hash.toString();
-}
+import 'package:mobile/utils/hash.dart';
 
 @lazySingleton
 class UploadService {
@@ -261,7 +254,7 @@ class UploadService {
     try {
       await _updateJobStatus(jobId, UploadJobStatus.initiating);
       final totalSize = await file.length();
-      final fileHash = await compute(_calculateFileHash, file.path);
+      final fileHash = await compute(calculateFileHash, file);
       final filename = p.basename(file.path);
 
       await _uploadJobDao.updateJob(

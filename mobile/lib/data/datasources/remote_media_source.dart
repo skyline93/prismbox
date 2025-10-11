@@ -3,11 +3,12 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/services/dio_client.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/config/app_config.dart';
+import 'package:mobile/utils/hash.dart';
+import 'package:path/path.dart' as p;
 
 class RemoteMediaDataSource {
   // ignore: unused_field
@@ -208,9 +209,9 @@ class RemoteMediaDataSource {
 
   Future<MediaResponse> uploadFile(File file, MediaType itemType) async {
     try {
-      final fileName = file.path.split('/').last;
+      final fileName = p.basename(file.path);
+      final String hash = await calculateFileHash(file);
       final Uint8List fileBytes = await file.readAsBytes();
-      final String hash = sha256.convert(fileBytes).toString();
 
       final formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(fileBytes, filename: fileName),

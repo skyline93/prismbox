@@ -60,8 +60,8 @@ Map<String, dynamic> _$$MediaDetailImplToJson(_$MediaDetailImpl instance) =>
     };
 
 const _$MediaTypeEnumMap = {
-  MediaType.image: 'IMAGE',
-  MediaType.video: 'VIDEO',
+  MediaType.image: 'image',
+  MediaType.video: 'video',
 };
 
 const _$ProcessingStatusEnumMap = {

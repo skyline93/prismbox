@@ -1,7 +1,6 @@
 // lib/features/background_jobs/impl/media_sync/handlers/asset_action_handler.dart
 
 import 'dart:io';
-import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
@@ -12,6 +11,7 @@ import 'package:mobile/features/background_jobs/impl/media_sync/models/sync_mode
 import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/extensions/asset_type_extensions.dart';
+import 'package:mobile/utils/hash.dart';
 
 @lazySingleton
 class AssetChangeExecutor {
@@ -61,13 +61,8 @@ class AssetChangeExecutor {
 
       final isRaw = await isRawFile(asset);
 
-      final contentHash = await _calculateFileHash(asset);
-      if (contentHash == null) {
-        _log.severe(
-          'Failed to calculate hash for asset ${asset.id}. Skipping.',
-        );
-        return;
-      }
+      final file = await asset.originFile;
+      final contentHash = await calculateFileHash(file!);
 
       // 规则 2: 直接查询是否存在同样 hash 值的“仅云端”记录
       final cloudOnlyMatch = await _mediaAssetDao.getFirstAssetByHashAndStatus(
@@ -182,27 +177,6 @@ class AssetChangeExecutor {
       toUpsert: result.toUpsert,
       uuidsToDelete: result.uuidsToDelete,
     );
-  }
-
-  /// ---------------------------------------------------------------------------
-  /// 私有辅助方法
-  /// ---------------------------------------------------------------------------
-
-  /// Logic migrated from `SyncJobManager._calculateFileHash`.
-  Future<String?> _calculateFileHash(AssetEntity asset) async {
-    try {
-      final File? file = await asset.originFile;
-      if (file == null) {
-        _log.warning('Failed to get originFile for asset ${asset.id}.');
-        return null;
-      }
-      final stream = file.openRead();
-      final hash = await sha256.bind(stream).first;
-      return hash.toString();
-    } catch (e, s) {
-      _log.severe('Exception while hashing file for asset ${asset.id}.', e, s);
-      return null;
-    }
   }
 
   /// Logic migrated from `SyncJobManager._assetEntityToCompanion`.
