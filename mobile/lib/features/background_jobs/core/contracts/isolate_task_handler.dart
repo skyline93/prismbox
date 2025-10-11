@@ -1,3 +1,5 @@
+// lib/features/background_jobs/core/contracts/isolate_task_handler.dart
+
 import 'dart:isolate';
 
 /// 所有在通用 Isolate 中运行的具体业务处理器都必须实现的抽象接口。

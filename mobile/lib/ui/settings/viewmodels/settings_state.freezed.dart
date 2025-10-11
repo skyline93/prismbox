@@ -19,7 +19,13 @@ mixin _$SettingsState {
 // Default to 3 for initial UI display before loading
   int get maxConcurrentUploads => throw _privateConstructorUsedError;
   int get maxConcurrentDownloads => throw _privateConstructorUsedError;
-  bool get isAutoBackupEnabled =>
+  bool get isAutoBackupEnabled => throw _privateConstructorUsedError;
+  BackupFrequency get backupFrequency => throw _privateConstructorUsedError;
+  bool get isBackupOnWifiOnly =>
+      throw _privateConstructorUsedError; // 备份时间段的开始日期，可为空
+  DateTime? get backupStartDate =>
+      throw _privateConstructorUsedError; // 备份时间段的结束日期，可为空
+  DateTime? get backupEndDate =>
       throw _privateConstructorUsedError; // Indicates if settings are being loaded from the database
   bool get isLoading => throw _privateConstructorUsedError;
 
@@ -38,6 +44,10 @@ abstract class $SettingsStateCopyWith<$Res> {
       {int maxConcurrentUploads,
       int maxConcurrentDownloads,
       bool isAutoBackupEnabled,
+      BackupFrequency backupFrequency,
+      bool isBackupOnWifiOnly,
+      DateTime? backupStartDate,
+      DateTime? backupEndDate,
       bool isLoading});
 }
 
@@ -57,6 +67,10 @@ class _$SettingsStateCopyWithImpl<$Res, $Val extends SettingsState>
     Object? maxConcurrentUploads = null,
     Object? maxConcurrentDownloads = null,
     Object? isAutoBackupEnabled = null,
+    Object? backupFrequency = null,
+    Object? isBackupOnWifiOnly = null,
+    Object? backupStartDate = freezed,
+    Object? backupEndDate = freezed,
     Object? isLoading = null,
   }) {
     return _then(_value.copyWith(
@@ -72,6 +86,22 @@ class _$SettingsStateCopyWithImpl<$Res, $Val extends SettingsState>
           ? _value.isAutoBackupEnabled
           : isAutoBackupEnabled // ignore: cast_nullable_to_non_nullable
               as bool,
+      backupFrequency: null == backupFrequency
+          ? _value.backupFrequency
+          : backupFrequency // ignore: cast_nullable_to_non_nullable
+              as BackupFrequency,
+      isBackupOnWifiOnly: null == isBackupOnWifiOnly
+          ? _value.isBackupOnWifiOnly
+          : isBackupOnWifiOnly // ignore: cast_nullable_to_non_nullable
+              as bool,
+      backupStartDate: freezed == backupStartDate
+          ? _value.backupStartDate
+          : backupStartDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      backupEndDate: freezed == backupEndDate
+          ? _value.backupEndDate
+          : backupEndDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       isLoading: null == isLoading
           ? _value.isLoading
           : isLoading // ignore: cast_nullable_to_non_nullable
@@ -92,6 +122,10 @@ abstract class _$$SettingsStateImplCopyWith<$Res>
       {int maxConcurrentUploads,
       int maxConcurrentDownloads,
       bool isAutoBackupEnabled,
+      BackupFrequency backupFrequency,
+      bool isBackupOnWifiOnly,
+      DateTime? backupStartDate,
+      DateTime? backupEndDate,
       bool isLoading});
 }
 
@@ -109,6 +143,10 @@ class __$$SettingsStateImplCopyWithImpl<$Res>
     Object? maxConcurrentUploads = null,
     Object? maxConcurrentDownloads = null,
     Object? isAutoBackupEnabled = null,
+    Object? backupFrequency = null,
+    Object? isBackupOnWifiOnly = null,
+    Object? backupStartDate = freezed,
+    Object? backupEndDate = freezed,
     Object? isLoading = null,
   }) {
     return _then(_$SettingsStateImpl(
@@ -124,6 +162,22 @@ class __$$SettingsStateImplCopyWithImpl<$Res>
           ? _value.isAutoBackupEnabled
           : isAutoBackupEnabled // ignore: cast_nullable_to_non_nullable
               as bool,
+      backupFrequency: null == backupFrequency
+          ? _value.backupFrequency
+          : backupFrequency // ignore: cast_nullable_to_non_nullable
+              as BackupFrequency,
+      isBackupOnWifiOnly: null == isBackupOnWifiOnly
+          ? _value.isBackupOnWifiOnly
+          : isBackupOnWifiOnly // ignore: cast_nullable_to_non_nullable
+              as bool,
+      backupStartDate: freezed == backupStartDate
+          ? _value.backupStartDate
+          : backupStartDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      backupEndDate: freezed == backupEndDate
+          ? _value.backupEndDate
+          : backupEndDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       isLoading: null == isLoading
           ? _value.isLoading
           : isLoading // ignore: cast_nullable_to_non_nullable
@@ -139,6 +193,10 @@ class _$SettingsStateImpl implements _SettingsState {
       {this.maxConcurrentUploads = 3,
       this.maxConcurrentDownloads = 3,
       this.isAutoBackupEnabled = false,
+      this.backupFrequency = BackupFrequency.daily,
+      this.isBackupOnWifiOnly = true,
+      this.backupStartDate,
+      this.backupEndDate,
       this.isLoading = true});
 
 // Default to 3 for initial UI display before loading
@@ -151,6 +209,18 @@ class _$SettingsStateImpl implements _SettingsState {
   @override
   @JsonKey()
   final bool isAutoBackupEnabled;
+  @override
+  @JsonKey()
+  final BackupFrequency backupFrequency;
+  @override
+  @JsonKey()
+  final bool isBackupOnWifiOnly;
+// 备份时间段的开始日期，可为空
+  @override
+  final DateTime? backupStartDate;
+// 备份时间段的结束日期，可为空
+  @override
+  final DateTime? backupEndDate;
 // Indicates if settings are being loaded from the database
   @override
   @JsonKey()
@@ -158,7 +228,7 @@ class _$SettingsStateImpl implements _SettingsState {
 
   @override
   String toString() {
-    return 'SettingsState(maxConcurrentUploads: $maxConcurrentUploads, maxConcurrentDownloads: $maxConcurrentDownloads, isAutoBackupEnabled: $isAutoBackupEnabled, isLoading: $isLoading)';
+    return 'SettingsState(maxConcurrentUploads: $maxConcurrentUploads, maxConcurrentDownloads: $maxConcurrentDownloads, isAutoBackupEnabled: $isAutoBackupEnabled, backupFrequency: $backupFrequency, isBackupOnWifiOnly: $isBackupOnWifiOnly, backupStartDate: $backupStartDate, backupEndDate: $backupEndDate, isLoading: $isLoading)';
   }
 
   @override
@@ -172,13 +242,29 @@ class _$SettingsStateImpl implements _SettingsState {
                 other.maxConcurrentDownloads == maxConcurrentDownloads) &&
             (identical(other.isAutoBackupEnabled, isAutoBackupEnabled) ||
                 other.isAutoBackupEnabled == isAutoBackupEnabled) &&
+            (identical(other.backupFrequency, backupFrequency) ||
+                other.backupFrequency == backupFrequency) &&
+            (identical(other.isBackupOnWifiOnly, isBackupOnWifiOnly) ||
+                other.isBackupOnWifiOnly == isBackupOnWifiOnly) &&
+            (identical(other.backupStartDate, backupStartDate) ||
+                other.backupStartDate == backupStartDate) &&
+            (identical(other.backupEndDate, backupEndDate) ||
+                other.backupEndDate == backupEndDate) &&
             (identical(other.isLoading, isLoading) ||
                 other.isLoading == isLoading));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, maxConcurrentUploads,
-      maxConcurrentDownloads, isAutoBackupEnabled, isLoading);
+  int get hashCode => Object.hash(
+      runtimeType,
+      maxConcurrentUploads,
+      maxConcurrentDownloads,
+      isAutoBackupEnabled,
+      backupFrequency,
+      isBackupOnWifiOnly,
+      backupStartDate,
+      backupEndDate,
+      isLoading);
 
   @JsonKey(ignore: true)
   @override
@@ -192,6 +278,10 @@ abstract class _SettingsState implements SettingsState {
       {final int maxConcurrentUploads,
       final int maxConcurrentDownloads,
       final bool isAutoBackupEnabled,
+      final BackupFrequency backupFrequency,
+      final bool isBackupOnWifiOnly,
+      final DateTime? backupStartDate,
+      final DateTime? backupEndDate,
       final bool isLoading}) = _$SettingsStateImpl;
 
   @override // Default to 3 for initial UI display before loading
@@ -200,6 +290,14 @@ abstract class _SettingsState implements SettingsState {
   int get maxConcurrentDownloads;
   @override
   bool get isAutoBackupEnabled;
+  @override
+  BackupFrequency get backupFrequency;
+  @override
+  bool get isBackupOnWifiOnly;
+  @override // 备份时间段的开始日期，可为空
+  DateTime? get backupStartDate;
+  @override // 备份时间段的结束日期，可为空
+  DateTime? get backupEndDate;
   @override // Indicates if settings are being loaded from the database
   bool get isLoading;
   @override

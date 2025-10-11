@@ -1,3 +1,5 @@
+// lib/features/background_jobs/core/isolate/models.dart
+
 /// 从主 Isolate 发送到后台 Isolate 的作业请求
 class IsolateJob {
   /// 任务名称，用于在 Isolate 中路由到对应的 Handler

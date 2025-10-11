@@ -67,6 +67,7 @@ class UploadJobItemWidget extends ConsumerWidget {
       case UploadJobStatus.initiating:
         return const Icon(Icons.hourglass_top_rounded);
       case UploadJobStatus.uploading:
+      case UploadJobStatus.waitingForWifi:
       case UploadJobStatus.completing:
         return SizedBox(
           width: 24,
@@ -94,6 +95,8 @@ class UploadJobItemWidget extends ConsumerWidget {
         return '上传成功';
       case UploadJobStatus.failed:
         return '上传失败';
+      case UploadJobStatus.waitingForWifi:
+        return "等待连接wifi后上传";
     }
   }
 }

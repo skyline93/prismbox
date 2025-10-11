@@ -3,6 +3,7 @@
 import 'dart:convert';
 
 import 'package:background_downloader/background_downloader.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart' as d;
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
@@ -10,11 +11,15 @@ import 'package:logging/logging.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
+// [阶段三 新增]: 导入 SettingsService
+import 'package:mobile/services/settings_service.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:mobile/services/transfer/upload_orchestrator.dart';
 import 'package:mobile/config/app_config.dart';
 import 'package:mobile/utils/hash.dart';
+// [阶段三 新增]: 导入 DeviceUtils 以检查网络
+import 'package:mobile/utils/device_utils.dart';
 
 @lazySingleton
 class UploadService {
@@ -22,6 +27,8 @@ class UploadService {
   final UploadJobDao _uploadJobDao;
   final MediaAssetDao _mediaAssetDao;
   final SecureStorageService _secureStorageService;
+  // [阶段三 新增]: 注入 SettingsService
+  final SettingsService _settingsService;
 
   final _log = Logger('UploadService');
   final _uuid = const Uuid();
@@ -29,8 +36,12 @@ class UploadService {
   // 持有从 TransferManager 传入的任务队列
   late final MemoryTaskQueue _taskQueue;
 
-  UploadService(AppDatabase db, this._secureStorageService)
-    : _db = db,
+  // [阶段三 修改]: 更新构造函数以接收 SettingsService
+  UploadService(
+    AppDatabase db,
+    this._secureStorageService,
+    this._settingsService,
+  ) : _db = db,
       _uploadJobDao = db.uploadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
 
@@ -135,28 +146,20 @@ class UploadService {
     _log.info('开始批量入队 ${taskPayloads.length} 个上传任务。');
 
     for (final pl in taskPayloads) {
-      late final String jobId;
-
       try {
-        jobId = await _enqueueUploadJob(pl);
+        // [阶段三 修正]: 移除了未使用的 jobId 变量
+        await _enqueueUploadJob(pl);
       } catch (e, st) {
         _log.severe('入队上传任务 (资源 ${pl.assetId}) 失败', e, st);
         await _mediaAssetDao.updateMediaAssetWithlocalId(
           pl.assetId,
           MediaAssetsCompanion(syncStatus: d.Value(SyncStatus.uploadFailed)),
         );
-        await _uploadJobDao.updateJob(
-          UploadJobsCompanion(
-            jobId: d.Value(jobId),
-            status: const d.Value(UploadJobStatus.failed),
-          ),
-        );
-
-        continue;
       }
     }
   }
 
+  // [阶段三 修改]: 整个方法被重构以包含网络检查逻辑
   Future<String> _enqueueUploadJob(UploadTaskPayload taskPayload) async {
     final jobId = _uuid.v4();
     final cloudUuid = _uuid.v4();
@@ -164,11 +167,30 @@ class UploadService {
     final filename = p.basename(taskPayload.file.path);
     final fileHash = await compute(calculateFileHash, taskPayload.file);
 
+    // 1. 获取用户设置和当前网络状态
+    // [阶段三 修正]: 调用 watchBackupSettings().first 来从流中获取当前值
+    final backupSettings = await _settingsService.watchBackupSettings().first;
+    // [阶段三 修正]: 接收一个 List<ConnectivityResult>
+    final connectivityResults = await DeviceUtils.checkConnectivity();
+
+    bool canUpload = true;
+    UploadJobStatus initialStatus = UploadJobStatus.uploading;
+
+    // [阶段三 修正]: 检查列表中是否包含 Wi-Fi
+    if (backupSettings.isBackupOnWifiOnly &&
+        !connectivityResults.contains(ConnectivityResult.wifi)) {
+      canUpload = false;
+      initialStatus = UploadJobStatus.waitingForWifi;
+      _log.info('任务 $jobId (资源 ${taskPayload.assetId}) 已暂存，等待 Wi-Fi 连接。');
+    }
+
     await _db.transaction(() async {
+      // 2. 无论网络状况如何，都先在数据库中创建记录
       await _mediaAssetDao.updateMediaAssetWithlocalId(
         taskPayload.assetId,
         MediaAssetsCompanion(
           cloudUuid: d.Value(cloudUuid),
+          // 状态为 uploading 表示它在上传管道中，具体子状态由 UploadJob 决定
           syncStatus: const d.Value(SyncStatus.uploading),
           contentHash: d.Value(fileHash),
         ),
@@ -178,7 +200,7 @@ class UploadService {
         UploadJobsCompanion(
           jobId: d.Value(jobId),
           filePath: d.Value(taskPayload.file.path),
-          status: const d.Value(UploadJobStatus.uploading),
+          status: d.Value(initialStatus), // 使用我们决定的初始状态
           progress: const d.Value(0),
           createdAt: d.Value(DateTime.now()),
           fileHash: d.Value(fileHash),
@@ -186,15 +208,17 @@ class UploadService {
         ),
       );
 
+      // 3. 如果网络条件不满足，则到此为止，不创建实际的上传任务
+      if (!canUpload) {
+        return;
+      }
+
+      // 4. 如果网络条件满足，则继续创建并入队后台上传任务
       final accessToken = await _secureStorageService.getAccessToken();
       if (accessToken == null) {
         _log.severe('上传失败: 任务 $jobId 的访问令牌为空。');
-        await _updateJobStatus(jobId, UploadJobStatus.failed);
-        await _mediaAssetDao.updateMediaAssetWithlocalId(
-          taskPayload.assetId,
-          MediaAssetsCompanion(syncStatus: d.Value(SyncStatus.uploadFailed)),
-        );
-        return jobId;
+        // 在事务内直接抛出异常，以回滚数据库更改
+        throw Exception('Access token is null for job $jobId');
       }
 
       final fields = {
@@ -219,7 +243,7 @@ class UploadService {
       );
 
       _taskQueue.add(task);
-      _log.info('任务$jobId已入队');
+      _log.info('任务 $jobId 已成功加入后台上传队列。');
     });
 
     return jobId;

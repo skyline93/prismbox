@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/features/background_jobs/core/task_dispatcher.dart';
 import 'package:mobile/features/background_jobs/core/task_registrar.dart';
 import 'package:mobile/features/background_jobs/impl/media_sync/service/media_sync_service.dart';
+import 'package:mobile/services/auto_backup_service.dart';
 
 class AppInitService {
   static final AppInitService _instance = AppInitService._internal();
@@ -65,7 +66,9 @@ class AppInitService {
     Logger.root.info('正在触发启动时的媒体资源同步 (replicator)...');
     try {
       // 使用 ref.read 来执行一次性操作，获取 CloudDataReplicatorService 实例并调用同步方法
-      final cloudDataReplicatorService = await ref.read(cloudDataReplicatorServiceProvider.future);
+      final cloudDataReplicatorService = await ref.read(
+        cloudDataReplicatorServiceProvider.future,
+      );
       await cloudDataReplicatorService.syncMediaAssets();
     } catch (e) {
       // 即使同步失败，也不应阻塞应用启动，仅记录错误
@@ -80,6 +83,9 @@ class AppInitService {
     Logger.root.info('Workmanager initialized.');
 
     TaskRegistrar.registerAllTasks();
+
+    getIt<AutoBackupService>().initialize();
+    Logger.root.info('Auto Backup Service initialized.');
 
     final mediaSyncService = getIt<MediaSyncService>();
     await mediaSyncService.start();

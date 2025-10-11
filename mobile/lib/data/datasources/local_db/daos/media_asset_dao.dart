@@ -286,4 +286,32 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       mediaAssets,
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
+
+  Future<List<MediaAsset>> getLocalOnlyAssets({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    _log.fine('Querying for local-only, active assets for backup.');
+    final query = select(mediaAssets)
+      ..where(
+        (tbl) =>
+            tbl.syncStatus.equals(SyncStatus.localOnly.name) &
+            tbl.lifecycleState.equals(LifecycleState.active.name),
+      );
+
+    // 如果设置了开始日期，添加大于等于此日期的条件
+    if (startDate != null) {
+      _log.fine('Filtering assets created on or after $startDate');
+      query.where((tbl) => tbl.createdAt.isBiggerOrEqualValue(startDate));
+    }
+
+    // 如果设置了结束日期，添加小于次日零点的条件，以包含结束日期的全天
+    if (endDate != null) {
+      final nextDay = DateTime(endDate.year, endDate.month, endDate.day + 1);
+      _log.fine('Filtering assets created before $nextDay');
+      query.where((tbl) => tbl.createdAt.isSmallerThanValue(nextDay));
+    }
+
+    return query.get();
+  }
 }

@@ -9,4 +9,8 @@ class SettingsKeys {
   static const String maxConcurrentUploads = 'maxConcurrentUploads';
   static const String maxConcurrentDownloads = 'maxConcurrentDownloads';
   static const String autoBackupEnabled = 'autoBackupEnabled';
+  static const String backupFrequency = 'backupFrequency';
+  static const String backupOnWifiOnly = 'backupOnWifiOnly';
+  static const String backupStartDate = 'backupStartDate';
+  static const String backupEndDate = 'backupEndDate';
 }

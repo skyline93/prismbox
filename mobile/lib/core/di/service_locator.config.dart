@@ -27,6 +27,8 @@ import '../../domain/repositories/media_repository.dart' as _i777;
 import '../../domain/repositories/user_repository.dart' as _i271;
 import '../../features/background_jobs/core/isolate/isolate_job_manager.dart'
     as _i317;
+import '../../features/background_jobs/impl/auto_backup/domain/auto_backup_isolate_handler.dart'
+    as _i872;
 import '../../features/background_jobs/impl/media_sync/domain/asset_change_executor.dart'
     as _i367;
 import '../../features/background_jobs/impl/media_sync/domain/isolate_handler.dart'
@@ -39,9 +41,11 @@ import '../../features/background_jobs/impl/media_sync/domain/synchronizers/loca
     as _i137;
 import '../../features/background_jobs/impl/media_sync/service/media_sync_service.dart'
     as _i436;
+import '../../services/auto_backup_service.dart' as _i439;
 import '../../services/settings_service.dart' as _i583;
 import '../../services/transfer/download_service.dart' as _i1014;
 import '../../services/transfer/transfer_manager.dart' as _i134;
+import '../../services/transfer/upload_orchestrator.dart' as _i0;
 import '../../services/transfer/upload_service.dart' as _i851;
 import '../storage/secure_storage_service.dart' as _i666;
 import '../storage/sync_state_service.dart' as _i446;
@@ -92,16 +96,16 @@ Future<_i174.GetIt> init(
       () => _i273.LocalMediaDataSource(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i583.SettingsService>(
       () => _i583.SettingsService(gh<_i870.AppDatabase>()));
-  gh.lazySingleton<_i851.UploadService>(() => _i851.UploadService(
-        gh<_i870.AppDatabase>(),
-        gh<_i666.SecureStorageService>(),
-      ));
   gh.factory<_i91.MediaSyncOrchestrator>(() => _i91.MediaSyncOrchestrator(
         gh<_i137.LocalMediaSynchronizer>(),
         gh<_i799.AlbumSynchronizer>(),
         gh<_i367.AssetChangeExecutor>(),
         gh<_i870.AppDatabase>(),
       ));
+  gh.lazySingleton<_i439.AutoBackupService>(
+    () => _i439.AutoBackupService(gh<_i583.SettingsService>()),
+    dispose: (i) => i.dispose(),
+  );
   gh.lazySingleton<_i361.Dio>(
       () => injectableModule.getDio(gh<_i153.DioClient>()));
   gh.factory<_i1062.MediaSyncIsolateHandler>(
@@ -110,6 +114,11 @@ Future<_i174.GetIt> init(
       () => _i663.UserApiService(gh<_i361.Dio>()));
   gh.lazySingleton<_i637.GroupApiService>(
       () => _i637.GroupApiService(gh<_i361.Dio>()));
+  gh.lazySingleton<_i851.UploadService>(() => _i851.UploadService(
+        gh<_i870.AppDatabase>(),
+        gh<_i666.SecureStorageService>(),
+        gh<_i583.SettingsService>(),
+      ));
   gh.lazySingleton<_i200.RemoteMediaDataSource>(
       () => injectableModule.getRemoteMediaSource(gh<_i153.DioClient>()));
   gh.lazySingleton<_i708.GroupRepository>(
@@ -119,6 +128,12 @@ Future<_i174.GetIt> init(
         db: gh<_i870.AppDatabase>(),
         localMediaSource: gh<_i273.LocalMediaDataSource>(),
       ));
+  gh.factory<_i872.AutoBackupIsolateHandler>(
+      () => _i872.AutoBackupIsolateHandler(
+            gh<_i583.SettingsService>(),
+            gh<_i870.MediaAssetDao>(),
+            gh<_i0.UploadOrchestrator>(),
+          ));
   gh.lazySingleton<_i271.UserRepository>(
       () => _i790.UserRepositoryImpl(gh<_i663.UserApiService>()));
   gh.lazySingleton<_i1014.DownloadService>(() => _i1014.DownloadService(

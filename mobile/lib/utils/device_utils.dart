@@ -1,8 +1,12 @@
+// lib/utils/device_utils.dart
+
 import 'dart:io' show Platform;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
+// [阶段三 新增]: 导入网络连接检查插件
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class DeviceUtils {
   static const _storage = FlutterSecureStorage();
@@ -70,5 +74,15 @@ class DeviceUtils {
     String newId = const Uuid().v4();
     await _storage.write(key: _deviceIdKey, value: newId);
     return newId;
+  }
+
+  // [阶段三 修正]: 修正返回类型以匹配 connectivity_plus 插件
+  /// 检查当前的网络状态 (Wi-Fi, 移动数据, 或无连接等)
+  ///
+  /// 使用 `connectivity_plus` 插件实现。返回一个列表，因为设备可能同时连接到多个网络。
+  static Future<List<ConnectivityResult>> checkConnectivity() async {
+    // 在 web 平台上，总是返回 wifi，因为无法区分
+    if (kIsWeb) return [ConnectivityResult.wifi];
+    return Connectivity().checkConnectivity();
   }
 }

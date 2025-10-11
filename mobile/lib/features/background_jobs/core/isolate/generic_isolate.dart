@@ -1,3 +1,5 @@
+// lib/features/background_jobs/core/isolate/generic_isolate.dart
+
 // ignore_for_file: avoid_print
 
 import 'dart:isolate';
@@ -8,6 +10,7 @@ import 'package:mobile/features/background_jobs/core/contracts/isolate_task_hand
 import 'package:mobile/features/background_jobs/core/isolate/models.dart';
 // IMPORT 您的具体业务 Handler
 import 'package:mobile/features/background_jobs/impl/media_sync/domain/isolate_handler.dart';
+import 'package:mobile/features/background_jobs/impl/auto_backup/domain/auto_backup_isolate_handler.dart';
 
 final _log = Logger('GenericIsolate');
 
@@ -43,6 +46,7 @@ void genericIsolateEntrypoint(Map<String, dynamic> initialData) async {
     // === [重要] 在这里注册您的新业务 Handler ===
     final Map<String, IsolateTaskHandler> handlers = {
       MediaSyncIsolateHandler.taskName: getIt<MediaSyncIsolateHandler>(),
+      AutoBackupIsolateHandler.taskName: getIt<AutoBackupIsolateHandler>(),
       // 'videoTranscode': getIt<VideoTranscodeHandler>(), // 未来新增
     };
 

@@ -18,6 +18,10 @@ class UserSettingDao extends DatabaseAccessor<AppDatabase>
     return setting?.value;
   }
 
+  Stream<List<UserSetting>> watchAllSettings() {
+    return select(userSettings).watch();
+  }
+
   Future<int> deleteSetting(String key) {
     return (delete(userSettings)..where((t) => t.key.equals(key))).go();
   }

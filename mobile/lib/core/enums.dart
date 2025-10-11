@@ -79,4 +79,6 @@ enum UploadJobStatus {
   completing, // 正在合并 (调用 /complete)
   success, // 成功
   failed, // 失败
+  // [阶段三 新增]: 用于表示任务因网络限制而等待
+  waitingForWifi,
 }
