@@ -41,6 +41,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.example.mobile.periodicCloudSync</string>
+		<string>com.example.mobile.autobackup</string>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).bgDownloader</string>
 	</array>
 	<key>UILaunchStoryboardName</key>

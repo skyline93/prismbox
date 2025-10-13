@@ -5,7 +5,7 @@ import 'package:mobile/features/background_jobs/core/isolate/isolate_job_manager
 import 'package:mobile/features/background_jobs/impl/auto_backup/domain/auto_backup_isolate_handler.dart';
 
 // 为 WorkManager 定义一个唯一的任务名称
-const String autoMediaBackupTask = 'auto-media-backup-task';
+const String autoMediaBackupTask = 'com.example.mobile.autobackup';
 
 class AutoBackupAdapter implements BackgroundTask {
   final _log = Logger('AutoBackupAdapter');

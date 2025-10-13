@@ -6,6 +6,7 @@ import 'package:workmanager/workmanager.dart';
 import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/features/background_jobs/core/contracts/background_task.dart';
 import 'package:mobile/features/background_jobs/impl/media_sync/background/periodic_sync_adapter.dart';
+import 'package:mobile/features/background_jobs/impl/auto_backup/background/auto_backup_adapter.dart';
 
 final _log = Logger('TaskDispatcher');
 
@@ -15,6 +16,7 @@ void callbackDispatcher() {
   // 任务处理器映射表，新增后台任务时在此处添加映射
   final Map<String, BackgroundTask> taskHandlers = {
     periodicCloudSyncTask: PeriodicSyncAdapter(),
+    autoMediaBackupTask: AutoBackupAdapter(),
   };
 
   Workmanager().executeTask((taskName, inputData) async {
