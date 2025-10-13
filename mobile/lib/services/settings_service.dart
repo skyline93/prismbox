@@ -4,7 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:mobile/constants/settings_keys.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 
-enum BackupFrequency { daily, weekly, hours }
+enum BackupFrequency { daily, weekly, hours, minutes }
 
 class BackupSettings {
   final bool isAutoBackupEnabled;

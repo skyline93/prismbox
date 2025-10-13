@@ -68,6 +68,7 @@ Future<_i174.GetIt> init(
     () => injectableModule.prefs,
     preResolve: true,
   );
+  gh.factory<_i0.UploadOrchestrator>(() => _i0.UploadOrchestrator());
   await gh.singletonAsync<_i870.AppDatabase>(
     () => databaseModule.database,
     preResolve: true,
@@ -119,6 +120,12 @@ Future<_i174.GetIt> init(
         gh<_i666.SecureStorageService>(),
         gh<_i583.SettingsService>(),
       ));
+  gh.factory<_i872.AutoBackupIsolateHandler>(
+      () => _i872.AutoBackupIsolateHandler(
+            gh<_i583.SettingsService>(),
+            gh<_i870.AppDatabase>(),
+            gh<_i0.UploadOrchestrator>(),
+          ));
   gh.lazySingleton<_i200.RemoteMediaDataSource>(
       () => injectableModule.getRemoteMediaSource(gh<_i153.DioClient>()));
   gh.lazySingleton<_i708.GroupRepository>(
@@ -128,12 +135,6 @@ Future<_i174.GetIt> init(
         db: gh<_i870.AppDatabase>(),
         localMediaSource: gh<_i273.LocalMediaDataSource>(),
       ));
-  gh.factory<_i872.AutoBackupIsolateHandler>(
-      () => _i872.AutoBackupIsolateHandler(
-            gh<_i583.SettingsService>(),
-            gh<_i870.MediaAssetDao>(),
-            gh<_i0.UploadOrchestrator>(),
-          ));
   gh.lazySingleton<_i271.UserRepository>(
       () => _i790.UserRepositoryImpl(gh<_i663.UserApiService>()));
   gh.lazySingleton<_i1014.DownloadService>(() => _i1014.DownloadService(

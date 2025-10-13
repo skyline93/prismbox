@@ -2,13 +2,14 @@
 
 import 'dart:io';
 
+import 'package:injectable/injectable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
-import 'package:mobile/providers/transfer_providers.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/extensions/asset_type_extensions.dart';
+import 'package:mobile/core/di/service_locator.dart';
+import 'package:mobile/services/transfer/upload_service.dart';
 
 class UploadTaskPayload {
   final File file;
@@ -22,10 +23,9 @@ class UploadTaskPayload {
   });
 }
 
+@injectable
 class UploadOrchestrator {
-  final Ref _ref;
-
-  UploadOrchestrator(this._ref);
+  UploadOrchestrator();
 
   void processAndEnqueueUploads(List<UnifiedMediaEntity> entities) {
     _runBackgroundTask(entities).catchError((error, stackTrace) {
@@ -42,8 +42,8 @@ class UploadOrchestrator {
       return;
     }
 
-    final transferManager = _ref.read(transferManagerProvider);
-    await transferManager.uploadService.enqueueMultipleJobs(uploadTasks);
+    final uploadService = getIt<UploadService>();
+    await uploadService.enqueueMultipleJobs(uploadTasks);
 
     debugPrint("后台任务：${uploadTasks.length} 个文件已成功加入上传队列。");
 

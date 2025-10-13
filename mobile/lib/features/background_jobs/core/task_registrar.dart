@@ -11,8 +11,8 @@ class TaskRegistrar {
   /// 注册应用中所有需要的后台任务。
   static void registerAllTasks() {
     Workmanager().registerPeriodicTask(
-      "sync-periodic-1", // 唯一的任务ID
       periodicCloudSyncTask, // 任务名称
+      "sync-periodic-1", // 唯一的任务ID
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
         networkType: NetworkType.connected,

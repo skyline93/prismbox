@@ -1,3 +1,5 @@
+// lib/services/auto_backup_service.dart
+
 import 'dart:async';
 
 import 'package:injectable/injectable.dart';
@@ -57,7 +59,7 @@ class AutoBackupService {
 
       await Workmanager().registerPeriodicTask(
         autoMediaBackupTask,
-        autoMediaBackupTask,
+        "auto-media-backup",
         frequency: backupDuration,
         constraints: Constraints(
           networkType: isWifiOnly
@@ -81,6 +83,8 @@ class AutoBackupService {
   /// 将存储的频率字符串转换为 Workmanager 需要的 Duration 对象。
   Duration _getDurationFromFrequency(BackupFrequency? frequency) {
     switch (frequency) {
+      case BackupFrequency.minutes:
+        return const Duration(minutes: 15);
       case BackupFrequency.hours:
         return const Duration(hours: 1);
       case BackupFrequency.daily:

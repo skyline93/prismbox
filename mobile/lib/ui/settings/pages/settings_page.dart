@@ -98,6 +98,10 @@ class SettingsPage extends ConsumerWidget {
                             : null,
                         items: const [
                           DropdownMenuItem(
+                            value: BackupFrequency.minutes,
+                            child: Text('每15分钟'),
+                          ),
+                          DropdownMenuItem(
                             value: BackupFrequency.hours,
                             child: Text('每小时'),
                           ),

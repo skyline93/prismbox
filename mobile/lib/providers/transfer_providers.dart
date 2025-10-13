@@ -36,5 +36,5 @@ Stream<List<UploadJob>> uploadJobs(UploadJobsRef ref) {
 }
 
 final uploadOrchestratorProvider = Provider((ref) {
-  return UploadOrchestrator(ref);
+  return UploadOrchestrator();
 });

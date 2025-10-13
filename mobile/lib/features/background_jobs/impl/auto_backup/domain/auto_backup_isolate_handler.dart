@@ -1,3 +1,5 @@
+// lib/features/background_jobs/impl/auto_backup/domain/auto_backup_isolate_handler.dart
+
 import 'dart:isolate';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
@@ -12,15 +14,17 @@ class AutoBackupIsolateHandler implements IsolateTaskHandler {
   static const String taskName = 'autoMediaBackup';
   final _log = Logger('AutoBackupIsolateHandler');
 
+  // ignore: unused_field
+  final AppDatabase _db;
   final SettingsService _settingsService;
   final MediaAssetDao _mediaAssetDao;
   final UploadOrchestrator _uploadOrchestrator;
 
   AutoBackupIsolateHandler(
     this._settingsService,
-    this._mediaAssetDao,
+    this._db,
     this._uploadOrchestrator,
-  );
+  ) : _mediaAssetDao = _db.mediaAssetDao;
 
   @override
   Future<void> initialize(SendPort mainSendPort) async {

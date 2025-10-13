@@ -8,14 +8,16 @@ import workmanager_apple
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    GeneratedPluginRegistrant.register(with: self)
+  
+    WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.example.mobile.autobackup")
+    WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.example.mobile.periodicCloudSync")
 
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
         // 在这里注册所有需要在后台使用的插件
         // 最简单、最推荐的方式是直接调用自动生成的注册类
         GeneratedPluginRegistrant.register(with: registry)
     }
-
-    GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }
