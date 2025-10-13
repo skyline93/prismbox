@@ -71,7 +71,7 @@ class AutoBackupIsolateHandler implements IsolateTaskHandler {
     }
 
     // 4. 调用接口加入上传队列
-    _uploadOrchestrator.processAndEnqueueUploads(entitiesToUpload);
+    await _uploadOrchestrator.processAndEnqueueUploads(entitiesToUpload);
 
     _log.info(
       'Successfully enqueued ${entitiesToUpload.length} assets for upload.',

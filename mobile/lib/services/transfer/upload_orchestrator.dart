@@ -27,10 +27,16 @@ class UploadTaskPayload {
 class UploadOrchestrator {
   UploadOrchestrator();
 
-  void processAndEnqueueUploads(List<UnifiedMediaEntity> entities) {
-    _runBackgroundTask(entities).catchError((error, stackTrace) {
+  Future<void> processAndEnqueueUploads(
+    List<UnifiedMediaEntity> entities,
+  ) async {
+    try {
+      await _runBackgroundTask(entities);
+    } catch (error, stackTrace) {
       debugPrint("后台上传准备任务失败: $error\n$stackTrace");
-    });
+      // 你可能希望在这里重新抛出异常，以便调用方可以捕获它
+      rethrow;
+    }
   }
 
   Future<void> _runBackgroundTask(List<UnifiedMediaEntity> entities) async {
