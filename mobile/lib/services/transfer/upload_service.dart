@@ -34,7 +34,8 @@ class UploadService {
   final _uuid = const Uuid();
 
   // 持有从 TransferManager 传入的任务队列
-  late final MemoryTaskQueue _taskQueue;
+  // ignore: unused_field
+  // late final MemoryTaskQueue _taskQueue;
 
   // [阶段三 修改]: 更新构造函数以接收 SettingsService
   UploadService(
@@ -46,9 +47,9 @@ class UploadService {
       _mediaAssetDao = db.mediaAssetDao;
 
   // 用于接收 TransferManager 传递的队列实例
-  void setTaskQueue(MemoryTaskQueue queue) {
-    _taskQueue = queue;
-  }
+  // void setTaskQueue(MemoryTaskQueue queue) {
+  //   _taskQueue = queue;
+  // }
 
   Future<void> handleUploadStatusUpdate(
     Task task,
@@ -242,7 +243,8 @@ class UploadService {
         group: 'upload',
       );
 
-      _taskQueue.add(task);
+      // _taskQueue.add(task);
+      await FileDownloader().enqueue(task);
       _log.info('任务 $jobId 已成功加入后台上传队列。');
     });
 
