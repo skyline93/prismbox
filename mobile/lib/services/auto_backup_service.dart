@@ -59,7 +59,7 @@ class AutoBackupService {
 
       await Workmanager().registerPeriodicTask(
         autoMediaBackupTask,
-        "auto-media-backup",
+        autoMediaBackupTask,
         frequency: backupDuration,
         constraints: Constraints(
           networkType: isWifiOnly

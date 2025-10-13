@@ -12,7 +12,7 @@ class TaskRegistrar {
   static void registerAllTasks() {
     Workmanager().registerPeriodicTask(
       periodicCloudSyncTask, // 任务名称
-      "sync-periodic-1", // 唯一的任务ID
+      periodicCloudSyncTask, // 唯一的任务ID
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
         networkType: NetworkType.connected,
