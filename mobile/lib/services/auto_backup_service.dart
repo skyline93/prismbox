@@ -54,7 +54,7 @@ class AutoBackupService {
     if (isEnabled) {
       final backupDuration = _getDurationFromFrequency(frequency);
       _log.info(
-        'Auto backup is enabled. Registering/updating periodic task with frequency: ${backupDuration.inHours} hours.',
+        'Auto backup is enabled. Registering/updating periodic task with frequency: ${backupDuration.inMinutes} minutes.',
       );
 
       await Workmanager().registerPeriodicTask(
