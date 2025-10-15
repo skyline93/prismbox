@@ -17,8 +17,8 @@ class LoginPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 1. 创建一个 GlobalKey 用于表单
     final formKey = useMemoized(() => GlobalKey<FormState>());
-    final emailController = useTextEditingController();
-    final passwordController = useTextEditingController();
+    final emailController = useTextEditingController(text: "admin@album.com");
+    final passwordController = useTextEditingController(text: "12345678");
     final isPasswordVisible = useState(false);
     final authState = ref.watch(authNotifierProvider);
 

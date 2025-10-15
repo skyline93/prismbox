@@ -35,7 +35,7 @@ class UploadService {
 
   // 持有从 TransferManager 传入的任务队列
   // ignore: unused_field
-  // late final MemoryTaskQueue _taskQueue;
+  late final MemoryTaskQueue _taskQueue;
 
   // [阶段三 修改]: 更新构造函数以接收 SettingsService
   UploadService(
@@ -47,9 +47,9 @@ class UploadService {
       _mediaAssetDao = db.mediaAssetDao;
 
   // 用于接收 TransferManager 传递的队列实例
-  // void setTaskQueue(MemoryTaskQueue queue) {
-  //   _taskQueue = queue;
-  // }
+  void setTaskQueue(MemoryTaskQueue queue) {
+    _taskQueue = queue;
+  }
 
   Future<void> handleUploadStatusUpdate(
     Task task,

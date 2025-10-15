@@ -70,7 +70,7 @@ class AutoBackupService {
         // [修正] 使用正确的枚举类型 ExistingPeriodicWorkPolicy
         existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
         backoffPolicy: BackoffPolicy.exponential,
-        backoffPolicyDelay: const Duration(minutes: 10),
+        backoffPolicyDelay: const Duration(minutes: 1),
       );
       _log.info('Periodic auto backup task registered/updated successfully.');
     } else {

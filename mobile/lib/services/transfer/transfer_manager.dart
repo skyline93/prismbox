@@ -45,8 +45,8 @@ class TransferManager {
     _downloader.addTaskQueue(_uploadQueue);
 
     // 3) 将队列实例传递给对应的服务
-    // _downloadService.setTaskQueue(_downloadQueue);
-    // _uploadService.setTaskQueue(_uploadQueue);
+    _downloadService.setTaskQueue(_downloadQueue);
+    _uploadService.setTaskQueue(_uploadQueue);
     _log.info('Task queues have been set for Download and Upload services.');
 
     // ... (文件的其余部分保持不变) ...

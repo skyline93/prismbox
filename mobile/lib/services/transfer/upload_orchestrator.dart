@@ -9,7 +9,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/extensions/asset_type_extensions.dart';
 import 'package:mobile/core/di/service_locator.dart';
-import 'package:mobile/services/transfer/upload_service.dart';
+import 'package:mobile/services/transfer/transfer_manager.dart';
 
 class UploadTaskPayload {
   final File file;
@@ -48,8 +48,9 @@ class UploadOrchestrator {
       return;
     }
 
-    final uploadService = getIt<UploadService>();
-    await uploadService.enqueueMultipleJobs(uploadTasks);
+    // final uploadService = getIt<UploadService>();
+    final transferManager = getIt<TransferManager>();
+    await transferManager.uploadService.enqueueMultipleJobs(uploadTasks);
 
     debugPrint("后台任务：${uploadTasks.length} 个文件已成功加入上传队列。");
 
