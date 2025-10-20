@@ -27,9 +27,9 @@ class MediaItemThumbnail extends ConsumerWidget {
       // --- 修改核心 ---
       // 处理新的 LocalBytesStrategy
       case LocalBytesStrategy(bytes: final bytes):
-        debugPrint(
-          "[Local Bytes] 媒体实体 ID: ${entity.id}, 加载 ${bytes.lengthInBytes} bytes 的缩略图数据",
-        );
+        // debugPrint(
+        //   "[Local Bytes] 媒体实体 ID: ${entity.id}, 加载 ${bytes.lengthInBytes} bytes 的缩略图数据",
+        // );
         imageWidget = Image.memory(
           bytes,
           fit: BoxFit.cover,

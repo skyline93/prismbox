@@ -52,9 +52,9 @@ class MediaSyncOrchestrator {
   }
 
   Future<void> _runCloudSync() async {
-    _log.info(
-      '===============================>>>>>>>Starting cloud sync process...',
-    );
+    // _log.info(
+    //   '===============================>>>>>>>Starting cloud sync process...',
+    // );
   }
 
   Future<void> _runFullSync() async {

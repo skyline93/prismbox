@@ -29,8 +29,6 @@ class AutoBackupService {
     );
     _settingsSubscription?.cancel();
 
-    // [修正] 调用 settingsService 中返回 BackupSettings 流的方法。
-    // 假设方法名为 watchBackupSettings()，与您的阶段二设计一致。
     _settingsSubscription = _settingsService.watchBackupSettings().listen((
       settings,
     ) {
@@ -67,7 +65,6 @@ class AutoBackupService {
               : NetworkType.connected,
           requiresBatteryNotLow: true,
         ),
-        // [修正] 使用正确的枚举类型 ExistingPeriodicWorkPolicy
         existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
         backoffPolicy: BackoffPolicy.exponential,
         backoffPolicyDelay: const Duration(minutes: 1),

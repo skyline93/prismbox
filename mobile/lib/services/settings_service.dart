@@ -10,17 +10,15 @@ class BackupSettings {
   final bool isAutoBackupEnabled;
   final BackupFrequency frequency;
   final bool isBackupOnWifiOnly;
-  // 新增备份时间段字段
-  final DateTime? backupStartDate;
-  final DateTime? backupEndDate;
+  final DateTime backupStartDate;
+  final DateTime backupEndDate;
 
   BackupSettings({
     required this.isAutoBackupEnabled,
     required this.frequency,
     required this.isBackupOnWifiOnly,
-    // 在构造函数中添加
-    this.backupStartDate,
-    this.backupEndDate,
+    required this.backupStartDate,
+    required this.backupEndDate,
   });
 }
 
@@ -34,7 +32,7 @@ class SettingsService {
     final value = await _userSettingDao.getSetting(
       SettingsKeys.maxConcurrentUploads,
     );
-    return int.tryParse(value ?? '3') ?? 3;
+    return int.tryParse(value ?? '1') ?? 1;
   }
 
   Future<void> setMaxConcurrentUploads(int count) {
@@ -50,7 +48,7 @@ class SettingsService {
     final value = await _userSettingDao.getSetting(
       SettingsKeys.maxConcurrentDownloads,
     );
-    return int.tryParse(value ?? '3') ?? 3;
+    return int.tryParse(value ?? '2') ?? 2;
   }
 
   Future<void> setMaxConcurrentDownloads(int count) {
@@ -71,26 +69,33 @@ class SettingsService {
 
       final frequencyString =
           settingsMap[SettingsKeys.backupFrequency] ??
-          BackupFrequency.daily.name;
+          BackupFrequency.minutes.name;
       final frequency = BackupFrequency.values.firstWhere(
         (e) => e.name == frequencyString,
-        orElse: () => BackupFrequency.daily,
+        orElse: () => BackupFrequency.minutes,
       );
-      // 解析日期字符串
-      final startDateString = settingsMap[SettingsKeys.backupStartDate];
+
+      final now = DateTime.now();
+
       final endDateString = settingsMap[SettingsKeys.backupEndDate];
-      final startDate = startDateString != null
-          ? DateTime.tryParse(startDateString)
-          : null;
-      final endDate = endDateString != null
+      final storedEndDate = endDateString != null
           ? DateTime.tryParse(endDateString)
           : null;
+
+      final endDate = storedEndDate ?? now;
+
+      final startDateString = settingsMap[SettingsKeys.backupStartDate];
+      final storedStartDate = startDateString != null
+          ? DateTime.tryParse(startDateString)
+          : null;
+
+      final startDate =
+          storedStartDate ?? now.subtract(const Duration(days: 3));
 
       return BackupSettings(
         isAutoBackupEnabled: isEnabled,
         frequency: frequency,
         isBackupOnWifiOnly: isWifiOnly,
-        // 传递新值
         backupStartDate: startDate,
         backupEndDate: endDate,
       );
@@ -148,25 +153,21 @@ class SettingsService {
     );
   }
 
-  // --- 新增日期设置方法 ---
   Future<DateTime?> getBackupStartDate() async {
     final value = await _userSettingDao.getSetting(
       SettingsKeys.backupStartDate,
     );
-    return value == null ? null : DateTime.tryParse(value);
+    return DateTime.tryParse(value ?? '') ??
+        DateTime.now().subtract(const Duration(days: 3));
   }
 
   Future<void> setBackupStartDate(DateTime? date) {
-    // 如果日期为 null，则删除该设置项
     if (date == null) {
-      // 假设您已经在 UserSettingDao 中添加了 deleteSetting 方法
       return _userSettingDao.deleteSetting(SettingsKeys.backupStartDate);
     } else {
-      // 如果日期存在，则更新或插入该设置项
       return _userSettingDao.upsertSetting(
         UserSettingsCompanion(
           key: const Value(SettingsKeys.backupStartDate),
-          // 在这个分支中，date 绝对不是 null，因此 toIso8601String() 是安全的
           value: Value(date.toIso8601String()),
         ),
       );
@@ -175,11 +176,10 @@ class SettingsService {
 
   Future<DateTime?> getBackupEndDate() async {
     final value = await _userSettingDao.getSetting(SettingsKeys.backupEndDate);
-    return value == null ? null : DateTime.tryParse(value);
+    return DateTime.tryParse(value ?? '') ?? DateTime.now();
   }
 
   Future<void> setBackupEndDate(DateTime? date) {
-    // 对结束日期应用相同的逻辑
     if (date == null) {
       return _userSettingDao.deleteSetting(SettingsKeys.backupEndDate);
     } else {
