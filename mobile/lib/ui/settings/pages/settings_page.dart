@@ -9,25 +9,57 @@ import 'package:mobile/services/settings_service.dart';
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
-  // 提取日期选择逻辑为一个辅助方法
-  Future<void> _selectDate(
+  // 日期范围选择逻辑
+  Future<void> _selectDateRange(
     BuildContext context,
     WidgetRef ref, {
-    required DateTime? initialDate,
-    required void Function(DateTime?) onDateSelected,
+    required DateTime? startDate,
+    required DateTime? endDate,
+    required void Function(DateTime?, DateTime?) onDateRangeSelected,
   }) async {
     final now = DateTime.now();
-    // showDatePicker 返回的是 Future<DateTime?>
-    final newDate = await showDatePicker(
+    final initialStartDate = startDate ?? now.subtract(const Duration(days: 7));
+    final initialEndDate = endDate ?? now;
+
+    // 使用 showDateRangePicker 选择日期范围
+    final dateRange = await showDateRangePicker(
       context: context,
-      initialDate: initialDate ?? now,
       firstDate: DateTime(2000),
       lastDate: now, // 用户不能选择未来日期
+      initialDateRange: DateTimeRange(
+        start: initialStartDate,
+        end: initialEndDate,
+      ),
+      locale: const Locale('zh', 'CN'), // 设置中文显示
+      helpText: '选择备份日期范围',
+      cancelText: '取消',
+      confirmText: '确定',
+      saveText: '保存',
+      errorFormatText: '无效的日期格式',
+      errorInvalidText: '无效的日期范围',
+      errorInvalidRangeText: '开始日期不能晚于结束日期',
     );
 
-    // 用户可能点击了取消，此时 newDate 为 null
-    // 我们需要处理这种情况，但这里的逻辑是直接将结果（无论是日期还是null）传递给 view model
-    onDateSelected(newDate);
+    if (dateRange != null) {
+      onDateRangeSelected(dateRange.start, dateRange.end);
+    }
+  }
+
+  // 格式化日期范围文本
+  String _getDateRangeText(
+    DateTime? startDate,
+    DateTime? endDate,
+    DateFormat dateFormat,
+  ) {
+    if (startDate == null && endDate == null) {
+      return '不限制日期范围';
+    } else if (startDate != null && endDate != null) {
+      return '${dateFormat.format(startDate)} 至 ${dateFormat.format(endDate)}';
+    } else if (startDate != null) {
+      return '从 ${dateFormat.format(startDate)} 开始';
+    } else {
+      return '到 ${dateFormat.format(endDate!)} 结束';
+    }
   }
 
   @override
@@ -132,37 +164,84 @@ class SettingsPage extends ConsumerWidget {
                         horizontal: 16,
                       ),
                     ),
-                    // --- 新增UI控件 ---
-                    ListTile(
-                      title: const Text('备份开始日期'),
-                      subtitle: Text(
-                        settingsState.backupStartDate != null
-                            ? dateFormat.format(settingsState.backupStartDate!)
-                            : '不限制',
+                    // --- 日期范围选择控件 ---
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 4.0,
                       ),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () => _selectDate(
-                        context,
-                        ref,
-                        initialDate: settingsState.backupStartDate,
-                        onDateSelected: (date) =>
-                            settingsNotifier.updateBackupStartDate(date),
-                      ),
-                    ),
-                    ListTile(
-                      title: const Text('备份结束日期'),
-                      subtitle: Text(
-                        settingsState.backupEndDate != null
-                            ? dateFormat.format(settingsState.backupEndDate!)
-                            : '不限制',
-                      ),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () => _selectDate(
-                        context,
-                        ref,
-                        initialDate: settingsState.backupEndDate,
-                        onDateSelected: (date) =>
-                            settingsNotifier.updateBackupEndDate(date),
+                      child: ListTile(
+                        title: const Text(
+                          '备份日期范围',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              _getDateRangeText(
+                                settingsState.backupStartDate,
+                                settingsState.backupEndDate,
+                                dateFormat,
+                              ),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color:
+                                    settingsState.backupStartDate != null ||
+                                        settingsState.backupEndDate != null
+                                    ? theme.colorScheme.primary
+                                    : theme.textTheme.bodyMedium?.color,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '选择要备份的媒体文件的时间范围',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.textTheme.bodySmall?.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (settingsState.backupStartDate != null ||
+                                settingsState.backupEndDate != null)
+                              IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  settingsNotifier.updateBackupStartDate(null);
+                                  settingsNotifier.updateBackupEndDate(null);
+                                },
+                                tooltip: '清除日期范围',
+                                color: theme.colorScheme.error,
+                              ),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.date_range,
+                                color: theme.colorScheme.onPrimaryContainer,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                        onTap: () => _selectDateRange(
+                          context,
+                          ref,
+                          startDate: settingsState.backupStartDate,
+                          endDate: settingsState.backupEndDate,
+                          onDateRangeSelected: (startDate, endDate) {
+                            settingsNotifier.updateBackupStartDate(startDate);
+                            settingsNotifier.updateBackupEndDate(endDate);
+                          },
+                        ),
                       ),
                     ),
                     // 立即备份按钮
