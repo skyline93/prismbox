@@ -78,24 +78,24 @@ Future<_i174.GetIt> init(
     () => _i317.IsolateJobManager(),
     dispose: (i) => i.dispose(),
   );
-  gh.lazySingleton<_i446.SyncStateService>(
-      () => _i446.SyncStateService(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i666.SecureStorageService>(
       () => _i666.SecureStorageService(gh<_i870.AppDatabase>()));
-  gh.lazySingleton<_i799.AlbumSynchronizer>(
-      () => _i799.AlbumSynchronizer(gh<_i870.AppDatabase>()));
+  gh.lazySingleton<_i446.SyncStateService>(
+      () => _i446.SyncStateService(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i367.AssetChangeExecutor>(
       () => _i367.AssetChangeExecutor(gh<_i870.AppDatabase>()));
+  gh.lazySingleton<_i799.AlbumSynchronizer>(
+      () => _i799.AlbumSynchronizer(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i436.MediaSyncService>(
     () => _i436.MediaSyncService(gh<_i317.IsolateJobManager>()),
     dispose: (i) => i.dispose(),
   );
   gh.lazySingleton<_i153.DioClient>(
       () => _i153.DioClient(gh<_i666.SecureStorageService>()));
-  gh.lazySingleton<_i137.LocalMediaSynchronizer>(
-      () => _i137.LocalMediaSynchronizer(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i273.LocalMediaDataSource>(
       () => _i273.LocalMediaDataSource(gh<_i870.AppDatabase>()));
+  gh.lazySingleton<_i137.LocalMediaSynchronizer>(
+      () => _i137.LocalMediaSynchronizer(gh<_i870.AppDatabase>()));
   gh.lazySingleton<_i583.SettingsService>(
       () => _i583.SettingsService(gh<_i870.AppDatabase>()));
   gh.factory<_i91.MediaSyncOrchestrator>(() => _i91.MediaSyncOrchestrator(
@@ -112,18 +112,13 @@ Future<_i174.GetIt> init(
       () => injectableModule.getDio(gh<_i153.DioClient>()));
   gh.factory<_i1062.MediaSyncIsolateHandler>(
       () => _i1062.MediaSyncIsolateHandler(gh<_i91.MediaSyncOrchestrator>()));
-  gh.lazySingleton<_i663.UserApiService>(
-      () => _i663.UserApiService(gh<_i361.Dio>()));
   gh.lazySingleton<_i637.GroupApiService>(
       () => _i637.GroupApiService(gh<_i361.Dio>()));
+  gh.lazySingleton<_i663.UserApiService>(
+      () => _i663.UserApiService(gh<_i361.Dio>()));
   gh.factory<_i1039.AutoBackupHandler>(() => _i1039.AutoBackupHandler(
         gh<_i583.SettingsService>(),
         gh<_i870.AppDatabase>(),
-      ));
-  gh.lazySingleton<_i851.UploadService>(() => _i851.UploadService(
-        gh<_i870.AppDatabase>(),
-        gh<_i666.SecureStorageService>(),
-        gh<_i583.SettingsService>(),
       ));
   gh.lazySingleton<_i1039.BackupgroundUploadService>(
       () => _i1039.BackupgroundUploadService(
@@ -131,6 +126,11 @@ Future<_i174.GetIt> init(
             gh<_i666.SecureStorageService>(),
             gh<_i583.SettingsService>(),
           ));
+  gh.lazySingleton<_i851.UploadService>(() => _i851.UploadService(
+        gh<_i870.AppDatabase>(),
+        gh<_i666.SecureStorageService>(),
+        gh<_i583.SettingsService>(),
+      ));
   gh.factory<_i872.AutoBackupIsolateHandler>(
       () => _i872.AutoBackupIsolateHandler(
             gh<_i583.SettingsService>(),

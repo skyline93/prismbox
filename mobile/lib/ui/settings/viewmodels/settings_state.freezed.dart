@@ -27,7 +27,9 @@ mixin _$SettingsState {
       throw _privateConstructorUsedError; // 备份时间段的结束日期，可为空
   DateTime? get backupEndDate =>
       throw _privateConstructorUsedError; // Indicates if settings are being loaded from the database
-  bool get isLoading => throw _privateConstructorUsedError;
+  bool get isLoading => throw _privateConstructorUsedError; // 立即备份状态
+  bool get isManualBackupRunning => throw _privateConstructorUsedError;
+  String? get manualBackupMessage => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $SettingsStateCopyWith<SettingsState> get copyWith =>
@@ -48,7 +50,9 @@ abstract class $SettingsStateCopyWith<$Res> {
       bool isBackupOnWifiOnly,
       DateTime? backupStartDate,
       DateTime? backupEndDate,
-      bool isLoading});
+      bool isLoading,
+      bool isManualBackupRunning,
+      String? manualBackupMessage});
 }
 
 /// @nodoc
@@ -72,6 +76,8 @@ class _$SettingsStateCopyWithImpl<$Res, $Val extends SettingsState>
     Object? backupStartDate = freezed,
     Object? backupEndDate = freezed,
     Object? isLoading = null,
+    Object? isManualBackupRunning = null,
+    Object? manualBackupMessage = freezed,
   }) {
     return _then(_value.copyWith(
       maxConcurrentUploads: null == maxConcurrentUploads
@@ -106,6 +112,14 @@ class _$SettingsStateCopyWithImpl<$Res, $Val extends SettingsState>
           ? _value.isLoading
           : isLoading // ignore: cast_nullable_to_non_nullable
               as bool,
+      isManualBackupRunning: null == isManualBackupRunning
+          ? _value.isManualBackupRunning
+          : isManualBackupRunning // ignore: cast_nullable_to_non_nullable
+              as bool,
+      manualBackupMessage: freezed == manualBackupMessage
+          ? _value.manualBackupMessage
+          : manualBackupMessage // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -126,7 +140,9 @@ abstract class _$$SettingsStateImplCopyWith<$Res>
       bool isBackupOnWifiOnly,
       DateTime? backupStartDate,
       DateTime? backupEndDate,
-      bool isLoading});
+      bool isLoading,
+      bool isManualBackupRunning,
+      String? manualBackupMessage});
 }
 
 /// @nodoc
@@ -148,6 +164,8 @@ class __$$SettingsStateImplCopyWithImpl<$Res>
     Object? backupStartDate = freezed,
     Object? backupEndDate = freezed,
     Object? isLoading = null,
+    Object? isManualBackupRunning = null,
+    Object? manualBackupMessage = freezed,
   }) {
     return _then(_$SettingsStateImpl(
       maxConcurrentUploads: null == maxConcurrentUploads
@@ -182,6 +200,14 @@ class __$$SettingsStateImplCopyWithImpl<$Res>
           ? _value.isLoading
           : isLoading // ignore: cast_nullable_to_non_nullable
               as bool,
+      isManualBackupRunning: null == isManualBackupRunning
+          ? _value.isManualBackupRunning
+          : isManualBackupRunning // ignore: cast_nullable_to_non_nullable
+              as bool,
+      manualBackupMessage: freezed == manualBackupMessage
+          ? _value.manualBackupMessage
+          : manualBackupMessage // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -197,7 +223,9 @@ class _$SettingsStateImpl implements _SettingsState {
       this.isBackupOnWifiOnly = true,
       this.backupStartDate,
       this.backupEndDate,
-      this.isLoading = true});
+      this.isLoading = true,
+      this.isManualBackupRunning = false,
+      this.manualBackupMessage});
 
 // Default to 3 for initial UI display before loading
   @override
@@ -225,10 +253,16 @@ class _$SettingsStateImpl implements _SettingsState {
   @override
   @JsonKey()
   final bool isLoading;
+// 立即备份状态
+  @override
+  @JsonKey()
+  final bool isManualBackupRunning;
+  @override
+  final String? manualBackupMessage;
 
   @override
   String toString() {
-    return 'SettingsState(maxConcurrentUploads: $maxConcurrentUploads, maxConcurrentDownloads: $maxConcurrentDownloads, isAutoBackupEnabled: $isAutoBackupEnabled, backupFrequency: $backupFrequency, isBackupOnWifiOnly: $isBackupOnWifiOnly, backupStartDate: $backupStartDate, backupEndDate: $backupEndDate, isLoading: $isLoading)';
+    return 'SettingsState(maxConcurrentUploads: $maxConcurrentUploads, maxConcurrentDownloads: $maxConcurrentDownloads, isAutoBackupEnabled: $isAutoBackupEnabled, backupFrequency: $backupFrequency, isBackupOnWifiOnly: $isBackupOnWifiOnly, backupStartDate: $backupStartDate, backupEndDate: $backupEndDate, isLoading: $isLoading, isManualBackupRunning: $isManualBackupRunning, manualBackupMessage: $manualBackupMessage)';
   }
 
   @override
@@ -251,7 +285,11 @@ class _$SettingsStateImpl implements _SettingsState {
             (identical(other.backupEndDate, backupEndDate) ||
                 other.backupEndDate == backupEndDate) &&
             (identical(other.isLoading, isLoading) ||
-                other.isLoading == isLoading));
+                other.isLoading == isLoading) &&
+            (identical(other.isManualBackupRunning, isManualBackupRunning) ||
+                other.isManualBackupRunning == isManualBackupRunning) &&
+            (identical(other.manualBackupMessage, manualBackupMessage) ||
+                other.manualBackupMessage == manualBackupMessage));
   }
 
   @override
@@ -264,7 +302,9 @@ class _$SettingsStateImpl implements _SettingsState {
       isBackupOnWifiOnly,
       backupStartDate,
       backupEndDate,
-      isLoading);
+      isLoading,
+      isManualBackupRunning,
+      manualBackupMessage);
 
   @JsonKey(ignore: true)
   @override
@@ -282,7 +322,9 @@ abstract class _SettingsState implements SettingsState {
       final bool isBackupOnWifiOnly,
       final DateTime? backupStartDate,
       final DateTime? backupEndDate,
-      final bool isLoading}) = _$SettingsStateImpl;
+      final bool isLoading,
+      final bool isManualBackupRunning,
+      final String? manualBackupMessage}) = _$SettingsStateImpl;
 
   @override // Default to 3 for initial UI display before loading
   int get maxConcurrentUploads;
@@ -300,6 +342,10 @@ abstract class _SettingsState implements SettingsState {
   DateTime? get backupEndDate;
   @override // Indicates if settings are being loaded from the database
   bool get isLoading;
+  @override // 立即备份状态
+  bool get isManualBackupRunning;
+  @override
+  String? get manualBackupMessage;
   @override
   @JsonKey(ignore: true)
   _$$SettingsStateImplCopyWith<_$SettingsStateImpl> get copyWith =>

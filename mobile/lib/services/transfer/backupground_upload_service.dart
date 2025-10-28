@@ -42,10 +42,6 @@ class AutoBackupHandler {
 
     // 1. 检查功能是否开启
     final settings = await _settingsService.watchBackupSettings().first;
-    if (!settings.isAutoBackupEnabled) {
-      _log.info('Auto backup is disabled. Skipping task.');
-      return 'Auto backup disabled.';
-    }
 
     // 2. 扫描仅本地状态的媒体资源，并传入时间段
     _log.info(

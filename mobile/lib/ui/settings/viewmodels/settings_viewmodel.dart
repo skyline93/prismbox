@@ -2,6 +2,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile/services/settings_service.dart';
 import 'package:mobile/services/transfer/transfer_manager.dart';
 import 'package:mobile/ui/settings/viewmodels/settings_state.dart';
+import 'package:workmanager/workmanager.dart';
+
+// 后台任务常量
+const String autoMediaBackupTask = 'com.example.mobile.autobackup';
 
 class SettingsViewModel extends StateNotifier<SettingsState> {
   final SettingsService _settingsService;
@@ -75,5 +79,43 @@ class SettingsViewModel extends StateNotifier<SettingsState> {
   Future<void> updateBackupEndDate(DateTime? date) async {
     state = state.copyWith(backupEndDate: date);
     await _settingsService.setBackupEndDate(date);
+  }
+
+  /// 立即执行备份
+  Future<void> startManualBackup() async {
+    if (state.isManualBackupRunning) return;
+
+    state = state.copyWith(
+      isManualBackupRunning: true,
+      manualBackupMessage: '正在启动备份任务...',
+    );
+
+    try {
+      // 使用 WorkManager 触发后台任务而不是直接调用服务
+      await Workmanager().registerOneOffTask(
+        'manual_backup_${DateTime.now().millisecondsSinceEpoch}',
+        autoMediaBackupTask,
+        inputData: <String, dynamic>{
+          'triggeredBy': 'manual_backup',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        },
+        constraints: Constraints(networkType: NetworkType.connected),
+      );
+
+      state = state.copyWith(
+        isManualBackupRunning: false,
+        manualBackupMessage: '备份任务已启动，将在后台执行',
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isManualBackupRunning: false,
+        manualBackupMessage: '启动备份任务失败: $e',
+      );
+    }
+  }
+
+  /// 清除备份消息
+  void clearBackupMessage() {
+    state = state.copyWith(manualBackupMessage: null);
   }
 }

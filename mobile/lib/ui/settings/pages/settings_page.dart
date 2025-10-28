@@ -134,53 +134,94 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     // --- 新增UI控件 ---
                     ListTile(
-                      enabled: isBackupEnabled,
-                      title: Text(
-                        '备份开始日期',
-                        style: TextStyle(
-                          color: isBackupEnabled ? null : theme.disabledColor,
-                        ),
-                      ),
+                      title: const Text('备份开始日期'),
                       subtitle: Text(
                         settingsState.backupStartDate != null
                             ? dateFormat.format(settingsState.backupStartDate!)
                             : '不限制',
                       ),
                       trailing: const Icon(Icons.calendar_today),
-                      onTap: isBackupEnabled
-                          ? () => _selectDate(
-                              context,
-                              ref,
-                              initialDate: settingsState.backupStartDate,
-                              onDateSelected: (date) =>
-                                  settingsNotifier.updateBackupStartDate(date),
-                            )
-                          : null,
+                      onTap: () => _selectDate(
+                        context,
+                        ref,
+                        initialDate: settingsState.backupStartDate,
+                        onDateSelected: (date) =>
+                            settingsNotifier.updateBackupStartDate(date),
+                      ),
                     ),
                     ListTile(
-                      enabled: isBackupEnabled,
-                      title: Text(
-                        '备份结束日期',
-                        style: TextStyle(
-                          color: isBackupEnabled ? null : theme.disabledColor,
-                        ),
-                      ),
+                      title: const Text('备份结束日期'),
                       subtitle: Text(
                         settingsState.backupEndDate != null
                             ? dateFormat.format(settingsState.backupEndDate!)
                             : '不限制',
                       ),
                       trailing: const Icon(Icons.calendar_today),
-                      onTap: isBackupEnabled
-                          ? () => _selectDate(
-                              context,
-                              ref,
-                              initialDate: settingsState.backupEndDate,
-                              onDateSelected: (date) =>
-                                  settingsNotifier.updateBackupEndDate(date),
-                            )
-                          : null,
+                      onTap: () => _selectDate(
+                        context,
+                        ref,
+                        initialDate: settingsState.backupEndDate,
+                        onDateSelected: (date) =>
+                            settingsNotifier.updateBackupEndDate(date),
+                      ),
                     ),
+                    // 立即备份按钮
+                    ListTile(
+                      enabled: !settingsState.isManualBackupRunning,
+                      title: Text(
+                        '立即备份',
+                        style: TextStyle(
+                          color: !settingsState.isManualBackupRunning
+                              ? null
+                              : theme.disabledColor,
+                        ),
+                      ),
+                      subtitle: settingsState.isManualBackupRunning
+                          ? const Text('备份进行中...')
+                          : const Text('立即备份指定时间段内的媒体资源'),
+                      trailing: settingsState.isManualBackupRunning
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.backup),
+                      onTap: !settingsState.isManualBackupRunning
+                          ? () => settingsNotifier.startManualBackup()
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                    ),
+                    // 显示备份结果消息
+                    if (settingsState.manualBackupMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Card(
+                          color:
+                              settingsState.manualBackupMessage!.contains('失败')
+                              ? theme.colorScheme.errorContainer
+                              : theme.colorScheme.primaryContainer,
+                          child: ListTile(
+                            title: Text(
+                              settingsState.manualBackupMessage!,
+                              style: TextStyle(
+                                color:
+                                    settingsState.manualBackupMessage!.contains(
+                                      '失败',
+                                    )
+                                    ? theme.colorScheme.onErrorContainer
+                                    : theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () =>
+                                  settingsNotifier.clearBackupMessage(),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 _SettingsGroup(

@@ -18,5 +18,8 @@ class SettingsState with _$SettingsState {
     DateTime? backupEndDate,
     // Indicates if settings are being loaded from the database
     @Default(true) bool isLoading,
+    // 立即备份状态
+    @Default(false) bool isManualBackupRunning,
+    String? manualBackupMessage,
   }) = _SettingsState;
 }

@@ -6,8 +6,10 @@ import 'package:workmanager/workmanager.dart';
 import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/features/background_jobs/core/contracts/background_task.dart';
 import 'package:mobile/features/background_jobs/impl/media_sync/background/periodic_sync_adapter.dart';
-import 'package:mobile/features/background_jobs/impl/auto_backup/background/auto_backup_adapter.dart';
 import 'package:mobile/services/transfer/backupground_upload_service.dart';
+
+// 后台任务常量
+const String autoMediaBackupTask = 'com.example.mobile.autobackup';
 
 final _log = Logger('TaskDispatcher');
 
