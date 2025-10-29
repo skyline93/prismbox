@@ -48,11 +48,21 @@ void callbackDispatcher() {
         return true; // 未知任务返回成功，避免重试
       }
     } else if (taskName == autoMediaBackupTask) {
-      final autoBackupHandler = getIt<AutoBackupHandler>();
-      final result = await autoBackupHandler.handle(inputData);
-      _log.severe(result);
-
-      return true;
+      try {
+        // iOS后台任务时间限制检查
+        final startTime = DateTime.now();
+        
+        final autoBackupHandler = getIt<AutoBackupHandler>();
+        final result = await autoBackupHandler.handle(inputData);
+        
+        final duration = DateTime.now().difference(startTime);
+        _log.info('Auto backup completed in ${duration.inSeconds}s: $result');
+        
+        return true;
+      } catch (e, s) {
+        _log.severe('Auto backup failed in background task', e, s);
+        return false;
+      }
     }
 
     return false;

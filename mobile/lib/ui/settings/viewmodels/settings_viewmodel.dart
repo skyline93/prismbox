@@ -93,7 +93,7 @@ class SettingsViewModel extends StateNotifier<SettingsState> {
     try {
       // 使用 WorkManager 触发后台任务而不是直接调用服务
       await Workmanager().registerOneOffTask(
-        'manual_backup_${DateTime.now().millisecondsSinceEpoch}',
+        autoMediaBackupTask,
         autoMediaBackupTask,
         inputData: <String, dynamic>{
           'triggeredBy': 'manual_backup',

@@ -39,9 +39,9 @@ class MediaItemThumbnail extends ConsumerWidget {
         break;
 
       case NetworkUrlStrategy(url: final url):
-        debugPrint(
-          "[Network] 媒体实体 ID: ${entity.id}, Cloud UUID: ${entity.cloudUuid}, Image URL: $url",
-        );
+        // debugPrint(
+        //   "[Network] 媒体实体 ID: ${entity.id}, Cloud UUID: ${entity.cloudUuid}, Image URL: $url",
+        // );
         imageWidget = _buildCachedNetworkImage(ref, url);
         break;
 
