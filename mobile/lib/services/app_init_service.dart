@@ -13,6 +13,7 @@ import 'package:mobile/features/background_jobs/core/task_dispatcher.dart';
 import 'package:mobile/features/background_jobs/core/task_registrar.dart';
 import 'package:mobile/features/background_jobs/impl/media_sync/service/media_sync_service.dart';
 import 'package:mobile/services/auto_backup_service.dart';
+import 'package:mobile/services/transfer/upload_auth_handler.dart';
 
 class AppInitService {
   static final AppInitService _instance = AppInitService._internal();
@@ -62,6 +63,11 @@ class AppInitService {
     }
 
     Logger.root.info('所有必要权限已获取。');
+
+    // 设置全局数据库实例供认证回调使用
+    final appDatabase = getIt<AppDatabase>();
+    UploadAuthHandler.setGlobalDatabase(appDatabase);
+    Logger.root.info('Global database instance set for auth callbacks.');
 
     Logger.root.info('正在触发启动时的媒体资源同步 (replicator)...');
     try {

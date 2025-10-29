@@ -13,7 +13,6 @@ import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/core/di/service_locator.dart';
-import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/services/settings_service.dart';
 import 'package:path/path.dart' as p;
@@ -24,6 +23,8 @@ import 'package:mobile/utils/hash.dart';
 import 'package:mobile/utils/device_utils.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/extensions/asset_type_extensions.dart';
+// [认证优化]: 导入认证处理器
+import 'package:mobile/services/transfer/upload_auth_handler.dart';
 
 @injectable
 class AutoBackupHandler {
@@ -88,8 +89,9 @@ class BackupgroundUploadService {
   final AppDatabase _db;
   final UploadJobDao _uploadJobDao;
   final MediaAssetDao _mediaAssetDao;
-  final SecureStorageService _secureStorageService;
   final SettingsService _settingsService;
+  // [认证优化]: 注入认证处理器
+  final UploadAuthHandler _authHandler;
   final _downloaderCompleter = Completer<FileDownloader>();
 
   final _log = Logger('BackupgroundUploadService');
@@ -97,8 +99,8 @@ class BackupgroundUploadService {
 
   BackupgroundUploadService(
     AppDatabase db,
-    this._secureStorageService,
     this._settingsService,
+    this._authHandler,
   ) : _db = db,
       _uploadJobDao = db.uploadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
@@ -141,6 +143,7 @@ class BackupgroundUploadService {
           },
         ),
       ],
+      // [认证优化]: 移除onTaskStart配置，改为在任务创建时使用Auth对象
     );
 
     // 5. 通知配置 (从 TransferManager 迁移)
@@ -163,7 +166,14 @@ class BackupgroundUploadService {
       },
     );
 
-    // 7. 启动下载器并监听更新
+    // 7. 设置认证失败回调
+    _authHandler.setAuthFailureCallback(() {
+      _log.warning('后台上传任务认证失败，可能需要重新登录');
+      // 这里可以触发全局的认证失败处理
+      // 例如：通知用户重新登录
+    });
+
+    // 8. 启动下载器并监听更新
     await downloader.start();
     downloader.updates.listen(_onTaskUpdate);
 
@@ -171,7 +181,7 @@ class BackupgroundUploadService {
       "FileDownloader for UploadService initialized and listening for updates.",
     );
 
-    // 8. 完成 Completer，让等待的调用可以获取到实例
+    // 9. 完成 Completer，让等待的调用可以获取到实例
     _downloaderCompleter.complete(downloader);
   }
 
@@ -363,19 +373,20 @@ class BackupgroundUploadService {
       }
 
       // 4. 如果网络条件满足，则继续创建并入队后台上传任务
-      final accessToken = await _secureStorageService.getAccessToken();
-      if (accessToken == null) {
-        _log.severe('上传失败: 任务 $jobId 的访问令牌为空。');
-        // 在事务内直接抛出异常，以回滚数据库更改
-        throw Exception('Access token is null for job $jobId');
-      }
-
+      // [认证优化]: 不再预先获取token，而是依赖onTaskStart回调动态处理
       final fields = {
         'cloud_uuid': cloudUuid,
         'hash': fileHash,
         'item_type': taskPayload.mediaType.name,
         'original_filename': filename,
       };
+
+      // [认证优化]: 在任务创建时动态获取有效的token
+      final accessToken = await _authHandler.getValidAccessToken();
+      if (accessToken == null) {
+        _log.severe('上传失败: 任务 $jobId 无法获取有效的访问令牌。');
+        throw Exception('Cannot get valid access token for job $jobId');
+      }
 
       final task = UploadTask.fromFile(
         file: taskPayload.file,
@@ -389,6 +400,10 @@ class BackupgroundUploadService {
         displayName: filename,
         priority: 1,
         group: 'backupground_upload_group',
+        // [认证优化]: 使用TaskOptions配置onTaskStart回调
+        options: TaskOptions(
+          onTaskStart: UploadAuthHandler.onTaskStart,
+        ),
       );
 
       // _taskQueue.add(task);

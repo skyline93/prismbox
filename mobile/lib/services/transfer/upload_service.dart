@@ -9,7 +9,6 @@ import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
 import 'package:mobile/core/enums.dart';
-import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 // [阶段三 新增]: 导入 SettingsService
 import 'package:mobile/services/settings_service.dart';
@@ -20,15 +19,18 @@ import 'package:mobile/config/app_config.dart';
 import 'package:mobile/utils/hash.dart';
 // [阶段三 新增]: 导入 DeviceUtils 以检查网络
 import 'package:mobile/utils/device_utils.dart';
+// [认证优化]: 导入认证处理器
+import 'package:mobile/services/transfer/upload_auth_handler.dart';
 
 @lazySingleton
 class UploadService {
   final AppDatabase _db;
   final UploadJobDao _uploadJobDao;
   final MediaAssetDao _mediaAssetDao;
-  final SecureStorageService _secureStorageService;
   // [阶段三 新增]: 注入 SettingsService
   final SettingsService _settingsService;
+  // [认证优化]: 注入认证处理器
+  final UploadAuthHandler _authHandler;
 
   final _log = Logger('UploadService');
   final _uuid = const Uuid();
@@ -37,11 +39,11 @@ class UploadService {
   // ignore: unused_field
   late final MemoryTaskQueue _taskQueue;
 
-  // [阶段三 修改]: 更新构造函数以接收 SettingsService
+  // [阶段三 修改]: 更新构造函数以接收 SettingsService 和认证处理器
   UploadService(
     AppDatabase db,
-    this._secureStorageService,
     this._settingsService,
+    this._authHandler,
   ) : _db = db,
       _uploadJobDao = db.uploadJobDao,
       _mediaAssetDao = db.mediaAssetDao;
@@ -215,19 +217,20 @@ class UploadService {
       }
 
       // 4. 如果网络条件满足，则继续创建并入队后台上传任务
-      final accessToken = await _secureStorageService.getAccessToken();
-      if (accessToken == null) {
-        _log.severe('上传失败: 任务 $jobId 的访问令牌为空。');
-        // 在事务内直接抛出异常，以回滚数据库更改
-        throw Exception('Access token is null for job $jobId');
-      }
-
+      // [认证优化]: 不再预先获取token，而是依赖onTaskStart回调动态处理
       final fields = {
         'cloud_uuid': cloudUuid,
         'hash': fileHash,
         'item_type': taskPayload.mediaType.name,
         'original_filename': filename,
       };
+
+      // [认证优化]: 在任务创建时动态获取有效的token
+      final accessToken = await _authHandler.getValidAccessToken();
+      if (accessToken == null) {
+        _log.severe('上传失败: 任务 $jobId 无法获取有效的访问令牌。');
+        throw Exception('Cannot get valid access token for job $jobId');
+      }
 
       final task = UploadTask.fromFile(
         file: taskPayload.file,
@@ -241,6 +244,10 @@ class UploadService {
         displayName: filename,
         priority: 1,
         group: 'upload',
+        // [认证优化]: 使用TaskOptions配置onTaskStart回调
+        options: TaskOptions(
+          onTaskStart: UploadAuthHandler.onTaskStart,
+        ),
       );
 
       // _taskQueue.add(task);
