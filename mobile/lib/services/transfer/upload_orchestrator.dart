@@ -15,11 +15,13 @@ class UploadTaskPayload {
   final File file;
   final String assetId;
   final MediaType mediaType;
+  final DateTime mediaTakenAt; // 媒体拍摄时间（如果没有拍摄时间则使用创建时间）
 
   UploadTaskPayload({
     required this.file,
     required this.assetId,
     required this.mediaType,
+    required this.mediaTakenAt,
   });
 }
 
@@ -85,6 +87,7 @@ class UploadOrchestrator {
             file: file,
             assetId: asset.id,
             mediaType: asset.type.toMediaType(),
+            mediaTakenAt: asset.createDateTime, // 使用 AssetEntity 的 createDateTime（拍摄时间或创建时间）
           );
         } else {
           debugPrint('无法为 Asset ${asset.id} 获取文件，跳过上传。');

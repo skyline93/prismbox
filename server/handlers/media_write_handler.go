@@ -11,6 +11,7 @@ import (
 	"server/core"
 	"server/models"
 	"server/processing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -168,6 +169,7 @@ func (h *MediaHandler) UploadStream(c *gin.Context) {
 	itemTypeStr := c.PostForm("item_type")
 	originalFilename := c.PostForm("original_filename")
 	cloudUuid := c.PostForm("cloud_uuid")
+	mediaTakenAtStr := c.PostForm("media_taken_at")
 
 	// 2. 校验元数据
 	if hash == "" {
@@ -181,6 +183,17 @@ func (h *MediaHandler) UploadStream(c *gin.Context) {
 	}
 	if cloudUuid == "" {
 		cloudUuid = uuid.New().String()
+	}
+
+	// 2.1. 解析媒体拍摄时间（可选）
+	var mediaTakenAt *time.Time
+	if mediaTakenAtStr != "" {
+		parsed, err := time.Parse(time.RFC3339, mediaTakenAtStr)
+		if err == nil {
+			mediaTakenAt = &parsed
+		} else {
+			log.Printf("Warning: Failed to parse media_taken_at '%s': %v", mediaTakenAtStr, err)
+		}
 	}
 
 	// 3. 秒传检查 (使用仓储方法)
@@ -227,6 +240,7 @@ func (h *MediaHandler) UploadStream(c *gin.Context) {
 		OriginalFilename: originalFilename,
 		Filename:         newFilename,
 		ProcessingStatus: constant.StatusPending,
+		MediaTakenAt:     mediaTakenAt, // 保存客户端传递的拍摄时间
 	}
 	if _, err := h.MediaRepo.Create(c.Request.Context(), &media); err != nil {
 		os.Remove(filePath)

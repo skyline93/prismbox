@@ -454,6 +454,7 @@ class BackupgroundUploadService {
             file: file,
             assetId: asset.id,
             mediaType: asset.type.toMediaType(),
+            mediaTakenAt: asset.createDateTime, // 使用 AssetEntity 的 createDateTime（拍摄时间或创建时间）
           );
         } else {
           debugPrint('无法为 Asset ${asset.id} 获取文件，跳过上传。');

@@ -376,11 +376,13 @@ class MediaStorageAdapter extends StorageAdapter {
       width: Value(parseInt(payload['width'])),
       height: Value(parseInt(payload['height'])),
       durationSec: Value(parseInt(payload['duration'])),
-      // 如果云端没有提供 created_at，则使用当前时间作为备用
+      // 优先使用 media_taken_at（实际拍摄时间），如果没有则使用 created_at（服务器创建时间），最后才使用当前时间
       createdAt: Value(
-        payload['created_at'] != null
-            ? DateTime.parse(payload['created_at'] as String)
-            : DateTime.now(),
+        payload['media_taken_at'] != null
+            ? DateTime.parse(payload['media_taken_at'] as String)
+            : (payload['created_at'] != null
+                ? DateTime.parse(payload['created_at'] as String)
+                : DateTime.now()),
       ),
       updatedAt: Value(DateTime.now()),
       // 根据 payload 'deleted' 字段设置生命周期状态

@@ -122,7 +122,10 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       width: remoteMedia.width,
       height: remoteMedia.height,
       durationSec: _parseDuration("0"),
-      createdAt: DateTime.parse(remoteMedia.createdAt),
+      // 优先使用 mediaTakenAt（实际拍摄时间），如果没有则使用 createdAt（服务器创建时间）
+      createdAt: remoteMedia.mediaTakenAt != null
+          ? DateTime.parse(remoteMedia.mediaTakenAt!)
+          : DateTime.parse(remoteMedia.createdAt),
       lifecycleState: LifecycleState.active,
     );
   }
