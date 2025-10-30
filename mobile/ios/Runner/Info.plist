@@ -42,6 +42,7 @@
 	<array>
 		<string>com.example.mobile.periodicCloudSync</string>
 		<string>com.example.mobile.autobackup</string>
+		<string>com.example.mobile.create_post</string>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).bgDownloader</string>
 	</array>
 	<key>UILaunchStoryboardName</key>

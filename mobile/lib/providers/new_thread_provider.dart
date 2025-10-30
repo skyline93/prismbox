@@ -9,7 +9,6 @@ import 'package:mobile/extensions/asset_type_extensions.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:mobile/features/background_jobs/impl/group_post/background/create_post_runner.dart';
 import 'dart:convert';
-import 'package:uuid/uuid.dart';
 
 part 'new_thread_provider.g.dart';
 
@@ -140,9 +139,8 @@ class NewThread extends _$NewThread {
 
       final assetsJson = jsonEncode(assets);
 
-      final uniqueId = const Uuid().v4();
       await Workmanager().registerOneOffTask(
-        'create_post_$uniqueId',
+        createPostTask,
         createPostTask,
         inputData: <String, dynamic>{
           'groupUuid': groupId,

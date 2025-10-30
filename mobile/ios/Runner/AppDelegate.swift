@@ -11,6 +11,7 @@ import workmanager_apple
     GeneratedPluginRegistrant.register(with: self)
   
     WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.example.mobile.autobackup")
+    WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.example.mobile.create_post")
     WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.example.mobile.periodicCloudSync")
 
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
