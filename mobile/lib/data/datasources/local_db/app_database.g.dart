@@ -97,6 +97,12 @@ class $MediaAssetsTable extends MediaAssets
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _mediaTakenAtMeta =
+      const VerificationMeta('mediaTakenAt');
+  @override
+  late final GeneratedColumn<DateTime> mediaTakenAt = GeneratedColumn<DateTime>(
+      'media_taken_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -141,6 +147,7 @@ class $MediaAssetsTable extends MediaAssets
         height,
         durationSec,
         createdAt,
+        mediaTakenAt,
         updatedAt,
         lifecycleState,
         lifecycleModifiedDate,
@@ -207,6 +214,14 @@ class $MediaAssetsTable extends MediaAssets
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('media_taken_at')) {
+      context.handle(
+          _mediaTakenAtMeta,
+          mediaTakenAt.isAcceptableOrUnknown(
+              data['media_taken_at']!, _mediaTakenAtMeta));
+    } else if (isInserting) {
+      context.missing(_mediaTakenAtMeta);
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -261,6 +276,8 @@ class $MediaAssetsTable extends MediaAssets
           .read(DriftSqlType.int, data['${effectivePrefix}duration_sec']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      mediaTakenAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}media_taken_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       lifecycleState: $MediaAssetsTable.$converterlifecycleState.fromSql(
@@ -301,6 +318,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
   final int? height;
   final int? durationSec;
   final DateTime createdAt;
+  final DateTime mediaTakenAt;
   final DateTime updatedAt;
   final LifecycleState lifecycleState;
   final DateTime? lifecycleModifiedDate;
@@ -319,6 +337,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       this.height,
       this.durationSec,
       required this.createdAt,
+      required this.mediaTakenAt,
       required this.updatedAt,
       required this.lifecycleState,
       this.lifecycleModifiedDate,
@@ -361,6 +380,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       map['duration_sec'] = Variable<int>(durationSec);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['media_taken_at'] = Variable<DateTime>(mediaTakenAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     {
       map['lifecycle_state'] = Variable<String>(
@@ -405,6 +425,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           ? const Value.absent()
           : Value(durationSec),
       createdAt: Value(createdAt),
+      mediaTakenAt: Value(mediaTakenAt),
       updatedAt: Value(updatedAt),
       lifecycleState: Value(lifecycleState),
       lifecycleModifiedDate: lifecycleModifiedDate == null && nullToAbsent
@@ -435,6 +456,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       height: serializer.fromJson<int?>(json['height']),
       durationSec: serializer.fromJson<int?>(json['durationSec']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      mediaTakenAt: serializer.fromJson<DateTime>(json['mediaTakenAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       lifecycleState: $MediaAssetsTable.$converterlifecycleState
           .fromJson(serializer.fromJson<String>(json['lifecycleState'])),
@@ -462,6 +484,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       'height': serializer.toJson<int?>(height),
       'durationSec': serializer.toJson<int?>(durationSec),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'mediaTakenAt': serializer.toJson<DateTime>(mediaTakenAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'lifecycleState': serializer.toJson<String>(
           $MediaAssetsTable.$converterlifecycleState.toJson(lifecycleState)),
@@ -485,6 +508,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           Value<int?> height = const Value.absent(),
           Value<int?> durationSec = const Value.absent(),
           DateTime? createdAt,
+          DateTime? mediaTakenAt,
           DateTime? updatedAt,
           LifecycleState? lifecycleState,
           Value<DateTime?> lifecycleModifiedDate = const Value.absent(),
@@ -503,6 +527,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
         height: height.present ? height.value : this.height,
         durationSec: durationSec.present ? durationSec.value : this.durationSec,
         createdAt: createdAt ?? this.createdAt,
+        mediaTakenAt: mediaTakenAt ?? this.mediaTakenAt,
         updatedAt: updatedAt ?? this.updatedAt,
         lifecycleState: lifecycleState ?? this.lifecycleState,
         lifecycleModifiedDate: lifecycleModifiedDate.present
@@ -528,6 +553,9 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       durationSec:
           data.durationSec.present ? data.durationSec.value : this.durationSec,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      mediaTakenAt: data.mediaTakenAt.present
+          ? data.mediaTakenAt.value
+          : this.mediaTakenAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       lifecycleState: data.lifecycleState.present
           ? data.lifecycleState.value
@@ -555,6 +583,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
           ..write('createdAt: $createdAt, ')
+          ..write('mediaTakenAt: $mediaTakenAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('lifecycleState: $lifecycleState, ')
           ..write('lifecycleModifiedDate: $lifecycleModifiedDate, ')
@@ -578,6 +607,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
       height,
       durationSec,
       createdAt,
+      mediaTakenAt,
       updatedAt,
       lifecycleState,
       lifecycleModifiedDate,
@@ -599,6 +629,7 @@ class MediaAsset extends DataClass implements Insertable<MediaAsset> {
           other.height == this.height &&
           other.durationSec == this.durationSec &&
           other.createdAt == this.createdAt &&
+          other.mediaTakenAt == this.mediaTakenAt &&
           other.updatedAt == this.updatedAt &&
           other.lifecycleState == this.lifecycleState &&
           other.lifecycleModifiedDate == this.lifecycleModifiedDate &&
@@ -619,6 +650,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
   final Value<int?> height;
   final Value<int?> durationSec;
   final Value<DateTime> createdAt;
+  final Value<DateTime> mediaTakenAt;
   final Value<DateTime> updatedAt;
   final Value<LifecycleState> lifecycleState;
   final Value<DateTime?> lifecycleModifiedDate;
@@ -637,6 +669,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     this.height = const Value.absent(),
     this.durationSec = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.mediaTakenAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.lifecycleState = const Value.absent(),
     this.lifecycleModifiedDate = const Value.absent(),
@@ -656,6 +689,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     this.height = const Value.absent(),
     this.durationSec = const Value.absent(),
     required DateTime createdAt,
+    required DateTime mediaTakenAt,
     required DateTime updatedAt,
     this.lifecycleState = const Value.absent(),
     this.lifecycleModifiedDate = const Value.absent(),
@@ -663,6 +697,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
   })  : syncStatus = Value(syncStatus),
         assetType = Value(assetType),
         createdAt = Value(createdAt),
+        mediaTakenAt = Value(mediaTakenAt),
         updatedAt = Value(updatedAt);
   static Insertable<MediaAsset> custom({
     Expression<int>? id,
@@ -678,6 +713,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     Expression<int>? height,
     Expression<int>? durationSec,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? mediaTakenAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? lifecycleState,
     Expression<DateTime>? lifecycleModifiedDate,
@@ -697,6 +733,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       if (height != null) 'height': height,
       if (durationSec != null) 'duration_sec': durationSec,
       if (createdAt != null) 'created_at': createdAt,
+      if (mediaTakenAt != null) 'media_taken_at': mediaTakenAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (lifecycleState != null) 'lifecycle_state': lifecycleState,
       if (lifecycleModifiedDate != null)
@@ -719,6 +756,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       Value<int?>? height,
       Value<int?>? durationSec,
       Value<DateTime>? createdAt,
+      Value<DateTime>? mediaTakenAt,
       Value<DateTime>? updatedAt,
       Value<LifecycleState>? lifecycleState,
       Value<DateTime?>? lifecycleModifiedDate,
@@ -737,6 +775,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
       height: height ?? this.height,
       durationSec: durationSec ?? this.durationSec,
       createdAt: createdAt ?? this.createdAt,
+      mediaTakenAt: mediaTakenAt ?? this.mediaTakenAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lifecycleState: lifecycleState ?? this.lifecycleState,
       lifecycleModifiedDate:
@@ -789,6 +828,9 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (mediaTakenAt.present) {
+      map['media_taken_at'] = Variable<DateTime>(mediaTakenAt.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -823,6 +865,7 @@ class MediaAssetsCompanion extends UpdateCompanion<MediaAsset> {
           ..write('height: $height, ')
           ..write('durationSec: $durationSec, ')
           ..write('createdAt: $createdAt, ')
+          ..write('mediaTakenAt: $mediaTakenAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('lifecycleState: $lifecycleState, ')
           ..write('lifecycleModifiedDate: $lifecycleModifiedDate, ')
@@ -2802,6 +2845,7 @@ typedef $$MediaAssetsTableCreateCompanionBuilder = MediaAssetsCompanion
   Value<int?> height,
   Value<int?> durationSec,
   required DateTime createdAt,
+  required DateTime mediaTakenAt,
   required DateTime updatedAt,
   Value<LifecycleState> lifecycleState,
   Value<DateTime?> lifecycleModifiedDate,
@@ -2822,6 +2866,7 @@ typedef $$MediaAssetsTableUpdateCompanionBuilder = MediaAssetsCompanion
   Value<int?> height,
   Value<int?> durationSec,
   Value<DateTime> createdAt,
+  Value<DateTime> mediaTakenAt,
   Value<DateTime> updatedAt,
   Value<LifecycleState> lifecycleState,
   Value<DateTime?> lifecycleModifiedDate,
@@ -2899,6 +2944,9 @@ class $$MediaAssetsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get mediaTakenAt => $composableBuilder(
+      column: $table.mediaTakenAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -2985,6 +3033,10 @@ class $$MediaAssetsTableOrderingComposer
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get mediaTakenAt => $composableBuilder(
+      column: $table.mediaTakenAt,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -3048,6 +3100,9 @@ class $$MediaAssetsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get mediaTakenAt => $composableBuilder(
+      column: $table.mediaTakenAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -3120,6 +3175,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             Value<int?> height = const Value.absent(),
             Value<int?> durationSec = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> mediaTakenAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<LifecycleState> lifecycleState = const Value.absent(),
             Value<DateTime?> lifecycleModifiedDate = const Value.absent(),
@@ -3139,6 +3195,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             height: height,
             durationSec: durationSec,
             createdAt: createdAt,
+            mediaTakenAt: mediaTakenAt,
             updatedAt: updatedAt,
             lifecycleState: lifecycleState,
             lifecycleModifiedDate: lifecycleModifiedDate,
@@ -3158,6 +3215,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             Value<int?> height = const Value.absent(),
             Value<int?> durationSec = const Value.absent(),
             required DateTime createdAt,
+            required DateTime mediaTakenAt,
             required DateTime updatedAt,
             Value<LifecycleState> lifecycleState = const Value.absent(),
             Value<DateTime?> lifecycleModifiedDate = const Value.absent(),
@@ -3177,6 +3235,7 @@ class $$MediaAssetsTableTableManager extends RootTableManager<
             height: height,
             durationSec: durationSec,
             createdAt: createdAt,
+            mediaTakenAt: mediaTakenAt,
             updatedAt: updatedAt,
             lifecycleState: lifecycleState,
             lifecycleModifiedDate: lifecycleModifiedDate,

@@ -29,6 +29,7 @@ mixin _$UnifiedMediaEntity {
   int? get height => throw _privateConstructorUsedError;
   int? get durationSec => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
+  DateTime get mediaTakenAt => throw _privateConstructorUsedError; // 媒体拍摄时间（非空）
   AssetEntity? get assetEntity => throw _privateConstructorUsedError;
   LifecycleState? get lifecycleState => throw _privateConstructorUsedError;
   String? get trashPath => throw _privateConstructorUsedError;
@@ -58,6 +59,7 @@ abstract class $UnifiedMediaEntityCopyWith<$Res> {
       int? height,
       int? durationSec,
       DateTime createdAt,
+      DateTime mediaTakenAt,
       AssetEntity? assetEntity,
       LifecycleState? lifecycleState,
       String? trashPath});
@@ -89,6 +91,7 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
     Object? height = freezed,
     Object? durationSec = freezed,
     Object? createdAt = null,
+    Object? mediaTakenAt = null,
     Object? assetEntity = freezed,
     Object? lifecycleState = freezed,
     Object? trashPath = freezed,
@@ -146,6 +149,10 @@ class _$UnifiedMediaEntityCopyWithImpl<$Res, $Val extends UnifiedMediaEntity>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
+      mediaTakenAt: null == mediaTakenAt
+          ? _value.mediaTakenAt
+          : mediaTakenAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
       assetEntity: freezed == assetEntity
           ? _value.assetEntity
           : assetEntity // ignore: cast_nullable_to_non_nullable
@@ -184,6 +191,7 @@ abstract class _$$UnifiedMediaEntityImplCopyWith<$Res>
       int? height,
       int? durationSec,
       DateTime createdAt,
+      DateTime mediaTakenAt,
       AssetEntity? assetEntity,
       LifecycleState? lifecycleState,
       String? trashPath});
@@ -213,6 +221,7 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
     Object? height = freezed,
     Object? durationSec = freezed,
     Object? createdAt = null,
+    Object? mediaTakenAt = null,
     Object? assetEntity = freezed,
     Object? lifecycleState = freezed,
     Object? trashPath = freezed,
@@ -270,6 +279,10 @@ class __$$UnifiedMediaEntityImplCopyWithImpl<$Res>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
+      mediaTakenAt: null == mediaTakenAt
+          ? _value.mediaTakenAt
+          : mediaTakenAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
       assetEntity: freezed == assetEntity
           ? _value.assetEntity
           : assetEntity // ignore: cast_nullable_to_non_nullable
@@ -303,6 +316,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       this.height,
       this.durationSec,
       required this.createdAt,
+      required this.mediaTakenAt,
       this.assetEntity = null,
       this.lifecycleState,
       this.trashPath})
@@ -336,6 +350,9 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
   @override
   final DateTime createdAt;
   @override
+  final DateTime mediaTakenAt;
+// 媒体拍摄时间（非空）
+  @override
   @JsonKey()
   final AssetEntity? assetEntity;
   @override
@@ -345,7 +362,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
 
   @override
   String toString() {
-    return 'UnifiedMediaEntity(id: $id, localId: $localId, cloudUuid: $cloudUuid, thumbnailUrl: $thumbnailUrl, syncStatus: $syncStatus, assetType: $assetType, filePath: $filePath, fileName: $fileName, isRAW: $isRAW, width: $width, height: $height, durationSec: $durationSec, createdAt: $createdAt, assetEntity: $assetEntity, lifecycleState: $lifecycleState, trashPath: $trashPath)';
+    return 'UnifiedMediaEntity(id: $id, localId: $localId, cloudUuid: $cloudUuid, thumbnailUrl: $thumbnailUrl, syncStatus: $syncStatus, assetType: $assetType, filePath: $filePath, fileName: $fileName, isRAW: $isRAW, width: $width, height: $height, durationSec: $durationSec, createdAt: $createdAt, mediaTakenAt: $mediaTakenAt, assetEntity: $assetEntity, lifecycleState: $lifecycleState, trashPath: $trashPath)';
   }
 
   @override
@@ -374,6 +391,8 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
                 other.durationSec == durationSec) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
+            (identical(other.mediaTakenAt, mediaTakenAt) ||
+                other.mediaTakenAt == mediaTakenAt) &&
             (identical(other.assetEntity, assetEntity) ||
                 other.assetEntity == assetEntity) &&
             (identical(other.lifecycleState, lifecycleState) ||
@@ -398,6 +417,7 @@ class _$UnifiedMediaEntityImpl extends _UnifiedMediaEntity {
       height,
       durationSec,
       createdAt,
+      mediaTakenAt,
       assetEntity,
       lifecycleState,
       trashPath);
@@ -425,6 +445,7 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
       final int? height,
       final int? durationSec,
       required final DateTime createdAt,
+      required final DateTime mediaTakenAt,
       final AssetEntity? assetEntity,
       final LifecycleState? lifecycleState,
       final String? trashPath}) = _$UnifiedMediaEntityImpl;
@@ -457,6 +478,8 @@ abstract class _UnifiedMediaEntity extends UnifiedMediaEntity {
   @override
   DateTime get createdAt;
   @override
+  DateTime get mediaTakenAt;
+  @override // 媒体拍摄时间（非空）
   AssetEntity? get assetEntity;
   @override
   LifecycleState? get lifecycleState;

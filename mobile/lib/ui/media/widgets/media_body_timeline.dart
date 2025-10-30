@@ -51,14 +51,14 @@ class MediaTimelineBody extends HookConsumerWidget {
     final itemSize = MediaQuery.of(context).size.width / crossAxisCount;
     final sortedFullMedia = useMemoized(() {
       return List<UnifiedMediaEntity>.from(media)
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        ..sort((a, b) => b.creationDate.compareTo(a.creationDate));
     }, [media]);
     final flatList = useMemoized(() {
       final items = <TimelineItem>[];
       int globalIndex = 0;
       final groupedByDate = groupBy(
         sortedFullMedia,
-        (m) => DateTime(m.createdAt.year, m.createdAt.month, m.createdAt.day),
+        (m) => DateTime(m.creationDate.year, m.creationDate.month, m.creationDate.day),
       );
       groupedByDate.forEach((date, mediaForDate) {
         final formattedDate = DateFormat('y年M月d日 EEEE', 'zh_CN').format(date);

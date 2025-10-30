@@ -20,6 +20,7 @@ class MediaAssets extends Table {
   IntColumn get height => integer().nullable()();
   IntColumn get durationSec => integer().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get mediaTakenAt => dateTime()(); // 媒体拍摄时间（非空）
   DateTimeColumn get updatedAt => dateTime()();
 
   TextColumn get lifecycleState => text()

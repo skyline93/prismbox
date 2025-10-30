@@ -194,10 +194,13 @@ class MediaStorageAdapter extends StorageAdapter {
         final companion = _changelogToCompanion(change);
 
         if (existingAsset != null) {
+          // 保护已存在的拍摄时间，只更新其他字段
           toUpdate.add(
             companion.copyWith(
               id: Value(existingAsset.id),
               syncStatus: const Value(SyncStatus.synced),
+              // 保持已存在的拍摄时间不变
+              mediaTakenAt: Value(existingAsset.mediaTakenAt),
             ),
           );
         } else {
@@ -306,6 +309,7 @@ class MediaStorageAdapter extends StorageAdapter {
               );
 
               if (localState.exists) {
+                // 保护已存在的拍摄时间，只更新其他字段
                 await (_db.update(
                   _db.mediaAssets,
                 )..where((tbl) => tbl.id.equals(localState.asset!.id))).write(
@@ -316,6 +320,8 @@ class MediaStorageAdapter extends StorageAdapter {
                           ? null
                           : change.recordId,
                     ),
+                    // 保持已存在的拍摄时间不变
+                    mediaTakenAt: Value(localState.asset!.mediaTakenAt),
                   ),
                 );
                 _log.info(
@@ -378,6 +384,12 @@ class MediaStorageAdapter extends StorageAdapter {
       durationSec: Value(parseInt(payload['duration'])),
       // 优先使用 media_taken_at（实际拍摄时间），如果没有则使用 created_at（服务器创建时间），最后才使用当前时间
       createdAt: Value(
+        payload['created_at'] != null
+            ? DateTime.parse(payload['created_at'] as String)
+            : DateTime.now(),
+      ),
+      // 设置媒体拍摄时间，优先使用 media_taken_at，否则使用 created_at，最后使用当前时间
+      mediaTakenAt: Value(
         payload['media_taken_at'] != null
             ? DateTime.parse(payload['media_taken_at'] as String)
             : (payload['created_at'] != null

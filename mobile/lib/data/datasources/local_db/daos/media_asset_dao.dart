@@ -56,16 +56,29 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// 将指定的媒体资源转换为“仅云端”状态。
+  /// 将指定的媒体资源转换为"仅云端"状态。
   /// 这会清除其本地 ID 和文件路径，并更新同步状态。
   Future<void> transitionToCloudOnly(int assetId) async {
     _log.info('Transitioning asset ID $assetId to cloud-only state.');
+    
+    // 先获取现有记录以保护拍摄时间
+    final existingAsset = await (select(mediaAssets)
+      ..where((tbl) => tbl.id.equals(assetId)))
+      .getSingleOrNull();
+    
+    if (existingAsset == null) {
+      _log.warning('Asset with ID $assetId not found for transition to cloud-only.');
+      return;
+    }
+    
     final companion = MediaAssetsCompanion(
       localId: const Value(null),
       filePath: const Value(null),
       syncStatus: const Value(
         SyncStatus.cloudOnly,
       ), // 假设 SyncStatus 枚举中有 cloudOnly
+      // 保护已存在的拍摄时间，不覆盖
+      mediaTakenAt: Value(existingAsset.mediaTakenAt),
       updatedAt: Value(DateTime.now()),
     );
     await (update(
@@ -177,8 +190,19 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
       // 策略 1: 按 Cloud UUID 匹配
       if (existingAsset != null) {
         _log.finer(
-          'Found existing asset by UUID $cloudUuid. Updating metadata.',
+          'Found existing asset by UUID $cloudUuid. Updating metadata while preserving mediaTakenAt.',
         );
+        // 更新现有记录，但保护已存在的拍摄时间
+        await (update(
+          mediaAssets,
+        )..where((tbl) => tbl.id.equals(existingAsset.id))).write(
+          companion.copyWith(
+            // 保护已存在的拍摄时间，不覆盖
+            mediaTakenAt: Value(existingAsset.mediaTakenAt),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+        updated++;
         continue;
       }
 
@@ -200,6 +224,8 @@ class MediaAssetDao extends DatabaseAccessor<AppDatabase>
             localId: Value(assetToMerge.localId),
             filePath: Value(assetToMerge.filePath),
             syncStatus: const Value(SyncStatus.synced),
+            // 保护已存在的拍摄时间，不覆盖
+            mediaTakenAt: Value(assetToMerge.mediaTakenAt),
             updatedAt: Value(DateTime.now()),
           ),
         );

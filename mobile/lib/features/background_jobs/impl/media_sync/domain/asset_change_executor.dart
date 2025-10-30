@@ -89,6 +89,8 @@ class AssetChangeExecutor {
           filePath: Value(file.path),
           isRAW: Value(isRaw),
           syncStatus: const Value(SyncStatus.synced), // 状态更新为已同步
+          // 保护已存在的拍摄时间，不覆盖
+          mediaTakenAt: Value(cloudOnlyMatch.mediaTakenAt),
           updatedAt: Value(DateTime.now()),
         );
         await _mediaAssetDao.updateAsset(companion);
@@ -188,6 +190,10 @@ class AssetChangeExecutor {
       _log.warning("Cannot get file path for asset: ${asset.id}");
       return null;
     }
+
+    // 解析媒体拍摄时间，如果无法解析则使用当前时间
+    final mediaTakenAt = await _extractMediaTakenAt(asset, file);
+
     return MediaAssetsCompanion.insert(
       localId: Value(asset.id),
       syncStatus: SyncStatus.localOnly,
@@ -199,6 +205,7 @@ class AssetChangeExecutor {
       height: Value(asset.height),
       durationSec: Value(asset.duration),
       createdAt: asset.createDateTime,
+      mediaTakenAt: mediaTakenAt, // 设置媒体拍摄时间
       updatedAt: DateTime.now(),
     );
   }
@@ -218,6 +225,37 @@ class AssetChangeExecutor {
       final batch = itemList.sublist(i, end);
       await Future.wait(batch.map(processFunction));
       await Future.delayed(Duration.zero); // Yield to the event loop
+    }
+  }
+
+  /// 解析媒体拍摄时间
+  /// 优先使用 AssetEntity 的 createDateTime（通常包含拍摄时间）
+  /// 如果无法获取，则使用当前时间
+  Future<DateTime> _extractMediaTakenAt(AssetEntity asset, File file) async {
+    try {
+      // AssetEntity 的 createDateTime 通常包含媒体拍摄时间
+      // 对于照片，这通常是 EXIF 中的拍摄时间
+      // 对于视频，这通常是文件创建时间或拍摄时间
+      final createDateTime = asset.createDateTime;
+      
+      // 验证时间是否合理（不能是未来时间，也不能太早）
+      final now = DateTime.now();
+      final minValidDate = DateTime(1990); // 1990年之前的时间认为不合理
+      
+      if (createDateTime.isAfter(now)) {
+        _log.warning('Asset ${asset.id} has future createDateTime: $createDateTime, using current time');
+        return now;
+      }
+      
+      if (createDateTime.isBefore(minValidDate)) {
+        _log.warning('Asset ${asset.id} has very old createDateTime: $createDateTime, using current time');
+        return now;
+      }
+      
+      return createDateTime;
+    } catch (e) {
+      _log.warning('Failed to extract media taken time for asset ${asset.id}: $e, using current time');
+      return DateTime.now();
     }
   }
 

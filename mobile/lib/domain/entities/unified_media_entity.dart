@@ -27,6 +27,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
     int? height,
     int? durationSec,
     required DateTime createdAt,
+    required DateTime mediaTakenAt, // 媒体拍摄时间（非空）
     @Default(null) AssetEntity? assetEntity,
     LifecycleState? lifecycleState,
     String? trashPath,
@@ -46,6 +47,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       height: dbAsset.height,
       durationSec: dbAsset.durationSec,
       createdAt: dbAsset.createdAt,
+      mediaTakenAt: dbAsset.mediaTakenAt, // 从数据库模型获取拍摄时间
       lifecycleState: dbAsset.lifecycleState,
       trashPath: dbAsset.trashPath,
     );
@@ -57,7 +59,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
 
     return UnifiedMediaEntity(
       // 重要: 当从 AssetEntity 直接创建时，它尚未进入我们的数据库，
-      // 所以我们给它一个临时的 id (例如 0 或 -1)，表示它是一个“瞬时”对象。
+      // 所以我们给它一个临时的 id (例如 0 或 -1)，表示它是一个"瞬时"对象。
       // 这个 id 不应该被用于任何持久化操作。
       id: 0,
 
@@ -73,6 +75,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       height: asset.height,
       durationSec: asset.duration,
       createdAt: asset.createDateTime,
+      mediaTakenAt: asset.createDateTime, // 使用 createDateTime 作为拍摄时间
 
       // 关键: 将原始的 AssetEntity 附加到我们的实体上。
       // 这允许UI层在需要时直接访问它来获取缩略图或原始文件，
@@ -123,7 +126,9 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       height: remoteMedia.height,
       durationSec: _parseDuration("0"),
       // 优先使用 mediaTakenAt（实际拍摄时间），如果没有则使用 createdAt（服务器创建时间）
-      createdAt: remoteMedia.mediaTakenAt != null
+      createdAt: DateTime.parse(remoteMedia.createdAt),
+      // 拍摄时间字段，优先使用 mediaTakenAt，否则使用 createdAt
+      mediaTakenAt: remoteMedia.mediaTakenAt != null
           ? DateTime.parse(remoteMedia.mediaTakenAt!)
           : DateTime.parse(remoteMedia.createdAt),
       lifecycleState: LifecycleState.active,
@@ -136,7 +141,7 @@ class UnifiedMediaEntity with _$UnifiedMediaEntity {
       cloudUuid != null &&
       (syncStatus == SyncStatus.synced || syncStatus == SyncStatus.cloudOnly);
 
-  DateTime get creationDate => createdAt;
+  DateTime get creationDate => mediaTakenAt; // 使用拍摄时间作为创建时间用于排序
 
   double get aspectRatio =>
       (width != null && height != null && height! > 0) ? width! / height! : 1.0;
