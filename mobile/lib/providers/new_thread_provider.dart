@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile/providers/group_providers.dart';
-import 'package:mobile/providers/providers.dart';
+// removed unused providers imports
 import 'package:mobile/domain/entities/reply_permission.dart';
-import 'package:mobile/domain/entities/unified_media_entity.dart';
+import 'package:mobile/extensions/asset_type_extensions.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:mobile/features/background_jobs/impl/group_post/background/create_post_runner.dart';
+import 'dart:convert';
+import 'package:uuid/uuid.dart';
 
 part 'new_thread_provider.g.dart';
 
@@ -101,7 +104,7 @@ class NewThread extends _$NewThread {
     }
   }
 
-  /// 创建并发布新帖子的完整实现
+  /// 创建并发布新帖子的完整实现（后台任务版）
   Future<void> post(BuildContext context) async {
     final groupId = this.groupId;
 
@@ -111,41 +114,52 @@ class NewThread extends _$NewThread {
     state = state.copyWith(isLoading: true, isPostButtonEnabled: false);
 
     try {
-      final groupRepository = ref.read(groupRepositoryProvider);
-      final mediaRepo = ref.read(mediaRepositoryProvider);
-
-      final uploadFutures = state.selectedAssets.map((asset) async {
+      // 服务端要求至少1个媒体
+      if (state.selectedAssets.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('请至少选择一张图片或视频')),
+          );
+        }
+        return;
+      }
+      // 准备资产参数（避免在后台使用 AssetEntity）
+      final assets = <Map<String, dynamic>>[];
+      for (final asset in state.selectedAssets) {
         final file = await asset.originFile;
         if (file == null) {
           throw Exception('无法获取资产文件: ${asset.id}');
         }
-        return await mediaRepo.uploadMedia(asset);
-      }).toList();
-
-      final List<UnifiedMediaEntity> uploadedMedia = await Future.wait(
-        uploadFutures,
-      );
-      final List<String> mediaUuids = [];
-      for (final media in uploadedMedia) {
-        final uuid = media.cloudUuid;
-        if (uuid == null || uuid.isEmpty) {
-          throw Exception('部分媒体上传失败，未能从服务器获取有效ID。');
-        }
-        mediaUuids.add(uuid);
+        assets.add({
+          'localId': asset.id,
+          'filePath': file.path,
+          'mediaType': asset.type.toMediaType().name,
+          'mediaTakenAt': asset.createDateTime.millisecondsSinceEpoch,
+        });
       }
 
-      await groupRepository.createPost(
-        groupUuid: groupId,
-        content: state.text,
-        mediaUuids: mediaUuids,
-        // replyPermission: state.selectedPermission,
+      final assetsJson = jsonEncode(assets);
+
+      final uniqueId = const Uuid().v4();
+      await Workmanager().registerOneOffTask(
+        'create_post_$uniqueId',
+        createPostTask,
+        inputData: <String, dynamic>{
+          'groupUuid': groupId,
+          'content': state.text,
+          'assets_json': assetsJson,
+          'timeoutSeconds': 20 * 60,
+        },
+        constraints: Constraints(networkType: NetworkType.connected),
+        backoffPolicy: BackoffPolicy.exponential,
+        backoffPolicyDelay: const Duration(minutes: 5),
       );
 
-      // 关键点2: 发布成功，关闭页面
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('帖子发布成功！')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('帖子正在后台发送，可关闭此页面')),
+        );
+        // 任务已成功创建，退出创建页面，返回帖子页面
         Navigator.of(context).pop();
       }
     } catch (e) {
@@ -153,7 +167,7 @@ class NewThread extends _$NewThread {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('发布失败: ${e.toString()}')));
+        ).showSnackBar(SnackBar(content: Text('启动后台发送失败: ${e.toString()}')));
       }
     } finally {
       // 关键点3: 无论成功与否，都要重置加载状态（如果页面没有被pop掉）
@@ -167,7 +181,6 @@ class NewThread extends _$NewThread {
       }
     }
 
-    // 关键点4: 移除此处的 pop 调用，因为它会导致无论成功失败都关闭页面
-    // Navigator.of(context).pop();
+    // 后台发送，不在此处 pop 页面
   }
 }

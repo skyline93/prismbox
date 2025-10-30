@@ -7,6 +7,7 @@ import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/features/background_jobs/core/contracts/background_task.dart';
 import 'package:mobile/features/background_jobs/impl/media_sync/background/periodic_sync_adapter.dart';
 import 'package:mobile/services/transfer/backupground_upload_service.dart';
+import 'package:mobile/features/background_jobs/impl/group_post/background/create_post_runner.dart';
 
 // 后台任务常量
 const String autoMediaBackupTask = 'com.example.mobile.autobackup';
@@ -61,6 +62,13 @@ void callbackDispatcher() {
         return true;
       } catch (e, s) {
         _log.severe('Auto backup failed in background task', e, s);
+        return false;
+      }
+    } else if (taskName == createPostTask) {
+      try {
+        return await CreatePostRunner.run(inputData);
+      } catch (e, s) {
+        _log.severe('Create post task failed', e, s);
         return false;
       }
     }

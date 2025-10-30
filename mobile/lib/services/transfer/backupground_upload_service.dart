@@ -471,3 +471,40 @@ class BackupgroundUploadService {
     return results.whereType<UploadTaskPayload>().toList();
   }
 }
+
+class UploadFileInput {
+  final File file;
+  final String assetId;
+  final MediaType mediaType;
+  final DateTime mediaTakenAt;
+  UploadFileInput({
+    required this.file,
+    required this.assetId,
+    required this.mediaType,
+    required this.mediaTakenAt,
+  });
+}
+
+extension BackupgroundUploadServiceExtensions on BackupgroundUploadService {
+  Future<void> enqueueFromFiles(List<UploadFileInput> inputs) async {
+    if (inputs.isEmpty) return;
+    final downloader = await _getDownloader();
+    for (final i in inputs) {
+      final payload = UploadTaskPayload(
+        file: i.file,
+        assetId: i.assetId,
+        mediaType: i.mediaType,
+        mediaTakenAt: i.mediaTakenAt,
+      );
+      try {
+        await _enqueueUploadJob(payload, downloader);
+      } catch (e, st) {
+        _log.severe('入队上传任务 (资源 ${i.assetId}) 失败', e, st);
+        await _mediaAssetDao.updateMediaAssetWithlocalId(
+          i.assetId,
+          MediaAssetsCompanion(syncStatus: d.Value(SyncStatus.uploadFailed)),
+        );
+      }
+    }
+  }
+}
