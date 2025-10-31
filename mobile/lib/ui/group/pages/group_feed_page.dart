@@ -10,6 +10,9 @@ import 'package:mobile/routing/app_router.dart';
 import 'package:mobile/ui/group/pages/new_thread_sheet.dart';
 import 'package:mobile/ui/group/viewmodels/group_feed_state.dart';
 import 'package:mobile/ui/group/widgets/feed_card/post_widget.dart';
+import 'package:mobile/core/di/service_locator.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'dart:async';
 
 @RoutePage()
 class GroupFeedPage extends ConsumerStatefulWidget {
@@ -23,11 +26,14 @@ class GroupFeedPage extends ConsumerStatefulWidget {
 class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isUiVisible = true;
+  StreamSubscription<List<PostJob>>? _postJobSubscription;
+  String? _lastCompletedJobId;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _listenToPostJobCompletion();
   }
 
   void _onScroll() {
@@ -80,6 +86,7 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _postJobSubscription?.cancel();
     super.dispose();
   }
 
@@ -174,6 +181,7 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
                 ),
               ),
             ),
+            _buildPostJobStatusBanner(),
             _buildSliverContent(feedState),
           ],
         ),
@@ -247,5 +255,123 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
         return PostWidget(groupUuid: widget.uuid, item: item);
       },
     );
+  }
+
+  Widget _buildPostJobStatusBanner() {
+    final db = getIt<AppDatabase>();
+    final postJobStream = db.postJobDao.watchJobsByGroup(widget.uuid);
+
+    return StreamBuilder<List<PostJob>>(
+      stream: postJobStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+
+        final activeJobs = snapshot.data!
+            .where((job) => job.status != 'success' && job.status != 'failed')
+            .toList();
+
+        if (activeJobs.isEmpty) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+
+        final job = activeJobs.first;
+        String statusText = '发送中...';
+        Color statusColor = Colors.blue;
+
+        switch (job.status) {
+          case 'queued':
+            statusText = '准备发送...';
+            statusColor = Colors.grey;
+            break;
+          case 'preparing':
+            statusText = '准备中...';
+            statusColor = Colors.blue;
+            break;
+          case 'waiting_uploads':
+            statusText = '媒体上传中...';
+            statusColor = Colors.orange;
+            break;
+          case 'creating_post':
+            statusText = '创建帖子中...';
+            statusColor = Colors.green;
+            break;
+        }
+
+        return SliverToBoxAdapter(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            color: statusColor.withOpacity(0.1),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _listenToPostJobCompletion() {
+    final db = getIt<AppDatabase>();
+    final postJobStream = db.postJobDao.watchJobsByGroup(widget.uuid);
+
+    _postJobSubscription = postJobStream.listen((jobs) {
+      if (!mounted) return;
+
+      // 查找刚完成的任务（状态变为 success 或 failed）
+      final completedJobs = jobs
+          .where((job) =>
+              (job.status == 'success' || job.status == 'failed') &&
+              job.jobId != _lastCompletedJobId)
+          .toList();
+
+      if (completedJobs.isNotEmpty) {
+        final job = completedJobs.first;
+        _lastCompletedJobId = job.jobId;
+
+        // 显示完成提示
+        final message = job.status == 'success'
+            ? (job.message?.isNotEmpty == true ? job.message! : '发帖成功！')
+            : '发帖失败: ${job.message ?? "未知错误"}';
+        final color = job.status == 'success' ? Colors.green : Colors.red;
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: color,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          // 如果成功，刷新帖子列表
+          if (job.status == 'success') {
+            ref
+                .read(groupFeedViewModelProvider(widget.uuid).notifier)
+                .refresh();
+          }
+        }
+      }
+    });
   }
 }

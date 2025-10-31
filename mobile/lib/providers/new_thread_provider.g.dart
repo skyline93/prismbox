@@ -6,7 +6,7 @@ part of 'new_thread_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$newThreadHash() => r'2a7d649547acd457febdb43b1bad7e2a0fa78c48';
+String _$newThreadHash() => r'b39bdb2e28815ca5b4201cc93c783529ef5137b0';
 
 /// Copied from Dart SDK
 class _SystemHash {

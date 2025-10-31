@@ -9,6 +9,10 @@ import 'package:mobile/extensions/asset_type_extensions.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:mobile/features/background_jobs/impl/group_post/background/create_post_runner.dart';
 import 'dart:convert';
+import 'package:mobile/core/di/service_locator.dart';
+import 'package:mobile/data/datasources/local_db/app_database.dart';
+import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart' as d;
 
 part 'new_thread_provider.g.dart';
 
@@ -137,12 +141,25 @@ class NewThread extends _$NewThread {
         });
       }
 
+      final jobId = const Uuid().v4();
       final assetsJson = jsonEncode(assets);
+      final db = getIt<AppDatabase>();
+
+      // 创建 PostJob 记录，用于跟踪任务状态
+      await db.postJobDao.insertJob(PostJobsCompanion(
+        jobId: d.Value(jobId),
+        groupUuid: d.Value(groupId),
+        content: d.Value(state.text),
+        status: const d.Value('queued'),
+        createdAt: d.Value(DateTime.now()),
+        updatedAt: d.Value(DateTime.now()),
+      ));
 
       await Workmanager().registerOneOffTask(
-        createPostTask,
+        'create_post_$jobId',
         createPostTask,
         inputData: <String, dynamic>{
+          'jobId': jobId,
           'groupUuid': groupId,
           'content': state.text,
           'assets_json': assetsJson,

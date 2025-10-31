@@ -56,6 +56,7 @@ class CreatePostRunner {
 
       final groupUuid = input['groupUuid'] as String;
       final content = (input['content'] as String?) ?? '';
+      final jobId = (input['jobId'] as String?) ?? '';
       List rawAssets = const [];
       if (input['assets_json'] is String) {
         try {
@@ -73,13 +74,21 @@ class CreatePostRunner {
 
       final db = getIt<AppDatabase>();
       final mediaAssetDao = db.mediaAssetDao;
+      final postJobDao = db.postJobDao;
       final uploadService = getIt<BackupgroundUploadService>();
       final groupRepository = getIt<GroupRepository>();
 
       // 若无媒体，直接返回失败，避免请求400
       if (rawAssets.isEmpty) {
         _log.warning('CreatePostRunner: no assets provided, aborting');
+        if (jobId.isNotEmpty) {
+          await postJobDao.updateStatus(jobId, 'failed', message: '没有媒体资源');
+        }
         return false;
+      }
+
+      if (jobId.isNotEmpty) {
+        await postJobDao.updateStatus(jobId, 'preparing');
       }
 
       // 去重与入队
@@ -126,6 +135,9 @@ class CreatePostRunner {
       }
 
       if (waitIds.isNotEmpty) {
+        if (jobId.isNotEmpty) {
+          await postJobDao.updateStatus(jobId, 'waiting_uploads');
+        }
         await _waitForUuids(
           mediaAssetDao: mediaAssetDao,
           assetIds: waitIds,
@@ -138,21 +150,38 @@ class CreatePostRunner {
       for (final id in assetIdsAll) {
         final a = await mediaAssetDao.getAssetByLocalId(id);
         if (a?.cloudUuid == null || a!.cloudUuid!.isEmpty || a.syncStatus != SyncStatus.synced) {
+          if (jobId.isNotEmpty) {
+            await postJobDao.updateStatus(jobId, 'failed', message: '资源未就绪: $id');
+          }
           throw Exception('资源未就绪: $id');
         }
         uuids.add(a.cloudUuid!);
       }
 
+      if (jobId.isNotEmpty) {
+        await postJobDao.updateStatus(jobId, 'creating_post');
+      }
       await groupRepository.createPost(
         groupUuid: groupUuid,
         content: content,
         mediaUuids: uuids,
       );
 
+      if (jobId.isNotEmpty) {
+        await postJobDao.updateStatus(jobId, 'success', message: '发帖成功');
+      }
       _log.info('CreatePostRunner: post created for group=$groupUuid');
       return true;
     } catch (e, s) {
       _log.severe('CreatePostRunner failed', e, s);
+      final jobId = input?['jobId']?.toString() ?? '';
+      if (jobId.isNotEmpty) {
+        try {
+          final db = getIt<AppDatabase>();
+          final postJobDao = db.postJobDao;
+          await postJobDao.updateStatus(jobId, 'failed', message: e.toString());
+        } catch (_) {}
+      }
       return false;
     }
   }

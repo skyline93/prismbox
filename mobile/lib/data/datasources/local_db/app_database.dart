@@ -11,6 +11,7 @@ import 'package:mobile/data/datasources/local_db/tables/user_settings.dart';
 import 'package:mobile/data/datasources/local_db/tables/albums.dart';
 import 'package:mobile/data/datasources/local_db/tables/upload_jobs.dart';
 import 'package:mobile/data/datasources/local_db/tables/download_jobs.dart';
+import 'package:mobile/data/datasources/local_db/tables/post_jobs.dart';
 
 part 'daos/media_asset_dao.dart';
 part 'daos/sync_job_dao.dart';
@@ -18,6 +19,7 @@ part 'daos/album_dao.dart';
 part 'daos/user_settings_dao.dart';
 part 'daos/upload_job_dao.dart';
 part 'daos/download_job_dao.dart';
+part 'daos/post_job_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -29,6 +31,7 @@ part 'app_database.g.dart';
     Albums,
     UploadJobs,
     DownloadJobs,
+    PostJobs,
   ],
   daos: [
     MediaAssetDao,
@@ -37,13 +40,14 @@ part 'app_database.g.dart';
     UserSettingDao,
     UploadJobDao,
     DownloadJobDao,
+    PostJobDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -76,6 +80,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(mediaAssets, mediaAssets.lifecycleState);
         await m.addColumn(mediaAssets, mediaAssets.lifecycleModifiedDate);
         await m.addColumn(mediaAssets, mediaAssets.trashPath);
+      }
+      if (from < 9) {
+        await m.createTable(postJobs);
       }
     },
   );

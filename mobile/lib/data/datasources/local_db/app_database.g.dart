@@ -2793,6 +2793,389 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
   }
 }
 
+class $PostJobsTable extends PostJobs with TableInfo<$PostJobsTable, PostJob> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PostJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _jobIdMeta = const VerificationMeta('jobId');
+  @override
+  late final GeneratedColumn<String> jobId = GeneratedColumn<String>(
+      'job_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _groupUuidMeta =
+      const VerificationMeta('groupUuid');
+  @override
+  late final GeneratedColumn<String> groupUuid = GeneratedColumn<String>(
+      'group_uuid', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _messageMeta =
+      const VerificationMeta('message');
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+      'message', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [jobId, groupUuid, content, status, message, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'post_jobs';
+  @override
+  VerificationContext validateIntegrity(Insertable<PostJob> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('job_id')) {
+      context.handle(
+          _jobIdMeta, jobId.isAcceptableOrUnknown(data['job_id']!, _jobIdMeta));
+    } else if (isInserting) {
+      context.missing(_jobIdMeta);
+    }
+    if (data.containsKey('group_uuid')) {
+      context.handle(_groupUuidMeta,
+          groupUuid.isAcceptableOrUnknown(data['group_uuid']!, _groupUuidMeta));
+    } else if (isInserting) {
+      context.missing(_groupUuidMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('message')) {
+      context.handle(_messageMeta,
+          message.isAcceptableOrUnknown(data['message']!, _messageMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {jobId};
+  @override
+  PostJob map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PostJob(
+      jobId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}job_id'])!,
+      groupUuid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_uuid'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      message: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}message']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $PostJobsTable createAlias(String alias) {
+    return $PostJobsTable(attachedDatabase, alias);
+  }
+}
+
+class PostJob extends DataClass implements Insertable<PostJob> {
+  final String jobId;
+  final String groupUuid;
+  final String content;
+  final String status;
+  final String? message;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const PostJob(
+      {required this.jobId,
+      required this.groupUuid,
+      required this.content,
+      required this.status,
+      this.message,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['job_id'] = Variable<String>(jobId);
+    map['group_uuid'] = Variable<String>(groupUuid);
+    map['content'] = Variable<String>(content);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || message != null) {
+      map['message'] = Variable<String>(message);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PostJobsCompanion toCompanion(bool nullToAbsent) {
+    return PostJobsCompanion(
+      jobId: Value(jobId),
+      groupUuid: Value(groupUuid),
+      content: Value(content),
+      status: Value(status),
+      message: message == null && nullToAbsent
+          ? const Value.absent()
+          : Value(message),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PostJob.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PostJob(
+      jobId: serializer.fromJson<String>(json['jobId']),
+      groupUuid: serializer.fromJson<String>(json['groupUuid']),
+      content: serializer.fromJson<String>(json['content']),
+      status: serializer.fromJson<String>(json['status']),
+      message: serializer.fromJson<String?>(json['message']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'jobId': serializer.toJson<String>(jobId),
+      'groupUuid': serializer.toJson<String>(groupUuid),
+      'content': serializer.toJson<String>(content),
+      'status': serializer.toJson<String>(status),
+      'message': serializer.toJson<String?>(message),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PostJob copyWith(
+          {String? jobId,
+          String? groupUuid,
+          String? content,
+          String? status,
+          Value<String?> message = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      PostJob(
+        jobId: jobId ?? this.jobId,
+        groupUuid: groupUuid ?? this.groupUuid,
+        content: content ?? this.content,
+        status: status ?? this.status,
+        message: message.present ? message.value : this.message,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  PostJob copyWithCompanion(PostJobsCompanion data) {
+    return PostJob(
+      jobId: data.jobId.present ? data.jobId.value : this.jobId,
+      groupUuid: data.groupUuid.present ? data.groupUuid.value : this.groupUuid,
+      content: data.content.present ? data.content.value : this.content,
+      status: data.status.present ? data.status.value : this.status,
+      message: data.message.present ? data.message.value : this.message,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PostJob(')
+          ..write('jobId: $jobId, ')
+          ..write('groupUuid: $groupUuid, ')
+          ..write('content: $content, ')
+          ..write('status: $status, ')
+          ..write('message: $message, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      jobId, groupUuid, content, status, message, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PostJob &&
+          other.jobId == this.jobId &&
+          other.groupUuid == this.groupUuid &&
+          other.content == this.content &&
+          other.status == this.status &&
+          other.message == this.message &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PostJobsCompanion extends UpdateCompanion<PostJob> {
+  final Value<String> jobId;
+  final Value<String> groupUuid;
+  final Value<String> content;
+  final Value<String> status;
+  final Value<String?> message;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PostJobsCompanion({
+    this.jobId = const Value.absent(),
+    this.groupUuid = const Value.absent(),
+    this.content = const Value.absent(),
+    this.status = const Value.absent(),
+    this.message = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PostJobsCompanion.insert({
+    required String jobId,
+    required String groupUuid,
+    this.content = const Value.absent(),
+    required String status,
+    this.message = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : jobId = Value(jobId),
+        groupUuid = Value(groupUuid),
+        status = Value(status),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<PostJob> custom({
+    Expression<String>? jobId,
+    Expression<String>? groupUuid,
+    Expression<String>? content,
+    Expression<String>? status,
+    Expression<String>? message,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (jobId != null) 'job_id': jobId,
+      if (groupUuid != null) 'group_uuid': groupUuid,
+      if (content != null) 'content': content,
+      if (status != null) 'status': status,
+      if (message != null) 'message': message,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PostJobsCompanion copyWith(
+      {Value<String>? jobId,
+      Value<String>? groupUuid,
+      Value<String>? content,
+      Value<String>? status,
+      Value<String?>? message,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return PostJobsCompanion(
+      jobId: jobId ?? this.jobId,
+      groupUuid: groupUuid ?? this.groupUuid,
+      content: content ?? this.content,
+      status: status ?? this.status,
+      message: message ?? this.message,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (jobId.present) {
+      map['job_id'] = Variable<String>(jobId.value);
+    }
+    if (groupUuid.present) {
+      map['group_uuid'] = Variable<String>(groupUuid.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PostJobsCompanion(')
+          ..write('jobId: $jobId, ')
+          ..write('groupUuid: $groupUuid, ')
+          ..write('content: $content, ')
+          ..write('status: $status, ')
+          ..write('message: $message, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2802,6 +3185,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AlbumsTable albums = $AlbumsTable(this);
   late final $UploadJobsTable uploadJobs = $UploadJobsTable(this);
   late final $DownloadJobsTable downloadJobs = $DownloadJobsTable(this);
+  late final $PostJobsTable postJobs = $PostJobsTable(this);
   late final MediaAssetDao mediaAssetDao = MediaAssetDao(this as AppDatabase);
   late final SyncJobDao syncJobDao = SyncJobDao(this as AppDatabase);
   late final AlbumDao albumDao = AlbumDao(this as AppDatabase);
@@ -2810,12 +3194,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final UploadJobDao uploadJobDao = UploadJobDao(this as AppDatabase);
   late final DownloadJobDao downloadJobDao =
       DownloadJobDao(this as AppDatabase);
+  late final PostJobDao postJobDao = PostJobDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [mediaAssets, syncJobs, userSettings, albums, uploadJobs, downloadJobs];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        mediaAssets,
+        syncJobs,
+        userSettings,
+        albums,
+        uploadJobs,
+        downloadJobs,
+        postJobs
+      ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
         [
@@ -4362,6 +4754,201 @@ typedef $$DownloadJobsTableProcessedTableManager = ProcessedTableManager<
     ),
     DownloadJob,
     PrefetchHooks Function()>;
+typedef $$PostJobsTableCreateCompanionBuilder = PostJobsCompanion Function({
+  required String jobId,
+  required String groupUuid,
+  Value<String> content,
+  required String status,
+  Value<String?> message,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$PostJobsTableUpdateCompanionBuilder = PostJobsCompanion Function({
+  Value<String> jobId,
+  Value<String> groupUuid,
+  Value<String> content,
+  Value<String> status,
+  Value<String?> message,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$PostJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $PostJobsTable> {
+  $$PostJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get jobId => $composableBuilder(
+      column: $table.jobId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get groupUuid => $composableBuilder(
+      column: $table.groupUuid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get message => $composableBuilder(
+      column: $table.message, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$PostJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PostJobsTable> {
+  $$PostJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get jobId => $composableBuilder(
+      column: $table.jobId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get groupUuid => $composableBuilder(
+      column: $table.groupUuid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get message => $composableBuilder(
+      column: $table.message, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PostJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PostJobsTable> {
+  $$PostJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get jobId =>
+      $composableBuilder(column: $table.jobId, builder: (column) => column);
+
+  GeneratedColumn<String> get groupUuid =>
+      $composableBuilder(column: $table.groupUuid, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$PostJobsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PostJobsTable,
+    PostJob,
+    $$PostJobsTableFilterComposer,
+    $$PostJobsTableOrderingComposer,
+    $$PostJobsTableAnnotationComposer,
+    $$PostJobsTableCreateCompanionBuilder,
+    $$PostJobsTableUpdateCompanionBuilder,
+    (PostJob, BaseReferences<_$AppDatabase, $PostJobsTable, PostJob>),
+    PostJob,
+    PrefetchHooks Function()> {
+  $$PostJobsTableTableManager(_$AppDatabase db, $PostJobsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PostJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PostJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PostJobsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> jobId = const Value.absent(),
+            Value<String> groupUuid = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> message = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PostJobsCompanion(
+            jobId: jobId,
+            groupUuid: groupUuid,
+            content: content,
+            status: status,
+            message: message,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String jobId,
+            required String groupUuid,
+            Value<String> content = const Value.absent(),
+            required String status,
+            Value<String?> message = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PostJobsCompanion.insert(
+            jobId: jobId,
+            groupUuid: groupUuid,
+            content: content,
+            status: status,
+            message: message,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PostJobsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $PostJobsTable,
+    PostJob,
+    $$PostJobsTableFilterComposer,
+    $$PostJobsTableOrderingComposer,
+    $$PostJobsTableAnnotationComposer,
+    $$PostJobsTableCreateCompanionBuilder,
+    $$PostJobsTableUpdateCompanionBuilder,
+    (PostJob, BaseReferences<_$AppDatabase, $PostJobsTable, PostJob>),
+    PostJob,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4378,6 +4965,8 @@ class $AppDatabaseManager {
       $$UploadJobsTableTableManager(_db, _db.uploadJobs);
   $$DownloadJobsTableTableManager get downloadJobs =>
       $$DownloadJobsTableTableManager(_db, _db.downloadJobs);
+  $$PostJobsTableTableManager get postJobs =>
+      $$PostJobsTableTableManager(_db, _db.postJobs);
 }
 
 mixin _$MediaAssetDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -4399,4 +4988,7 @@ mixin _$UploadJobDaoMixin on DatabaseAccessor<AppDatabase> {
 }
 mixin _$DownloadJobDaoMixin on DatabaseAccessor<AppDatabase> {
   $DownloadJobsTable get downloadJobs => attachedDatabase.downloadJobs;
+}
+mixin _$PostJobDaoMixin on DatabaseAccessor<AppDatabase> {
+  $PostJobsTable get postJobs => attachedDatabase.postJobs;
 }
