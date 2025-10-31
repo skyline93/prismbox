@@ -156,7 +156,7 @@ class NewThread extends _$NewThread {
       ));
 
       await Workmanager().registerOneOffTask(
-        'create_post_$jobId',
+        createPostTask,
         createPostTask,
         inputData: <String, dynamic>{
           'jobId': jobId,

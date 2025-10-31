@@ -27,12 +27,15 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isUiVisible = true;
   StreamSubscription<List<PostJob>>? _postJobSubscription;
-  String? _lastCompletedJobId;
+  // 记录页面打开时正在进行的任务 ID（这些任务完成后才提示）
+  Set<String> _trackingJobIds = {};
+  bool _initialLoadCompleted = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _initializeJobTracking();
     _listenToPostJobCompletion();
   }
 
@@ -331,23 +334,40 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
     );
   }
 
+  void _initializeJobTracking() async {
+    // 页面打开时，记录当前正在进行的任务 ID
+    final db = getIt<AppDatabase>();
+    final jobs = await db.postJobDao
+        .watchJobsByGroup(widget.uuid)
+        .first;
+    
+    _trackingJobIds = jobs
+        .where((job) =>
+            job.status != 'success' && job.status != 'failed')
+        .map((job) => job.jobId)
+        .toSet();
+    
+    _initialLoadCompleted = true;
+  }
+
   void _listenToPostJobCompletion() {
     final db = getIt<AppDatabase>();
     final postJobStream = db.postJobDao.watchJobsByGroup(widget.uuid);
 
     _postJobSubscription = postJobStream.listen((jobs) {
-      if (!mounted) return;
+      if (!mounted || !_initialLoadCompleted) return;
 
-      // 查找刚完成的任务（状态变为 success 或 failed）
-      final completedJobs = jobs
-          .where((job) =>
-              (job.status == 'success' || job.status == 'failed') &&
-              job.jobId != _lastCompletedJobId)
-          .toList();
+      // 查找正在跟踪的任务中，刚刚完成的任务
+      final completedTrackingJobs = jobs.where((job) {
+        final wasTracking = _trackingJobIds.contains(job.jobId);
+        final isCompleted = job.status == 'success' || job.status == 'failed';
+        return wasTracking && isCompleted;
+      }).toList();
 
-      if (completedJobs.isNotEmpty) {
-        final job = completedJobs.first;
-        _lastCompletedJobId = job.jobId;
+      if (completedTrackingJobs.isNotEmpty) {
+        final job = completedTrackingJobs.first;
+        // 从跟踪列表中移除已完成的任务
+        _trackingJobIds.remove(job.jobId);
 
         // 显示完成提示
         final message = job.status == 'success'
