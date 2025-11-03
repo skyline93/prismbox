@@ -33,6 +33,15 @@ import (
 // @tag.name		Groups
 // @tag.description	圈子与群组管理
 
+// @tag.name		Sync
+// @tag.description	数据同步接口
+
+// @tag.name		Posts
+// @tag.description	帖子管理
+
+// @tag.name		Comments
+// @tag.description	评论管理
+
 // @host      localhost:8080
 // @BasePath  /api/v1
 

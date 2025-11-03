@@ -34,6 +34,20 @@ func (h *syncHandler) registerRoutes(router *gin.RouterGroup) {
 	}
 }
 
+// handleSync godoc
+// @Summary      增量同步
+// @Description  获取自指定序列ID之后的增量变更记录，用于客户端同步数据
+// @Tags         Sync
+// @Produce      json
+// @Param        X-User-ID header string true "用户ID"
+// @Param        X-Device-ID header string true "设备ID"
+// @Param        last_seq_id query int false "上一次同步的序列ID，从0开始" default(0)
+// @Param        limit query int false "每次返回的记录数限制" default(100)
+// @Success      200 {object} map[string]interface{} "包含changes数组、latest_seq_id和has_more字段"
+// @Failure      400 {object} map[string]string "缺少必要的请求头"
+// @Failure      500 {object} map[string]string "获取变更失败"
+// @Security     BearerAuth
+// @Router       /sync [get]
 func (h *syncHandler) handleSync(c *gin.Context) {
 	userID := c.GetHeader("X-User-ID")
 	deviceID := c.GetHeader("X-Device-ID")
@@ -55,6 +69,15 @@ func (h *syncHandler) handleSync(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"changes": changes, "latest_seq_id": latestSeqID, "has_more": hasMore})
 }
 
+// handleFullSyncInit godoc
+// @Summary      全量同步初始化
+// @Description  获取需要全量同步的表列表和快照序列ID
+// @Tags         Sync
+// @Produce      json
+// @Success      200 {object} map[string]interface{} "包含tables_to_sync数组和snapshot_seq_id"
+// @Failure      500 {object} map[string]string "获取快照信息失败"
+// @Security     BearerAuth
+// @Router       /sync/full_init [get]
 func (h *syncHandler) handleFullSyncInit(c *gin.Context) {
 	tables, snapshotSeqID, err := h.service.GetFullSyncSnapshotInfo()
 	if err != nil {
@@ -64,6 +87,19 @@ func (h *syncHandler) handleFullSyncInit(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"tables_to_sync": tables, "snapshot_seq_id": snapshotSeqID})
 }
 
+// handleFullSyncData godoc
+// @Summary      获取全量同步数据
+// @Description  分页获取指定表的全量数据，用于客户端首次同步或重新同步
+// @Tags         Sync
+// @Produce      json
+// @Param        table query string true "要同步的表名"
+// @Param        limit query int false "每页返回的记录数" default(100)
+// @Param        page_token query string false "分页令牌，用于获取下一页数据"
+// @Success      200 {object} map[string]interface{} "包含changes数组和next_page_token字段"
+// @Failure      400 {object} map[string]string "缺少表名参数"
+// @Failure      500 {object} map[string]string "获取全量数据失败"
+// @Security     BearerAuth
+// @Router       /sync/full_data [get]
 func (h *syncHandler) handleFullSyncData(c *gin.Context) {
 	tableName := c.Query("table")
 	if tableName == "" {

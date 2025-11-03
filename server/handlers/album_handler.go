@@ -36,7 +36,7 @@ type AddItemsToAlbumInput struct {
 // @Accept       json
 // @Produce      json
 // @Param        album body CreateAlbumInput true "相册信息"
-// @Success      201  {object}  core.ApiResponse{data=models.Album} "相册创建成功"
+// @Success      200  {object}  core.ApiResponse{data=models.Album} "相册创建成功"
 // @Failure      400  {object}  core.ApiResponse "请求参数错误或服务器内部错误"
 // @Security     BearerAuth
 // @Router       /albums [post]

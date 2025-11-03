@@ -89,7 +89,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "相册创建成功",
                         "schema": {
                             "allOf": [
@@ -595,6 +595,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/refresh": {
+            "post": {
+                "description": "使用有效的刷新令牌获取新的访问令牌",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "刷新访问令牌",
+                "parameters": [
+                    {
+                        "description": "刷新令牌",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshTokenInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "令牌刷新成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/core.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.RefreshTokenSuccessData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "刷新令牌无效、已过期或已撤销",
+                        "schema": {
+                            "$ref": "#/definitions/core.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "description": "根据用户名、邮箱和密码创建一个新的用户账户",
@@ -664,7 +722,7 @@ const docTemplate = `{
                 "summary": "删除评论",
                 "parameters": [
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "评论的ID",
                         "name": "commentId",
                         "in": "path",
@@ -1328,7 +1386,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "要移除的用户ID",
                         "name": "userId",
                         "in": "path",
@@ -1389,7 +1447,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "帖子创建成功",
                         "schema": {
                             "allOf": [
@@ -1749,6 +1807,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "客户端预生成的UUID (可选)",
                         "name": "cloud_uuid",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "媒体拍摄时间 (ISO 8601格式，可选)",
+                        "name": "media_taken_at",
                         "in": "formData"
                     }
                 ],
@@ -2182,7 +2246,7 @@ const docTemplate = `{
                 "summary": "获取帖子的评论列表（树状结构）",
                 "parameters": [
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "帖子的ID",
                         "name": "postId",
                         "in": "path",
@@ -2238,7 +2302,7 @@ const docTemplate = `{
                 "summary": "为帖子添加评论或回复",
                 "parameters": [
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "帖子的ID",
                         "name": "postId",
                         "in": "path",
@@ -2255,7 +2319,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "评论成功",
                         "schema": {
                             "allOf": [
@@ -2484,6 +2548,181 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/sync": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取自指定序列ID之后的增量变更记录，用于客户端同步数据",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "增量同步",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "X-User-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "设备ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "上一次同步的序列ID，从0开始",
+                        "name": "last_seq_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "每次返回的记录数限制",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "包含changes数组、latest_seq_id和has_more字段",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "缺少必要的请求头",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "获取变更失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/full_data": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "分页获取指定表的全量数据，用于客户端首次同步或重新同步",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "获取全量同步数据",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "要同步的表名",
+                        "name": "table",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "每页返回的记录数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "分页令牌，用于获取下一页数据",
+                        "name": "page_token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "包含changes数组和next_page_token字段",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "缺少表名参数",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "获取全量数据失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/full_init": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取需要全量同步的表列表和快照序列ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "全量同步初始化",
+                "responses": {
+                    "200": {
+                        "description": "包含tables_to_sync数组和snapshot_seq_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "获取快照信息失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -2517,6 +2756,27 @@ const docTemplate = `{
             ],
             "properties": {
                 "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            }
+        },
+        "auth.RefreshTokenInput": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            }
+        },
+        "auth.RefreshTokenSuccessData": {
+            "type": "object",
+            "properties": {
+                "access_token": {
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 }
@@ -2648,8 +2908,8 @@ const docTemplate = `{
         "constant.MediaType": {
             "type": "string",
             "enum": [
-                "IMAGE",
-                "VIDEO"
+                "image",
+                "video"
             ],
             "x-enum-varnames": [
                 "TypeImage",
@@ -3431,6 +3691,18 @@ const docTemplate = `{
         {
             "description": "圈子与群组管理",
             "name": "Groups"
+        },
+        {
+            "description": "数据同步接口",
+            "name": "Sync"
+        },
+        {
+            "description": "帖子管理",
+            "name": "Posts"
+        },
+        {
+            "description": "评论管理",
+            "name": "Comments"
         }
     ]
 }`

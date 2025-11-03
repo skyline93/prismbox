@@ -418,7 +418,17 @@ func (h *AuthHandler) SetPassword(c *gin.Context) {
 	core.NoContent(c)
 }
 
-// RefreshToken 保持不变
+// RefreshToken godoc
+// @Summary      刷新访问令牌
+// @Description  使用有效的刷新令牌获取新的访问令牌
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        token body RefreshTokenInput true "刷新令牌"
+// @Success      200 {object} core.ApiResponse{data=RefreshTokenSuccessData} "令牌刷新成功"
+// @Failure      400 {object} core.ApiResponse "请求参数错误"
+// @Failure      401 {object} core.ApiResponse "刷新令牌无效、已过期或已撤销"
+// @Router       /auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var input RefreshTokenInput
 	if err := c.ShouldBindJSON(&input); err != nil {

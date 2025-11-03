@@ -46,6 +46,7 @@ type MediaRepositoryInterface interface {
 	FindInBinByUUIDAndUser(ctx context.Context, uuid string, userID uint) (*models.Media, error)
 }
 
+// Upload godoc
 // @Summary      上传单个媒体文件
 // @Description  通过 multipart/form-data 上传照片或视频。服务器会先进行秒传检查。
 // @Tags         Media
@@ -156,6 +157,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 // @Param        item_type formData string true "媒体类型 (IMAGE 或 VIDEO)" Enums(IMAGE, VIDEO)
 // @Param        original_filename formData string false "文件的原始名称"
 // @Param        cloud_uuid formData string false "客户端预生成的UUID (可选)"
+// @Param        media_taken_at formData string false "媒体拍摄时间 (ISO 8601格式，可选)"
 // @Success      201  {object}  core.ApiResponse{data=MediaResponse} "上传成功，后台处理开始"
 // @Success      200  {object}  core.ApiResponse{data=MediaResponse} "文件已存在（秒传成功）"
 // @Failure      400  {object}  core.ApiResponse "请求参数错误或服务器内部错误"

@@ -54,9 +54,9 @@ func (h *GroupHandler) getPostAndCheckMembership(postID uint, userID uint) (*mod
 // @Tags         Posts
 // @Accept       json
 // @Produce      json
-// @Param        postId path int true "帖子的ID"
+// @Param        postId path string true "帖子的ID"
 // @Param        input body CreateCommentInput true "评论内容和可选的父评论ID"
-// @Success      201  {object}  core.ApiResponse{data=CommentResponse} "评论成功"
+// @Success      200  {object}  core.ApiResponse{data=CommentResponse} "评论成功"
 // @Failure      400  {object}  core.ApiResponse "输入无效"
 // @Failure      403  {object}  core.ApiResponse "无权限或帖子不存在"
 // @Security     BearerAuth
@@ -127,7 +127,7 @@ func (h *GroupHandler) AddComment(c *gin.Context) {
 // @Description  获取一个帖子的所有评论，并组织成父子关系的树状结构
 // @Tags         Posts
 // @Produce      json
-// @Param        postId path int true "帖子的ID"
+// @Param        postId path string true "帖子的ID"
 // @Success      200  {object}  core.ApiResponse{data=[]CommentResponse} "获取成功"
 // @Failure      403  {object}  core.ApiResponse "无权限或帖子不存在"
 // @Security     BearerAuth
@@ -194,7 +194,7 @@ func (h *GroupHandler) GetComments(c *gin.Context) {
 // @Description  删除一条评论，仅限评论发布者或圈主/管理员操作
 // @Tags         Comments
 // @Produce      json
-// @Param        commentId path int true "评论的ID"
+// @Param        commentId path string true "评论的ID"
 // @Success      200  {object}  core.ApiResponse "评论删除成功"
 // @Failure      403  {object}  core.ApiResponse "无权限操作"
 // @Security     BearerAuth

@@ -32,7 +32,7 @@ type CreatePostInput struct {
 // @Produce      json
 // @Param        uuid path string true "圈子的UUID" format(uuid)
 // @Param        input body CreatePostInput true "帖子的内容，包含媒体UUID列表和说明"
-// @Success      201  {object}  core.ApiResponse{data=models.GroupPost} "帖子创建成功"
+// @Success      200  {object}  core.ApiResponse{data=models.GroupPost} "帖子创建成功"
 // @Failure      400  {object}  core.ApiResponse "请求参数错误"
 // @Failure      403  {object}  core.ApiResponse "无权限操作（非圈子成员）"
 // @Security     BearerAuth

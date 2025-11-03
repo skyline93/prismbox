@@ -186,7 +186,7 @@ func (h *GroupHandler) JoinGroup(c *gin.Context) {
 // @Tags         Groups
 // @Produce      json
 // @Param        uuid path string true "圈子的UUID" format(uuid)
-// @Param        userId path int true "要移除的用户ID"
+// @Param        userId path string true "要移除的用户ID"
 // @Success      200  {object}  core.ApiResponse "成员移除成功"
 // @Failure      403  {object}  core.ApiResponse "无权限操作"
 // @Security     BearerAuth
