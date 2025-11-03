@@ -164,21 +164,6 @@ class MediaRepositoryImpl implements MediaRepository {
     }
   }
 
-  @override
-  Future<UnifiedMediaEntity> uploadMedia(AssetEntity asset) async {
-    final File? file = await asset.originFile;
-    if (file == null) {
-      throw Exception('Failed to get file from asset: ${asset.id}');
-    }
-
-    final MediaResponse remoteMedia = await _cloudDataSource.uploadFile(
-      file,
-      asset.type.toMediaType(),
-    );
-
-    return UnifiedMediaEntity.fromRemoteMedia(remoteMedia);
-  }
-
   // [新增] 获取或创建回收站目录的辅助方法
   Future<Directory> _getTrashDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();

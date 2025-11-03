@@ -26,8 +26,6 @@ abstract class MediaRepository {
     AlbumSource source,
   );
 
-  Future<UnifiedMediaEntity> uploadMedia(AssetEntity asset);
-
   Stream<List<UnifiedMediaEntity>> watchTrashedAssets();
 
   /// 根据资源的状态（本地、云端、已同步）将其移至回收站或标记为已删除。

@@ -119,7 +119,6 @@ func SetupRouter(db *gorm.DB, cfg *core.Config) *gin.Engine {
 			// 媒体相关路由
 			mediaRoutes := protected.Group("/media")
 			{
-				mediaRoutes.POST("/upload", mediaHandler.Upload)
 				mediaRoutes.POST("/upload-stream", mediaHandler.UploadStream)
 				mediaRoutes.GET("", mediaHandler.GetMedias)
 				mediaRoutes.POST("/check_hashes", mediaHandler.CheckHashes)

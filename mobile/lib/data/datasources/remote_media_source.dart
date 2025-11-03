@@ -207,35 +207,6 @@ class RemoteMediaDataSource {
     }
   }
 
-  Future<MediaResponse> uploadFile(File file, MediaType itemType) async {
-    try {
-      final fileName = p.basename(file.path);
-      final String hash = await calculateFileHash(file);
-      final Uint8List fileBytes = await file.readAsBytes();
-
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
-        'item_type': itemType.name,
-        'original_filename': fileName,
-        'hash': hash,
-      });
-
-      final response = await _fileDio.post(
-        '$baseUrl/media/upload',
-        data: formData,
-        options: Options(contentType: 'multipart/form-data'),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return MediaResponse.fromJson(response.data['data']);
-      } else {
-        throw Exception('上传媒体失败: ${response.data?['message']}');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e, '上传媒体');
-    }
-  }
-
   Exception _handleDioError(DioException e, String operation) {
     if (e.response != null) {
       final statusCode = e.response?.statusCode;
