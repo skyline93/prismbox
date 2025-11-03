@@ -7,6 +7,7 @@ import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/ui/media/viewmodels/media_item_viewmodel.dart';
+import 'package:mobile/ui/media/widgets/media_item_thumbnail.dart';
 
 class AlbumItemWidget extends ConsumerWidget {
   const AlbumItemWidget({super.key, required this.album, required this.onTap});
@@ -32,22 +33,23 @@ class AlbumItemWidget extends ConsumerWidget {
     WidgetRef ref,
     UnifiedMediaEntity coverEntity,
   ) {
-    // 监听 thumbnailProvider 来获取最终的图片数据
+    // 监听 thumbnailProvider 来获取缩略图加载策略
     final thumbnailAsyncValue = ref.watch(thumbnailProvider(coverEntity));
 
     return thumbnailAsyncValue.when(
-      data: (imageData) {
-        // if (imageData != null) {
-        //   return Image.memory(
-        //     imageData,
-        //     fit: BoxFit.cover,
-        //     gaplessPlayback: true,
-        //   );
-        // }
-        return _buildPlaceholder(context); // 图片数据为空
+      data: (strategy) {
+        // 使用 MediaItemThumbnail 组件来显示缩略图
+        return MediaItemThumbnail(
+          strategy: strategy,
+          entity: coverEntity,
+        );
       },
-      loading: () => _buildPlaceholder(context), // 正在加载图片数据
-      error: (e, st) => _buildPlaceholder(context), // 加载图片数据失败
+      loading: () => _buildPlaceholder(context), // 正在加载缩略图策略
+      error: (e, st) {
+        // 加载失败时显示占位符
+        debugPrint("相册缩略图加载失败: $e");
+        return _buildPlaceholder(context);
+      },
     );
   }
 
