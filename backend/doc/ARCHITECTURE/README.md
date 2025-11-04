@@ -10,7 +10,12 @@
 - [4. 依赖注入](./04-dependency-injection.md)
 - [5. 版本控制系统](./05-version-control.md)
 - [6. 容器部署](./06-container-deployment.md)
-- [7. 核心模块设计](./07-core-modules.md)
+- [7. 核心模块设计](./07-core-modules/README.md)
+  - [7.1 分层存储架构](./07-core-modules/07-storage-architecture.md)
+  - [7.2 主存储设计（本地存储）](./07-core-modules/07-storage-primary.md)
+  - [7.3 OpenList/AList 云存储对接](./07-core-modules/07-storage-openlist.md)
+  - [7.4 备份调度器模块](./07-core-modules/07-backup-scheduler.md)
+  - [7.5 媒体处理流程](./07-core-modules/07-media-processing.md)
 - [8. 数据流设计](./08-data-flow.md)
 - [9. 扩展性考虑](./09-scalability.md)
 - [10. 配置管理](./10-configuration.md)
@@ -30,7 +35,12 @@
 - [依赖注入](./04-dependency-injection.md) - 应用组装和依赖注入方式
 
 ### 模块设计
-- [核心模块设计](./07-core-modules.md) - 分层存储架构、OpenList/AList 对接、备份调度器等
+- [核心模块设计](./07-core-modules/README.md) - 核心模块设计索引
+  - [分层存储架构](./07-core-modules/07-storage-architecture.md) - 存储架构概述和接口设计
+  - [主存储设计](./07-core-modules/07-storage-primary.md) - 本地存储的详细设计
+  - [OpenList 对接](./07-core-modules/07-storage-openlist.md) - OpenList/AList 对接模块
+  - [备份调度器](./07-core-modules/07-backup-scheduler.md) - 备份调度器设计
+  - [媒体处理流程](./07-core-modules/07-media-processing.md) - 媒体处理任务和流程
 - [数据流设计](./08-data-flow.md) - 媒体上传流程（完全解耦）、云存储备份流程（独立调度）
 
 ### 运维相关

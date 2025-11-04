@@ -41,16 +41,36 @@ backend/
 │   ├── worker/           # 后台任务处理
 │   │   ├── media/        # 媒体处理任务
 │   │   │   ├── processor.go    # 图片/视频处理
-│   │   │   └── uploader.go     # 云端上传
+│   │   │   └── uploader.go     # 云端上传（已废弃，由备份调度器处理）
+│   │   ├── backup/       # 备份任务处理
+│   │   │   └── upload.go # 备份上传处理器
 │   │   └── handler.go   # 任务处理器注册
 │   │
 │   ├── storage/          # 存储抽象层
-│   │   ├── interfaces.go # 存储接口定义
-│   │   ├── factory.go    # 存储工厂（根据配置创建）
-│   │   ├── local/        # 本地存储实现
-│   │   ├── s3/           # AWS S3 实现
-│   │   ├── oss/          # 阿里云 OSS 实现
-│   │   └── cos/          # 腾讯云 COS 实现
+│   │   ├── interfaces.go # 存储接口定义（PrimaryStorage, SecondaryStorage）
+│   │   ├── manager.go    # 存储管理器（只管理主存储）
+│   │   ├── factory.go    # 存储工厂（根据配置创建主存储和次存储）
+│   │   ├── primary/      # 主存储实现
+│   │   │   └── local/    # 本地文件系统存储
+│   │   │       ├── storage.go
+│   │   │       ├── path_resolver.go
+│   │   │       ├── pool_manager.go
+│   │   │       └── cache.go
+│   │   └── secondary/    # 次存储实现
+│   │       ├── openlist/ # OpenList/AList 对接
+│   │       │   ├── client.go
+│   │       │   ├── storage.go
+│   │       │   ├── adapter.go
+│   │       │   └── pool_manager.go
+│   │       ├── s3/       # AWS S3 直接对接（可选）
+│   │       ├── oss/      # 阿里云 OSS 直接对接（可选）
+│   │       └── cos/      # 腾讯云 COS 直接对接（可选）
+│   │
+│   ├── backup/           # 备份调度器
+│   │   ├── scheduler.go # 备份调度器
+│   │   ├── monitor.go   # 系统监控器
+│   │   ├── handler.go   # 备份任务处理器
+│   │   └── config.go    # 备份配置
 │   │
 │   ├── app/              # 应用组装（依赖注入）
 │   │   ├── app.go        # 应用主结构体

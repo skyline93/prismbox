@@ -17,5 +17,4 @@
 - **任务队列**：自研 GQ (Go-Gorm-Queue)
 - **数据库**：PostgreSQL / SQLite
 - **容器化**：Docker, docker-compose
-- **命令行工具**：Cobra
-
+- **命令行工具**：github.com/urfave/cli/v2

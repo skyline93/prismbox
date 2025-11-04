@@ -21,7 +21,12 @@ type App struct {
     DB *gorm.DB
     
     // 存储
-    Storage storage.Storage
+    PrimaryStorage   storage.PrimaryStorage   // 主存储（本地存储）
+    SecondaryStorage storage.SecondaryStorage  // 次存储（云存储，可选）
+    StorageManager   *storage.StorageManager  // 存储管理器
+    
+    // 备份调度器
+    BackupScheduler  *backup.Scheduler        // 备份调度器（可选）
     
     // 任务队列
     TaskQueueClient *gq.Client
@@ -54,7 +59,10 @@ func BuildAll(cfg *config.Config) (*App, error) {
     builder := NewBuilder(cfg)
     
     builder.BuildDatabase()
-    builder.BuildStorage()
+    builder.BuildPrimaryStorage()
+    builder.BuildSecondaryStorage()
+    builder.BuildStorageManager()
+    builder.BuildBackupScheduler()
     builder.BuildTaskQueue()
     builder.BuildRepositories()
     builder.BuildServices()
@@ -63,29 +71,77 @@ func BuildAll(cfg *config.Config) (*App, error) {
 }
 ```
 
-## 4.4 服务层依赖注入示例
+## 4.4 存储相关依赖注入
+
+```go
+// internal/app/builder.go
+func (b *Builder) BuildPrimaryStorage() error {
+    primary, err := storage.NewPrimaryStorage(b.config.Storage)
+    if err != nil {
+        return err
+    }
+    b.app.PrimaryStorage = primary
+    return nil
+}
+
+func (b *Builder) BuildSecondaryStorage() error {
+    if !b.config.Storage.Secondary.Enabled {
+        return nil  // 未启用次存储
+    }
+    
+    secondary, err := storage.NewSecondaryStorage(b.config.Storage)
+    if err != nil {
+        return err
+    }
+    b.app.SecondaryStorage = secondary
+    return nil
+}
+
+func (b *Builder) BuildStorageManager() error {
+    manager := storage.NewStorageManager(b.app.PrimaryStorage)
+    b.app.StorageManager = manager
+    return nil
+}
+
+func (b *Builder) BuildBackupScheduler() error {
+    if !b.config.Storage.Backup.Enabled {
+        return nil  // 未启用备份
+    }
+    
+    scheduler := backup.NewScheduler(
+        b.app.DB,
+        b.app.SecondaryStorage,
+        b.app.TaskQueueClient,
+        b.config.Storage.Backup,
+    )
+    b.app.BackupScheduler = scheduler
+    return nil
+}
+```
+
+## 4.5 服务层依赖注入示例
 
 ```go
 // internal/service/media/service.go
 type service struct {
-    repo      repository.MediaRepository
-    storage   storage.Storage
-    taskQueue *gq.Client
-    config    *Config
+    repo          repository.MediaRepository
+    storageManager *storage.StorageManager  // 使用存储管理器
+    taskQueue     *gq.Client
+    config        *Config
 }
 
 // 构造函数接收所有依赖
 func NewService(
     repo repository.MediaRepository,
-    storage storage.Storage,
+    storageManager *storage.StorageManager,  // 只使用主存储管理器
     taskQueue *gq.Client,
     config *Config,
 ) Service {
     return &service{
-        repo:      repo,
-        storage:   storage,
-        taskQueue: taskQueue,
-        config:    config,
+        repo:          repo,
+        storageManager: storageManager,
+        taskQueue:     taskQueue,
+        config:        config,
     }
 }
 ```
