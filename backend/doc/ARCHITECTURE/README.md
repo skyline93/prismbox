@@ -16,6 +16,7 @@
   - [7.3 OpenList/AList 云存储对接](./07-core-modules/07-storage-openlist.md)
   - [7.4 备份调度器模块](./07-core-modules/07-backup-scheduler.md)
   - [7.5 媒体处理流程](./07-core-modules/07-media-processing.md)
+  - [7.6 媒体处理模块架构设计](./07-core-modules/07-media-processor.md)
 - [8. 数据流设计](./08-data-flow.md)
 - [9. 扩展性考虑](./09-scalability.md)
 - [10. 配置管理](./10-configuration.md)
@@ -41,6 +42,7 @@
   - [OpenList 对接](./07-core-modules/07-storage-openlist.md) - OpenList/AList 对接模块
   - [备份调度器](./07-core-modules/07-backup-scheduler.md) - 备份调度器设计
   - [媒体处理流程](./07-core-modules/07-media-processing.md) - 媒体处理任务和流程
+  - [媒体处理模块架构设计](./07-core-modules/07-media-processor.md) - 详细的架构设计、接口定义、并发安全设计等
 - [数据流设计](./08-data-flow.md) - 媒体上传流程（完全解耦）、云存储备份流程（独立调度）
 
 ### 运维相关

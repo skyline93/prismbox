@@ -1,5 +1,7 @@
 # 7.5 媒体处理流程
 
+> **注意**：本文档描述了媒体处理的任务流程和集成方式。详细的架构设计、接口定义、并发安全设计等内容请参考 [7.6 媒体处理模块架构设计](./07-media-processor.md)。
+
 ## 7.5.1 任务队列集成
 
 ### 任务类型
@@ -65,14 +67,24 @@ func processImageHandler(app *app.App) gq.HandlerFunc {
         }
         defer reader.Close()
         
-        // 3. 处理图片
-        processor := imageprocessor.NewProcessor()
-        if err := processor.Process(ctx, reader, media); err != nil {
+        // 3. 处理图片（使用 media-processor 包）
+        result, err := app.MediaProcessor.ProcessImage(ctx, media.LocalPath, nil)
+        if err != nil {
             return err
         }
         
-        // 4. 更新数据库状态
-        return app.MediaRepo.UpdateProcessingStatus(media.UUID, "completed")
+        // 4. 保存生成的缩略图和预览图路径
+        // ... 保存 result.GeneratedFiles
+        
+        // 5. 更新数据库状态和元数据
+        updates := map[string]interface{}{
+            "processing_status": "completed",
+        }
+        if result.Metadata != nil {
+            // 更新元数据字段
+            // ...
+        }
+        return app.MediaRepo.Update(media.UUID, updates)
     }
 }
 ```
@@ -110,14 +122,24 @@ func processVideoHandler(app *app.App) gq.HandlerFunc {
         }
         defer reader.Close()
         
-        // 3. 处理视频
-        processor := videoprocessor.NewProcessor()
-        if err := processor.Process(ctx, reader, media); err != nil {
+        // 3. 处理视频（使用 media-processor 包）
+        result, err := app.MediaProcessor.ProcessVideo(ctx, media.LocalPath, nil)
+        if err != nil {
             return err
         }
         
-        // 4. 更新数据库状态
-        return app.MediaRepo.UpdateProcessingStatus(media.UUID, "completed")
+        // 4. 保存生成的缩略图和预览视频路径
+        // ... 保存 result.GeneratedFiles
+        
+        // 5. 更新数据库状态和元数据
+        updates := map[string]interface{}{
+            "processing_status": "completed",
+        }
+        if result.Metadata != nil {
+            // 更新元数据字段
+            // ...
+        }
+        return app.MediaRepo.Update(media.UUID, updates)
     }
 }
 ```
@@ -173,4 +195,8 @@ Worker (处理备份任务)
     ↓
 更新数据库（backup_status = "completed"）
 ```
+
+## 7.5.5 相关文档
+
+- [7.6 媒体处理模块架构设计](./07-media-processor.md) - 详细的架构设计、接口定义、并发安全设计等
 

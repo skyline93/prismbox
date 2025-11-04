@@ -89,6 +89,26 @@ backend/
 │
 ├── pkg/                   # 可对外暴露的公共包
 │   ├── gq/               # 任务队列框架
+│   ├── media-processor/   # 媒体处理包（独立包，可复用）
+│   │   ├── processor.go  # 主处理器接口和工厂
+│   │   ├── config.go      # 配置结构
+│   │   ├── types.go       # 类型定义
+│   │   ├── errors.go      # 错误定义
+│   │   ├── image/         # 图片处理模块
+│   │   │   ├── processor.go
+│   │   │   ├── imagick.go  # ImageMagick 实现
+│   │   │   ├── manager.go # ImageMagick 生命周期管理
+│   │   │   ├── raw.go      # RAW 文件处理
+│   │   │   ├── metadata.go # 元数据提取
+│   │   │   └── spec.go     # 规格定义
+│   │   ├── video/         # 视频处理模块
+│   │   │   ├── processor.go
+│   │   │   ├── ffmpeg.go   # FFmpeg 实现
+│   │   │   ├── metadata.go # 元数据提取
+│   │   │   └── spec.go     # 规格定义
+│   │   └── internal/      # 内部工具（不对外暴露）
+│   │       ├── pool/       # 资源池管理
+│   │       └── utils/      # 工具函数
 │   ├── logger/           # 日志工具
 │   ├── validator/        # 验证工具
 │   └── utils/            # 工具函数
