@@ -77,8 +77,19 @@ backend/
 │   │   └── builder.go    # 依赖注入构建器
 │   │
 │   ├── config/           # 配置管理
-│   │   ├── config.go
-│   │   └── loader.go
+│   │   ├── config.go     # 主配置结构体
+│   │   ├── loader.go     # 配置加载器（YAML + 环境变量）
+│   │   ├── validator.go  # 配置验证器
+│   │   ├── types.go      # 自定义类型（Duration, Size 等）
+│   │   └── modules/      # 各模块配置
+│   │       ├── server.go
+│   │       ├── database.go
+│   │       ├── storage.go
+│   │       ├── backup.go
+│   │       ├── queue.go
+│   │       ├── auth.go
+│   │       ├── media.go
+│   │       └── logger.go
 │   │
 │   ├── database/         # 数据库相关
 │   │   ├── migrations/   # 数据库迁移

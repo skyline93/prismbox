@@ -364,26 +364,25 @@ Goroutine 2: backupLogger.Info(...)
 ### 应用启动初始化
 
 ```go
-// server/main.go
+// cmd/server/main.go
 func main() {
-    cfg, _ := core.LoadConfig()
+    // 1. 加载配置
+    loader := config.NewLoader("configs/config.yaml")
+    cfg, err := loader.Load()
+    if err != nil {
+        log.Fatalf("Could not load config: %v", err)
+    }
     
-    // 初始化日志系统
+    // 2. 初始化日志系统（在构建其他组件之前）
     loggerConfig := &logger.Config{
         Level:        cfg.Logger.Level,      // "info"
         Format:       cfg.Logger.Format,     // "json"
         Output:       cfg.Logger.Output,     // "/var/log/album/app.log"
-        EnableCaller: true,
-        EnableStack:  true,
-        Async:        true,
-        BufferSize:   1000,
-        FileConfig: &logger.FileConfig{
-            Path:       "/var/log/album/app.log",
-            MaxSize:    100 * 1024 * 1024,  // 100MB
-            MaxBackups: 10,
-            MaxAge:     30,
-            Compress:   true,
-        },
+        EnableCaller: cfg.Logger.EnableCaller,
+        EnableStack:  cfg.Logger.EnableStack,
+        Async:        cfg.Logger.Async,
+        BufferSize:   cfg.Logger.BufferSize,
+        FileConfig:   cfg.Logger.FileConfig,
     }
     
     if err := logger.Init(loggerConfig); err != nil {
@@ -391,7 +390,31 @@ func main() {
     }
     defer logger.Sync()  // 确保所有日志写入完成
     
-    // 后续所有模块都使用这个全局配置
+    // 3. 后续构建其他组件...
+}
+```
+
+**或者通过 Builder 模式初始化**：
+
+```go
+// internal/app/builder.go
+func (b *Builder) BuildLogger() error {
+    loggerConfig := &logger.Config{
+        Level:        b.cfg.Logger.Level,
+        Format:       b.cfg.Logger.Format,
+        Output:       b.cfg.Logger.Output,
+        EnableCaller: b.cfg.Logger.EnableCaller,
+        EnableStack:  b.cfg.Logger.EnableStack,
+        Async:        b.cfg.Logger.Async,
+        BufferSize:   b.cfg.Logger.BufferSize,
+        FileConfig:   b.cfg.Logger.FileConfig,
+    }
+    
+    if err := logger.Init(loggerConfig); err != nil {
+        return fmt.Errorf("init logger: %w", err)
+    }
+    
+    return nil
 }
 ```
 

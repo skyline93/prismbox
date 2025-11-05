@@ -58,16 +58,44 @@ type Builder struct {
 func BuildAll(cfg *config.Config) (*App, error) {
     builder := NewBuilder(cfg)
     
-    builder.BuildDatabase()
-    builder.BuildPrimaryStorage()
-    builder.BuildSecondaryStorage()
-    builder.BuildStorageManager()
-    builder.BuildBackupScheduler()
-    builder.BuildTaskQueue()
-    builder.BuildRepositories()
-    builder.BuildServices()
+    // 按顺序构建各个组件
+    if err := builder.BuildLogger(); err != nil {
+        return nil, fmt.Errorf("build logger: %w", err)
+    }
     
-    return builder.Build()
+    if err := builder.BuildDatabase(); err != nil {
+        return nil, fmt.Errorf("build database: %w", err)
+    }
+    
+    if err := builder.BuildPrimaryStorage(); err != nil {
+        return nil, fmt.Errorf("build primary storage: %w", err)
+    }
+    
+    if err := builder.BuildSecondaryStorage(); err != nil {
+        return nil, fmt.Errorf("build secondary storage: %w", err)
+    }
+    
+    if err := builder.BuildStorageManager(); err != nil {
+        return nil, fmt.Errorf("build storage manager: %w", err)
+    }
+    
+    if err := builder.BuildTaskQueue(); err != nil {
+        return nil, fmt.Errorf("build task queue: %w", err)
+    }
+    
+    if err := builder.BuildBackupScheduler(); err != nil {
+        return nil, fmt.Errorf("build backup scheduler: %w", err)
+    }
+    
+    if err := builder.BuildRepositories(); err != nil {
+        return nil, fmt.Errorf("build repositories: %w", err)
+    }
+    
+    if err := builder.BuildServices(); err != nil {
+        return nil, fmt.Errorf("build services: %w", err)
+    }
+    
+    return builder.Build(), nil
 }
 ```
 
@@ -76,7 +104,7 @@ func BuildAll(cfg *config.Config) (*App, error) {
 ```go
 // internal/app/builder.go
 func (b *Builder) BuildPrimaryStorage() error {
-    primary, err := storage.NewPrimaryStorage(b.config.Storage)
+    primary, err := storage.NewPrimaryStorage(b.cfg.Storage.Primary)
     if err != nil {
         return err
     }
@@ -85,11 +113,11 @@ func (b *Builder) BuildPrimaryStorage() error {
 }
 
 func (b *Builder) BuildSecondaryStorage() error {
-    if !b.config.Storage.Secondary.Enabled {
+    if !b.cfg.Storage.Secondary.Enabled {
         return nil  // 未启用次存储
     }
     
-    secondary, err := storage.NewSecondaryStorage(b.config.Storage)
+    secondary, err := storage.NewSecondaryStorage(b.cfg.Storage.Secondary)
     if err != nil {
         return err
     }
@@ -104,7 +132,7 @@ func (b *Builder) BuildStorageManager() error {
 }
 
 func (b *Builder) BuildBackupScheduler() error {
-    if !b.config.Storage.Backup.Enabled {
+    if !b.cfg.Storage.Backup.Enabled {
         return nil  // 未启用备份
     }
     
@@ -112,44 +140,80 @@ func (b *Builder) BuildBackupScheduler() error {
         b.app.DB,
         b.app.SecondaryStorage,
         b.app.TaskQueueClient,
-        b.config.Storage.Backup,
+        b.cfg.Storage.Backup,
     )
     b.app.BackupScheduler = scheduler
     return nil
 }
 ```
 
-## 4.5 日志模块初始化
+## 4.5 配置加载
 
-日志模块采用全局单例模式，不需要通过依赖注入传递，但需要在应用启动时初始化：
+配置通过 `internal/config` 包加载，支持 YAML 文件和环境变量：
 
 ```go
 // cmd/server/main.go
 func main() {
     // 1. 加载配置
-    cfg, err := core.LoadConfig()
+    loader := config.NewLoader("configs/config.yaml")
+    cfg, err := loader.Load()
     if err != nil {
         log.Fatalf("Could not load config: %v", err)
     }
     
-    // 2. 初始化日志系统（在构建其他组件之前）
+    // 2. 构建应用（使用 Builder 模式）
+    builder := app.NewBuilder(cfg)
+    
+    // 按顺序构建各个组件
+    // ...
+}
+```
+
+## 4.6 日志模块初始化
+
+日志模块采用全局单例模式，不需要通过依赖注入传递，但需要在应用启动时初始化：
+
+```go
+// internal/app/builder.go
+func (b *Builder) BuildLogger() error {
+    // 使用配置中的日志配置初始化日志系统
     loggerConfig := &logger.Config{
-        Level:        cfg.Logger.Level,
-        Format:       cfg.Logger.Format,
-        Output:       cfg.Logger.Output,
-        EnableCaller: cfg.Logger.EnableCaller,
-        EnableStack:  cfg.Logger.EnableStack,
-        Async:        cfg.Logger.Async,
-        BufferSize:   cfg.Logger.BufferSize,
-        FileConfig:   cfg.Logger.FileConfig,
+        Level:        b.cfg.Logger.Level,
+        Format:       b.cfg.Logger.Format,
+        Output:       b.cfg.Logger.Output,
+        EnableCaller: b.cfg.Logger.EnableCaller,
+        EnableStack:  b.cfg.Logger.EnableStack,
+        Async:        b.cfg.Logger.Async,
+        BufferSize:   b.cfg.Logger.BufferSize,
+        FileConfig:   b.cfg.Logger.FileConfig,
     }
     
     if err := logger.Init(loggerConfig); err != nil {
-        log.Fatalf("Failed to init logger: %v", err)
+        return fmt.Errorf("init logger: %w", err)
+    }
+    
+    return nil
+}
+
+// cmd/server/main.go
+func main() {
+    // 1. 加载配置
+    loader := config.NewLoader("configs/config.yaml")
+    cfg, err := loader.Load()
+    if err != nil {
+        log.Fatalf("Could not load config: %v", err)
+    }
+    
+    // 2. 构建应用（使用 Builder 模式）
+    builder := app.NewBuilder(cfg)
+    
+    // 3. 初始化日志系统（在构建其他组件之前）
+    if err := builder.BuildLogger(); err != nil {
+        log.Fatalf("Failed to build logger: %v", err)
     }
     defer logger.Sync()  // 确保所有日志写入完成
     
-    // 3. 后续构建其他组件...
+    // 4. 后续构建其他组件...
 }
 ```
 
@@ -188,7 +252,7 @@ func NewService(
 - 所有 logger 实例共享全局配置和写入器
 - 日志模块初始化应在应用启动的最早阶段，确保所有组件都能使用日志
 
-## 4.6 服务层依赖注入示例
+## 4.7 服务层依赖注入示例
 
 ```go
 // internal/service/media/service.go

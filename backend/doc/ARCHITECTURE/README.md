@@ -48,7 +48,7 @@
 - [数据流设计](./08-data-flow.md) - 媒体上传流程（完全解耦）、云存储备份流程（独立调度）
 
 ### 运维相关
-- [配置管理](./10-configuration.md) - 配置文件结构和环境变量支持
+- [配置管理](./10-configuration.md) - 配置模块设计、YAML 文件结构、环境变量支持和配置验证
 - [容器部署](./06-container-deployment.md) - Dockerfile 和 docker-compose 配置
 - [版本控制系统](./05-version-control.md) - 版本注入和查询方式
 - [部署流程](./16-deployment.md) - 本地开发、构建和部署步骤
