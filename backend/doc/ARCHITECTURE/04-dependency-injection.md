@@ -119,11 +119,81 @@ func (b *Builder) BuildBackupScheduler() error {
 }
 ```
 
-## 4.5 服务层依赖注入示例
+## 4.5 日志模块初始化
+
+日志模块采用全局单例模式，不需要通过依赖注入传递，但需要在应用启动时初始化：
+
+```go
+// cmd/server/main.go
+func main() {
+    // 1. 加载配置
+    cfg, err := core.LoadConfig()
+    if err != nil {
+        log.Fatalf("Could not load config: %v", err)
+    }
+    
+    // 2. 初始化日志系统（在构建其他组件之前）
+    loggerConfig := &logger.Config{
+        Level:        cfg.Logger.Level,
+        Format:       cfg.Logger.Format,
+        Output:       cfg.Logger.Output,
+        EnableCaller: cfg.Logger.EnableCaller,
+        EnableStack:  cfg.Logger.EnableStack,
+        Async:        cfg.Logger.Async,
+        BufferSize:   cfg.Logger.BufferSize,
+        FileConfig:   cfg.Logger.FileConfig,
+    }
+    
+    if err := logger.Init(loggerConfig); err != nil {
+        log.Fatalf("Failed to init logger: %v", err)
+    }
+    defer logger.Sync()  // 确保所有日志写入完成
+    
+    // 3. 后续构建其他组件...
+}
+```
+
+**日志模块在服务中的使用**：
 
 ```go
 // internal/service/media/service.go
 type service struct {
+    logger        logger.Logger  // 模块级 logger（通过 logger.New() 创建）
+    repo          repository.MediaRepository
+    storageManager *storage.StorageManager
+    taskQueue     *gq.Client
+    config        *Config
+}
+
+// 构造函数中创建模块 logger
+func NewService(
+    repo repository.MediaRepository,
+    storageManager *storage.StorageManager,
+    taskQueue *gq.Client,
+    config *Config,
+) Service {
+    return &service{
+        logger:        logger.New("service.media"),  // 模块名，共享全局配置
+        repo:          repo,
+        storageManager: storageManager,
+        taskQueue:     taskQueue,
+        config:        config,
+    }
+}
+```
+
+**关键点**：
+- 日志模块通过全局单例初始化，不存储在 App 结构体中
+- 各模块通过 `logger.New("module.name")` 创建自己的 logger 实例
+- 所有 logger 实例共享全局配置和写入器
+- 日志模块初始化应在应用启动的最早阶段，确保所有组件都能使用日志
+
+## 4.6 服务层依赖注入示例
+
+```go
+// internal/service/media/service.go
+type service struct {
+    logger        logger.Logger  // 模块级 logger
     repo          repository.MediaRepository
     storageManager *storage.StorageManager  // 使用存储管理器
     taskQueue     *gq.Client
@@ -138,6 +208,7 @@ func NewService(
     config *Config,
 ) Service {
     return &service{
+        logger:        logger.New("service.media"),  // 创建模块 logger
         repo:          repo,
         storageManager: storageManager,
         taskQueue:     taskQueue,

@@ -109,7 +109,20 @@ backend/
 │   │   └── internal/      # 内部工具（不对外暴露）
 │   │       ├── pool/       # 资源池管理
 │   │       └── utils/      # 工具函数
-│   ├── logger/           # 日志工具
+│   ├── logger/           # 日志工具（独立包，可复用）
+│   │   ├── core.go           # 全局配置管理（单例）
+│   │   ├── logger.go         # Logger 接口和实现
+│   │   ├── config.go         # 配置结构定义
+│   │   ├── fields.go         # 字段构建器
+│   │   ├── formatter.go      # 格式化器接口
+│   │   ├── formatter_json.go # JSON 格式化器
+│   │   ├── formatter_console.go # 控制台格式化器
+│   │   ├── writer.go         # 写入器接口
+│   │   ├── writer_shared.go  # 共享写入器实现（线程安全）
+│   │   ├── writer_file.go    # 文件写入器实现（带轮转）
+│   │   ├── writer_console.go # 控制台写入器实现
+│   │   ├── level.go          # 日志级别定义
+│   │   └── middleware.go     # Gin 中间件
 │   ├── validator/        # 验证工具
 │   └── utils/            # 工具函数
 │

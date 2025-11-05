@@ -20,7 +20,27 @@
 
 ## 11.3 日志记录
 
-- 使用结构化日志
-- 记录错误堆栈
-- 区分日志级别（DEBUG、INFO、WARN、ERROR）
+- 使用结构化日志（JSON 格式）
+- 记录错误堆栈（Error 级别自动包含）
+- 区分日志级别（DEBUG、INFO、WARN、ERROR、FATAL）
+- 通过模块名和上下文信息追踪错误来源
+
+### 错误日志示例
+
+```go
+// 记录错误日志（自动包含堆栈信息）
+logger.Error("Failed to process media",
+    logger.Error(err),
+    logger.String("media_uuid", uuid),
+    logger.Uint("user_id", userID),
+)
+
+// 带上下文的错误日志
+logger.WithContext(ctx).Error("Database operation failed",
+    logger.Error(err),
+    logger.String("operation", "create_media"),
+)
+```
+
+详细设计请参考 [7.7 日志模块架构设计](./07-core-modules/07-logger.md)。
 

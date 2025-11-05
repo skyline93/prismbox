@@ -148,9 +148,37 @@ media:
   upload_dir: "./uploads"
   max_file_size: 100MB
   allowed_types: ["image/jpeg", "image/png", "video/mp4"]
+
+logger:
+  level: "info"              # debug, info, warn, error
+  format: "json"             # json, console
+  output: "/var/log/album/app.log"  # stdout, stderr, 或文件路径
+  enable_caller: true        # 包含调用位置（文件名:行号）
+  enable_stack: true         # 包含堆栈信息（Error 级别）
+  async: true                # 异步写入
+  buffer_size: 1000          # 异步缓冲大小
+  
+  # 文件配置（output 为文件时生效）
+  file:
+    max_size: 104857600      # 单个文件最大大小（字节），100MB
+    max_backups: 10          # 保留文件数量
+    max_age: 30              # 保留天数
+    compress: true           # 是否压缩旧文件
 ```
 
 ## 10.2 环境变量支持
 
 配置可以通过环境变量覆盖，优先级：环境变量 > 配置文件 > 默认值
+
+**日志相关环境变量**：
+- `LOG_LEVEL`: 日志级别（debug, info, warn, error）
+- `LOG_FORMAT`: 日志格式（json, console）
+- `LOG_OUTPUT`: 输出目标（stdout, stderr, 或文件路径）
+- `LOG_ENABLE_CALLER`: 是否包含调用位置（true/false）
+- `LOG_ENABLE_STACK`: 是否包含堆栈信息（true/false）
+- `LOG_ASYNC`: 是否异步写入（true/false）
+- `LOG_BUFFER_SIZE`: 异步缓冲大小（整数）
+- `LOG_FILE_MAX_SIZE`: 文件最大大小（字节）
+- `LOG_FILE_MAX_BACKUPS`: 保留文件数量
+- `LOG_FILE_MAX_AGE`: 保留天数
 
