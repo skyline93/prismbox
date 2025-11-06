@@ -3,7 +3,7 @@
 ## 3.1 API 层（HTTP Handlers）
 
 **职责**：
-- 接收 HTTP 请求
+- 接收 HTTP 请求（支持 HTTP/HTTPS 和 Unix Socket）
 - 参数验证和绑定
 - 调用 Service 层处理业务逻辑
 - 返回 HTTP 响应
@@ -11,8 +11,11 @@
 **特点**：
 - 保持精简，不包含业务逻辑
 - 使用 Gin 框架
-- 统一的响应格式
+- 统一的响应格式（与旧架构一致）
 - 中间件处理认证、日志等
+- 多协议支持（HTTP/HTTPS/Unix Socket，预留 WebSocket/WebDAV 接口）
+- 模块化路由设计，按功能组织
+- 使用 `pkg/logger` 统一日志记录
 
 ## 3.2 Service 层（业务逻辑）
 

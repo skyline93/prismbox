@@ -18,6 +18,7 @@
   - [7.5 媒体处理流程](./07-core-modules/07-media-processing.md)
   - [7.6 媒体处理模块架构设计](./07-core-modules/07-media-processor.md)
   - [7.7 日志模块架构设计](./07-core-modules/07-logger.md)
+  - [7.8 API 模块架构设计](./07-core-modules/07-api-architecture.md)
 - [8. 数据流设计](./08-data-flow.md)
 - [9. 扩展性考虑](./09-scalability.md)
 - [10. 配置管理](./10-configuration.md)
@@ -45,6 +46,7 @@
   - [媒体处理流程](./07-core-modules/07-media-processing.md) - 媒体处理任务和流程
   - [媒体处理模块架构设计](./07-core-modules/07-media-processor.md) - 详细的架构设计、接口定义、并发安全设计等
   - [日志模块架构设计](./07-core-modules/07-logger.md) - 日志模块的全局配置管理、并发安全、文件轮转等
+  - [API 模块架构设计](./07-core-modules/07-api-architecture.md) - API 模块的路由设计、响应格式、多协议支持（HTTP/HTTPS/Unix Socket）
 - [数据流设计](./08-data-flow.md) - 媒体上传流程（完全解耦）、云存储备份流程（独立调度）
 
 ### 运维相关

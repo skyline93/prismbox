@@ -281,3 +281,60 @@ func NewService(
 }
 ```
 
+## 4.8 API 层依赖注入
+
+API 层的依赖注入在 `cmd/server/main.go` 中完成，不在 `internal/app` 中构建，因为 API 层是应用启动时的入口点。
+
+```go
+// cmd/server/main.go
+func main() {
+    // 1. 加载配置
+    cfg := loadConfig()
+    
+    // 2. 初始化日志系统
+    initLogger(cfg)
+    
+    // 3. 构建应用（依赖注入）
+    app := buildApp(cfg)
+    
+    // 4. 创建路由（API 层依赖注入）
+    router := api.NewRouter(app)  // 传入 app 实例
+    router.Setup()                // 注册所有路由和中间件
+    
+    // 5. 创建并启动服务器
+    // ...
+}
+```
+
+**API Handler 的依赖注入**：
+
+```go
+// internal/api/v1/media/handler.go
+type Handler struct {
+    mediaService service.MediaService  // 依赖 Service 层
+    logger       logger.Logger         // 使用 pkg/logger
+}
+
+func NewHandler(mediaService service.MediaService) *Handler {
+    return &Handler{
+        mediaService: mediaService,
+        logger:       logger.New("api.v1.media"),
+    }
+}
+
+// internal/api/v1/media/routes.go
+func RegisterRoutes(rg *gin.RouterGroup, app *app.App) {
+    // 从 app 实例获取依赖的服务
+    handler := NewHandler(app.MediaService)
+    
+    // 注册路由
+    // ...
+}
+```
+
+**关键点**：
+- API 层通过 `app.App` 实例获取所有依赖的服务
+- Handler 只依赖 Service 层，不直接依赖 Repository 或 Storage
+- 日志使用 `pkg/logger`，通过 `logger.New("module.name")` 创建模块级 logger
+- 路由注册在 `router.Setup()` 中统一完成
+

@@ -224,9 +224,36 @@ func main() {
 ```yaml
 # configs/config.yaml
 server:
-  address: "0.0.0.0:8080"
-  read_timeout: 30s
-  write_timeout: 30s
+  # HTTP/HTTPS 服务器配置
+  http:
+    enabled: true
+    address: "0.0.0.0:8080"
+    read_timeout: "30s"
+    write_timeout: "30s"
+    idle_timeout: "120s"
+    tls:
+      enabled: false
+      cert_file: ""
+      key_file: ""
+  
+  # Unix Socket 服务器配置（用于本地访问）
+  unix:
+    enabled: true
+    socket_path: "/tmp/album.sock"
+    mode: "0666"  # 八进制字符串，支持本地用户访问
+    read_timeout: "30s"
+    write_timeout: "30s"
+    idle_timeout: "120s"
+  
+  # 未来：WebSocket 服务器配置（预留）
+  # websocket:
+  #   enabled: false
+  #   path: "/api/v1/ws"
+  
+  # 未来：WebDAV 服务器配置（预留）
+  # webdav:
+  #   enabled: false
+  #   path: "/webdav"
 
 database:
   type: "postgres"  # postgres, mysql, sqlite
@@ -393,10 +420,29 @@ logger:
 
 ### 10.5.1 服务器配置
 
-- `ALBUM_SERVER_ADDRESS`: 服务器监听地址（如 `0.0.0.0:8080`）
+#### HTTP/HTTPS 服务器
+
+- `ALBUM_SERVER_HTTP_ENABLED`: 是否启用 HTTP 服务器（`true`/`false`）
+- `ALBUM_SERVER_HTTP_ADDRESS`: HTTP 服务器监听地址（如 `0.0.0.0:8080`）
+- `ALBUM_SERVER_HTTP_READ_TIMEOUT`: 读超时时间（如 `30s`）
+- `ALBUM_SERVER_HTTP_WRITE_TIMEOUT`: 写超时时间（如 `30s`）
+- `ALBUM_SERVER_HTTP_IDLE_TIMEOUT`: 空闲连接超时时间（如 `120s`）
+- `ALBUM_SERVER_HTTP_TLS_ENABLED`: 是否启用 TLS（`true`/`false`）
+- `ALBUM_SERVER_HTTP_TLS_CERT_FILE`: TLS 证书文件路径
+- `ALBUM_SERVER_HTTP_TLS_KEY_FILE`: TLS 密钥文件路径
+
+#### Unix Socket 服务器
+
+- `ALBUM_SERVER_UNIX_ENABLED`: 是否启用 Unix Socket 服务器（`true`/`false`）
+- `ALBUM_SERVER_UNIX_SOCKET_PATH`: Unix Socket 文件路径（如 `/tmp/album.sock`）
+- `ALBUM_SERVER_UNIX_MODE`: Socket 文件权限（八进制字符串，如 `0666`）
+- `ALBUM_SERVER_UNIX_READ_TIMEOUT`: 读超时时间（如 `30s`）
+- `ALBUM_SERVER_UNIX_WRITE_TIMEOUT`: 写超时时间（如 `30s`）
+- `ALBUM_SERVER_UNIX_IDLE_TIMEOUT`: 空闲连接超时时间（如 `120s`）
+
+#### 公共配置
+
 - `ALBUM_PUBLIC_BASE_URL`: 公共基础 URL（如 `http://localhost:8080`）
-- `ALBUM_SERVER_READ_TIMEOUT`: 读超时时间（如 `30s`）
-- `ALBUM_SERVER_WRITE_TIMEOUT`: 写超时时间（如 `30s`）
 
 ### 10.5.2 数据库配置
 

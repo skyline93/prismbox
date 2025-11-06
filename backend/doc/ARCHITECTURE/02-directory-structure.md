@@ -10,14 +10,44 @@ backend/
 │
 ├── internal/              # 内部包（不对外暴露）
 │   ├── api/               # API 层（HTTP handlers）
-│   │   ├── v1/           # API v1 版本
-│   │   │   ├── auth/     # 认证相关
-│   │   │   ├── media/    # 媒体相关
-│   │   │   ├── album/    # 相册相关
-│   │   │   ├── group/    # 圈子相关
-│   │   │   ├── share/    # 分享相关
-│   │   │   └── version/  # 版本信息
-│   │   └── middleware/   # 中间件
+│   │   ├── router.go      # 路由注册器（统一入口）
+│   │   ├── response.go    # 统一响应格式（与旧架构一致）
+│   │   ├── dto/           # 数据传输对象（请求/响应结构）
+│   │   │   ├── media.go
+│   │   │   ├── album.go
+│   │   │   ├── auth.go
+│   │   │   ├── group.go
+│   │   │   └── share.go
+│   │   │
+│   │   ├── v1/            # API v1 版本
+│   │   │   ├── auth/      # 认证相关 handlers
+│   │   │   │   ├── handler.go
+│   │   │   │   └── routes.go
+│   │   │   ├── media/     # 媒体相关 handlers
+│   │   │   │   ├── handler.go
+│   │   │   │   └── routes.go
+│   │   │   ├── album/     # 相册相关 handlers
+│   │   │   ├── group/     # 圈子相关 handlers
+│   │   │   ├── share/     # 分享相关 handlers
+│   │   │   ├── sync/      # 同步相关 handlers
+│   │   │   └── version/   # 版本信息 handlers
+│   │   │
+│   │   ├── middleware/    # 中间件
+│   │   │   ├── auth.go              # 认证中间件（JWT）
+│   │   │   ├── cors.go              # CORS 中间件
+│   │   │   ├── logger.go            # 日志中间件（使用 pkg/logger）
+│   │   │   ├── recovery.go          # 恢复中间件
+│   │   │   └── flexible_auth.go     # 灵活认证中间件（支持签名URL）
+│   │   │
+│   │   ├── server/        # 服务器抽象
+│   │   │   ├── server.go            # Server 接口定义
+│   │   │   ├── http_server.go       # HTTP/HTTPS 服务器实现
+│   │   │   ├── unix_socket_server.go # Unix Socket 服务器实现
+│   │   │   └── future.go            # 未来协议接口预留（WebSocket/WebDAV）
+│   │   │
+│   │   └── swagger/       # Swagger 文档
+│   │       ├── docs.go    # 生成的文档（swag init）
+│   │       └── swagger.yaml
 │   │
 │   ├── service/          # 业务逻辑层（核心）
 │   │   ├── auth/         # 认证服务
