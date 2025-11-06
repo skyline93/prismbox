@@ -32,18 +32,23 @@ func (f *ConsoleFormatter) Format(entry *LogEntry) ([]byte, error) {
 
 	// 字段
 	if len(entry.Fields) > 0 {
-		buf.WriteString("\n")
+		buf.WriteString(" ")
 		var fields []string
 		for k, v := range entry.Fields {
-			fields = append(fields, fmt.Sprintf("  %s=%v", k, v))
+			// 排除 module 字段，因为模块名已经在前面显示了
+			if k != "module" {
+				fields = append(fields, fmt.Sprintf("%s=%v", k, v))
+			}
 		}
-		buf.WriteString(strings.Join(fields, "\n"))
+		if len(fields) > 0 {
+			buf.WriteString(strings.Join(fields, " "))
+		}
 	}
 
-	// 调用位置
+	// 调用位置（在同一行显示）
 	if entry.Caller != "" {
-		buf.WriteString("\n")
-		buf.WriteString(fmt.Sprintf("  caller=%s", entry.Caller))
+		buf.WriteString(" ")
+		buf.WriteString(fmt.Sprintf("caller=%s", entry.Caller))
 	}
 
 	// 堆栈信息

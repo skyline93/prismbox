@@ -631,10 +631,13 @@ config := &logger.Config{
 #### Console 格式（开发环境）
 
 ```
-2025-01-20 10:00:00 [INFO] service.media 上传媒体成功
-  user_id=123 media_uuid=abc-123 file_size=1048576
-  caller=service.go:45
+2025-01-20 10:00:00.123 [INFO] service.media 上传媒体成功 user_id=123 media_uuid=abc-123 file_size=1048576 caller=service.go:45
 ```
+
+**注意**：
+- 所有字段都在同一行显示，使用空格分隔
+- `module` 字段不会出现在字段列表中，因为模块名已经在消息前面显示了
+- 堆栈信息（Error 级别）仍然会换行显示，便于阅读
 
 ### 日志收集
 

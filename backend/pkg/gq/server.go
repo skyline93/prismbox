@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
+	"github.com/album/backend/pkg/logger"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +22,7 @@ type Server struct {
 	cancel      context.CancelFunc
 	mu          sync.Mutex
 	running     bool
+	log         logger.Logger
 	// 动态轮询间隔相关
 	pollInterval time.Duration
 	minInterval  time.Duration
@@ -65,6 +66,7 @@ func NewServer(db *gorm.DB, config *ServerConfig) *Server {
 		mux:          NewServeMux(),
 		ctx:          ctx,
 		cancel:       cancel,
+		log:          logger.New("gq.server"),
 		pollInterval: minInterval,
 		minInterval:  minInterval,
 		maxInterval:  maxInterval,
@@ -92,7 +94,7 @@ func (s *Server) Run(mux *ServeMux) error {
 	s.wg.Add(1)
 	go s.scheduler()
 
-	log.Printf("[GQ] Server started with %d workers", s.concurrency)
+	s.log.Info("Server started", logger.Int("workers", s.concurrency))
 	return nil
 }
 
@@ -105,7 +107,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 	s.mu.Unlock()
 
-	log.Println("[GQ] Shutting down server...")
+	s.log.Info("Shutting down server...")
 	s.cancel()
 
 	done := make(chan struct{})
@@ -116,7 +118,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-done:
-		log.Println("[GQ] Server stopped gracefully")
+		s.log.Info("Server stopped gracefully")
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -187,7 +189,7 @@ func (s *Server) fetchAndDistributeTasks() {
 	})
 
 	if err != nil {
-		log.Printf("[GQ] Error fetching tasks: %v", err)
+		s.log.Error("Error fetching tasks", logger.Error(err))
 		return
 	}
 
@@ -237,12 +239,12 @@ func (s *Server) adjustPollInterval(noTasks bool) {
 func (s *Server) worker(id int) {
 	defer s.wg.Done()
 
-	log.Printf("[GQ] Worker %d started", id)
+	s.log.Info("Worker started", logger.Int("worker_id", id))
 
 	for {
 		select {
 		case <-s.ctx.Done():
-			log.Printf("[GQ] Worker %d stopped", id)
+			s.log.Info("Worker stopped", logger.Int("worker_id", id))
 			return
 		case task := <-s.tasksChan:
 			s.processTask(task)
@@ -255,7 +257,7 @@ func (s *Server) processTask(task *Task) {
 	// 获取处理器
 	handler, ok := s.mux.GetHandler(task.Type)
 	if !ok {
-		log.Printf("[GQ] No handler found for task type: %s", task.Type)
+		s.log.Warn("No handler found for task type", logger.String("task_type", task.Type))
 		s.handleTaskFailure(task, fmt.Errorf("no handler found for task type: %s", task.Type))
 		return
 	}
@@ -267,10 +269,10 @@ func (s *Server) processTask(task *Task) {
 	err := handler.ProcessTask(ctx, task)
 
 	if err != nil {
-		log.Printf("[GQ] Task %s (type: %s) failed: %v", task.UUID, task.Type, err)
+		s.log.Error("Task failed", logger.String("task_uuid", task.UUID), logger.String("task_type", task.Type), logger.Error(err))
 		s.handleTaskFailure(task, err)
 	} else {
-		log.Printf("[GQ] Task %s (type: %s) completed successfully", task.UUID, task.Type)
+		s.log.Info("Task completed successfully", logger.String("task_uuid", task.UUID), logger.String("task_type", task.Type))
 		s.handleTaskSuccess(task)
 	}
 }
@@ -308,7 +310,7 @@ func (s *Server) handleTaskFailure(task *Task, err error) {
 			"failed_at":  failedAt,
 			"last_error": task.LastError,
 		})
-		log.Printf("[GQ] Task %s permanently failed after %d retries", task.UUID, task.RetryCount)
+		s.log.Error("Task permanently failed", logger.String("task_uuid", task.UUID), logger.Int("retry_count", task.RetryCount))
 	} else {
 		// 重试任务
 		nextProcessAt := calculateNextProcessAt(task.RetryCount)
@@ -319,7 +321,6 @@ func (s *Server) handleTaskFailure(task *Task, err error) {
 			"process_at": nextProcessAt,
 			"last_error": task.LastError,
 		})
-		log.Printf("[GQ] Task %s will retry (attempt %d/%d) at %v",
-			task.UUID, task.RetryCount, task.MaxRetries, nextProcessAt)
+		s.log.Info("Task will retry", logger.String("task_uuid", task.UUID), logger.Int("retry_count", task.RetryCount), logger.Int("max_retries", task.MaxRetries), logger.Time("next_process_at", nextProcessAt))
 	}
 }

@@ -238,8 +238,14 @@ func MaxRetries(n int) Option { /* ... */ }
 
 // 服务端
 type Server struct { /* ... */ }
-func NewServer(db *gorm.DB, concurrency int) *Server { /* ... */ }
-func (s *Server) Run(mux *ServeMux) { /* ... */ }
+type ServerConfig struct {
+    Concurrency       int // 并发 Worker 数量
+    MinPollIntervalMs int // 最小轮询间隔（毫秒）
+    MaxPollIntervalMs int // 最大轮询间隔（毫秒）
+}
+func NewServer(db *gorm.DB, config *ServerConfig) *Server { /* ... */ }
+func (s *Server) Run(mux *ServeMux) error { /* ... */ }
+func (s *Server) Shutdown(ctx context.Context) error { /* ... */ }
 
 // 处理器
 type Handler interface {
@@ -256,6 +262,14 @@ func (mux *ServeMux) Handle(taskType string, handler Handler) { /* ... */ }
 
 // main.go
 func main() {
+    // 0. 初始化日志系统（Server 内部使用 logger 包进行日志记录）
+    logger.Init(&logger.Config{
+        Level:  "info",
+        Format: "console",
+        Output: "stdout",
+    })
+    defer logger.Sync()
+
     // 1. 设置数据库
     db, _ := gorm.Open(...)
 
@@ -269,12 +283,68 @@ func main() {
     )
 
     // 3. 服务端处理
-    server := GQ.NewServer(db, 20) // 20个并发 worker
+    config := &GQ.ServerConfig{
+        Concurrency:       20,
+        MinPollIntervalMs: 100,
+        MaxPollIntervalMs: 5000,
+    }
+    server := GQ.NewServer(db, config)
     mux := GQ.NewServeMux()
     mux.Handle("email:welcome", welcomeEmailHandler)
 
     server.Run(mux)
 }
+```
+
+## 日志记录
+
+GQ 使用 `pkg/logger` 包进行日志记录。Server 内部会自动创建 logger 实例，模块名为 `"gq.server"`。
+
+### 日志初始化
+
+在使用 GQ 之前，需要先初始化 logger 系统：
+
+```go
+import "github.com/album/backend/pkg/logger"
+
+func main() {
+    // 初始化日志系统
+    logger.Init(&logger.Config{
+        Level:  "info",
+        Format: "console", // 或 "json"
+        Output: "stdout",
+    })
+    defer logger.Sync()
+
+    // ... 使用 GQ ...
+}
+```
+
+### Server 日志输出
+
+Server 会输出以下类型的日志：
+
+- **Info 级别**：
+  - Server 启动和停止
+  - Worker 启动和停止
+  - 任务成功完成
+  - 任务重试计划
+
+- **Warn 级别**：
+  - 未找到任务处理器
+
+- **Error 级别**：
+  - 数据库查询错误
+  - 任务执行失败
+  - 任务永久失败（达到最大重试次数）
+
+### 日志模块名
+
+Server 内部使用的 logger 模块名为 `"gq.server"`，可以通过日志过滤查看 GQ 相关的日志：
+
+```bash
+# 查看 GQ Server 的日志
+grep '"module":"gq.server"' /var/log/app.log
 ```
 
 ## 潜在挑战与优化方向

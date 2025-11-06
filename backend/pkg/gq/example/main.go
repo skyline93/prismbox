@@ -11,18 +11,35 @@ import (
 	"time"
 
 	"github.com/album/backend/pkg/gq"
+	"github.com/album/backend/pkg/logger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 func main() {
+	// 0. 初始化日志系统
+	logConfig := &logger.Config{
+		Level:        "info",
+		Format:       "console",
+		Output:       "stdout",
+		EnableCaller: true,
+		EnableStack:  false,
+		Async:        false,
+	}
+	if err := logger.Init(logConfig); err != nil {
+		panic(err)
+	}
+	defer logger.Sync()
+
+	log := logger.New("gq.example")
+
 	// 1. 设置数据库连接
 	db := setupDatabase()
 
 	// 2. 自动迁移数据库表结构
 	if err := gq.AutoMigrate(db); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		log.Fatal("Failed to migrate database", logger.Error(err))
 	}
 
 	// 3. 创建客户端
@@ -46,15 +63,15 @@ func main() {
 
 	// 7. 启动服务端
 	if err := server.Run(mux); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Fatal("Failed to start server", logger.Error(err))
 	}
 
 	// 8. 创建一些示例任务
 	ctx := context.Background()
-	createSampleTasks(ctx, client)
+	createSampleTasks(ctx, client, log)
 
 	// 9. 等待中断信号
-	waitForShutdown(server)
+	waitForShutdown(server, log)
 }
 
 // setupDatabase 设置数据库连接
@@ -72,11 +89,11 @@ func setupDatabase() *gorm.DB {
 
 	// SQLite 配置
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		Logger: logger.New(
+		Logger: gormlogger.New(
 			log.New(os.Stdout, "", log.LstdFlags),
-			logger.Config{
+			gormlogger.Config{
 				SlowThreshold:             time.Second,
-				LogLevel:                  logger.Silent,
+				LogLevel:                  gormlogger.Silent,
 				IgnoreRecordNotFoundError: true,
 				Colorful:                  true,
 			},
@@ -84,15 +101,14 @@ func setupDatabase() *gorm.DB {
 	})
 
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		panic(fmt.Errorf("failed to connect to database: %w", err))
 	}
 
-	log.Println("Database connected successfully")
 	return db
 }
 
 // createSampleTasks 创建一些示例任务
-func createSampleTasks(ctx context.Context, client *gq.Client) {
+func createSampleTasks(ctx context.Context, client *gq.Client, log logger.Logger) {
 	// 示例 1: 发送欢迎邮件（高优先级）
 	welcomePayload, _ := json.Marshal(map[string]string{
 		"email": "user@example.com",
@@ -105,9 +121,9 @@ func createSampleTasks(ctx context.Context, client *gq.Client) {
 		gq.Priority(10),
 		gq.MaxRetries(3),
 	); err != nil {
-		log.Printf("Failed to enqueue welcome email task: %v", err)
+		log.Error("Failed to enqueue welcome email task", logger.Error(err))
 	} else {
-		log.Println("Enqueued welcome email task")
+		log.Info("Enqueued welcome email task")
 	}
 
 	// 示例 2: 发送提醒邮件（普通优先级，延迟执行）
@@ -123,9 +139,9 @@ func createSampleTasks(ctx context.Context, client *gq.Client) {
 		gq.Priority(5),
 		gq.ProcessAt(processAt),
 	); err != nil {
-		log.Printf("Failed to enqueue reminder email task: %v", err)
+		log.Error("Failed to enqueue reminder email task", logger.Error(err))
 	} else {
-		log.Printf("Enqueued reminder email task (scheduled for %v)", processAt)
+		log.Info("Enqueued reminder email task", logger.Time("scheduled_at", processAt))
 	}
 
 	// 示例 3: 处理图片（多个任务）
@@ -142,15 +158,16 @@ func createSampleTasks(ctx context.Context, client *gq.Client) {
 			gq.Queue("default"),
 			gq.Priority(i), // 不同的优先级
 		); err != nil {
-			log.Printf("Failed to enqueue image process task %d: %v", i, err)
+			log.Error("Failed to enqueue image process task", logger.Int("task_id", i), logger.Error(err))
 		} else {
-			log.Printf("Enqueued image process task %d", i)
+			log.Info("Enqueued image process task", logger.Int("task_id", i))
 		}
 	}
 }
 
 // welcomeEmailHandler 处理欢迎邮件任务
 func welcomeEmailHandler(ctx context.Context, task *gq.Task) error {
+	log := logger.New("gq.handler")
 	var payload map[string]string
 	if err := json.Unmarshal(task.Payload, &payload); err != nil {
 		return fmt.Errorf("invalid payload: %w", err)
@@ -159,17 +176,18 @@ func welcomeEmailHandler(ctx context.Context, task *gq.Task) error {
 	email := payload["email"]
 	name := payload["name"]
 
-	log.Printf("[Handler] Sending welcome email to %s (%s)...", email, name)
+	log.Info("Sending welcome email", logger.String("email", email), logger.String("name", name))
 
 	// 模拟邮件发送
 	time.Sleep(500 * time.Millisecond)
 
-	log.Printf("[Handler] Welcome email sent successfully to %s", email)
+	log.Info("Welcome email sent successfully", logger.String("email", email))
 	return nil
 }
 
 // reminderEmailHandler 处理提醒邮件任务
 func reminderEmailHandler(ctx context.Context, task *gq.Task) error {
+	log := logger.New("gq.handler")
 	var payload map[string]string
 	if err := json.Unmarshal(task.Payload, &payload); err != nil {
 		return fmt.Errorf("invalid payload: %w", err)
@@ -178,17 +196,18 @@ func reminderEmailHandler(ctx context.Context, task *gq.Task) error {
 	email := payload["email"]
 	message := payload["message"]
 
-	log.Printf("[Handler] Sending reminder email to %s: %s", email, message)
+	log.Info("Sending reminder email", logger.String("email", email), logger.String("message", message))
 
 	// 模拟邮件发送
 	time.Sleep(300 * time.Millisecond)
 
-	log.Printf("[Handler] Reminder email sent successfully to %s", email)
+	log.Info("Reminder email sent successfully", logger.String("email", email))
 	return nil
 }
 
 // imageProcessHandler 处理图片处理任务
 func imageProcessHandler(ctx context.Context, task *gq.Task) error {
+	log := logger.New("gq.handler")
 	var payload map[string]interface{}
 	if err := json.Unmarshal(task.Payload, &payload); err != nil {
 		return fmt.Errorf("invalid payload: %w", err)
@@ -197,29 +216,29 @@ func imageProcessHandler(ctx context.Context, task *gq.Task) error {
 	imageURL := payload["image_url"].(string)
 	action := payload["action"].(string)
 
-	log.Printf("[Handler] Processing image: %s (action: %s)", imageURL, action)
+	log.Info("Processing image", logger.String("image_url", imageURL), logger.String("action", action))
 
 	// 模拟图片处理
 	time.Sleep(1 * time.Second)
 
-	log.Printf("[Handler] Image processed successfully: %s", imageURL)
+	log.Info("Image processed successfully", logger.String("image_url", imageURL))
 	return nil
 }
 
 // waitForShutdown 等待中断信号并优雅关闭服务器
-func waitForShutdown(server *gq.Server) {
+func waitForShutdown(server *gq.Server, log logger.Logger) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	<-quit
-	log.Println("Shutting down server...")
+	log.Info("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Fatal("Server forced to shutdown", logger.Error(err))
 	}
 
-	log.Println("Server exited")
+	log.Info("Server exited")
 }
