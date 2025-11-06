@@ -6,9 +6,8 @@ import (
 
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	Type     string `yaml:"type"`      // "sqlite", "mysql", "postgres"
-	DSN      string `yaml:"dsn"`       // 数据库连接字符串
-	MaxConns int    `yaml:"max_conns"` // 最大连接数
+	Type string `yaml:"type"` // "sqlite", "postgres"
+	DSN  string `yaml:"dsn"`  // 数据库连接字符串
 }
 
 // Validate 验证数据库配置

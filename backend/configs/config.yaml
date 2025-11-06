@@ -1,0 +1,78 @@
+# Album Backend 配置文件
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+# 数据库配置
+database:
+  type: "postgres"  # sqlite, postgres
+  # dsn: "data.db"  # SQLite数据库文件路径
+  dsn: "host=127.0.0.1 user=album password=album@2025 dbname=album port=15432 sslmode=disable TimeZone=Asia/Shanghai"
+
+# 存储配置
+storage:
+  # 主存储配置（本地存储）
+  primary:
+    type: "local"
+    local:
+      base_path: "./uploads"
+      
+      # 存储池配置
+      pools:
+        - id: "pool-1"
+          path: "./uploads"
+          max_size: "1TB"
+          priority: 1
+          enabled: true
+          auto_disable_threshold: 0.9
+      
+      # 临时文件配置
+      temp:
+        base_path: "./uploads/temp"
+        max_age: "24h"
+        max_size: "10GB"
+        cleanup_interval: "1h"
+      
+      # 处理配置
+      processing:
+        enable_compression: false
+        compression_level: 6
+        enable_encryption: false
+        encryption_key_path: ""
+      
+      # 性能配置
+      performance:
+        cache_enabled: false
+        cache_size: "1GB"
+        cache_ttl: "24h"
+        read_buffer_size: "64KB"
+        write_buffer_size: "64KB"
+  
+  # 次存储配置（云存储备份，可选）
+  secondary:
+    enabled: false
+    type: "openlist"  # openlist, s3, oss, cos
+
+# 队列配置
+queue:
+  type: "gq"
+  # TODO: 添加更多队列配置
+
+# 认证配置
+auth:
+  jwt_secret: "your-secret-key-here"  # TODO: 从环境变量读取
+  # TODO: 添加更多认证配置
+
+# 媒体配置
+media:
+  max_file_size: "100MB"
+  # TODO: 添加更多媒体配置
+
+# 日志配置
+logger:
+  level: "debug"   # debug, info, warn, error
+  format: "console"  # json, console
+  output: "stdout"  # stdout, stderr, 或文件路径
+
