@@ -122,8 +122,19 @@ backend/
 │   │       └── logger.go
 │   │
 │   ├── database/         # 数据库相关
-│   │   ├── migrations/   # 数据库迁移
-│   │   └── connection.go
+│   │   ├── connection.go  # 数据库连接管理（支持 SQLite 和 PostgreSQL）
+│   │   ├── migrations/   # 数据库迁移文件
+│   │   │   ├── migrations.go  # 迁移注册和版本管理
+│   │   │   └── v1_initial.go  # 初始版本迁移
+│   │   └── models/        # 数据模型定义（统一继承 gorm.Model）
+│   │       ├── base.go    # 基础模型（可选扩展）
+│   │       ├── user.go    # 用户相关模型
+│   │       ├── media.go   # 媒体相关模型
+│   │       ├── album.go   # 相册相关模型
+│   │       ├── share.go   # 分享相关模型
+│   │       ├── group.go   # 圈子相关模型
+│   │       ├── sync.go    # 同步相关模型（Changelog, ClientSyncStatus）
+│   │       └── upload.go  # 上传任务模型
 │   │
 │   └── version/          # 版本信息
 │       └── version.go

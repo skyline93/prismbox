@@ -23,9 +23,14 @@
 
 ## 9.4 数据库扩展
 
-- 支持多种数据库（PostgreSQL、MySQL、SQLite）
+- 支持多种数据库（PostgreSQL、SQLite）
 - 通过 GORM 的 Dialector 切换
 - 数据库迁移通过 GORM AutoMigrate 或独立迁移工具
+
+**详细设计请参考 [7.9 数据库层架构设计](./07-core-modules/07-database-design.md)**：
+- 数据库模型设计
+- 迁移机制和版本管理
+- SQLite 和 PostgreSQL 兼容性处理
 
 ## 9.5 水平扩展
 
