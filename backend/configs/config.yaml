@@ -4,6 +4,7 @@
 server:
   host: "0.0.0.0"
   port: 8080
+  public_base_url: "http://localhost:8080"
 
 # 数据库配置
 database:
@@ -62,8 +63,14 @@ queue:
 
 # 认证配置
 auth:
-  jwt_secret: "your-secret-key-here"  # TODO: 从环境变量读取
-  # TODO: 添加更多认证配置
+  jwt_secret: "your-secret-key-here"
+  access_token_expires_in: "30m"
+  refresh_token_expires_in: "720h"
+  apple_app_bundle_id: "com.example.gbox.mobile"
+  avatar_save_path: "./public/avatars"
+  max_avatar_size: "5MB"
+  url_signer_secret: "signer-secret"
+  signed_url_load_ttl: "30m"
 
 # 媒体配置
 media:

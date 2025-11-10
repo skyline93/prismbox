@@ -8,8 +8,10 @@ import (
 	"github.com/album/backend/internal/database"
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
+	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/media"
 	"github.com/album/backend/internal/storage"
+	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 )
@@ -51,6 +53,10 @@ func (b *Builder) BuildAll() error {
 
 	if err := b.BuildTaskQueue(); err != nil {
 		return fmt.Errorf("build task queue: %w", err)
+	}
+
+	if err := b.BuildSecurity(); err != nil {
+		return fmt.Errorf("build security: %w", err)
 	}
 
 	if err := b.BuildRepositories(); err != nil {
@@ -102,8 +108,13 @@ func (b *Builder) BuildDatabase() error {
 	b.app.DB = db
 
 	// 自动迁移数据库表
-	if err := db.AutoMigrate(&models.Media{}); err != nil {
-		return fmt.Errorf("auto migrate media: %w", err)
+	if err := db.AutoMigrate(
+		&models.User{},
+		&models.AuthProvider{},
+		&models.RefreshToken{},
+		&models.Media{},
+	); err != nil {
+		return fmt.Errorf("auto migrate models: %w", err)
 	}
 
 	// 自动迁移gq任务表
@@ -166,6 +177,16 @@ func (b *Builder) BuildTaskQueue() error {
 	return nil
 }
 
+// BuildSecurity 构建安全相关组件
+func (b *Builder) BuildSecurity() error {
+	if b.cfg.Auth == nil {
+		return fmt.Errorf("auth config is required")
+	}
+
+	b.app.URLSigner = urlsigner.NewSigner([]byte(b.cfg.Auth.URLSignerSecret))
+	return nil
+}
+
 // BuildRepositories 构建仓储
 func (b *Builder) BuildRepositories() error {
 	if b.app.DB == nil {
@@ -174,6 +195,9 @@ func (b *Builder) BuildRepositories() error {
 
 	// 创建媒体仓储
 	b.app.MediaRepo = repository.NewMediaRepository(b.app.DB)
+	b.app.UserRepo = repository.NewUserRepository(b.app.DB)
+	b.app.AuthProviderRepo = repository.NewAuthProviderRepository(b.app.DB)
+	b.app.RefreshTokenRepo = repository.NewRefreshTokenRepository(b.app.DB)
 
 	return nil
 }
@@ -192,12 +216,37 @@ func (b *Builder) BuildServices() error {
 		return fmt.Errorf("media repository is required")
 	}
 
+	if b.app.UserRepo == nil || b.app.AuthProviderRepo == nil || b.app.RefreshTokenRepo == nil {
+		return fmt.Errorf("auth repositories are required")
+	}
+
+	if b.cfg.Auth == nil {
+		return fmt.Errorf("auth config is required")
+	}
+
+	if b.cfg.Server == nil {
+		return fmt.Errorf("server config is required")
+	}
+
 	// 创建媒体服务
 	b.app.MediaService = media.NewService(
 		b.app.MediaRepo,
 		b.app.StorageManager,
 		b.app.TaskQueueClient,
 	)
+
+	authService, err := auth.NewService(
+		b.app.DB,
+		b.app.UserRepo,
+		b.app.AuthProviderRepo,
+		b.app.RefreshTokenRepo,
+		b.cfg.Auth,
+		b.cfg.Server,
+	)
+	if err != nil {
+		return fmt.Errorf("build auth service: %w", err)
+	}
+	b.app.AuthService = authService
 
 	return nil
 }

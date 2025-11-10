@@ -13,6 +13,7 @@
 - [7.7 日志模块架构设计](./07-logger.md) - 日志模块的架构设计和实现
 - [7.8 API 模块架构设计](./07-api-architecture.md) - API 模块的架构设计（路由、响应、多协议支持）
 - [7.9 数据库层架构设计](./07-database-design.md) - 数据库层的模型设计、迁移机制和兼容性处理
+- [7.10 认证模块架构设计](./07-auth-architecture.md) - 认证服务、仓储、配置、路由与中间件
 
 ## 快速导航
 
@@ -27,6 +28,7 @@
 - [媒体处理模块架构设计](./07-media-processor.md) - 详细的架构设计、接口定义、并发安全设计、RAW 文件处理等
 
 ### 基础设施
+- [认证模块架构设计](./07-auth-architecture.md) - 用户认证、Apple 登录、令牌与中间件设计
 - [日志模块架构设计](./07-logger.md) - 日志模块的全局配置管理、并发安全、文件轮转等
 - [API 模块架构设计](./07-api-architecture.md) - API 模块的路由设计、响应格式、多协议支持（HTTP/HTTPS/Unix Socket）
 - [数据库层架构设计](./07-database-design.md) - 数据库层的模型设计、迁移机制、SQLite 和 PostgreSQL 兼容性处理

@@ -1,28 +1,39 @@
 package media
 
 import (
-	mediaservice "github.com/album/backend/internal/service/media"
+	"github.com/album/backend/internal/api/middleware"
+	appctx "github.com/album/backend/internal/app"
 	"github.com/gin-gonic/gin"
 )
 
 // RegisterRoutes 注册媒体路由
-func RegisterRoutes(rg *gin.RouterGroup, mediaService mediaservice.Service) {
-	handler := NewHandler(mediaService)
+func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
+	if app == nil || app.MediaService == nil {
+		return
+	}
 
-	// TODO: 添加认证中间件
-	// protected := rg.Group("/media")
-	// protected.Use(middleware.AuthMiddleware(...))
-	// {
-	//     protected.POST("/upload-stream", handler.UploadMedia)
-	//     ...
-	// }
+	handler := NewHandler(app.MediaService)
 
-	// 目前先不添加认证中间件，直接注册路由
-	mediaGroup := rg.Group("/media")
+	protected := rg.Group("/media")
+	if app.AuthService != nil {
+		protected.Use(middleware.AuthMiddleware(app.AuthService))
+	}
 	{
-		mediaGroup.POST("/upload-stream", handler.UploadMedia)
-		mediaGroup.GET("/", handler.GetMedias)
-		mediaGroup.GET("/:uuid", handler.GetMedia)
-		mediaGroup.DELETE("/:uuid", handler.DeleteMedia)
+		protected.POST("/upload-stream", handler.UploadMedia)
+		protected.GET("", handler.GetMedias)
+		protected.POST("/check_hashes", handler.CheckHashes)
+		protected.GET("/changes", handler.GetChanges)
+		protected.GET("/:uuid", handler.GetMediaDetail)
+		protected.DELETE("/:uuid", handler.Delete)
+		protected.POST("/:uuid/restore", handler.Restore)
+		protected.DELETE("/:uuid/purge", handler.Purge)
+	}
+
+	download := rg.Group("/media")
+	download.Use(middleware.FlexibleAuthMiddleware(app.AuthService, app.URLSigner))
+	{
+		download.GET("/:uuid/download/original", handler.DownloadOriginal)
+		download.GET("/:uuid/download/preview", handler.DownloadPreview)
+		download.GET("/:uuid/download/thumbnail", handler.DownloadThumbnail)
 	}
 }

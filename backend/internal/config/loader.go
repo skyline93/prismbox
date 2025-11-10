@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/album/backend/internal/config/modules"
 	"github.com/goccy/go-yaml"
@@ -83,12 +84,51 @@ func (l *Loader) overrideWithEnv(cfg *Config) {
 				cfg.Server.Port = p
 			}
 		}
+		if publicBaseURL := os.Getenv("SERVER_PUBLIC_BASE_URL"); publicBaseURL != "" {
+			cfg.Server.PublicBaseURL = publicBaseURL
+		}
 	}
 
 	// 数据库配置
 	if cfg.Database != nil {
 		if dsn := os.Getenv("DATABASE_DSN"); dsn != "" {
 			cfg.Database.DSN = dsn
+		}
+	}
+
+	// 认证配置
+	if cfg.Auth != nil {
+		if secret := os.Getenv("AUTH_JWT_SECRET"); secret != "" {
+			cfg.Auth.JWTSecret = secret
+		}
+		if accessTTL := os.Getenv("AUTH_ACCESS_TOKEN_EXPIRES_IN"); accessTTL != "" {
+			if duration, err := time.ParseDuration(accessTTL); err == nil {
+				cfg.Auth.AccessTokenExpiresIn = modules.Duration(duration)
+			}
+		}
+		if refreshTTL := os.Getenv("AUTH_REFRESH_TOKEN_EXPIRES_IN"); refreshTTL != "" {
+			if duration, err := time.ParseDuration(refreshTTL); err == nil {
+				cfg.Auth.RefreshTokenExpiresIn = modules.Duration(duration)
+			}
+		}
+		if bundleID := os.Getenv("AUTH_APPLE_APP_BUNDLE_ID"); bundleID != "" {
+			cfg.Auth.AppleAppBundleID = bundleID
+		}
+		if avatarPath := os.Getenv("AUTH_AVATAR_SAVE_PATH"); avatarPath != "" {
+			cfg.Auth.AvatarSavePath = avatarPath
+		}
+		if maxAvatar := os.Getenv("AUTH_MAX_AVATAR_SIZE"); maxAvatar != "" {
+			if size, err := parseSize(maxAvatar); err == nil {
+				cfg.Auth.MaxAvatarSize = modules.Size(size)
+			}
+		}
+		if signerSecret := os.Getenv("AUTH_URL_SIGNER_SECRET"); signerSecret != "" {
+			cfg.Auth.URLSignerSecret = signerSecret
+		}
+		if signedTTL := os.Getenv("AUTH_SIGNED_URL_LOAD_TTL"); signedTTL != "" {
+			if duration, err := time.ParseDuration(signedTTL); err == nil {
+				cfg.Auth.SignedURLLoadTTL = modules.Duration(duration)
+			}
 		}
 	}
 
@@ -110,8 +150,9 @@ func (l *Loader) overrideWithEnv(cfg *Config) {
 func (l *Loader) defaultConfig() *Config {
 	return &Config{
 		Server: &modules.ServerConfig{
-			Host: "0.0.0.0",
-			Port: 8080,
+			Host:          "0.0.0.0",
+			Port:          8080,
+			PublicBaseURL: "http://localhost:8080",
 		},
 		Database: &modules.DatabaseConfig{
 			Type: "sqlite",
@@ -134,6 +175,16 @@ func (l *Loader) defaultConfig() *Config {
 					},
 				},
 			},
+		},
+		Auth: &modules.AuthConfig{
+			JWTSecret:             "change-me",
+			AccessTokenExpiresIn:  modules.Duration(30 * time.Minute),
+			RefreshTokenExpiresIn: modules.Duration(24 * time.Hour * 30),
+			AppleAppBundleID:      "",
+			AvatarSavePath:        "./public/avatars",
+			MaxAvatarSize:         modules.Size(5 * 1024 * 1024),
+			URLSignerSecret:       "change-me-too",
+			SignedURLLoadTTL:      modules.Duration(30 * time.Minute),
 		},
 		Logger: &modules.LoggerConfig{
 			Level:  "info",

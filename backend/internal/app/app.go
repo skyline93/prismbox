@@ -3,8 +3,10 @@ package app
 import (
 	"github.com/album/backend/internal/config"
 	"github.com/album/backend/internal/repository"
+	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/media"
 	"github.com/album/backend/internal/storage"
+	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
 	"gorm.io/gorm"
 )
@@ -24,9 +26,16 @@ type App struct {
 	TaskQueueClient *gq.Client
 	TaskQueueServer *gq.Server
 
+	// 安全工具
+	URLSigner *urlsigner.Signer
+
 	// 仓储
-	MediaRepo repository.MediaRepository
+	MediaRepo        repository.MediaRepository
+	UserRepo         repository.UserRepository
+	AuthProviderRepo repository.AuthProviderRepository
+	RefreshTokenRepo repository.RefreshTokenRepository
 
 	// 服务
 	MediaService media.Service
+	AuthService  auth.Service
 }

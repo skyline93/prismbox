@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/album/backend/internal/api/v1/auth"
 	"github.com/album/backend/internal/api/v1/media"
 	"github.com/album/backend/internal/app"
 	"github.com/album/backend/pkg/logger"
@@ -30,7 +31,10 @@ func (r *Router) Setup() {
 	// 1. 全局中间件
 	r.setupGlobalMiddleware()
 
-	// 2. API v1 路由组
+	// 2. 静态资源
+	r.setupStatic()
+
+	// 3. API v1 路由组
 	r.setupAPIV1()
 }
 
@@ -53,8 +57,15 @@ func (r *Router) setupGlobalMiddleware() {
 func (r *Router) setupAPIV1() {
 	v1 := r.engine.Group("/api/v1")
 
-	// 注册各模块路由
-	media.RegisterRoutes(v1, r.app.MediaService)
+	// 注册认证路由
+	auth.RegisterRoutes(v1, r.app)
+
+	// 注册媒体路由
+	media.RegisterRoutes(v1, r.app)
+}
+
+func (r *Router) setupStatic() {
+	r.engine.Static("/static", "./public")
 }
 
 // Engine 返回Gin引擎

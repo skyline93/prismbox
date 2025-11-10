@@ -20,6 +20,7 @@
   - [备份调度器](./ARCHITECTURE/07-core-modules/07-backup-scheduler.md)
   - [媒体处理流程](./ARCHITECTURE/07-core-modules/07-media-processing.md)
   - [媒体处理模块架构](./ARCHITECTURE/07-core-modules/07-media-processor.md)
+  - [认证模块架构](./ARCHITECTURE/07-core-modules/07-auth-architecture.md)
   - [日志模块架构](./ARCHITECTURE/07-core-modules/07-logger.md)
 
 ## 📦 框架和库

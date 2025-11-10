@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/album/backend/internal/api/dto"
+	"github.com/album/backend/internal/api/middleware"
 	apiresponse "github.com/album/backend/internal/api/response"
 	mediaservice "github.com/album/backend/internal/service/media"
 	"github.com/album/backend/pkg/logger"
@@ -28,9 +29,10 @@ func NewHandler(mediaService mediaservice.Service) *Handler {
 
 // UploadMedia 上传媒体文件（与旧架构接口一致）
 func (h *Handler) UploadMedia(c *gin.Context) {
-	// TODO: 实现用户认证，从JWT token中获取userID
-	// 目前先使用默认的userID = 1
-	userID := uint(1)
+	userID := middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
 
 	// 1. 获取表单参数（与旧架构一致）
 	hash := c.PostForm("hash")
@@ -185,20 +187,80 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	apiresponse.Created(c, "Media uploaded successfully", response)
 }
 
-// GetMedia 获取媒体信息
-func (h *Handler) GetMedia(c *gin.Context) {
-	// TODO: 实现获取媒体信息
-	apiresponse.Error(c, "Not implemented")
-}
-
 // GetMedias 获取媒体列表
 func (h *Handler) GetMedias(c *gin.Context) {
-	// TODO: 实现获取媒体列表
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
 	apiresponse.Error(c, "Not implemented")
 }
 
-// DeleteMedia 删除媒体
-func (h *Handler) DeleteMedia(c *gin.Context) {
-	// TODO: 实现删除媒体
+// CheckHashes 检查哈希
+func (h *Handler) CheckHashes(c *gin.Context) {
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	apiresponse.Error(c, "Not implemented")
+}
+
+// GetChanges 获取媒体变更
+func (h *Handler) GetChanges(c *gin.Context) {
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	apiresponse.Error(c, "Not implemented")
+}
+
+// GetMediaDetail 获取媒体详情
+func (h *Handler) GetMediaDetail(c *gin.Context) {
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	apiresponse.Error(c, "Not implemented")
+}
+
+// Delete 删除媒体
+func (h *Handler) Delete(c *gin.Context) {
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	apiresponse.Error(c, "Not implemented")
+}
+
+// Restore 恢复媒体
+func (h *Handler) Restore(c *gin.Context) {
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	apiresponse.Error(c, "Not implemented")
+}
+
+// Purge 永久删除媒体
+func (h *Handler) Purge(c *gin.Context) {
+	middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	apiresponse.Error(c, "Not implemented")
+}
+
+// DownloadOriginal 下载原始文件
+func (h *Handler) DownloadOriginal(c *gin.Context) {
+	apiresponse.Error(c, "Not implemented")
+}
+
+// DownloadPreview 下载预览文件
+func (h *Handler) DownloadPreview(c *gin.Context) {
+	apiresponse.Error(c, "Not implemented")
+}
+
+// DownloadThumbnail 下载缩略图
+func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	apiresponse.Error(c, "Not implemented")
 }
