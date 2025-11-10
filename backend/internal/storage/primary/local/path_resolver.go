@@ -2,6 +2,7 @@ package local
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -20,8 +21,8 @@ func NewPathResolver(basePath string) *PathResolver {
 	}
 }
 
-// ResolveFilePath 解析文件路径（基于Hash，不基于用户）
-func (pr *PathResolver) ResolveFilePath(uuid string, hash string, fileType interfaces.FileType) (string, error) {
+// ResolveFilePath 解析文件路径（基于 Hash 的内容寻址）
+func (pr *PathResolver) ResolveFilePath(hash string, fileType interfaces.FileType) (string, error) {
 	if len(hash) < 4 {
 		return "", fmt.Errorf("hash must be at least 4 characters")
 	}
@@ -32,20 +33,9 @@ func (pr *PathResolver) ResolveFilePath(uuid string, hash string, fileType inter
 
 	basePath := filepath.Join(pr.basePath, "files", hashPrefix, hashNext)
 
-	var filename string
-	switch fileType {
-	case interfaces.FileTypeOriginal:
-		filename = uuid + ".jpg"
-	case interfaces.FileTypeThumbnail:
-		filename = uuid + "_thumb.jpg"
-	case interfaces.FileTypePreview:
-		filename = uuid + "_prev.jpg"
-	case interfaces.FileTypeEncrypted:
-		filename = uuid + "_encrypted.jpg"
-	case interfaces.FileTypeCompressed:
-		filename = uuid + "_compressed.jpg"
-	default:
-		return "", fmt.Errorf("unsupported file type: %s", fileType)
+	filename, err := buildFilename(hash, fileType)
+	if err != nil {
+		return "", err
 	}
 
 	return filepath.Join(basePath, filename), nil
@@ -57,50 +47,73 @@ func (pr *PathResolver) ResolveTempPath(uploadID string, category string) string
 }
 
 // ResolveStagingPath 解析待上传文件路径（基于Hash）
-func (pr *PathResolver) ResolveStagingPath(uuid string, hash string) (string, error) {
+func (pr *PathResolver) ResolveStagingPath(hash string) (string, error) {
 	if len(hash) < 2 {
 		return "", fmt.Errorf("hash must be at least 2 characters")
 	}
 
 	hashPrefix := hash[:2]
-	return filepath.Join(pr.basePath, "staging", hashPrefix, uuid+".jpg"), nil
+	return filepath.Join(pr.basePath, "staging", hashPrefix, hash+".jpg"), nil
 }
 
-// ResolveKey 从key解析出uuid和hash（key格式：{hash[0:2]}/{hash[2:4]}/{uuid}.jpg）
-func (pr *PathResolver) ResolveKey(key string) (uuid string, hash string, fileType interfaces.FileType, err error) {
-	// key格式：ab/cd/abc-123.jpg 或 ab/cd/abc-123_thumb.jpg
+// ResolveKey 从key解析出hash和文件类型（key格式：{hash[0:2]}/{hash[2:4]}/{hash}[suffix].jpg）
+func (pr *PathResolver) ResolveKey(key string) (hash string, fileType interfaces.FileType, err error) {
+	// key格式：ab/cd/abcd1234....jpg 或 ab/cd/abcd1234...._thumb.jpg
 	parts := strings.Split(key, "/")
 	if len(parts) < 3 {
-		return "", "", "", fmt.Errorf("invalid key format: %s", key)
+		return "", "", fmt.Errorf("invalid key format: %s", key)
 	}
 
 	hashPrefix := parts[0]
 	hashNext := parts[1]
 	filename := parts[len(parts)-1]
 
-	hash = hashPrefix + hashNext
-
 	// 解析文件名
+	var base string
 	if strings.HasSuffix(filename, "_thumb.jpg") {
-		uuid = strings.TrimSuffix(filename, "_thumb.jpg")
+		base = strings.TrimSuffix(filename, "_thumb.jpg")
 		fileType = interfaces.FileTypeThumbnail
 	} else if strings.HasSuffix(filename, "_prev.jpg") {
-		uuid = strings.TrimSuffix(filename, "_prev.jpg")
+		base = strings.TrimSuffix(filename, "_prev.jpg")
 		fileType = interfaces.FileTypePreview
 	} else if strings.HasSuffix(filename, "_encrypted.jpg") {
-		uuid = strings.TrimSuffix(filename, "_encrypted.jpg")
+		base = strings.TrimSuffix(filename, "_encrypted.jpg")
 		fileType = interfaces.FileTypeEncrypted
 	} else if strings.HasSuffix(filename, "_compressed.jpg") {
-		uuid = strings.TrimSuffix(filename, "_compressed.jpg")
+		base = strings.TrimSuffix(filename, "_compressed.jpg")
 		fileType = interfaces.FileTypeCompressed
 	} else if strings.HasSuffix(filename, ".jpg") {
-		uuid = strings.TrimSuffix(filename, ".jpg")
+		base = strings.TrimSuffix(filename, ".jpg")
 		fileType = interfaces.FileTypeOriginal
 	} else {
-		return "", "", "", fmt.Errorf("unsupported file extension: %s", filename)
+		return "", "", fmt.Errorf("unsupported file extension: %s", filename)
 	}
 
-	return uuid, hash, fileType, nil
+	hash = base
+	if len(hash) < 4 {
+		return "", "", fmt.Errorf("hash must be at least 4 characters")
+	}
+
+	// 基本校验：确保 hash 前缀与路径一致
+	if !strings.HasPrefix(hash, hashPrefix+hashNext) {
+		return "", "", fmt.Errorf("hash prefix mismatch with key: %s", key)
+	}
+
+	return hash, fileType, nil
+}
+
+// BuildKey 根据 hash 与文件类型构建 key（相对于 basePath）
+func (pr *PathResolver) BuildKey(hash string, fileType interfaces.FileType) (string, error) {
+	if len(hash) < 4 {
+		return "", fmt.Errorf("hash must be at least 4 characters")
+	}
+
+	filename, err := buildFilename(hash, fileType)
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(hash[:2], hash[2:4], filename), nil
 }
 
 // GetKeyFromPath 从文件路径获取key（相对于basePath）
@@ -110,4 +123,24 @@ func (pr *PathResolver) GetKeyFromPath(filePath string) (string, error) {
 		return "", fmt.Errorf("get relative path: %w", err)
 	}
 	return relPath, nil
+}
+
+func buildFilename(hash string, fileType interfaces.FileType) (string, error) {
+	var suffix string
+	switch fileType {
+	case interfaces.FileTypeOriginal:
+		suffix = ""
+	case interfaces.FileTypeThumbnail:
+		suffix = "_thumb"
+	case interfaces.FileTypePreview:
+		suffix = "_prev"
+	case interfaces.FileTypeEncrypted:
+		suffix = "_encrypted"
+	case interfaces.FileTypeCompressed:
+		suffix = "_compressed"
+	default:
+		return "", fmt.Errorf("unsupported file type: %s", fileType)
+	}
+
+	return fmt.Sprintf("%s%s.jpg", hash, suffix), nil
 }

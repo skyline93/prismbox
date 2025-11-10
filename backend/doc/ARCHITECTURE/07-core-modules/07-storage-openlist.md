@@ -101,7 +101,7 @@ type PathAdapter struct {
 
 func (a *PathAdapter) AdaptPath(internalPath string, opts *PutOptions) string {
     // Hash-based 路径转换为 OpenList 路径
-    // 例如: files/ab/cd/uuid.jpg -> /album/files/ab/cd/uuid.jpg
+    // 例如: files/ab/cd/hash.jpg -> /album/files/ab/cd/hash.jpg
     return filepath.Join(a.basePath, internalPath)
 }
 

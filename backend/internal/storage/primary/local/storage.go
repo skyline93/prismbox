@@ -13,7 +13,6 @@ import (
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local/processor"
 	"github.com/album/backend/pkg/logger"
-	"github.com/google/uuid"
 )
 
 // LocalStorage 本地存储实现
@@ -84,11 +83,10 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 		return fmt.Errorf("select pool: %w", err)
 	}
 
-	// 2. 解析路径（从key中提取uuid和hash，或生成新的）
-	uuid, hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	// 2. 解析路径（从key中提取hash，必要时重新生成）
+	hash, fileType, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
-		// 如果key格式不正确，生成新的uuid和hash
-		uuid = generateUUID()
+		// 如果key格式不正确，重新计算hash并构建标准 key
 		// 需要先读取数据来计算hash，但数据流只能读取一次
 		// 所以我们需要先读取到临时文件
 		tempFile, err := os.CreateTemp("", "hash_*.tmp")
@@ -112,14 +110,19 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 		data = tempFile
 
 		fileType = interfaces.FileTypeOriginal
-		if opts != nil {
+		if opts != nil && opts.FileType != "" {
 			fileType = opts.FileType
 		}
 		size = written
+
+		key, err = ls.pathResolver.BuildKey(hash, fileType)
+		if err != nil {
+			return fmt.Errorf("build key: %w", err)
+		}
 	}
 
 	// 3. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(uuid, hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
 	if err != nil {
 		return fmt.Errorf("resolve file path: %w", err)
 	}
@@ -170,13 +173,13 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 // Get 获取文件
 func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	// 1. 解析key
-	uuid, hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, fileType, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(uuid, hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
 	if err != nil {
 		return nil, fmt.Errorf("resolve file path: %w", err)
 	}
@@ -199,13 +202,13 @@ func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, err
 // Delete 删除文件
 func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 	// 1. 解析key
-	uuid, hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, fileType, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(uuid, hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
 	if err != nil {
 		return fmt.Errorf("resolve file path: %w", err)
 	}
@@ -243,13 +246,13 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 // Exists 检查文件是否存在
 func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	// 1. 解析key
-	uuid, hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, fileType, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return false, fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(uuid, hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
 	if err != nil {
 		return false, fmt.Errorf("resolve file path: %w", err)
 	}
@@ -268,12 +271,12 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 // GetSignedURL 获取签名URL（本地存储不支持，返回文件路径）
 func (ls *LocalStorage) GetSignedURL(ctx context.Context, key string, duration time.Duration) (string, error) {
 	// 本地存储不支持签名URL，返回文件路径
-	uuid, hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, fileType, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return "", fmt.Errorf("resolve key: %w", err)
 	}
 
-	filePath, err := ls.pathResolver.ResolveFilePath(uuid, hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
 	if err != nil {
 		return "", fmt.Errorf("resolve file path: %w", err)
 	}
@@ -333,13 +336,13 @@ func (ls *LocalStorage) Move(ctx context.Context, srcKey, dstKey string) error {
 // Stat 获取文件信息
 func (ls *LocalStorage) Stat(ctx context.Context, key string) (*interfaces.FileInfo, error) {
 	// 1. 解析key
-	uuid, hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, fileType, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(uuid, hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
 	if err != nil {
 		return nil, fmt.Errorf("resolve file path: %w", err)
 	}
@@ -376,11 +379,6 @@ func (ls *LocalStorage) SelectPool(size int64) (string, error) {
 // GetPoolInfo 获取存储池信息
 func (ls *LocalStorage) GetPoolInfo(poolID string) (*interfaces.PoolInfo, error) {
 	return ls.poolManager.GetPoolInfo(poolID)
-}
-
-// generateUUID 生成UUID
-func generateUUID() string {
-	return uuid.New().String()
 }
 
 // generateHash 生成Hash（简化实现）

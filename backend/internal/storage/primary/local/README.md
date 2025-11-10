@@ -95,7 +95,7 @@ storageManager := storage.NewStorageManager(localStorage)
 
 ```go
 ctx := context.Background()
-key := "ab/cd/test-uuid.jpg"
+key := "ab/cd/sample-hash.jpg"
 data := strings.NewReader("文件内容")
 size := int64(len("文件内容"))
 
@@ -117,7 +117,7 @@ if err != nil {
 
 ```go
 ctx := context.Background()
-key := "ab/cd/test-uuid.jpg"
+key := "ab/cd/sample-hash.jpg"
 
 reader, err := storageManager.Get(ctx, key)
 if err != nil {
@@ -135,7 +135,7 @@ if err != nil {
 
 ```go
 ctx := context.Background()
-key := "ab/cd/test-uuid.jpg"
+key := "ab/cd/sample-hash.jpg"
 
 exists, err := storageManager.Exists(ctx, key)
 if err != nil {
@@ -151,7 +151,7 @@ if exists {
 
 ```go
 ctx := context.Background()
-key := "ab/cd/test-uuid.jpg"
+key := "ab/cd/sample-hash.jpg"
 
 info, err := storageManager.Stat(ctx, key)
 if err != nil {
@@ -166,7 +166,7 @@ fmt.Printf("修改时间: %s\n", info.ModTime)
 
 ```go
 ctx := context.Background()
-key := "ab/cd/test-uuid.jpg"
+key := "ab/cd/sample-hash.jpg"
 
 err := storageManager.Delete(ctx, key)
 if err != nil {
@@ -233,37 +233,38 @@ processing:
 
 ### Hash-based 路径结构
 
-文件路径基于文件的 Hash 值生成，格式如下：
+文件路径完全基于文件的 Hash 值生成，格式如下：
 
 ```
-{base_path}/files/{hash[0:2]}/{hash[2:4]}/{uuid}.{ext}
+{base_path}/files/{hash[0:2]}/{hash[2:4]}/{hash}.{ext}
 ```
 
 **示例**：
 - Hash: `abcd1234...`
-- UUID: `test-uuid`
 - 文件类型: `original`
-- 路径: `uploads/files/ab/cd/test-uuid.jpg`
+- 路径: `uploads/files/ab/cd/abcd1234....jpg`
+
+> **设计意图**：物理文件名只依据内容 Hash，业务层的 UUID、分享 ID 等元数据全部保存在数据库并指向该路径。这样既能保证去重，又避免业务标识泄漏到存储层。
 
 ### 文件类型后缀
 
-- `original`: `{uuid}.jpg`
-- `thumbnail`: `{uuid}_thumb.jpg`
-- `preview`: `{uuid}_prev.jpg`
-- `encrypted`: `{uuid}_encrypted.jpg`
-- `compressed`: `{uuid}_compressed.jpg`
+- `original`: `{hash}.jpg`
+- `thumbnail`: `{hash}_thumb.jpg`
+- `preview`: `{hash}_prev.jpg`
+- `encrypted`: `{hash}_encrypted.jpg`
+- `compressed`: `{hash}_compressed.jpg`
 
 ### Key 格式
 
 Key 格式与路径格式相同：
 
 ```
-{hash[0:2]}/{hash[2:4]}/{uuid}.{ext}
+{hash[0:2]}/{hash[2:4]}/{hash}.{ext}
 ```
 
 **示例**：
-- `ab/cd/test-uuid.jpg`
-- `ab/cd/test-uuid_thumb.jpg`
+- `ab/cd/abcd1234....jpg`
+- `ab/cd/abcd1234...._thumb.jpg`
 
 ## 存储池管理
 
@@ -453,13 +454,10 @@ processing:
 // 1. 计算文件 Hash（用于去重）
 hash := calculateFileHash(file)
 
-// 2. 生成 UUID
-uuid := generateUUID()
+// 2. 构建 Key（物理命名仅使用 Hash）
+key := fmt.Sprintf("%s/%s/%s.jpg", hash[:2], hash[2:4], hash)
 
-// 3. 构建 Key
-key := fmt.Sprintf("%s/%s/%s.jpg", hash[:2], hash[2:4], uuid)
-
-// 4. 上传文件
+// 3. 上传文件
 opts := &storage.PutOptions{
     UserID:   userID,
     FileType: storage.FileTypeOriginal,
@@ -468,6 +466,14 @@ opts := &storage.PutOptions{
     },
 }
 err := storageManager.Put(ctx, key, file, size, opts)
+
+// 4. 在数据库中创建媒体记录（业务 UUID 在数据库层生成）
+mediaRepo.Create(ctx, &models.Media{
+    UUID:     generateUUID(),
+    Hash:     hash,
+    LocalPath: filepath.Join("files", key),
+    // ...
+})
 ```
 
 ### 2. 文件下载

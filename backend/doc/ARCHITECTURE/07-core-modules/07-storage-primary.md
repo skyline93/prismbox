@@ -27,20 +27,24 @@
 
 ### 存储目录结构
 
+> **命名原则：物理文件名只与内容绑定，不携带业务 UUID。**
+>
+> 使用文件内容的 Hash 作为最终文件名，可彻底实现“业务 ID ↔ 文件实体”的解耦，避免泄露业务信息，同时确保去重策略始终成立。
+
 ```
 uploads/
 ├── files/                    # 文件存储根目录（Hash-based，与用户解耦）
 │   ├── {hash[0:2]}/         # Hash前2位（00-ff，共256个目录）
 │   │   ├── {hash[2:4]}/     # Hash 3-4位（00-ff，共256个目录）
-│   │   │   ├── {uuid}.jpg              # 原始文件
-│   │   │   ├── {uuid}_thumb.jpg       # 缩略图
-│   │   │   └── {uuid}_prev.jpg        # 预览图
+│   │   │   ├── {hash}.jpg              # 原始文件
+│   │   │   ├── {hash}_thumb.jpg       # 缩略图
+│   │   │   └── {hash}_prev.jpg        # 预览图
 │   │   │
 │   ├── ab/                   # 示例：hash前缀为 "ab"
 │   │   ├── cd/               # hash 3-4位为 "cd"
-│   │   │   ├── abc-123.jpg
-│   │   │   ├── abc-123_thumb.jpg
-│   │   │   └── abc-123_prev.jpg
+│   │   │   ├── abcd1234...jpg
+│   │   │   ├── abcd1234..._thumb.jpg
+│   │   │   └── abcd1234..._prev.jpg
 │
 ├── temp/                     # 临时文件目录
 │   ├── uploads/              # 上传过程中的临时文件
@@ -52,7 +56,7 @@ uploads/
 │
 ├── staging/                   # 待上传到云端的文件
 │   ├── {hash[0:2]}/
-│   │   └── {uuid}.jpg
+│   │   └── {hash}.jpg
 │
 └── cache/                     # 缓存目录（可选）
     ├── thumbnails/            # 缩略图缓存
@@ -73,26 +77,28 @@ type PathResolver struct {
     basePath string
 }
 
-// ResolveFilePath 解析文件路径（基于Hash，不基于用户）
-func (pr *PathResolver) ResolveFilePath(uuid string, hash string, fileType FileType) string {
+// ResolveFilePath 解析文件路径（基于 Hash 的内容寻址）
+// 命名仅使用文件 Hash，业务 UUID 仅保留在数据库层。
+func (pr *PathResolver) ResolveFilePath(hash string, fileType FileType) string {
     // 使用Hash前缀分区（2级目录）
     hashPrefix := hash[:2]   // 前2位（00-ff）
     hashNext := hash[2:4]   // 3-4位（00-ff）
     
     basePath := filepath.Join(pr.basePath, "files", hashPrefix, hashNext)
     
+    // 命名全部围绕 hash 展开，确保物理文件名与业务解耦
     var filename string
     switch fileType {
     case FileTypeOriginal:
-        filename = uuid + ".jpg"
+        filename = hash + ".jpg"
     case FileTypeThumbnail:
-        filename = uuid + "_thumb.jpg"
+        filename = hash + "_thumb.jpg"
     case FileTypePreview:
-        filename = uuid + "_prev.jpg"
+        filename = hash + "_prev.jpg"
     case FileTypeEncrypted:
-        filename = uuid + "_encrypted.jpg"
+        filename = hash + "_encrypted.jpg"
     case FileTypeCompressed:
-        filename = uuid + "_compressed.jpg"
+        filename = hash + "_compressed.jpg"
     }
     
     return filepath.Join(basePath, filename)
@@ -104,23 +110,24 @@ func (pr *PathResolver) ResolveTempPath(uploadID string, category string) string
 }
 
 // ResolveStagingPath 解析待上传文件路径（基于Hash）
-func (pr *PathResolver) ResolveStagingPath(uuid string, hash string) string {
+func (pr *PathResolver) ResolveStagingPath(hash string) string {
     hashPrefix := hash[:2]
-    return filepath.Join(pr.basePath, "staging", hashPrefix, uuid+".jpg")
+    return filepath.Join(pr.basePath, "staging", hashPrefix, hash+".jpg")
 }
 ```
 
 **路径解析示例**：
 ```
-UUID: abc-123
 Hash: abcd1234...
 Hash前缀: ab
 Hash 3-4位: cd
 
-原始文件: files/ab/cd/abc-123.jpg
-缩略图:   files/ab/cd/abc-123_thumb.jpg
-预览图:   files/ab/cd/abc-123_prev.jpg
+原始文件: files/ab/cd/abcd1234...jpg
+缩略图:   files/ab/cd/abcd1234..._thumb.jpg
+预览图:   files/ab/cd/abcd1234..._prev.jpg
 ```
+
+> **与业务标识的关系**：`Media.UUID`、分享记录等业务标识只存在于数据库层，并通过字段如 `LocalPath` 指向上述 hash 命名的物理文件。这样可以同时满足内容去重与业务隔离的诉求。
 
 ### 用户资源隔离（数据库层）
 
