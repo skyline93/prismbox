@@ -18,12 +18,12 @@ storage:
   primary:
     type: "local"
     local:
-      base_path: "./uploads"
+      base_path: "./"
       
       # 存储池配置
       pools:
         - id: "pool-1"
-          path: "./uploads"
+          path: "./data/pool1"
           max_size: "1TB"
           priority: 1
           enabled: true
@@ -31,7 +31,7 @@ storage:
       
       # 临时文件配置
       temp:
-        base_path: "./uploads/temp"
+        base_path: "./data"
         max_age: "24h"
         max_size: "10GB"
         cleanup_interval: "1h"
@@ -75,7 +75,53 @@ auth:
 # 媒体配置
 media:
   max_file_size: "100MB"
-  # TODO: 添加更多媒体配置
+  processor:
+    imagick:
+      pool_size: 10
+      memory_limit: "2GB"
+      disk_limit: "10GB"
+      raw:
+        quality: 90
+        format: "jpg"
+        max_retries: 3
+        retry_delay: "5s"
+        supported_formats:
+          - CR2
+          - NEF
+          - ARW
+          - ORF
+          - RW2
+    ffmpeg:
+      binary_path: "/usr/bin/ffmpeg"
+      probe_path: "/usr/bin/ffprobe"
+      max_concurrency: 4
+      process_timeout: "10m"
+      thumbnail_offset: 1.5
+    default_image_specs:
+      - name: "thumbnail"
+        max_width: 400
+        max_height: 400
+        quality: 75
+        format: "jpg"
+        crop: true
+      - name: "preview"
+        max_width: 1280
+        max_height: 0
+        quality: 80
+        format: "jpg"
+        crop: false
+      - name: "small"
+        max_width: 640
+        max_height: 0
+        quality: 85
+        format: "jpg"
+        crop: false
+    default_video_specs:
+      - name: "preview"
+        max_width: 1280
+        quality: 23
+        format: "mp4"
+    concurrency: 4
 
 # 日志配置
 logger:

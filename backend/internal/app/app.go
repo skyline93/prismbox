@@ -8,6 +8,7 @@ import (
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
+	mediaprocessor "github.com/album/backend/pkg/media-processor"
 	"gorm.io/gorm"
 )
 
@@ -35,7 +36,21 @@ type App struct {
 	AuthProviderRepo repository.AuthProviderRepository
 	RefreshTokenRepo repository.RefreshTokenRepository
 
+	// 媒体处理
+	MediaProcessor       mediaprocessor.MediaProcessor
+	MediaProcessorConfig *mediaprocessor.Config
+
 	// 服务
 	MediaService media.Service
 	AuthService  auth.Service
+}
+
+// Close 释放应用资源
+func (a *App) Close() error {
+	if a.MediaProcessor != nil {
+		if err := a.MediaProcessor.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }

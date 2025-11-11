@@ -1,6 +1,7 @@
 package media
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,8 @@ import (
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
+	mediaprocessor "github.com/album/backend/pkg/media-processor"
+	"github.com/gabriel-vasile/mimetype"
 	"gorm.io/gorm"
 )
 
@@ -38,6 +41,10 @@ type Service interface {
 	CheckInstantUpload(ctx context.Context, userID uint, hash string) (*models.Media, error)
 	// UploadMedia 上传媒体文件（流式处理，使用客户端传入的Hash）
 	UploadMedia(ctx context.Context, req *UploadMediaRequest) (*models.Media, error)
+	// RegenerateThumbnail 重新生成缩略图
+	RegenerateThumbnail(ctx context.Context, mediaUUID string, specName string) error
+	// RegeneratePreview 重新生成预览图
+	RegeneratePreview(ctx context.Context, mediaUUID string, specName string) error
 }
 
 // service 媒体服务实现
@@ -46,6 +53,8 @@ type service struct {
 	repo           repository.MediaRepository
 	storageManager *storage.StorageManager
 	taskQueue      *gq.Client
+	processor      mediaprocessor.MediaProcessor
+	processorCfg   *mediaprocessor.Config
 }
 
 // NewService 创建媒体服务
@@ -53,12 +62,16 @@ func NewService(
 	repo repository.MediaRepository,
 	storageManager *storage.StorageManager,
 	taskQueue *gq.Client,
+	processor mediaprocessor.MediaProcessor,
+	processorCfg *mediaprocessor.Config,
 ) Service {
 	return &service{
 		log:            logger.New("service.media"),
 		repo:           repo,
 		storageManager: storageManager,
 		taskQueue:      taskQueue,
+		processor:      processor,
+		processorCfg:   processorCfg,
 	}
 }
 
@@ -80,42 +93,127 @@ func (s *service) CheckInstantUpload(ctx context.Context, userID uint, hash stri
 // UploadMedia 上传媒体文件（流式处理，使用客户端传入的Hash）
 // 注意：秒传检查已在Handler层完成，这里直接进行上传
 func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*models.Media, error) {
-	// 1. 验证Hash长度（确保可以安全地切片）
-	if len(req.Hash) < 4 {
-		return nil, fmt.Errorf("invalid hash length: must be at least 4 characters")
+	if err := validateHash(req.Hash); err != nil {
+		return nil, err
 	}
 
-	// 2. 构建存储key（使用客户端传入的Hash）
-	// key格式：{hash[0:2]}/{hash[2:4]}/{uuid}.{ext}
-	hashPrefix := req.Hash[:2]
-	hashNext := req.Hash[2:4]
+	ext, normalizedExt := resolveExtensions(req.ItemType, req.Filename)
+	storageKey := buildStorageKey(req.Hash, ext)
 
-	// 根据文件扩展名确定文件类型
-	ext := filepath.Ext(req.Filename)
-	if ext == "" {
-		// 根据item_type设置默认扩展名
-		if req.ItemType == "video" {
-			ext = ".mp4"
-		} else {
-			ext = ".jpg"
-		}
-	}
-
-	storageKey := fmt.Sprintf("%s/%s/%s%s", hashPrefix, hashNext, req.CloudUUID, ext)
-
-	// 3. 流式上传到本地存储（直接使用io.Reader，不读入内存）
 	putOpts := &interfaces.PutOptions{
 		UserID:   req.UserID,
 		FileType: interfaces.FileTypeOriginal,
 	}
 
-	// 直接流式写入，不需要读入内存
-	if err := s.storageManager.Put(ctx, storageKey, req.Data, req.FileSize, putOpts); err != nil {
+	headBuf, err := readHead(req.Data, sniffBufferSize)
+	if err != nil {
+		return nil, err
+	}
+
+	mimeType := detectMimeType(headBuf, normalizedExt, ext)
+	dataReader := wrapDataReader(req.Data, headBuf)
+
+	if err := s.storageManager.Put(ctx, storageKey, dataReader, req.FileSize, putOpts); err != nil {
 		return nil, fmt.Errorf("upload to storage: %w", err)
 	}
 
-	// 4. 创建数据库记录
-	media := &models.Media{
+	media := s.newMediaModel(req, storageKey, mimeType)
+	if err := s.repo.Create(ctx, media); err != nil {
+		s.storageManager.Delete(ctx, storageKey)
+		return nil, fmt.Errorf("create media record: %w", err)
+	}
+
+	s.enqueueMediaProcessingTask(ctx, req, storageKey)
+
+	s.log.Info("media uploaded successfully",
+		logger.String("uuid", req.CloudUUID),
+		logger.String("hash", req.Hash),
+		logger.Uint("user_id", req.UserID),
+		logger.Int64("file_size", req.FileSize),
+	)
+
+	return media, nil
+}
+
+const sniffBufferSize = 8192
+
+func validateHash(hash string) error {
+	if len(hash) < 4 {
+		return fmt.Errorf("invalid hash length: must be at least 4 characters")
+	}
+	return nil
+}
+
+func resolveExtensions(itemType, filename string) (string, string) {
+	ext := filepath.Ext(filename)
+	normalizedExt := strings.TrimPrefix(strings.ToLower(ext), ".")
+	if ext == "" {
+		if itemType == "video" {
+			ext = ".mp4"
+		} else {
+			ext = ".jpg"
+		}
+	}
+	return ext, normalizedExt
+}
+
+func buildStorageKey(hash, ext string) string {
+	hashPrefix := hash[:2]
+	hashNext := hash[2:4]
+	return strings.ToLower(fmt.Sprintf("%s/%s/%s%s", hashPrefix, hashNext, hash, ext))
+}
+
+func readHead(data io.Reader, size int) ([]byte, error) {
+	if size <= 0 {
+		return nil, nil
+	}
+
+	buf := make([]byte, size)
+	n, err := io.ReadFull(data, buf)
+	switch {
+	case err == io.ErrUnexpectedEOF || err == io.EOF:
+		return buf[:n], nil
+	case err != nil:
+		return nil, fmt.Errorf("read file head: %w", err)
+	default:
+		return buf[:n], nil
+	}
+}
+
+func detectMimeType(head []byte, normalizedExt, ext string) string {
+	if len(head) > 0 {
+		if mime := mimetype.Detect(head); mime != nil {
+			return mime.String()
+		}
+	}
+	if mimeType := lookupMimeType(normalizedExt); mimeType != "" {
+		return mimeType
+	}
+	if mimeType := lookupMimeType(ext); mimeType != "" {
+		return mimeType
+	}
+	return ""
+}
+
+func lookupMimeType(value string) string {
+	if value == "" {
+		return ""
+	}
+	if mime := mimetype.Lookup(value); mime != nil {
+		return mime.String()
+	}
+	return ""
+}
+
+func wrapDataReader(data io.Reader, head []byte) io.Reader {
+	if len(head) == 0 {
+		return data
+	}
+	return io.MultiReader(bytes.NewReader(head), data)
+}
+
+func (s *service) newMediaModel(req *UploadMediaRequest, storageKey, mimeType string) *models.Media {
+	return &models.Media{
 		UUID:             req.CloudUUID,
 		UserID:           req.UserID,
 		Hash:             req.Hash,
@@ -123,21 +221,16 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 		OriginalFilename: req.OriginalFilename,
 		Filename:         req.Filename,
 		FileSize:         req.FileSize,
-		MimeType:         "", // TODO: 根据文件类型自动检测
+		MimeType:         mimeType,
 		MediaTakenAt:     req.MediaTakenAt,
-		ProcessingStatus: "PENDING",
+		ProcessingStatus: "PROCESSING",
 		Deleted:          false,
 		LocalPath:        storageKey,
 		BackupStatus:     "pending",
 	}
+}
 
-	if err := s.repo.Create(ctx, media); err != nil {
-		// 如果数据库创建失败，尝试删除已上传的文件
-		s.storageManager.Delete(ctx, storageKey)
-		return nil, fmt.Errorf("create media record: %w", err)
-	}
-
-	// 5. 入队处理任务（生成缩略图和预览图）
+func (s *service) enqueueMediaProcessingTask(ctx context.Context, req *UploadMediaRequest, storageKey string) {
 	taskPayload := map[string]interface{}{
 		"media_uuid": req.CloudUUID,
 		"file_path":  storageKey,
@@ -150,38 +243,117 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 			logger.Error(err),
 			logger.String("media_uuid", req.CloudUUID),
 		)
-		// 继续执行，不因为任务入队失败而失败
-	} else {
-		// 根据媒体类型选择不同的任务类型
-		taskType := "media:process:image"
-		if req.ItemType == "video" {
-			taskType = "media:process:video"
-		}
-
-		if err := s.taskQueue.Enqueue(ctx,
-			gq.NewTask(taskType, payloadBytes),
-			gq.Queue("default"),
-			gq.Priority(5),
-		); err != nil {
-			s.log.Error("failed to enqueue media process task",
-				logger.Error(err),
-				logger.String("media_uuid", req.CloudUUID),
-			)
-			// 继续执行，不因为任务入队失败而失败
-		} else {
-			s.log.Info("media process task enqueued",
-				logger.String("media_uuid", req.CloudUUID),
-				logger.String("task_type", taskType),
-			)
-		}
+		return
 	}
 
-	s.log.Info("media uploaded successfully",
-		logger.String("uuid", req.CloudUUID),
-		logger.String("hash", req.Hash),
-		logger.Uint("user_id", req.UserID),
-		logger.Int64("file_size", req.FileSize),
-	)
+	taskType := "media:process:image"
+	if req.ItemType == "video" {
+		taskType = "media:process:video"
+	}
 
-	return media, nil
+	if err := s.taskQueue.Enqueue(ctx,
+		gq.NewTask(taskType, payloadBytes),
+		gq.Queue("default"),
+		gq.Priority(5),
+	); err != nil {
+		s.log.Error("failed to enqueue media process task",
+			logger.Error(err),
+			logger.String("media_uuid", req.CloudUUID),
+		)
+		return
+	}
+
+	s.log.Info("media process task enqueued",
+		logger.String("media_uuid", req.CloudUUID),
+		logger.String("task_type", taskType),
+	)
+}
+
+// RegenerateThumbnail 重新生成缩略图文件。
+func (s *service) RegenerateThumbnail(ctx context.Context, mediaUUID string, specName string) error {
+	media, err := s.repo.FindByUUID(ctx, mediaUUID)
+	if err != nil {
+		return fmt.Errorf("find media %s: %w", mediaUUID, err)
+	}
+
+	if !strings.EqualFold(media.ItemType, "image") {
+		return fmt.Errorf("media %s is not an image", mediaUUID)
+	}
+
+	spec, err := s.imageSpecByName(specName)
+	if err != nil {
+		return err
+	}
+
+	if !spec.Crop {
+		spec.Crop = true
+	}
+
+	path, err := s.resolveLocalPath(ctx, media.LocalPath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.processor.GenerateThumbnail(ctx, path, spec); err != nil {
+		return fmt.Errorf("generate thumbnail: %w", err)
+	}
+
+	return s.repo.Update(ctx, mediaUUID, map[string]interface{}{
+		"processing_status": "COMPLETED",
+	})
+}
+
+// RegeneratePreview 重新生成预览图。
+func (s *service) RegeneratePreview(ctx context.Context, mediaUUID string, specName string) error {
+	media, err := s.repo.FindByUUID(ctx, mediaUUID)
+	if err != nil {
+		return fmt.Errorf("find media %s: %w", mediaUUID, err)
+	}
+
+	if !strings.EqualFold(media.ItemType, "image") {
+		return fmt.Errorf("media %s is not an image", mediaUUID)
+	}
+
+	spec, err := s.imageSpecByName(specName)
+	if err != nil {
+		return err
+	}
+
+	spec.Crop = false
+
+	path, err := s.resolveLocalPath(ctx, media.LocalPath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.processor.GeneratePreview(ctx, path, spec); err != nil {
+		return fmt.Errorf("generate preview: %w", err)
+	}
+
+	return s.repo.Update(ctx, mediaUUID, map[string]interface{}{
+		"processing_status": "COMPLETED",
+	})
+}
+
+func (s *service) resolveLocalPath(ctx context.Context, key string) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("media local path empty")
+	}
+	path, err := s.storageManager.GetSignedURL(ctx, key, 5*time.Minute)
+	if err != nil {
+		return "", fmt.Errorf("resolve local path: %w", err)
+	}
+	return path, nil
+}
+
+func (s *service) imageSpecByName(name string) (mediaprocessor.ImageSpec, error) {
+	if s.processorCfg == nil {
+		return mediaprocessor.ImageSpec{}, fmt.Errorf("image specs not configured")
+	}
+	for _, spec := range s.processorCfg.DefaultImageSpecs {
+		if strings.EqualFold(spec.Name, name) {
+			return spec, nil
+		}
+	}
+	return mediaprocessor.ImageSpec{}, fmt.Errorf("image spec %s not found", name)
 }

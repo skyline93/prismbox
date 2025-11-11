@@ -89,7 +89,7 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 		// 如果key格式不正确，重新计算hash并构建标准 key
 		// 需要先读取数据来计算hash，但数据流只能读取一次
 		// 所以我们需要先读取到临时文件
-		tempFile, err := os.CreateTemp("", "hash_*.tmp")
+		tempFile, err := ls.tempManager.CreateTempFile(hash, "temp")
 		if err != nil {
 			return fmt.Errorf("create temp file for hash: %w", err)
 		}

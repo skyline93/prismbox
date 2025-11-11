@@ -14,6 +14,7 @@ import (
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
+	mediaprocessor "github.com/album/backend/pkg/media-processor"
 )
 
 // Builder 应用构建器
@@ -49,6 +50,10 @@ func (b *Builder) BuildAll() error {
 
 	if err := b.BuildStorageManager(); err != nil {
 		return fmt.Errorf("build storage manager: %w", err)
+	}
+
+	if err := b.BuildMediaProcessor(); err != nil {
+		return fmt.Errorf("build media processor: %w", err)
 	}
 
 	if err := b.BuildTaskQueue(); err != nil {
@@ -208,6 +213,10 @@ func (b *Builder) BuildServices() error {
 		return fmt.Errorf("storage manager is required")
 	}
 
+	if b.app.MediaProcessor == nil {
+		return fmt.Errorf("media processor is required")
+	}
+
 	if b.app.TaskQueueClient == nil {
 		return fmt.Errorf("task queue client is required")
 	}
@@ -233,6 +242,8 @@ func (b *Builder) BuildServices() error {
 		b.app.MediaRepo,
 		b.app.StorageManager,
 		b.app.TaskQueueClient,
+		b.app.MediaProcessor,
+		b.app.MediaProcessorConfig,
 	)
 
 	authService, err := auth.NewService(
@@ -254,4 +265,105 @@ func (b *Builder) BuildServices() error {
 // Build 返回构建的应用
 func (b *Builder) Build() *App {
 	return b.app
+}
+
+// BuildMediaProcessor 构建媒体处理器。
+func (b *Builder) BuildMediaProcessor() error {
+	cfg := mediaprocessor.DefaultConfig()
+
+	if b.cfg.Media != nil && b.cfg.Media.Processor != nil {
+		applyMediaProcessorConfig(cfg, b.cfg.Media.Processor)
+	}
+
+	processor, err := mediaprocessor.NewProcessor(cfg)
+	if err != nil {
+		return err
+	}
+
+	b.app.MediaProcessor = processor
+	b.app.MediaProcessorConfig = cfg
+	return nil
+}
+
+func applyMediaProcessorConfig(cfg *mediaprocessor.Config, moduleCfg *modules.MediaProcessorConfig) {
+	if moduleCfg == nil {
+		return
+	}
+
+	if moduleCfg.Concurrency > 0 {
+		cfg.Concurrency = moduleCfg.Concurrency
+	}
+
+	if len(moduleCfg.DefaultImageSpecs) > 0 {
+		cfg.DefaultImageSpecs = make([]mediaprocessor.ImageSpec, 0, len(moduleCfg.DefaultImageSpecs))
+		for _, spec := range moduleCfg.DefaultImageSpecs {
+			cfg.DefaultImageSpecs = append(cfg.DefaultImageSpecs, mediaprocessor.ImageSpec{
+				Name:      spec.Name,
+				MaxWidth:  spec.MaxWidth,
+				MaxHeight: spec.MaxHeight,
+				Quality:   spec.Quality,
+				Format:    spec.Format,
+				Crop:      spec.Crop,
+			})
+		}
+	}
+
+	if len(moduleCfg.DefaultVideoSpecs) > 0 {
+		cfg.DefaultVideoSpecs = make([]mediaprocessor.VideoSpec, 0, len(moduleCfg.DefaultVideoSpecs))
+		for _, spec := range moduleCfg.DefaultVideoSpecs {
+			cfg.DefaultVideoSpecs = append(cfg.DefaultVideoSpecs, mediaprocessor.VideoSpec{
+				Name:     spec.Name,
+				MaxWidth: spec.MaxWidth,
+				Quality:  spec.Quality,
+				Format:   spec.Format,
+			})
+		}
+	}
+
+	if moduleCfg.Imagick != nil {
+		if moduleCfg.Imagick.PoolSize > 0 {
+			cfg.Imagick.PoolSize = moduleCfg.Imagick.PoolSize
+		}
+		if moduleCfg.Imagick.MemoryLimit != "" {
+			cfg.Imagick.MemoryLimit = moduleCfg.Imagick.MemoryLimit
+		}
+		if moduleCfg.Imagick.DiskLimit != "" {
+			cfg.Imagick.DiskLimit = moduleCfg.Imagick.DiskLimit
+		}
+		if moduleCfg.Imagick.RAW != nil {
+			if moduleCfg.Imagick.RAW.Quality > 0 {
+				cfg.Imagick.RAW.Quality = moduleCfg.Imagick.RAW.Quality
+			}
+			if moduleCfg.Imagick.RAW.Format != "" {
+				cfg.Imagick.RAW.Format = moduleCfg.Imagick.RAW.Format
+			}
+			if moduleCfg.Imagick.RAW.MaxRetries > 0 {
+				cfg.Imagick.RAW.MaxRetries = moduleCfg.Imagick.RAW.MaxRetries
+			}
+			if moduleCfg.Imagick.RAW.RetryDelay > 0 {
+				cfg.Imagick.RAW.RetryDelay = moduleCfg.Imagick.RAW.RetryDelay
+			}
+			if len(moduleCfg.Imagick.RAW.SupportedFormats) > 0 {
+				cfg.Imagick.RAW.SupportedFormats = append([]string(nil), moduleCfg.Imagick.RAW.SupportedFormats...)
+			}
+		}
+	}
+
+	if moduleCfg.FFmpeg != nil {
+		if moduleCfg.FFmpeg.BinaryPath != "" {
+			cfg.FFmpeg.BinaryPath = moduleCfg.FFmpeg.BinaryPath
+		}
+		if moduleCfg.FFmpeg.ProbePath != "" {
+			cfg.FFmpeg.ProbePath = moduleCfg.FFmpeg.ProbePath
+		}
+		if moduleCfg.FFmpeg.MaxConcurrency > 0 {
+			cfg.FFmpeg.MaxConcurrency = moduleCfg.FFmpeg.MaxConcurrency
+		}
+		if moduleCfg.FFmpeg.ProcessTimeout > 0 {
+			cfg.FFmpeg.ProcessTimeout = moduleCfg.FFmpeg.ProcessTimeout
+		}
+		if moduleCfg.FFmpeg.ThumbnailOffset > 0 {
+			cfg.FFmpeg.ThumbnailOffset = moduleCfg.FFmpeg.ThumbnailOffset
+		}
+	}
 }

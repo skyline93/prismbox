@@ -42,7 +42,7 @@ func main() {
 
 	// 3. 注册任务处理器
 	mux := gq.NewServeMux()
-	media.RegisterMediaProcessors(mux)
+	media.RegisterMediaProcessors(mux, app.MediaRepo, app.StorageManager, app.MediaProcessor)
 
 	// 4. 启动任务队列服务器（后台运行）
 	go func() {
