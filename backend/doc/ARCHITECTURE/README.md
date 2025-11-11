@@ -20,6 +20,7 @@
   - [7.7 日志模块架构设计](./07-core-modules/07-logger.md)
   - [7.8 API 模块架构设计](./07-core-modules/07-api-architecture.md)
   - [7.9 数据库层架构设计](./07-core-modules/07-database-design.md)
+  - [7.11 命令行架构设计](./07-core-modules/07-cli-architecture.md)
 - [8. 数据流设计](./08-data-flow.md)
 - [9. 扩展性考虑](./09-scalability.md)
 - [10. 配置管理](./10-configuration.md)
@@ -49,6 +50,7 @@
   - [日志模块架构设计](./07-core-modules/07-logger.md) - 日志模块的全局配置管理、并发安全、文件轮转等
   - [API 模块架构设计](./07-core-modules/07-api-architecture.md) - API 模块的路由设计、响应格式、多协议支持（HTTP/HTTPS/Unix Socket）
   - [数据库层架构设计](./07-core-modules/07-database-design.md) - 数据库层的模型设计、迁移机制、SQLite 和 PostgreSQL 兼容性处理
+  - [命令行架构设计](./07-core-modules/07-cli-architecture.md) - CLI 工具的运行模式与扩展规划
 - [数据流设计](./08-data-flow.md) - 媒体上传流程（完全解耦）、云存储备份流程（独立调度）
 
 ### 运维相关

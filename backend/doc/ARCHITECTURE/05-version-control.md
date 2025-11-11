@@ -12,15 +12,26 @@
 
 ## 5.2 版本注入方式
 
-使用 Go 的 `ldflags` 在编译时注入版本信息：
+使用 Go 的 `ldflags` 在编译时注入版本信息。项目根目录下提供了 `Makefile`，统一封装了版本元数据的生成与构建命令：
+
+```bash
+# 构建 Server 与 CLI，自动注入版本信息
+make build
+
+# 只构建 Server
+make build-server
+
+# 查看当前将被注入的元数据
+make print-version
+```
+
+`Makefile` 内部通过以下 `ldflags` 注入变量，若需要，可在 CI/CD 中覆盖 `VERSION`、`BUILD_TIME` 等环境变量：
 
 ```makefile
 LDFLAGS := -X 'github.com/album/backend/internal/version.Version=$(VERSION)' \
            -X 'github.com/album/backend/internal/version.BuildTime=$(BUILD_TIME)' \
            -X 'github.com/album/backend/internal/version.GitCommit=$(GIT_COMMIT)' \
            -X 'github.com/album/backend/internal/version.GitBranch=$(GIT_BRANCH)'
-
-go build -ldflags "$(LDFLAGS)" -o bin/server ./cmd/server
 ```
 
 ## 5.3 版本查询方式
