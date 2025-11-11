@@ -306,9 +306,10 @@ func (s *Server) handleTaskFailure(task *Task, err error) {
 		}
 
 		s.db.Model(task).Updates(map[string]interface{}{
-			"status":     StatusFailed,
-			"failed_at":  failedAt,
-			"last_error": task.LastError,
+			"status":      StatusFailed,
+			"failed_at":   failedAt,
+			"last_error":  task.LastError,
+			"retry_count": task.RetryCount,
 		})
 		s.log.Error("Task permanently failed", logger.String("task_uuid", task.UUID), logger.Int("retry_count", task.RetryCount))
 	} else {
@@ -317,9 +318,10 @@ func (s *Server) handleTaskFailure(task *Task, err error) {
 		task.ProcessAt = nextProcessAt
 
 		s.db.Model(task).Updates(map[string]interface{}{
-			"status":     StatusRetrying,
-			"process_at": nextProcessAt,
-			"last_error": task.LastError,
+			"status":      StatusRetrying,
+			"process_at":  nextProcessAt,
+			"last_error":  task.LastError,
+			"retry_count": task.RetryCount,
 		})
 		s.log.Info("Task will retry", logger.String("task_uuid", task.UUID), logger.Int("retry_count", task.RetryCount), logger.Int("max_retries", task.MaxRetries), logger.Time("next_process_at", nextProcessAt))
 	}
