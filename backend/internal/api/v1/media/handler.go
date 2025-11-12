@@ -1,7 +1,10 @@
 package media
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -11,6 +14,7 @@ import (
 	mediaservice "github.com/album/backend/internal/service/media"
 	"github.com/album/backend/pkg/logger"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // Handler 媒体处理器
@@ -252,15 +256,207 @@ func (h *Handler) Purge(c *gin.Context) {
 
 // DownloadOriginal 下载原始文件
 func (h *Handler) DownloadOriginal(c *gin.Context) {
-	apiresponse.Error(c, "Not implemented")
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 获取userID（可能为nil，表示通过签名URL访问）
+	var userID *uint
+	if userIDValue, exists := c.Get("userID"); exists {
+		if id, ok := userIDValue.(uint); ok {
+			userID = &id
+		}
+	}
+
+	// 1. 统一授权检查
+	media, err := h.mediaService.GetAuthorizedMedia(c.Request.Context(), mediaUUID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiresponse.Error(c, "Media not found or permission denied")
+		} else {
+			h.log.Error("failed to get authorized media",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+			)
+			apiresponse.Error(c, "Could not verify media permissions")
+		}
+		return
+	}
+
+	// 2. 检查处理状态
+	if media.ProcessingStatus != "COMPLETED" {
+		apiresponse.Error(c, fmt.Sprintf("File is not ready yet. Current status: %s", media.ProcessingStatus))
+		return
+	}
+
+	// 3. 获取原始文件的MIME类型
+	mimeType := h.mediaService.GetOriginalMimeType(media)
+
+	// 4. 提供文件
+	h.downloadFile(c, media.LocalPath, mimeType)
 }
 
 // DownloadPreview 下载预览文件
 func (h *Handler) DownloadPreview(c *gin.Context) {
-	apiresponse.Error(c, "Not implemented")
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 获取userID（可能为nil，表示通过签名URL访问）
+	var userID *uint
+	if userIDValue, exists := c.Get("userID"); exists {
+		if id, ok := userIDValue.(uint); ok {
+			userID = &id
+		}
+	}
+
+	// 1. 统一授权检查
+	media, err := h.mediaService.GetAuthorizedMedia(c.Request.Context(), mediaUUID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiresponse.Error(c, "Preview not found or permission denied")
+		} else {
+			h.log.Error("failed to get authorized media",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+			)
+			apiresponse.Error(c, "Could not verify preview permissions")
+		}
+		return
+	}
+
+	// 2. 检查处理状态
+	if media.ProcessingStatus != "COMPLETED" {
+		apiresponse.Error(c, fmt.Sprintf("Preview is not ready yet. Current status: %s", media.ProcessingStatus))
+		return
+	}
+
+	// 3. 构建预览图存储key
+	storageKey, err := h.mediaService.BuildPreviewKey(media)
+	if err != nil {
+		h.log.Error("failed to build preview key",
+			logger.Error(err),
+			logger.String("uuid", mediaUUID),
+		)
+		apiresponse.Error(c, "Failed to build preview key")
+		return
+	}
+
+	// 4. 获取预览图的MIME类型
+	mimeType := h.mediaService.GetPreviewMimeType(media)
+
+	// 5. 提供文件
+	h.downloadFile(c, storageKey, mimeType)
 }
 
 // DownloadThumbnail 下载缩略图
 func (h *Handler) DownloadThumbnail(c *gin.Context) {
-	apiresponse.Error(c, "Not implemented")
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 获取userID（可能为nil，表示通过签名URL访问）
+	var userID *uint
+	if userIDValue, exists := c.Get("userID"); exists {
+		if id, ok := userIDValue.(uint); ok {
+			userID = &id
+		}
+	}
+
+	// 1. 统一授权检查
+	media, err := h.mediaService.GetAuthorizedMedia(c.Request.Context(), mediaUUID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiresponse.Error(c, "Thumbnail not found or permission denied")
+		} else {
+			h.log.Error("failed to get authorized media",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+			)
+			apiresponse.Error(c, "Could not verify thumbnail permissions")
+		}
+		return
+	}
+
+	// 2. 检查处理状态
+	if media.ProcessingStatus != "COMPLETED" {
+		apiresponse.Error(c, fmt.Sprintf("Thumbnail is not ready yet. Current status: %s", media.ProcessingStatus))
+		return
+	}
+
+	// 3. 构建缩略图存储key
+	storageKey, err := h.mediaService.BuildThumbnailKey(media)
+	if err != nil {
+		h.log.Error("failed to build thumbnail key",
+			logger.Error(err),
+			logger.String("uuid", mediaUUID),
+		)
+		apiresponse.Error(c, "Failed to build thumbnail key")
+		return
+	}
+
+	// 4. 获取缩略图的MIME类型
+	mimeType := h.mediaService.GetThumbnailMimeType(media)
+
+	// 5. 提供文件
+	h.downloadFile(c, storageKey, mimeType)
+}
+
+// downloadFile 从存储提供文件下载
+func (h *Handler) downloadFile(c *gin.Context, storageKey string, mimeType string) {
+	// 获取文件读取器
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+	if err != nil {
+		h.log.Error("failed to get file reader",
+			logger.Error(err),
+			logger.String("storage_key", storageKey),
+		)
+		apiresponse.Error(c, "File not available on server")
+		return
+	}
+	defer reader.Close()
+
+	// 使用传入的MimeType，如果为空则使用默认值
+	contentType := mimeType
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	c.Header("Content-Type", contentType)
+
+	// 对于图片和视频，使用inline；对于其他文件，使用attachment
+	disposition := "inline"
+	if !strings.HasPrefix(contentType, "image/") && !strings.HasPrefix(contentType, "video/") {
+		disposition = "attachment"
+	}
+	c.Header("Content-Disposition", fmt.Sprintf("%s; filename=\"%s\"", disposition, getFilename(storageKey)))
+
+	// 将文件内容写入响应
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		h.log.Error("failed to write file to response",
+			logger.Error(err),
+			logger.String("storage_key", storageKey),
+		)
+		// 如果响应已经开始写入，无法返回错误响应
+		if !c.Writer.Written() {
+			apiresponse.Error(c, "Failed to serve file")
+		}
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+// getFilename 从storageKey提取文件名
+func getFilename(storageKey string) string {
+	parts := strings.Split(storageKey, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return storageKey
 }

@@ -277,3 +277,70 @@ func (c *Client) LoginWithPassword(ctx context.Context, email, password string) 
 	c.authToken = login.AccessToken
 	return nil
 }
+
+// DownloadOriginal 下载原始文件
+func (c *Client) DownloadOriginal(ctx context.Context, uuid string, output io.Writer) error {
+	return c.downloadMedia(ctx, uuid, "original", output)
+}
+
+// DownloadPreview 下载预览文件
+func (c *Client) DownloadPreview(ctx context.Context, uuid string, output io.Writer) error {
+	return c.downloadMedia(ctx, uuid, "preview", output)
+}
+
+// DownloadThumbnail 下载缩略图
+func (c *Client) DownloadThumbnail(ctx context.Context, uuid string, output io.Writer) error {
+	return c.downloadMedia(ctx, uuid, "thumbnail", output)
+}
+
+// downloadMedia 通用的下载方法
+func (c *Client) downloadMedia(ctx context.Context, uuid, downloadType string, output io.Writer) error {
+	if uuid == "" {
+		return fmt.Errorf("媒体 UUID 不能为空")
+	}
+	if output == nil {
+		return fmt.Errorf("输出目标不能为空")
+	}
+
+	requestURL := c.resolve(fmt.Sprintf("/api/v1/media/%s/download/%s", uuid, downloadType))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return fmt.Errorf("构建请求失败: %w", err)
+	}
+
+	if c.authToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.authToken))
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("请求下载接口失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("下载失败（HTTP %d）: %s", resp.StatusCode, bytes.TrimSpace(body))
+	}
+
+	// 检查 Content-Type 是否为 JSON（表示错误响应）
+	contentType := resp.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "application/json") {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("读取错误响应失败: %w", err)
+		}
+		var apiResp apiResponse
+		if err := json.Unmarshal(body, &apiResp); err == nil && apiResp.Code != 0 {
+			return fmt.Errorf("下载失败: %s", apiResp.Message)
+		}
+		return fmt.Errorf("下载失败: %s", bytes.TrimSpace(body))
+	}
+
+	// 将文件内容写入输出
+	if _, err := io.Copy(output, resp.Body); err != nil {
+		return fmt.Errorf("写入文件失败: %w", err)
+	}
+
+	return nil
+}

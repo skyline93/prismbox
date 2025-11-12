@@ -70,9 +70,8 @@ func (a *StorageAdapter) ToStorageOptions(itemType string, mediaType MediaFileTy
 			opts.Extension = "jpg"
 			opts.Variant = "prev"
 		} else if category == MediaCategoryVideo {
-			// 视频预览图：可以使用 jpg（封面）或 mp4（预览片段）
-			// 这里默认使用 jpg，如果需要视频预览片段，可以扩展
-			opts.Extension = "jpg"
+			// 视频预览图：使用 mp4 格式（与旧架构保持一致）
+			opts.Extension = "mp4"
 			opts.Variant = "prev"
 		}
 

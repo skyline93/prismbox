@@ -44,6 +44,20 @@ type Service interface {
 	RegenerateThumbnail(ctx context.Context, mediaUUID string, specName string) error
 	// RegeneratePreview 重新生成预览图
 	RegeneratePreview(ctx context.Context, mediaUUID string, specName string) error
+	// GetAuthorizedMedia 获取授权的媒体（支持私有访问和公开分享）
+	GetAuthorizedMedia(ctx context.Context, mediaUUID string, userID *uint) (*models.Media, error)
+	// GetFileReader 获取文件读取器
+	GetFileReader(ctx context.Context, storageKey string) (io.ReadCloser, error)
+	// BuildThumbnailKey 构建缩略图存储key
+	BuildThumbnailKey(media *models.Media) (string, error)
+	// BuildPreviewKey 构建预览图存储key
+	BuildPreviewKey(media *models.Media) (string, error)
+	// GetOriginalMimeType 获取原始文件的MIME类型
+	GetOriginalMimeType(media *models.Media) string
+	// GetPreviewMimeType 获取预览文件的MIME类型
+	GetPreviewMimeType(media *models.Media) string
+	// GetThumbnailMimeType 获取缩略图的MIME类型
+	GetThumbnailMimeType(media *models.Media) string
 }
 
 // service 媒体服务实现
@@ -357,4 +371,86 @@ func (s *service) imageSpecByName(name string) (mediaprocessor.ImageSpec, error)
 		}
 	}
 	return mediaprocessor.ImageSpec{}, fmt.Errorf("image spec %s not found", name)
+}
+
+// GetAuthorizedMedia 获取授权的媒体（支持私有访问和公开分享）
+// userID为nil时，表示通过签名URL访问（已通过FlexibleAuthMiddleware验证）
+func (s *service) GetAuthorizedMedia(ctx context.Context, mediaUUID string, userID *uint) (*models.Media, error) {
+	media, err := s.repo.FindByUUID(ctx, mediaUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, gorm.ErrRecordNotFound
+		}
+		return nil, fmt.Errorf("find media: %w", err)
+	}
+
+	// 如果提供了userID，检查所有权
+	if userID != nil {
+		if media.UserID != *userID {
+			return nil, gorm.ErrRecordNotFound // 返回NotFound以隐藏权限错误
+		}
+	}
+	// 如果没有提供userID，说明是通过签名URL访问，FlexibleAuthMiddleware已经验证过
+
+	return media, nil
+}
+
+// GetFileReader 获取文件读取器
+func (s *service) GetFileReader(ctx context.Context, storageKey string) (io.ReadCloser, error) {
+	if storageKey == "" {
+		return nil, fmt.Errorf("storage key is empty")
+	}
+	return s.storageManager.Get(ctx, storageKey)
+}
+
+// BuildThumbnailKey 构建缩略图存储key
+func (s *service) BuildThumbnailKey(media *models.Media) (string, error) {
+	// 从原始文件的LocalPath提取hash和扩展名
+	hash, ext, _, err := s.storageAdapter.ParseStorageKey(media.LocalPath)
+	if err != nil {
+		return "", fmt.Errorf("parse storage key: %w", err)
+	}
+	return s.storageAdapter.GetThumbnailKey(hash, media.ItemType, ext)
+}
+
+// BuildPreviewKey 构建预览图存储key
+func (s *service) BuildPreviewKey(media *models.Media) (string, error) {
+	// 从原始文件的LocalPath提取hash和扩展名
+	hash, ext, _, err := s.storageAdapter.ParseStorageKey(media.LocalPath)
+	if err != nil {
+		return "", fmt.Errorf("parse storage key: %w", err)
+	}
+	return s.storageAdapter.GetPreviewKey(hash, media.ItemType, ext)
+}
+
+// GetOriginalMimeType 获取原始文件的MIME类型
+func (s *service) GetOriginalMimeType(media *models.Media) string {
+	if media.MimeType != "" {
+		return media.MimeType
+	}
+	// 如果数据库中没有MIME类型，根据ItemType返回默认值
+	if strings.ToLower(media.ItemType) == "video" {
+		return "video/mp4"
+	}
+	return "image/jpeg"
+}
+
+// GetPreviewMimeType 获取预览文件的MIME类型
+func (s *service) GetPreviewMimeType(media *models.Media) string {
+	// 图片预览统一使用jpg格式
+	if strings.ToLower(media.ItemType) == "image" {
+		return "image/jpeg"
+	}
+	// 视频预览使用mp4格式
+	if strings.ToLower(media.ItemType) == "video" {
+		return "video/mp4"
+	}
+	// 默认返回image/jpeg
+	return "image/jpeg"
+}
+
+// GetThumbnailMimeType 获取缩略图的MIME类型
+func (s *service) GetThumbnailMimeType(media *models.Media) string {
+	// 缩略图统一使用jpg格式
+	return "image/jpeg"
 }
