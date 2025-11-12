@@ -42,6 +42,7 @@ type App struct {
 	CommentRepo      repository.CommentRepository
 	LikeRepo         repository.LikeRepository
 	GroupInviteRepo  repository.GroupInviteRepository
+	ShareRepo        repository.ShareRepository
 
 	// 媒体处理
 	MediaProcessor       mediaprocessor.MediaProcessor
@@ -51,6 +52,7 @@ type App struct {
 	MediaService media.Service
 	AuthService  auth.Service
 	GroupService interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
+	ShareService interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
 }
 
 // Close 释放应用资源

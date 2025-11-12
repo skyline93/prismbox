@@ -161,3 +161,15 @@ type GroupInviteRepository interface {
 	// FindByCode 根据邀请码查找
 	FindByCode(ctx context.Context, code string) (*models.GroupInvite, error)
 }
+
+// ShareRepository 分享仓储接口
+type ShareRepository interface {
+	// Create 创建分享记录
+	Create(ctx context.Context, share *models.Share) error
+	// FindByToken 根据分享令牌查找
+	FindByToken(ctx context.Context, token string) (*models.Share, error)
+	// FindByTargetUserID 查找分享给指定用户的所有有效分享
+	FindByTargetUserID(ctx context.Context, userID uint) ([]*models.Share, error)
+	// Revoke 撤销分享
+	Revoke(ctx context.Context, shareID uint) error
+}

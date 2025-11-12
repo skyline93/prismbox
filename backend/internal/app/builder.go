@@ -11,11 +11,13 @@ import (
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/group"
 	"github.com/album/backend/internal/service/media"
+	"github.com/album/backend/internal/service/share"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
+	"time"
 )
 
 // Builder 应用构建器
@@ -127,6 +129,7 @@ func (b *Builder) BuildDatabase() error {
 		&models.CommentLike{},
 		&models.Like{},
 		&models.GroupInvite{},
+		&models.Share{},
 	); err != nil {
 		return fmt.Errorf("auto migrate models: %w", err)
 	}
@@ -221,6 +224,7 @@ func (b *Builder) BuildRepositories() error {
 	b.app.CommentRepo = repository.NewCommentRepository(b.app.DB)
 	b.app.LikeRepo = repository.NewLikeRepository(b.app.DB)
 	b.app.GroupInviteRepo = repository.NewGroupInviteRepository(b.app.DB)
+	b.app.ShareRepo = repository.NewShareRepository(b.app.DB)
 
 	return nil
 }
@@ -303,6 +307,26 @@ func (b *Builder) BuildServices() error {
 	)
 	b.app.GroupService = groupService
 
+	// 创建分享服务
+	shareURLBuilder := &shareURLBuilder{
+		publicBaseURL: b.cfg.Server.PublicBaseURL,
+	}
+	
+	signedURLLoadTTL := 5 * time.Minute // 默认5分钟
+	if b.cfg.Auth != nil && b.cfg.Auth.SignedURLLoadTTL.Duration() > 0 {
+		signedURLLoadTTL = b.cfg.Auth.SignedURLLoadTTL.Duration()
+	}
+
+	shareService := share.NewService(
+		b.app.ShareRepo,
+		b.app.MediaRepo,
+		b.app.UserRepo,
+		b.app.URLSigner,
+		shareURLBuilder,
+		signedURLLoadTTL,
+	)
+	b.app.ShareService = shareService
+
 	return nil
 }
 
@@ -313,6 +337,19 @@ type groupURLBuilder struct {
 
 func (b *groupURLBuilder) BuildGroupMediaURL(groupUUID, mediaUUID string) string {
 	return fmt.Sprintf("%s/api/v1/groups/%s/media/%s/thumbnail", b.publicBaseURL, groupUUID, mediaUUID)
+}
+
+// shareURLBuilder 实现share.Service的URLBuilder接口
+type shareURLBuilder struct {
+	publicBaseURL string
+}
+
+func (b *shareURLBuilder) BuildPublicShareURL(shareToken string) string {
+	return fmt.Sprintf("%s/s/%s", b.publicBaseURL, shareToken)
+}
+
+func (b *shareURLBuilder) BuildMediaPreviewPath(mediaUUID string) string {
+	return fmt.Sprintf("%s/api/v1/media/%s/download/preview", b.publicBaseURL, mediaUUID)
 }
 
 // Build 返回构建的应用
