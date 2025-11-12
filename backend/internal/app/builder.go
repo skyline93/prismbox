@@ -9,6 +9,7 @@ import (
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/service/auth"
+	"github.com/album/backend/internal/service/group"
 	"github.com/album/backend/internal/service/media"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
@@ -118,6 +119,14 @@ func (b *Builder) BuildDatabase() error {
 		&models.AuthProvider{},
 		&models.RefreshToken{},
 		&models.Media{},
+		&models.Group{},
+		&models.GroupMember{},
+		&models.GroupPost{},
+		&models.GroupMedia{},
+		&models.Comment{},
+		&models.CommentLike{},
+		&models.Like{},
+		&models.GroupInvite{},
 	); err != nil {
 		return fmt.Errorf("auto migrate models: %w", err)
 	}
@@ -204,6 +213,15 @@ func (b *Builder) BuildRepositories() error {
 	b.app.AuthProviderRepo = repository.NewAuthProviderRepository(b.app.DB)
 	b.app.RefreshTokenRepo = repository.NewRefreshTokenRepository(b.app.DB)
 
+	// 创建圈子相关仓储
+	b.app.GroupRepo = repository.NewGroupRepository(b.app.DB)
+	b.app.GroupMemberRepo = repository.NewGroupMemberRepository(b.app.DB)
+	b.app.GroupPostRepo = repository.NewGroupPostRepository(b.app.DB)
+	b.app.GroupMediaRepo = repository.NewGroupMediaRepository(b.app.DB)
+	b.app.CommentRepo = repository.NewCommentRepository(b.app.DB)
+	b.app.LikeRepo = repository.NewLikeRepository(b.app.DB)
+	b.app.GroupInviteRepo = repository.NewGroupInviteRepository(b.app.DB)
+
 	return nil
 }
 
@@ -259,7 +277,42 @@ func (b *Builder) BuildServices() error {
 	}
 	b.app.AuthService = authService
 
+	// 创建圈子服务
+	avatarBaseURL := ""
+	if b.cfg.Server != nil {
+		avatarBaseURL = b.cfg.Server.PublicBaseURL + "/static/avatars/"
+	}
+	
+	// 创建URLBuilder
+	urlBuilder := &groupURLBuilder{
+		publicBaseURL: b.cfg.Server.PublicBaseURL,
+	}
+
+	groupService := group.NewService(
+		b.app.DB,
+		b.app.GroupRepo,
+		b.app.GroupMemberRepo,
+		b.app.GroupPostRepo,
+		b.app.GroupMediaRepo,
+		b.app.CommentRepo,
+		b.app.LikeRepo,
+		b.app.GroupInviteRepo,
+		b.app.MediaRepo,
+		avatarBaseURL,
+		urlBuilder,
+	)
+	b.app.GroupService = groupService
+
 	return nil
+}
+
+// groupURLBuilder 实现group.Service的URLBuilder接口
+type groupURLBuilder struct {
+	publicBaseURL string
+}
+
+func (b *groupURLBuilder) BuildGroupMediaURL(groupUUID, mediaUUID string) string {
+	return fmt.Sprintf("%s/api/v1/groups/%s/media/%s/thumbnail", b.publicBaseURL, groupUUID, mediaUUID)
 }
 
 // Build 返回构建的应用

@@ -35,6 +35,13 @@ type App struct {
 	UserRepo         repository.UserRepository
 	AuthProviderRepo repository.AuthProviderRepository
 	RefreshTokenRepo repository.RefreshTokenRepository
+	GroupRepo        repository.GroupRepository
+	GroupMemberRepo  repository.GroupMemberRepository
+	GroupPostRepo    repository.GroupPostRepository
+	GroupMediaRepo   repository.GroupMediaRepository
+	CommentRepo      repository.CommentRepository
+	LikeRepo         repository.LikeRepository
+	GroupInviteRepo  repository.GroupInviteRepository
 
 	// 媒体处理
 	MediaProcessor       mediaprocessor.MediaProcessor
@@ -43,6 +50,7 @@ type App struct {
 	// 服务
 	MediaService media.Service
 	AuthService  auth.Service
+	GroupService interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
 }
 
 // Close 释放应用资源

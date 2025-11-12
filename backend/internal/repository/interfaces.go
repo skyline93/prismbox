@@ -73,3 +73,91 @@ type RefreshTokenRepository interface {
 	FindActiveByToken(ctx context.Context, token string) (*models.RefreshToken, error)
 	RevokeByToken(ctx context.Context, token string) (bool, error)
 }
+
+// GroupRepository 圈子仓储接口
+type GroupRepository interface {
+	// Create 创建圈子
+	Create(ctx context.Context, group *models.Group) error
+	// FindByUUID 根据UUID查找圈子
+	FindByUUID(ctx context.Context, uuid string) (*models.Group, error)
+	// FindByID 根据ID查找圈子
+	FindByID(ctx context.Context, id uint) (*models.Group, error)
+	// Update 更新圈子信息
+	Update(ctx context.Context, uuid string, updates map[string]interface{}) error
+	// FindByUserID 查找用户加入的所有圈子
+	FindByUserID(ctx context.Context, userID uint) ([]*models.Group, error)
+	// CountMembers 统计圈子成员数量
+	CountMembers(ctx context.Context, groupID uint) (int64, error)
+}
+
+// GroupMemberRepository 圈子成员仓储接口
+type GroupMemberRepository interface {
+	// Create 添加成员
+	Create(ctx context.Context, member *models.GroupMember) error
+	// FindByGroupAndUser 查找成员关系
+	FindByGroupAndUser(ctx context.Context, groupID, userID uint) (*models.GroupMember, error)
+	// GetUserRole 获取用户在圈子中的角色
+	GetUserRole(ctx context.Context, groupUUID string, userID uint) (models.GroupRole, error)
+	// FindByGroupUUID 查找圈子的所有成员
+	FindByGroupUUID(ctx context.Context, groupUUID string) ([]*models.GroupMember, error)
+	// Delete 删除成员关系
+	Delete(ctx context.Context, groupID, userID uint) error
+	// IsMember 检查用户是否是圈子成员
+	IsMember(ctx context.Context, groupID, userID uint) (bool, error)
+}
+
+// GroupPostRepository 圈子帖子仓储接口
+type GroupPostRepository interface {
+	// Create 创建帖子
+	Create(ctx context.Context, post *models.GroupPost) error
+	// FindByID 根据ID查找帖子
+	FindByID(ctx context.Context, id uint) (*models.GroupPost, error)
+	// FindByGroupID 查找圈子的帖子列表（分页）
+	FindByGroupID(ctx context.Context, groupID uint, limit, offset int) ([]*models.GroupPost, error)
+	// Delete 删除帖子（软删除）
+	Delete(ctx context.Context, id uint) error
+}
+
+// GroupMediaRepository 圈子媒体仓储接口
+type GroupMediaRepository interface {
+	// Create 创建圈子媒体关联
+	Create(ctx context.Context, groupMedia *models.GroupMedia) error
+	// CreateBatch 批量创建圈子媒体关联
+	CreateBatch(ctx context.Context, groupMedias []*models.GroupMedia) error
+	// FindByPostID 查找帖子关联的所有媒体
+	FindByPostID(ctx context.Context, postID uint) ([]*models.GroupMedia, error)
+	// FindByGroupAndMediaUUID 查找圈子中的媒体
+	FindByGroupAndMediaUUID(ctx context.Context, groupID uint, mediaUUID string) (*models.GroupMedia, error)
+}
+
+// CommentRepository 评论仓储接口
+type CommentRepository interface {
+	// Create 创建评论
+	Create(ctx context.Context, comment *models.Comment) error
+	// FindByID 根据ID查找评论
+	FindByID(ctx context.Context, id uint) (*models.Comment, error)
+	// FindByPostID 查找帖子的所有评论
+	FindByPostID(ctx context.Context, postID uint) ([]*models.Comment, error)
+	// Delete 删除评论（软删除）
+	Delete(ctx context.Context, id uint) error
+	// CountByPostID 统计帖子的评论数
+	CountByPostID(ctx context.Context, postID uint) (int64, error)
+}
+
+// LikeRepository 点赞仓储接口
+type LikeRepository interface {
+	// Create 创建点赞
+	Create(ctx context.Context, like *models.Like) error
+	// CountByPostID 统计帖子的点赞数
+	CountByPostID(ctx context.Context, postID uint) (int64, error)
+	// CountByPostIDs 批量统计帖子的点赞数
+	CountByPostIDs(ctx context.Context, postIDs []uint) (map[uint]int64, error)
+}
+
+// GroupInviteRepository 圈子邀请仓储接口
+type GroupInviteRepository interface {
+	// Create 创建邀请码
+	Create(ctx context.Context, invite *models.GroupInvite) error
+	// FindByCode 根据邀请码查找
+	FindByCode(ctx context.Context, code string) (*models.GroupInvite, error)
+}

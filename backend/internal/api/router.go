@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/album/backend/internal/api/v1/auth"
+	"github.com/album/backend/internal/api/v1/group"
 	"github.com/album/backend/internal/api/v1/media"
 	"github.com/album/backend/internal/app"
 	"github.com/album/backend/pkg/logger"
@@ -62,6 +63,9 @@ func (r *Router) setupAPIV1() {
 
 	// 注册媒体路由
 	media.RegisterRoutes(v1, r.app)
+
+	// 注册圈子路由
+	group.RegisterRoutes(v1, r.app)
 }
 
 func (r *Router) setupStatic() {
