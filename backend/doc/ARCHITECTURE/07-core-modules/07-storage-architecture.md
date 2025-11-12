@@ -125,19 +125,14 @@ func NewSecondaryStorage(cfg StorageConfig) (SecondaryStorage, error) {
 
 type PutOptions struct {
     UserID      uint
-    FileType    FileType  // original, thumbnail, preview
-    Processors  []string  // 处理步骤：compression, encryption
-    PoolID      string    // 指定存储池
-    Metadata    map[string]string
+    Extension   string            // 文件扩展名（如 "jpg", "mp4", "arw"），不包含点号
+    Variant     string            // 文件变体标识（如 "thumb", "prev"），可选，用于区分同一hash的不同变体
+    Processors  []string          // 处理步骤：compression, encryption
+    PoolID      string            // 指定存储池
+    Metadata    map[string]string // 元数据
 }
 
-type FileType string
-const (
-    FileTypeOriginal  FileType = "original"
-    FileTypeThumbnail FileType = "thumbnail"
-    FileTypePreview   FileType = "preview"
-    FileTypeEncrypted FileType = "encrypted"
-    FileTypeCompressed FileType = "compressed"
-)
+// 注意：FileType 枚举已移除，改为使用 Extension + Variant
+// 业务层的文件类型语义（original/thumbnail/preview）由业务层适配器处理
 ```
 

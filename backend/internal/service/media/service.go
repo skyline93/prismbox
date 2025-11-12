@@ -14,7 +14,6 @@ import (
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
-	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
@@ -55,6 +54,7 @@ type service struct {
 	taskQueue      *gq.Client
 	processor      mediaprocessor.MediaProcessor
 	processorCfg   *mediaprocessor.Config
+	storageAdapter *StorageAdapter
 }
 
 // NewService 创建媒体服务
@@ -72,6 +72,7 @@ func NewService(
 		taskQueue:      taskQueue,
 		processor:      processor,
 		processorCfg:   processorCfg,
+		storageAdapter: NewStorageAdapter(),
 	}
 }
 
@@ -98,12 +99,18 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 	}
 
 	ext, normalizedExt := resolveExtensions(req.ItemType, req.Filename)
-	storageKey := buildStorageKey(req.Hash, ext)
 
-	putOpts := &interfaces.PutOptions{
-		UserID:   req.UserID,
-		FileType: interfaces.FileTypeOriginal,
+	// 使用存储适配器构建存储key和选项
+	storageKey, err := s.storageAdapter.BuildStorageKey(req.Hash, req.ItemType, MediaFileTypeOriginal, normalizedExt)
+	if err != nil {
+		return nil, fmt.Errorf("build storage key: %w", err)
 	}
+
+	putOpts, err := s.storageAdapter.ToStorageOptions(req.ItemType, MediaFileTypeOriginal, normalizedExt)
+	if err != nil {
+		return nil, fmt.Errorf("build storage options: %w", err)
+	}
+	putOpts.UserID = req.UserID
 
 	headBuf, err := readHead(req.Data, sniffBufferSize)
 	if err != nil {
@@ -155,12 +162,6 @@ func resolveExtensions(itemType, filename string) (string, string) {
 		}
 	}
 	return ext, normalizedExt
-}
-
-func buildStorageKey(hash, ext string) string {
-	hashPrefix := hash[:2]
-	hashNext := hash[2:4]
-	return strings.ToLower(fmt.Sprintf("%s/%s/%s%s", hashPrefix, hashNext, hash, ext))
 }
 
 func readHead(data io.Reader, size int) ([]byte, error) {

@@ -151,7 +151,7 @@ func detectItemType(filename string) string {
 
 var (
 	imageExt = map[string]struct{}{
-		"jpg": {}, "jpeg": {}, "png": {}, "gif": {}, "webp": {}, "bmp": {}, "heic": {}, "tif": {}, "tiff": {},
+		"jpg": {}, "jpeg": {}, "png": {}, "gif": {}, "webp": {}, "bmp": {}, "heic": {}, "tif": {}, "tiff": {}, "arw": {}, "cr2": {}, "nef": {}, "orf": {}, "rw2": {},
 	}
 	videoExt = map[string]struct{}{
 		"mp4": {}, "mov": {}, "avi": {}, "mkv": {}, "webm": {}, "flv": {}, "wmv": {},

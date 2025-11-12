@@ -13,6 +13,7 @@ import (
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local/processor"
 	"github.com/album/backend/pkg/logger"
+	"github.com/gabriel-vasile/mimetype"
 )
 
 // LocalStorage 本地存储实现
@@ -83,20 +84,41 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 		return fmt.Errorf("select pool: %w", err)
 	}
 
-	// 2. 解析路径（从key中提取hash，必要时重新生成）
-	hash, fileType, err := ls.pathResolver.ResolveKey(key)
-	if err != nil {
-		// 如果key格式不正确，重新计算hash并构建标准 key
+	// 2. 解析路径（从key中提取hash、扩展名和变体，必要时重新生成）
+	var hash, extension, variant string
+	if key != "" {
+		var err error
+		hash, extension, variant, err = ls.pathResolver.ResolveKey(key)
+		if err != nil {
+			// 如果key格式不正确，需要从opts中获取扩展名和变体，并重新计算hash
+			if opts == nil || opts.Extension == "" {
+				return fmt.Errorf("extension required when key format is invalid: %w", err)
+			}
+			extension = opts.Extension
+			variant = opts.Variant
+		}
+	} else {
+		// 如果没有提供key，需要从opts中获取扩展名和变体
+		if opts == nil || opts.Extension == "" {
+			return fmt.Errorf("extension required when key is empty")
+		}
+		extension = opts.Extension
+		variant = opts.Variant
+	}
+
+	// 如果hash为空，需要计算hash
+	if hash == "" {
 		// 需要先读取数据来计算hash，但数据流只能读取一次
 		// 所以我们需要先读取到临时文件
-		tempFile, err := ls.tempManager.CreateTempFile(hash, "temp")
+		tempFile, err := ls.tempManager.CreateTempFile("", "temp")
 		if err != nil {
 			return fmt.Errorf("create temp file for hash: %w", err)
 		}
 		defer os.Remove(tempFile.Name())
 		defer tempFile.Close()
 
-		written, err := io.Copy(tempFile, data)
+		// 读取数据到临时文件，同时获取实际文件大小
+		actualSize, err := io.Copy(tempFile, data)
 		if err != nil {
 			return fmt.Errorf("copy data for hash: %w", err)
 		}
@@ -105,24 +127,24 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 		tempFile.Seek(0, 0)
 		hash = generateHash(tempFile)
 
-		// 重置文件指针
+		// 重置文件指针，准备后续写入
 		tempFile.Seek(0, 0)
 		data = tempFile
+		// 更新 size 为实际读取的大小
+		// 注意：虽然后续代码使用 written（实际写入字节数）而不是 size，
+		// 但保留此赋值以保持代码语义清晰
+		size = actualSize
+		_ = size // 消除未使用变量警告
 
-		fileType = interfaces.FileTypeOriginal
-		if opts != nil && opts.FileType != "" {
-			fileType = opts.FileType
-		}
-		size = written
-
-		key, err = ls.pathResolver.BuildKey(hash, fileType)
+		// 构建标准key
+		key, err = ls.pathResolver.BuildKey(hash, extension, variant)
 		if err != nil {
 			return fmt.Errorf("build key: %w", err)
 		}
 	}
 
 	// 3. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return fmt.Errorf("resolve file path: %w", err)
 	}
@@ -173,13 +195,13 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 // Get 获取文件
 func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	// 1. 解析key
-	hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return nil, fmt.Errorf("resolve file path: %w", err)
 	}
@@ -202,13 +224,13 @@ func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, err
 // Delete 删除文件
 func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 	// 1. 解析key
-	hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return fmt.Errorf("resolve file path: %w", err)
 	}
@@ -246,13 +268,13 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 // Exists 检查文件是否存在
 func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	// 1. 解析key
-	hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return false, fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return false, fmt.Errorf("resolve file path: %w", err)
 	}
@@ -271,12 +293,12 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 // GetSignedURL 获取签名URL（本地存储不支持，返回文件路径）
 func (ls *LocalStorage) GetSignedURL(ctx context.Context, key string, duration time.Duration) (string, error) {
 	// 本地存储不支持签名URL，返回文件路径
-	hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return "", fmt.Errorf("resolve key: %w", err)
 	}
 
-	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return "", fmt.Errorf("resolve file path: %w", err)
 	}
@@ -307,9 +329,16 @@ func (ls *LocalStorage) Copy(ctx context.Context, srcKey, dstKey string) error {
 		return fmt.Errorf("stat source file: %w", err)
 	}
 
-	// 3. 写入目标文件
+	// 3. 解析源文件的扩展名和变体
+	_, srcExtension, _, err := ls.pathResolver.ResolveKey(srcKey)
+	if err != nil {
+		return fmt.Errorf("resolve source key: %w", err)
+	}
+
+	// 4. 写入目标文件（使用源文件的扩展名，变体为空表示原始文件）
 	opts := &interfaces.PutOptions{
-		FileType: interfaces.FileTypeOriginal,
+		Extension: srcExtension,
+		Variant:   "", // 复制时默认使用原始变体
 	}
 	if err := ls.Put(ctx, dstKey, srcFile, srcInfo.Size, opts); err != nil {
 		return fmt.Errorf("put destination file: %w", err)
@@ -336,13 +365,13 @@ func (ls *LocalStorage) Move(ctx context.Context, srcKey, dstKey string) error {
 // Stat 获取文件信息
 func (ls *LocalStorage) Stat(ctx context.Context, key string) (*interfaces.FileInfo, error) {
 	// 1. 解析key
-	hash, fileType, err := ls.pathResolver.ResolveKey(key)
+	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("resolve key: %w", err)
 	}
 
 	// 2. 解析文件路径
-	filePath, err := ls.pathResolver.ResolveFilePath(hash, fileType)
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return nil, fmt.Errorf("resolve file path: %w", err)
 	}
@@ -355,11 +384,14 @@ func (ls *LocalStorage) Stat(ctx context.Context, key string) (*interfaces.FileI
 			continue
 		}
 
+		// 从文件内容检测ContentType
+		contentType := detectContentType(fullPath)
+
 		return &interfaces.FileInfo{
 			Key:         key,
 			Size:        info.Size(),
 			ModTime:     info.ModTime(),
-			ContentType: "", // TODO: 根据文件扩展名推断
+			ContentType: contentType,
 			Metadata:    make(map[string]string),
 		}, nil
 	}
@@ -386,4 +418,26 @@ func generateHash(data io.Reader) string {
 	hash := sha256.New()
 	io.Copy(hash, data)
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// detectContentType 从文件内容检测ContentType（使用magic bytes）
+func detectContentType(filePath string) string {
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	// 使用 mimetype 检测文件类型（读取文件头部的 magic bytes）
+	mtype, err := mimetype.DetectReader(file)
+	if err != nil {
+		return ""
+	}
+
+	if mtype != nil {
+		return mtype.String()
+	}
+
+	return ""
 }

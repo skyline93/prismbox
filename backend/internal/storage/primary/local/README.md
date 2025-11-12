@@ -100,8 +100,9 @@ data := strings.NewReader("文件内容")
 size := int64(len("文件内容"))
 
 opts := &storage.PutOptions{
-    UserID:   1,
-    FileType: storage.FileTypeOriginal,
+    UserID:    1,
+    Extension: "jpg",
+    Variant:   "", // 原始文件，无变体
     Metadata: map[string]string{
         "content_type": "image/jpeg",
     },
@@ -160,6 +161,7 @@ if err != nil {
 
 fmt.Printf("文件大小: %d bytes\n", info.Size)
 fmt.Printf("修改时间: %s\n", info.ModTime)
+fmt.Printf("ContentType: %s\n", info.ContentType) // 从文件内容检测
 ```
 
 ### 6. 删除文件
@@ -246,25 +248,37 @@ processing:
 
 > **设计意图**：物理文件名只依据内容 Hash，业务层的 UUID、分享 ID 等元数据全部保存在数据库并指向该路径。这样既能保证去重，又避免业务标识泄漏到存储层。
 
-### 文件类型后缀
+### 文件命名规则
 
-- `original`: `{hash}.jpg`
-- `thumbnail`: `{hash}_thumb.jpg`
-- `preview`: `{hash}_prev.jpg`
-- `encrypted`: `{hash}_encrypted.jpg`
-- `compressed`: `{hash}_compressed.jpg`
+**存储层设计**：存储层只关心 Hash + 扩展名 + 变体，不包含业务逻辑
+
+- **原始文件**：`{hash}.{ext}` （如 `abcd1234....jpg`, `abcd1234....arw`, `abcd1234....mp4`）
+- **变体文件**：`{hash}_{variant}.{ext}` （如 `abcd1234...._thumb.jpg`, `abcd1234...._prev.jpg`）
+
+**业务层适配**：业务层通过适配器处理文件类型语义
+
+- **图片类型**：
+  - 原始文件：保持原扩展名（jpg, png, arw, cr2 等）
+  - 缩略图/预览图：统一使用 jpg 格式（`_thumb.jpg`, `_prev.jpg`）
+- **视频类型**：
+  - 原始文件：保持原扩展名（mp4, mov 等）
+  - 缩略图/预览图：使用 jpg 格式（视频封面，`_thumb.jpg`, `_prev.jpg`）
 
 ### Key 格式
 
 Key 格式与路径格式相同：
 
 ```
-{hash[0:2]}/{hash[2:4]}/{hash}.{ext}
+{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
 ```
 
 **示例**：
-- `ab/cd/abcd1234....jpg`
-- `ab/cd/abcd1234...._thumb.jpg`
+- `ab/cd/abcd1234....jpg` - JPG原始文件
+- `ab/cd/abcd1234...._thumb.jpg` - JPG缩略图
+- `ab/cd/abcd1234....arw` - RAW原始文件
+- `ab/cd/abcd1234...._thumb.jpg` - RAW的缩略图（JPG格式）
+- `ab/cd/abcd1234....mp4` - MP4视频文件
+- `ab/cd/abcd1234...._thumb.jpg` - 视频缩略图（JPG格式）
 
 ## 存储池管理
 
@@ -454,18 +468,25 @@ processing:
 // 1. 计算文件 Hash（用于去重）
 hash := calculateFileHash(file)
 
-// 2. 构建 Key（物理命名仅使用 Hash）
-key := fmt.Sprintf("%s/%s/%s.jpg", hash[:2], hash[2:4], hash)
+// 2. 使用业务层适配器构建 Key 和选项
+// 注意：实际使用中应通过业务层适配器处理
+adapter := media.NewStorageAdapter()
+key, err := adapter.BuildStorageKey(hash, itemType, media.MediaFileTypeOriginal, extension)
+if err != nil {
+    return err
+}
+
+opts, err := adapter.ToStorageOptions(itemType, media.MediaFileTypeOriginal, extension)
+if err != nil {
+    return err
+}
+opts.UserID = userID
+opts.Metadata = map[string]string{
+    "content_type": contentType,
+}
 
 // 3. 上传文件
-opts := &storage.PutOptions{
-    UserID:   userID,
-    FileType: storage.FileTypeOriginal,
-    Metadata: map[string]string{
-        "content_type": contentType,
-    },
-}
-err := storageManager.Put(ctx, key, file, size, opts)
+err = storageManager.Put(ctx, key, file, size, opts)
 
 // 4. 在数据库中创建媒体记录（业务 UUID 在数据库层生成）
 mediaRepo.Create(ctx, &models.Media{
@@ -549,12 +570,15 @@ type LocalStorage interface {
 ```go
 type PutOptions struct {
     UserID     uint
-    FileType   FileType
-    Processors []string
-    PoolID     string
-    Metadata   map[string]string
+    Extension  string            // 文件扩展名（如 "jpg", "mp4", "arw"），不包含点号
+    Variant    string            // 文件变体标识（如 "thumb", "prev"），可选，用于区分同一hash的不同变体
+    Processors []string          // 处理步骤：compression, encryption
+    PoolID     string            // 指定存储池
+    Metadata   map[string]string // 元数据
 }
 ```
+
+**注意**：`FileType` 枚举已移除，改为使用 `Extension` + `Variant`。业务层的文件类型语义（original/thumbnail/preview）由业务层适配器处理。
 
 ### FileInfo
 
@@ -597,6 +621,18 @@ type PoolInfo struct {
 ### Q: 如何实现文件去重？
 
 A: 使用文件的 Hash 值作为路径的一部分，相同 Hash 的文件会存储在同一位置。在上传前可以先计算 Hash，检查文件是否已存在。Hash-based 存储策略天然支持文件去重。
+
+### Q: 如何支持不同媒体类型（图片、视频、RAW）？
+
+A: 存储层支持任意扩展名，通过 `Extension` 字段指定。业务层适配器会根据媒体类型（图片/视频）和业务类型（原始/缩略图/预览图）自动选择合适的扩展名：
+- 图片原始文件：保持原格式（jpg, png, arw 等）
+- 图片缩略图/预览图：统一使用 jpg
+- 视频原始文件：保持原格式（mp4, mov 等）
+- 视频缩略图/预览图：使用 jpg（视频封面）
+
+### Q: ContentType 是如何检测的？
+
+A: ContentType 通过读取文件内容的 magic bytes 检测，而不是从扩展名推断。这确保了准确性，即使扩展名被修改也能正确识别文件类型。
 
 ### Q: 如何支持多用户文件隔离？
 

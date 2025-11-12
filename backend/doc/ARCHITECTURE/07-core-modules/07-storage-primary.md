@@ -36,15 +36,21 @@ uploads/
 ├── files/                    # 文件存储根目录（Hash-based，与用户解耦）
 │   ├── {hash[0:2]}/         # Hash前2位（00-ff，共256个目录）
 │   │   ├── {hash[2:4]}/     # Hash 3-4位（00-ff，共256个目录）
-│   │   │   ├── {hash}.jpg              # 原始文件
-│   │   │   ├── {hash}_thumb.jpg       # 缩略图
-│   │   │   └── {hash}_prev.jpg        # 预览图
+│   │   │   ├── {hash}.{ext}              # 原始文件（支持任意扩展名）
+│   │   │   ├── {hash}_thumb.{ext}       # 缩略图
+│   │   │   ├── {hash}_prev.{ext}        # 预览图
+│   │   │   ├── {hash}.arw               # RAW原始文件示例
+│   │   │   ├── {hash}.mp4               # 视频原始文件示例
+│   │   │   └── {hash}_thumb.jpg         # 视频缩略图（jpg格式）
 │   │   │
 │   ├── ab/                   # 示例：hash前缀为 "ab"
 │   │   ├── cd/               # hash 3-4位为 "cd"
-│   │   │   ├── abcd1234...jpg
-│   │   │   ├── abcd1234..._thumb.jpg
-│   │   │   └── abcd1234..._prev.jpg
+│   │   │   ├── abcd1234...jpg           # JPG图片
+│   │   │   ├── abcd1234..._thumb.jpg    # JPG缩略图
+│   │   │   ├── abcd1234..._prev.jpg     # JPG预览图
+│   │   │   ├── abcd1234...arw           # RAW图片
+│   │   │   ├── abcd1234...mp4           # MP4视频
+│   │   │   └── abcd1234..._thumb.jpg    # 视频缩略图
 │
 ├── temp/                     # 临时文件目录
 │   ├── uploads/              # 上传过程中的临时文件
@@ -56,7 +62,7 @@ uploads/
 │
 ├── staging/                   # 待上传到云端的文件
 │   ├── {hash[0:2]}/
-│   │   └── {hash}.jpg
+│   │   └── {hash}.{ext}      # 支持任意扩展名
 │
 └── cache/                     # 缓存目录（可选）
     ├── thumbnails/            # 缩略图缓存
@@ -71,48 +77,53 @@ uploads/
 
 ### 路径解析策略
 
+**核心设计：存储层完全解耦，只关心 Hash + 扩展名 + 变体**
+
+存储层不再包含业务逻辑（如 original/thumbnail/preview 等业务概念），只处理：
+- **Hash**：文件内容的哈希值
+- **Extension**：文件扩展名（jpg, mp4, arw 等）
+- **Variant**：文件变体标识（thumb, prev 等，可选）
+
+业务层的文件类型语义由业务层适配器处理。
+
 ```go
 // internal/storage/primary/local/path_resolver.go
 type PathResolver struct {
     basePath string
 }
 
-// ResolveFilePath 解析文件路径（基于 Hash 的内容寻址）
-// 命名仅使用文件 Hash，业务 UUID 仅保留在数据库层。
-func (pr *PathResolver) ResolveFilePath(hash string, fileType FileType) string {
+// ResolveFilePath 解析文件路径（基于 Hash + 扩展名 + 变体）
+// 格式：{hash}[_variant].{extension}
+func (pr *PathResolver) ResolveFilePath(hash string, extension string, variant string) (string, error) {
     // 使用Hash前缀分区（2级目录）
     hashPrefix := hash[:2]   // 前2位（00-ff）
-    hashNext := hash[2:4]   // 3-4位（00-ff）
+    hashNext := hash[2:4]    // 3-4位（00-ff）
     
     basePath := filepath.Join(pr.basePath, "files", hashPrefix, hashNext)
     
-    // 命名全部围绕 hash 展开，确保物理文件名与业务解耦
+    // 构建文件名：{hash}[_variant].{extension}
     var filename string
-    switch fileType {
-    case FileTypeOriginal:
-        filename = hash + ".jpg"
-    case FileTypeThumbnail:
-        filename = hash + "_thumb.jpg"
-    case FileTypePreview:
-        filename = hash + "_prev.jpg"
-    case FileTypeEncrypted:
-        filename = hash + "_encrypted.jpg"
-    case FileTypeCompressed:
-        filename = hash + "_compressed.jpg"
+    if variant == "" {
+        filename = fmt.Sprintf("%s.%s", hash, extension)
+    } else {
+        filename = fmt.Sprintf("%s_%s.%s", hash, variant, extension)
     }
     
-    return filepath.Join(basePath, filename)
+    return filepath.Join(basePath, filename), nil
 }
 
-// ResolveTempPath 解析临时文件路径（基于上传ID）
-func (pr *PathResolver) ResolveTempPath(uploadID string, category string) string {
-    return filepath.Join(pr.basePath, "temp", category, uploadID+".tmp")
+// ResolveKey 从key解析出hash、扩展名和变体
+// key格式：{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
+func (pr *PathResolver) ResolveKey(key string) (hash string, extension string, variant string, err error) {
+    // 解析逻辑：从key中提取hash、扩展名和变体
+    // ...
 }
 
-// ResolveStagingPath 解析待上传文件路径（基于Hash）
-func (pr *PathResolver) ResolveStagingPath(hash string) string {
+// ResolveStagingPath 解析待上传文件路径（基于Hash + 扩展名）
+func (pr *PathResolver) ResolveStagingPath(hash string, extension string) (string, error) {
     hashPrefix := hash[:2]
-    return filepath.Join(pr.basePath, "staging", hashPrefix, hash+".jpg")
+    filename := fmt.Sprintf("%s.%s", hash, extension)
+    return filepath.Join(pr.basePath, "staging", hashPrefix, filename), nil
 }
 ```
 
@@ -122,9 +133,40 @@ Hash: abcd1234...
 Hash前缀: ab
 Hash 3-4位: cd
 
-原始文件: files/ab/cd/abcd1234...jpg
-缩略图:   files/ab/cd/abcd1234..._thumb.jpg
-预览图:   files/ab/cd/abcd1234..._prev.jpg
+# 图片文件
+原始JPG:     files/ab/cd/abcd1234....jpg
+JPG缩略图:   files/ab/cd/abcd1234...._thumb.jpg
+JPG预览图:   files/ab/cd/abcd1234...._prev.jpg
+
+# RAW文件
+原始ARW:     files/ab/cd/abcd1234....arw
+ARW缩略图:   files/ab/cd/abcd1234...._thumb.jpg  (RAW的缩略图是JPG)
+
+# 视频文件
+原始MP4:     files/ab/cd/abcd1234....mp4
+视频缩略图:  files/ab/cd/abcd1234...._thumb.jpg  (视频缩略图是JPG)
+视频预览图:  files/ab/cd/abcd1234...._prev.jpg   (视频预览图是JPG)
+```
+
+**业务层适配器**：
+
+业务层通过适配器将业务概念映射到存储层：
+
+```go
+// internal/service/media/storage_adapter.go
+type StorageAdapter struct{}
+
+// ToStorageOptions 将业务层选项转换为存储层选项
+func (a *StorageAdapter) ToStorageOptions(itemType string, mediaType MediaFileType, originalExtension string) (*PutOptions, error) {
+    // 图片类型：
+    // - 原始文件：保持原扩展名（jpg, png, arw等）
+    // - 缩略图/预览图：统一使用jpg格式
+    
+    // 视频类型：
+    // - 原始文件：保持原扩展名（mp4, mov等）
+    // - 缩略图/预览图：使用jpg格式（视频封面）
+    // ...
+}
 ```
 
 > **与业务标识的关系**：`Media.UUID`、分享记录等业务标识只存在于数据库层，并通过字段如 `LocalPath` 指向上述 hash 命名的物理文件。这样可以同时满足内容去重与业务隔离的诉求。

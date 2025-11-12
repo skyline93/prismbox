@@ -87,8 +87,9 @@ func demonstratePut(sm *storage.StorageManager) {
 	size := int64(len("这是测试文件内容"))
 
 	opts := &storage.PutOptions{
-		UserID:   1,
-		FileType: storage.FileTypeOriginal,
+		UserID:    1,
+		Extension: "jpg",
+		Variant:   "", // 原始文件，无变体
 		Metadata: map[string]string{
 			"content_type": "image/jpeg",
 			"upload_time":  time.Now().Format(time.RFC3339),

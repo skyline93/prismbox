@@ -6,24 +6,14 @@ import (
 	"time"
 )
 
-// FileType 文件类型
-type FileType string
-
-const (
-	FileTypeOriginal   FileType = "original"
-	FileTypeThumbnail  FileType = "thumbnail"
-	FileTypePreview    FileType = "preview"
-	FileTypeEncrypted  FileType = "encrypted"
-	FileTypeCompressed FileType = "compressed"
-)
-
 // PutOptions 上传选项
 type PutOptions struct {
 	UserID     uint
-	FileType   FileType
-	Processors []string // 处理步骤：compression, encryption
-	PoolID     string   // 指定存储池
-	Metadata   map[string]string
+	Extension  string            // 文件扩展名（如 "jpg", "mp4", "arw"），不包含点号
+	Variant    string            // 文件变体标识（如 "thumb", "prev"），可选，用于区分同一hash的不同变体
+	Processors []string          // 处理步骤：compression, encryption
+	PoolID     string            // 指定存储池
+	Metadata   map[string]string // 元数据
 }
 
 // FileInfo 文件信息
