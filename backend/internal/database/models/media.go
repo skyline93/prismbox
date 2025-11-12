@@ -12,8 +12,8 @@ type Media struct {
 
 	// 核心字段
 	UUID             string `gorm:"type:varchar(255);uniqueIndex;not null"`
-	UserID           uint   `gorm:"index;not null"`
-	Hash             string `gorm:"type:varchar(255);not null"`
+	UserID           uint   `gorm:"index:idx_media_user_hash,unique;index;not null"`
+	Hash             string `gorm:"type:varchar(255);index:idx_media_user_hash,unique;not null"`
 	ItemType         string `gorm:"type:varchar(50);not null"` // "image", "video"
 	OriginalFilename string `gorm:"type:varchar(255)"`
 	Filename         string `gorm:"type:varchar(255)"`
@@ -51,16 +51,4 @@ type Media struct {
 // TableName 指定表名
 func (Media) TableName() string {
 	return "medias"
-}
-
-// Indexes 定义索引（通过 GORM 标签）
-// - UUID 唯一索引（已通过 uniqueIndex 标签定义）
-// - UserID 索引（已通过 index 标签定义）
-// - 复合唯一索引：UserID + Hash（需要单独定义）
-func (Media) BeforeCreate(tx *gorm.DB) error {
-	// 确保复合唯一索引存在
-	if err := tx.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_hash ON medias(user_id, hash)").Error; err != nil {
-		// 忽略错误，可能索引已存在
-	}
-	return nil
 }

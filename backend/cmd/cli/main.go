@@ -68,7 +68,9 @@ func main() {
 			return nil
 		},
 		Commands: []*cli.Command{
+			newUploadCommand(),
 			newVersionCommand(),
+			newMediaCommand(),
 		},
 	}
 
