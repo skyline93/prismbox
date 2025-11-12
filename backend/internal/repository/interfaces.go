@@ -25,6 +25,27 @@ type MediaRepository interface {
 
 	// FindByHash 根据Hash查找媒体（用于去重）
 	FindByHash(ctx context.Context, userID uint, hash string) (*models.Media, error)
+
+	// FindByUserIDWithFilter 根据用户ID和过滤条件查找媒体列表
+	FindByUserIDWithFilter(ctx context.Context, userID uint, itemType string, limit, offset int) ([]*models.Media, error)
+
+	// CountByUserID 统计用户媒体数量
+	CountByUserID(ctx context.Context, userID uint, itemType string) (int64, error)
+
+	// FindHashesByUserID 根据用户ID和哈希列表查找已存在的哈希
+	FindHashesByUserID(ctx context.Context, userID uint, hashes []string) ([]string, error)
+
+	// FindChangesSince 查找指定时间之后的媒体变更
+	FindChangesSince(ctx context.Context, userID uint, since interface{}) ([]*models.Media, error)
+
+	// FindActiveByUUIDAndUser 查找一个未被软删除的媒体记录
+	FindActiveByUUIDAndUser(ctx context.Context, uuid string, userID uint) (*models.Media, error)
+
+	// FindInBinByUUIDAndUser 查找一个在回收站中（已被软删除）的媒体记录
+	FindInBinByUUIDAndUser(ctx context.Context, uuid string, userID uint) (*models.Media, error)
+
+	// Purge 永久删除媒体记录（硬删除）
+	Purge(ctx context.Context, uuid string) error
 }
 
 // UserRepository 用户仓储接口

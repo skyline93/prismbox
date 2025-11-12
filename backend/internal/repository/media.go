@@ -73,3 +73,93 @@ func (r *mediaRepository) FindByHash(ctx context.Context, userID uint, hash stri
 	}
 	return &media, nil
 }
+
+// FindByUserIDWithFilter 根据用户ID和过滤条件查找媒体列表
+func (r *mediaRepository) FindByUserIDWithFilter(ctx context.Context, userID uint, itemType string, limit, offset int) ([]*models.Media, error) {
+	var medias []*models.Media
+	query := r.db.WithContext(ctx).
+		Where("user_id = ? AND deleted = ?", userID, false)
+	
+	if itemType != "" {
+		query = query.Where("item_type = ?", itemType)
+	}
+	
+	err := query.
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&medias).Error
+	return medias, err
+}
+
+// CountByUserID 统计用户媒体数量
+func (r *mediaRepository) CountByUserID(ctx context.Context, userID uint, itemType string) (int64, error) {
+	var count int64
+	query := r.db.WithContext(ctx).
+		Model(&models.Media{}).
+		Where("user_id = ? AND deleted = ?", userID, false)
+	
+	if itemType != "" {
+		query = query.Where("item_type = ?", itemType)
+	}
+	
+	err := query.Count(&count).Error
+	return count, err
+}
+
+// FindHashesByUserID 根据用户ID和哈希列表查找已存在的哈希
+func (r *mediaRepository) FindHashesByUserID(ctx context.Context, userID uint, hashes []string) ([]string, error) {
+	var existingHashes []string
+	err := r.db.WithContext(ctx).
+		Model(&models.Media{}).
+		Where("user_id = ? AND hash IN ? AND deleted = ?", userID, hashes, false).
+		Pluck("hash", &existingHashes).Error
+	return existingHashes, err
+}
+
+// FindChangesSince 查找指定时间之后的媒体变更
+func (r *mediaRepository) FindChangesSince(ctx context.Context, userID uint, since interface{}) ([]*models.Media, error) {
+	var medias []*models.Media
+	query := r.db.WithContext(ctx).
+		Where("user_id = ?", userID)
+	
+	if since != nil {
+		query = query.Where("updated_at > ?", since)
+	}
+	
+	err := query.
+		Order("updated_at ASC").
+		Find(&medias).Error
+	return medias, err
+}
+
+// FindActiveByUUIDAndUser 查找一个未被软删除的媒体记录
+func (r *mediaRepository) FindActiveByUUIDAndUser(ctx context.Context, uuid string, userID uint) (*models.Media, error) {
+	var media models.Media
+	err := r.db.WithContext(ctx).
+		Where("uuid = ? AND user_id = ? AND deleted = ?", uuid, userID, false).
+		First(&media).Error
+	if err != nil {
+		return nil, err
+	}
+	return &media, nil
+}
+
+// FindInBinByUUIDAndUser 查找一个在回收站中（已被软删除）的媒体记录
+func (r *mediaRepository) FindInBinByUUIDAndUser(ctx context.Context, uuid string, userID uint) (*models.Media, error) {
+	var media models.Media
+	err := r.db.WithContext(ctx).
+		Where("uuid = ? AND user_id = ? AND deleted = ?", uuid, userID, true).
+		First(&media).Error
+	if err != nil {
+		return nil, err
+	}
+	return &media, nil
+}
+
+// Purge 永久删除媒体记录（硬删除）
+func (r *mediaRepository) Purge(ctx context.Context, uuid string) error {
+	return r.db.WithContext(ctx).
+		Where("uuid = ?", uuid).
+		Delete(&models.Media{}).Error
+}

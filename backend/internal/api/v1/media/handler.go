@@ -193,65 +193,317 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 
 // GetMedias 获取媒体列表
 func (h *Handler) GetMedias(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	// 1. 解析请求参数
+	var req dto.GetMediasRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		apiresponse.Error(c, "Invalid request parameters")
+		return
+	}
+
+	// 2. 设置默认值
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 20
+	}
+	if req.PageSize > 100 {
+		req.PageSize = 100
+	}
+
+	// 3. 调用Service层
+	result, err := h.mediaService.GetMedias(c.Request.Context(), &mediaservice.GetMediasRequest{
+		UserID:   userID,
+		Page:     req.Page,
+		PageSize: req.PageSize,
+		ItemType: strings.ToLower(req.ItemType),
+	})
+	if err != nil {
+		h.log.Error("failed to get medias",
+			logger.Error(err),
+			logger.Uint("user_id", userID),
+		)
+		apiresponse.Error(c, "Failed to get medias")
+		return
+	}
+
+	// 4. 转换为响应格式
+	medias := make([]*dto.MediaResponse, 0, len(result.Medias))
+	for _, media := range result.Medias {
+		medias = append(medias, &dto.MediaResponse{
+			UUID:             media.UUID,
+			UserID:           media.UserID,
+			Hash:             media.Hash,
+			ItemType:         media.ItemType,
+			OriginalFilename: media.OriginalFilename,
+			Filename:         media.Filename,
+			FileSize:         media.FileSize,
+			MimeType:         media.MimeType,
+			ProcessingStatus: media.ProcessingStatus,
+			LocalPath:        media.LocalPath,
+			BackupStatus:     media.BackupStatus,
+			CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	response := &dto.GetMediasResponse{
+		Medias:   medias,
+		Total:    result.Total,
+		Page:     result.Page,
+		PageSize: result.PageSize,
+	}
+
+	apiresponse.Success(c, "Success", response)
 }
 
 // CheckHashes 检查哈希
 func (h *Handler) CheckHashes(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	// 1. 解析请求体
+	var req dto.CheckHashesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiresponse.Error(c, "Invalid request body")
+		return
+	}
+
+	// 2. 验证哈希列表
+	if len(req.Hashes) == 0 {
+		apiresponse.Error(c, "Hashes list cannot be empty")
+		return
+	}
+
+	// 3. 调用Service层
+	result, err := h.mediaService.CheckHashes(c.Request.Context(), userID, req.Hashes)
+	if err != nil {
+		h.log.Error("failed to check hashes",
+			logger.Error(err),
+			logger.Uint("user_id", userID),
+			logger.Int("hash_count", len(req.Hashes)),
+		)
+		apiresponse.Error(c, "Failed to check hashes")
+		return
+	}
+
+	// 4. 转换为响应格式
+	response := &dto.CheckHashesResponse{
+		ExistingHashes: result.ExistingHashes,
+		MissingHashes:  result.MissingHashes,
+	}
+
+	apiresponse.Success(c, "Success", response)
 }
 
 // GetChanges 获取媒体变更
 func (h *Handler) GetChanges(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	// 1. 解析请求参数
+	var req dto.GetChangesRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		apiresponse.Error(c, "Invalid request parameters")
+		return
+	}
+
+	// 2. 解析since参数（可选）
+	var since *time.Time
+	if req.Since != "" {
+		parsed, err := time.Parse(time.RFC3339, req.Since)
+		if err != nil {
+			apiresponse.Error(c, "Invalid 'since' format. Must be RFC3339 format")
+			return
+		}
+		since = &parsed
+	}
+
+	// 3. 调用Service层
+	changes, err := h.mediaService.GetChanges(c.Request.Context(), &mediaservice.GetChangesRequest{
+		UserID: userID,
+		Since:  since,
+	})
+	if err != nil {
+		h.log.Error("failed to get changes",
+			logger.Error(err),
+			logger.Uint("user_id", userID),
+		)
+		apiresponse.Error(c, "Failed to get changes")
+		return
+	}
+
+	// 4. 转换为响应格式
+	changeList := make([]*dto.MediaChange, 0, len(changes))
+	for _, change := range changes {
+		changeList = append(changeList, &dto.MediaChange{
+			UUID:      change.UUID,
+			Hash:      change.Hash,
+			ItemType:  change.ItemType,
+			Action:    change.Action,
+			UpdatedAt: change.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	response := &dto.GetChangesResponse{
+		Changes: changeList,
+		Since:   req.Since,
+	}
+
+	apiresponse.Success(c, "Success", response)
 }
 
 // GetMediaDetail 获取媒体详情
 func (h *Handler) GetMediaDetail(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 1. 获取授权的媒体（检查所有权）
+	userIDPtr := &userID
+	media, err := h.mediaService.GetAuthorizedMedia(c.Request.Context(), mediaUUID, userIDPtr)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiresponse.Error(c, "Media not found or permission denied")
+		} else {
+			h.log.Error("failed to get media detail",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+				logger.Uint("user_id", userID),
+			)
+			apiresponse.Error(c, "Failed to get media detail")
+		}
+		return
+	}
+
+	// 2. 转换为响应格式
+	response := &dto.MediaResponse{
+		UUID:             media.UUID,
+		UserID:           media.UserID,
+		Hash:             media.Hash,
+		ItemType:         media.ItemType,
+		OriginalFilename: media.OriginalFilename,
+		Filename:         media.Filename,
+		FileSize:         media.FileSize,
+		MimeType:         media.MimeType,
+		ProcessingStatus: media.ProcessingStatus,
+		LocalPath:        media.LocalPath,
+		BackupStatus:     media.BackupStatus,
+		CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+	}
+
+	apiresponse.Success(c, "Success", response)
 }
 
-// Delete 删除媒体
+// Delete 删除媒体（软删除，移到回收站）
 func (h *Handler) Delete(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 调用Service层删除媒体
+	err := h.mediaService.DeleteMedia(c.Request.Context(), userID, mediaUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(err.Error(), "not found") {
+			apiresponse.Error(c, "Media not found or permission denied")
+		} else {
+			h.log.Error("failed to delete media",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+				logger.Uint("user_id", userID),
+			)
+			apiresponse.Error(c, "Database error")
+		}
+		return
+	}
+
+	apiresponse.Success(c, "Media moved to bin", nil)
 }
 
-// Restore 恢复媒体
+// Restore 恢复媒体（从回收站恢复）
 func (h *Handler) Restore(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 调用Service层恢复媒体
+	err := h.mediaService.RestoreMedia(c.Request.Context(), userID, mediaUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(err.Error(), "not found") {
+			apiresponse.Error(c, "Media not found in bin or permission denied")
+		} else {
+			h.log.Error("failed to restore media",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+				logger.Uint("user_id", userID),
+			)
+			apiresponse.Error(c, "Database error")
+		}
+		return
+	}
+
+	apiresponse.Success(c, "Media restored successfully", nil)
 }
 
-// Purge 永久删除媒体
+// Purge 永久删除媒体（硬删除，删除数据库记录和存储文件）
 func (h *Handler) Purge(c *gin.Context) {
-	middleware.MustGetUserID(c)
+	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
 		return
 	}
-	apiresponse.Error(c, "Not implemented")
+
+	mediaUUID := c.Param("uuid")
+	if mediaUUID == "" {
+		apiresponse.Error(c, "Media UUID is required")
+		return
+	}
+
+	// 调用Service层永久删除媒体
+	err := h.mediaService.PurgeMedia(c.Request.Context(), userID, mediaUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(err.Error(), "not found") {
+			apiresponse.Error(c, "Media not found in bin or permission denied")
+		} else {
+			h.log.Error("failed to purge media",
+				logger.Error(err),
+				logger.String("uuid", mediaUUID),
+				logger.Uint("user_id", userID),
+			)
+			apiresponse.Error(c, "Failed to purge media due to a database transaction error")
+		}
+		return
+	}
+
+	apiresponse.Success(c, "Media permanently deleted", nil)
 }
 
 // DownloadOriginal 下载原始文件

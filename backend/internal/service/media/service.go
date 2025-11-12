@@ -34,6 +34,43 @@ type UploadMediaRequest struct {
 	Data             io.Reader
 }
 
+// GetMediasRequest 获取媒体列表请求
+type GetMediasRequest struct {
+	UserID   uint
+	Page     int
+	PageSize int
+	ItemType string // "image" 或 "video"，空字符串表示全部
+}
+
+// GetMediasResult 获取媒体列表结果
+type GetMediasResult struct {
+	Medias   []*models.Media
+	Total    int
+	Page     int
+	PageSize int
+}
+
+// CheckHashesResult 检查哈希结果
+type CheckHashesResult struct {
+	ExistingHashes []string
+	MissingHashes  []string
+}
+
+// GetChangesRequest 获取媒体变更请求
+type GetChangesRequest struct {
+	UserID uint
+	Since  *time.Time // 可选，如果为nil则返回所有变更
+}
+
+// MediaChange 媒体变更
+type MediaChange struct {
+	UUID      string
+	Hash      string
+	ItemType  string
+	Action    string // "created", "updated", "deleted"
+	UpdatedAt time.Time
+}
+
 // Service 媒体服务接口
 type Service interface {
 	// CheckInstantUpload 检查是否可以秒传（使用客户端传入的Hash）
@@ -58,6 +95,18 @@ type Service interface {
 	GetPreviewMimeType(media *models.Media) string
 	// GetThumbnailMimeType 获取缩略图的MIME类型
 	GetThumbnailMimeType(media *models.Media) string
+	// GetMedias 获取媒体列表
+	GetMedias(ctx context.Context, req *GetMediasRequest) (*GetMediasResult, error)
+	// CheckHashes 检查哈希列表，返回已存在和缺失的哈希
+	CheckHashes(ctx context.Context, userID uint, hashes []string) (*CheckHashesResult, error)
+	// GetChanges 获取媒体变更（增量同步）
+	GetChanges(ctx context.Context, req *GetChangesRequest) ([]*MediaChange, error)
+	// DeleteMedia 删除媒体（软删除，移到回收站）
+	DeleteMedia(ctx context.Context, userID uint, mediaUUID string) error
+	// RestoreMedia 恢复媒体（从回收站恢复）
+	RestoreMedia(ctx context.Context, userID uint, mediaUUID string) error
+	// PurgeMedia 永久删除媒体（硬删除，删除数据库记录和存储文件）
+	PurgeMedia(ctx context.Context, userID uint, mediaUUID string) error
 }
 
 // service 媒体服务实现
@@ -453,4 +502,228 @@ func (s *service) GetPreviewMimeType(media *models.Media) string {
 func (s *service) GetThumbnailMimeType(media *models.Media) string {
 	// 缩略图统一使用jpg格式
 	return "image/jpeg"
+}
+
+// GetMedias 获取媒体列表
+func (s *service) GetMedias(ctx context.Context, req *GetMediasRequest) (*GetMediasResult, error) {
+	// 设置默认值
+	page := req.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	offset := (page - 1) * pageSize
+
+	// 查询媒体列表
+	medias, err := s.repo.FindByUserIDWithFilter(ctx, req.UserID, req.ItemType, pageSize, offset)
+	if err != nil {
+		return nil, fmt.Errorf("find medias: %w", err)
+	}
+
+	// 统计总数
+	total, err := s.repo.CountByUserID(ctx, req.UserID, req.ItemType)
+	if err != nil {
+		return nil, fmt.Errorf("count medias: %w", err)
+	}
+
+	return &GetMediasResult{
+		Medias:   medias,
+		Total:    int(total),
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
+// CheckHashes 检查哈希列表，返回已存在和缺失的哈希
+func (s *service) CheckHashes(ctx context.Context, userID uint, hashes []string) (*CheckHashesResult, error) {
+	if len(hashes) == 0 {
+		return &CheckHashesResult{
+			ExistingHashes: []string{},
+			MissingHashes:  []string{},
+		}, nil
+	}
+
+	// 查询已存在的哈希
+	existingHashes, err := s.repo.FindHashesByUserID(ctx, userID, hashes)
+	if err != nil {
+		return nil, fmt.Errorf("find existing hashes: %w", err)
+	}
+
+	// 构建已存在哈希的map，用于快速查找
+	existingMap := make(map[string]bool)
+	for _, hash := range existingHashes {
+		existingMap[hash] = true
+	}
+
+	// 找出缺失的哈希
+	missingHashes := make([]string, 0)
+	for _, hash := range hashes {
+		if !existingMap[hash] {
+			missingHashes = append(missingHashes, hash)
+		}
+	}
+
+	return &CheckHashesResult{
+		ExistingHashes: existingHashes,
+		MissingHashes:  missingHashes,
+	}, nil
+}
+
+// GetChanges 获取媒体变更（增量同步）
+func (s *service) GetChanges(ctx context.Context, req *GetChangesRequest) ([]*MediaChange, error) {
+	// 查询变更
+	medias, err := s.repo.FindChangesSince(ctx, req.UserID, req.Since)
+	if err != nil {
+		return nil, fmt.Errorf("find changes: %w", err)
+	}
+
+	// 转换为MediaChange
+	changes := make([]*MediaChange, 0, len(medias))
+	for _, media := range medias {
+		action := "created"
+		if media.Deleted {
+			action = "deleted"
+		} else if media.UpdatedAt.After(media.CreatedAt) {
+			action = "updated"
+		}
+
+		changes = append(changes, &MediaChange{
+			UUID:      media.UUID,
+			Hash:      media.Hash,
+			ItemType:  media.ItemType,
+			Action:    action,
+			UpdatedAt: media.UpdatedAt,
+		})
+	}
+
+	return changes, nil
+}
+
+// DeleteMedia 删除媒体（软删除，移到回收站）
+func (s *service) DeleteMedia(ctx context.Context, userID uint, mediaUUID string) error {
+	// 1. 查找活跃的媒体记录（验证存在性和权限）
+	_, err := s.repo.FindActiveByUUIDAndUser(ctx, mediaUUID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("media not found or permission denied")
+		}
+		return fmt.Errorf("find media: %w", err)
+	}
+
+	// 2. 软删除（设置deleted=true）
+	if err := s.repo.Update(ctx, mediaUUID, map[string]interface{}{
+		"deleted": true,
+	}); err != nil {
+		return fmt.Errorf("update media: %w", err)
+	}
+
+	s.log.Info("media deleted (moved to bin)",
+		logger.String("uuid", mediaUUID),
+		logger.Uint("user_id", userID),
+	)
+
+	return nil
+}
+
+// RestoreMedia 恢复媒体（从回收站恢复）
+func (s *service) RestoreMedia(ctx context.Context, userID uint, mediaUUID string) error {
+	// 1. 查找回收站中的媒体记录（验证存在性和权限）
+	_, err := s.repo.FindInBinByUUIDAndUser(ctx, mediaUUID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("media not found in bin or permission denied")
+		}
+		return fmt.Errorf("find media: %w", err)
+	}
+
+	// 2. 恢复（设置deleted=false）
+	if err := s.repo.Update(ctx, mediaUUID, map[string]interface{}{
+		"deleted": false,
+	}); err != nil {
+		return fmt.Errorf("update media: %w", err)
+	}
+
+	s.log.Info("media restored",
+		logger.String("uuid", mediaUUID),
+		logger.Uint("user_id", userID),
+	)
+
+	return nil
+}
+
+// PurgeMedia 永久删除媒体（硬删除，删除数据库记录和存储文件）
+func (s *service) PurgeMedia(ctx context.Context, userID uint, mediaUUID string) error {
+	// 1. 查找回收站中的媒体记录（只能永久删除回收站中的媒体）
+	media, err := s.repo.FindInBinByUUIDAndUser(ctx, mediaUUID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("media not found in bin or permission denied")
+		}
+		return fmt.Errorf("find media: %w", err)
+	}
+
+	// 2. 删除存储中的文件
+	if err := s.cleanupMediaFiles(ctx, media); err != nil {
+		s.log.Warn("failed to cleanup media files",
+			logger.Error(err),
+			logger.String("uuid", mediaUUID),
+		)
+		// 继续删除数据库记录，即使文件删除失败
+	}
+
+	// 3. 永久删除数据库记录
+	if err := s.repo.Purge(ctx, mediaUUID); err != nil {
+		return fmt.Errorf("purge media: %w", err)
+	}
+
+	s.log.Info("media purged permanently",
+		logger.String("uuid", mediaUUID),
+		logger.Uint("user_id", userID),
+	)
+
+	return nil
+}
+
+// cleanupMediaFiles 删除媒体相关的所有存储文件
+func (s *service) cleanupMediaFiles(ctx context.Context, media *models.Media) error {
+	// 删除原始文件
+	if media.LocalPath != "" {
+		if err := s.storageManager.Delete(ctx, media.LocalPath); err != nil {
+			s.log.Warn("failed to delete original file",
+				logger.Error(err),
+				logger.String("storage_key", media.LocalPath),
+			)
+		}
+	}
+
+	// 删除缩略图
+	thumbnailKey, err := s.BuildThumbnailKey(media)
+	if err == nil && thumbnailKey != "" {
+		if err := s.storageManager.Delete(ctx, thumbnailKey); err != nil {
+			s.log.Warn("failed to delete thumbnail",
+				logger.Error(err),
+				logger.String("storage_key", thumbnailKey),
+			)
+		}
+	}
+
+	// 删除预览图
+	previewKey, err := s.BuildPreviewKey(media)
+	if err == nil && previewKey != "" {
+		if err := s.storageManager.Delete(ctx, previewKey); err != nil {
+			s.log.Warn("failed to delete preview",
+				logger.Error(err),
+				logger.String("storage_key", previewKey),
+			)
+		}
+	}
+
+	return nil
 }
