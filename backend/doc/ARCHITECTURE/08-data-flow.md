@@ -89,7 +89,14 @@ Worker 处理任务
 ```
 客户端请求增量同步
     ↓
-Sync Service (查询变更日志)
+Changelog Service (查询变更日志)
+  │
+  ├─▶ 应用隔离条件 (isolation_key, isolation_value)
+  │
+  └─▶ 查询 changelogs 表
+       WHERE sequence_id > last_seq_id
+       AND isolation_key = 'user_id'
+       AND isolation_value = '123'
     ↓
 Repository (查询数据库变更)
     ↓

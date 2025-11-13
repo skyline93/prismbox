@@ -330,35 +330,49 @@ GORM 自动创建，包含 `album_id` 和 `media_id` 字段。
 ### 7.9.5.7 同步相关模型
 
 #### Changelog（变更日志）
-用于数据同步功能（replicator）。
+用于数据同步功能（changelog 模块）。
 
 **注意**：不继承 `gorm.Model`，使用自定义主键。
 
 **字段**：
-- `SequenceID`: `int64` (主键，自增)
-- `TableName`: `string`, 索引
-- `RecordID`: `string`, 索引
-- `OperationType`: `string` ("CREATED", "UPDATED", "DELETED")
-- `Payload`: `datatypes.JSON` (JSONB for PostgreSQL, JSON for SQLite)
-- `Timestamp`: `time.Time`
+- `SequenceID`: `int64` (主键，自增) - 全局唯一自增ID，作为同步游标
+- `TableNameCol`: `string` (列名: `table_name`), 索引 - 业务表名
+- `RecordID`: `string`, 索引 - 业务记录ID
+- `OperationType`: `string` ("CREATED", "UPDATED", "DELETED") - 操作类型
+- `Payload`: `JSON` (JSONB for PostgreSQL, JSON for SQLite) - 完整的业务数据
+- `Timestamp`: `time.Time`, 索引 - 变更时间
+- `IsolationKey`: `string`, 索引 - 隔离键（如 "user_id", "organization_id"）
+- `IsolationValue`: `string`, 索引 - 隔离值（如用户ID、组织ID）
 
 **索引**：
-- `TableName` 索引
-- `RecordID` 索引
+- `idx_changelog_table`: `table_name`
+- `idx_changelog_record`: `record_id`
+- `idx_changelog_timestamp`: `timestamp`
+- `idx_changelog_isolation`: `(isolation_key, isolation_value)`
+- `idx_changelog_isolation_seq`: `(isolation_key, isolation_value, sequence_id)` - 复合索引，优化隔离查询
+
+**设计说明**：
+- `IsolationKey` 和 `IsolationValue` 是冗余字段，从 `Payload` 中提取，用于快速过滤和查询
+- 支持任意隔离维度，不硬编码特定字段名
+- 复合索引 `idx_changelog_isolation_seq` 优化了按隔离条件查询增量变更的性能
 
 #### ClientSyncStatus（客户端同步状态）
-用于数据同步功能（replicator）。
+用于追踪每个设备的同步进度。
 
 **注意**：使用自定义主键，不继承 `gorm.Model`。
 
 **字段**：
-- `DeviceID`: `string` (主键)
-- `UserID`: `string`, 索引
-- `LastSyncedSequenceID`: `int64`
-- `LastSeenTimestamp`: `time.Time`
+- `DeviceID`: `string` (主键) - 设备唯一标识
+- `UserID`: `string`, 索引 - 用户ID（用于查询用户的所有设备）
+- `LastSyncedSequenceID`: `int64` - 最后同步到的序列ID
+- `LastSeenTimestamp`: `time.Time` - 最后活跃时间
 
 **索引**：
-- `UserID` 索引
+- `idx_client_sync_user`: `user_id`
+
+**设计说明**：
+- 用于清理任务判断设备是否活跃
+- 支持多设备同步，每个设备独立追踪同步进度
 
 ## 7.9.6 枚举类型设计
 

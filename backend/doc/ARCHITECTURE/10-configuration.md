@@ -27,7 +27,8 @@ internal/config/
     ├── queue.go       # 队列配置
     ├── auth.go        # 认证配置
     ├── media.go        # 媒体配置
-    └── logger.go      # 日志配置
+    ├── logger.go      # 日志配置
+    └── changelog.go   # 变更日志配置
 ```
 
 ## 10.3 核心设计
@@ -477,12 +478,37 @@ logger:
 - `ALBUM_LOG_ENABLE_CALLER`: 是否包含调用位置（`true`/`false`）
 - `ALBUM_LOG_ENABLE_STACK`: 是否包含堆栈信息（`true`/`false`）
 - `ALBUM_LOG_ASYNC`: 是否异步写入（`true`/`false`）
-- `ALBUM_LOG_BUFFER_SIZE`: 异步缓冲大小（整数）
-- `ALBUM_LOG_FILE_MAX_SIZE`: 文件最大大小（字节）
-- `ALBUM_LOG_FILE_MAX_BACKUPS`: 保留文件数量
-- `ALBUM_LOG_FILE_MAX_AGE`: 保留天数
 
-### 10.5.6 队列配置
+### Changelog 模块配置
+
+变更日志同步模块的配置项：
+
+**YAML 配置**：
+```yaml
+changelog:
+  enabled: true                    # 是否启用变更日志功能
+  cleanup_interval: 24h            # 清理任务运行周期
+  device_active_threshold: 4320h   # 设备活跃阈值（180天）
+  default_sync_page_limit: 500     # 默认同步分页大小
+  full_sync_tables:                # 全量同步表配置
+    medias:
+      primary_key_column: "uuid"   # 主键列名
+```
+
+**环境变量**（如果支持）：
+- `ALBUM_CHANGELOG_ENABLED`: 是否启用（`true`/`false`）
+- `ALBUM_CHANGELOG_CLEANUP_INTERVAL`: 清理周期（如 `24h`）
+- `ALBUM_CHANGELOG_DEVICE_ACTIVE_THRESHOLD`: 设备活跃阈值（如 `4320h`）
+- `ALBUM_CHANGELOG_DEFAULT_SYNC_PAGE_LIMIT`: 默认分页大小（如 `500`）
+
+**配置说明**：
+- `enabled`: 设置为 `false` 可完全禁用模块，此时零开销、零侵入
+- `cleanup_interval`: 后台清理任务运行周期，建议 24 小时
+- `device_active_threshold`: 超过此时间未同步的设备视为不活跃，其之前的变更日志可被清理
+- `default_sync_page_limit`: 同步 API 的默认分页大小
+- `full_sync_tables`: 配置需要支持全量同步的表，必须指定主键列名
+
+### 10.5.7 队列配置
 
 - `ALBUM_QUEUE_CONCURRENCY`: 并发处理数量
 - `ALBUM_QUEUE_MIN_POLL_INTERVAL_MS`: 最小轮询间隔（毫秒）

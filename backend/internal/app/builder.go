@@ -2,7 +2,9 @@ package app
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/album/backend/internal/changelog"
 	"github.com/album/backend/internal/config"
 	"github.com/album/backend/internal/config/modules"
 	"github.com/album/backend/internal/database"
@@ -17,7 +19,6 @@ import (
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
-	"time"
 )
 
 // Builder 应用构建器
@@ -65,6 +66,10 @@ func (b *Builder) BuildAll() error {
 
 	if err := b.BuildSecurity(); err != nil {
 		return fmt.Errorf("build security: %w", err)
+	}
+
+	if err := b.BuildChangelog(); err != nil {
+		return fmt.Errorf("build changelog: %w", err)
 	}
 
 	if err := b.BuildRepositories(); err != nil {
@@ -210,8 +215,22 @@ func (b *Builder) BuildRepositories() error {
 		return fmt.Errorf("database is required")
 	}
 
-	// 创建媒体仓储
-	b.app.MediaRepo = repository.NewMediaRepository(b.app.DB)
+	// 创建原始媒体仓储
+	originalMediaRepo := repository.NewMediaRepository(b.app.DB)
+
+	// 如果 changelog 已初始化，则包装媒体仓储
+	if b.app.ChangelogFactory != nil && b.app.ChangelogFactory.IsEnabled() {
+		// 创建适配器
+		mediaAdapter := changelog.NewMediaRepositoryAdapter(originalMediaRepo)
+		// 包装适配器
+		wrappedAdapter := changelog.WrapRepository(b.app.ChangelogFactory, mediaAdapter)
+		// 将包装后的适配器转换回 MediaRepository 接口
+		b.app.MediaRepo = changelog.NewChangelogAwareMediaRepository(wrappedAdapter, originalMediaRepo)
+	} else {
+		// 未启用 changelog，直接使用原始仓储
+		b.app.MediaRepo = originalMediaRepo
+	}
+
 	b.app.UserRepo = repository.NewUserRepository(b.app.DB)
 	b.app.AuthProviderRepo = repository.NewAuthProviderRepository(b.app.DB)
 	b.app.RefreshTokenRepo = repository.NewRefreshTokenRepository(b.app.DB)
@@ -225,6 +244,47 @@ func (b *Builder) BuildRepositories() error {
 	b.app.LikeRepo = repository.NewLikeRepository(b.app.DB)
 	b.app.GroupInviteRepo = repository.NewGroupInviteRepository(b.app.DB)
 	b.app.ShareRepo = repository.NewShareRepository(b.app.DB)
+
+	return nil
+}
+
+// BuildChangelog 构建变更日志模块
+func (b *Builder) BuildChangelog() error {
+	if b.app.DB == nil {
+		return fmt.Errorf("database is required")
+	}
+
+	// 获取配置或使用默认配置
+	var changelogConfig *changelog.Config
+	if b.cfg.Changelog != nil {
+		changelogConfig = &changelog.Config{
+			Enabled:              b.cfg.Changelog.Enabled,
+			CleanupInterval:      b.cfg.Changelog.CleanupInterval,
+			DeviceActiveThreshold: b.cfg.Changelog.DeviceActiveThreshold,
+			DefaultSyncPageLimit: b.cfg.Changelog.DefaultSyncPageLimit,
+			FullSyncTables:       make(map[string]changelog.FullSyncTableConfig),
+		}
+
+		// 转换全量同步表配置
+		for table, tableCfg := range b.cfg.Changelog.FullSyncTables {
+			changelogConfig.FullSyncTables[table] = changelog.FullSyncTableConfig{
+				PrimaryKeyColumn: tableCfg.PrimaryKeyColumn,
+			}
+		}
+	} else {
+		// 使用默认配置（默认启用）
+		changelogConfig = changelog.DefaultConfig()
+		// 配置 media 表的全量同步
+		changelogConfig.FullSyncTables["medias"] = changelog.FullSyncTableConfig{
+			PrimaryKeyColumn: "uuid",
+		}
+	}
+
+	// 创建引擎
+	b.app.ChangelogEngine = changelog.NewEngine(b.app.DB, changelogConfig)
+
+	// 创建包装器工厂
+	b.app.ChangelogFactory = changelog.NewWrapperFactory(b.app.DB, changelogConfig)
 
 	return nil
 }

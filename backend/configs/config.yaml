@@ -129,3 +129,13 @@ logger:
   format: "console"  # json, console
   output: "stdout"  # stdout, stderr, 或文件路径
 
+# 变更日志同步配置
+changelog:
+  enabled: true                    # 是否启用变更日志功能
+  cleanup_interval: 24h            # 清理任务运行周期
+  device_active_threshold: 4320h   # 设备活跃阈值（180天）
+  default_sync_page_limit: 500     # 默认同步分页大小
+  full_sync_tables:                # 全量同步表配置
+    medias:
+      primary_key_column: "uuid"   # 主键列名
+

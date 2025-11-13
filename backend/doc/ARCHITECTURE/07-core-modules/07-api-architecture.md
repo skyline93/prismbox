@@ -199,7 +199,10 @@ func NoContent(c *gin.Context) {
   │   ├── GET /with-me (protected)
   │   └── GET /:share_token/meta (public)
   │
-  └── sync/ (protected - 由 replicator 注册)
+  └── sync/ (protected - 由 changelog 模块注册)
+      ├── GET /sync - 增量同步
+      ├── GET /sync/full_init - 全量同步初始化
+      └── GET /sync/full_data - 全量同步数据
 ```
 
 ### 路由注册器
@@ -215,7 +218,7 @@ import (
     "github.com/album/backend/internal/api/v1/album"
     "github.com/album/backend/internal/api/v1/group"
     "github.com/album/backend/internal/api/v1/share"
-    "github.com/album/backend/internal/api/v1/sync"
+    "github.com/album/backend/internal/api/v1/changelog"
     "github.com/album/backend/internal/api/v1/version"
     "github.com/album/backend/internal/api/middleware"
     "github.com/gin-gonic/gin"
@@ -273,7 +276,7 @@ func (r *Router) setupAPIV1() {
     album.RegisterRoutes(v1, r.app)
     group.RegisterRoutes(v1, r.app)
     share.RegisterRoutes(v1, r.app)
-    sync.RegisterRoutes(v1, r.app)
+    changelog.RegisterRoutes(v1, r.app)  // 如果 changelog 模块启用
     version.RegisterRoutes(v1, r.app)
 }
 

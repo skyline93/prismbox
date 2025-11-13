@@ -29,7 +29,7 @@ backend/
 │   │   │   ├── album/     # 相册相关 handlers
 │   │   │   ├── group/     # 圈子相关 handlers
 │   │   │   ├── share/     # 分享相关 handlers
-│   │   │   ├── sync/      # 同步相关 handlers
+│   │   │   ├── changelog/ # 变更日志同步 handlers
 │   │   │   └── version/   # 版本信息 handlers
 │   │   │
 │   │   ├── middleware/    # 中间件
@@ -119,7 +119,8 @@ backend/
 │   │       ├── queue.go
 │   │       ├── auth.go
 │   │       ├── media.go
-│   │       └── logger.go
+│   │       ├── logger.go
+│   │       └── changelog.go
 │   │
 │   ├── database/         # 数据库相关
 │   │   ├── connection.go  # 数据库连接管理（支持 SQLite 和 PostgreSQL）
@@ -133,8 +134,18 @@ backend/
 │   │       ├── album.go   # 相册相关模型
 │   │       ├── share.go   # 分享相关模型
 │   │       ├── group.go   # 圈子相关模型
-│   │       ├── sync.go    # 同步相关模型（Changelog, ClientSyncStatus）
 │   │       └── upload.go  # 上传任务模型
+│   │
+│   ├── changelog/         # 变更日志同步模块
+│   │   ├── types.go       # 类型定义和接口
+│   │   ├── config.go      # 配置
+│   │   ├── engine.go      # 同步引擎
+│   │   ├── repository.go  # 仓储包装器
+│   │   ├── service.go     # 同步服务
+│   │   ├── handler.go     # HTTP 处理器
+│   │   ├── cleanup.go     # 清理服务
+│   │   ├── adapter.go     # 适配器层
+│   │   └── README.md      # 模块文档
 │   │
 │   └── version/          # 版本信息
 │       └── version.go

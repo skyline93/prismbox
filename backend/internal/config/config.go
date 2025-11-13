@@ -6,14 +6,15 @@ import (
 
 // Config 主配置结构体
 type Config struct {
-	Server   *modules.ServerConfig   `yaml:"server"`
-	Database *modules.DatabaseConfig `yaml:"database"`
-	Storage  *modules.StorageConfig  `yaml:"storage"`
-	Backup   *modules.BackupConfig   `yaml:"backup"`
-	Queue    *modules.QueueConfig    `yaml:"queue"`
-	Auth     *modules.AuthConfig     `yaml:"auth"`
-	Media    *modules.MediaConfig    `yaml:"media"`
-	Logger   *modules.LoggerConfig   `yaml:"logger"`
+	Server    *modules.ServerConfig    `yaml:"server"`
+	Database  *modules.DatabaseConfig  `yaml:"database"`
+	Storage   *modules.StorageConfig   `yaml:"storage"`
+	Backup    *modules.BackupConfig    `yaml:"backup"`
+	Queue     *modules.QueueConfig     `yaml:"queue"`
+	Auth      *modules.AuthConfig      `yaml:"auth"`
+	Media     *modules.MediaConfig     `yaml:"media"`
+	Logger    *modules.LoggerConfig    `yaml:"logger"`
+	Changelog *modules.ChangelogConfig `yaml:"changelog"`
 }
 
 // Validate 验证配置
@@ -55,6 +56,11 @@ func (c *Config) Validate() error {
 	}
 	if c.Logger != nil {
 		if err := c.Logger.Validate(); err != nil {
+			return err
+		}
+	}
+	if c.Changelog != nil {
+		if err := c.Changelog.Validate(); err != nil {
 			return err
 		}
 	}

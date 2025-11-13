@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/album/backend/internal/api/v1/auth"
+	"github.com/album/backend/internal/api/v1/changelog"
 	"github.com/album/backend/internal/api/v1/group"
 	"github.com/album/backend/internal/api/v1/media"
 	"github.com/album/backend/internal/api/v1/share"
@@ -73,6 +74,11 @@ func (r *Router) setupAPIV1() {
 
 	// 注册分享的公开路由（在根路由）
 	share.RegisterPublicRoutes(r.engine, r.app)
+
+	// 注册变更日志路由（如果启用）
+	if r.app.ChangelogEngine != nil && r.app.ChangelogEngine.IsEnabled() {
+		changelog.RegisterRoutes(v1, r.app)
+	}
 }
 
 func (r *Router) setupStatic() {
