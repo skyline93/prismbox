@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// cleanupService 负责清理陈旧的同步日志
+// cleanupService 负责清理陈旧的变更日志
 type cleanupService struct {
 	db     *gorm.DB
 	config *Config
@@ -40,7 +40,7 @@ func (s *cleanupService) runCleanup() error {
 	var minSeqID int64
 	activeThreshold := time.Now().UTC().Add(-s.config.DeviceActiveThreshold)
 
-	err := s.db.Model(&ClientSyncStatus{}).
+	err := s.db.Model(&ClientChangelogStatus{}).
 		Where("last_seen_timestamp > ?", activeThreshold).
 		Select("COALESCE(MIN(last_synced_sequence_id), 0)").
 		Row().Scan(&minSeqID)
@@ -63,4 +63,3 @@ func (s *cleanupService) runCleanup() error {
 
 	return nil
 }
-

@@ -20,8 +20,8 @@ const (
 
 // --- Interfaces ---
 
-// SyncedModel 是业务模型必须实现的接口，以便 changelog 可以获取其元数据
-type SyncedModel interface {
+// ChangelogModel 是业务模型必须实现的接口，以便 changelog 可以获取其元数据
+type ChangelogModel interface {
 	// GetRecordID 获取记录ID
 	GetRecordID() string
 
@@ -41,7 +41,7 @@ type SyncedModel interface {
 
 // WritableRepository 是所有需要被同步的业务仓储必须实现的通用写操作接口
 // 事务管理将由 changelog 模块内部统一处理
-type WritableRepository[T SyncedModel] interface {
+type WritableRepository[T ChangelogModel] interface {
 	Create(ctx context.Context, model T) (T, error)
 	Update(ctx context.Context, model T) (T, error)
 	Delete(ctx context.Context, model T) error
@@ -73,16 +73,16 @@ func (Changelog) TableName() string {
 	return "changelogs"
 }
 
-// ClientSyncStatus 追踪每个设备用户的同步进度
-type ClientSyncStatus struct {
-	DeviceID             string    `gorm:"primaryKey;type:varchar(255)"`
-	UserID               string    `gorm:"index;type:varchar(255)"`
-	LastSyncedSequenceID int64     `gorm:"not null"`
-	LastSeenTimestamp    time.Time `gorm:"not null"`
+// ClientChangelogStatus 追踪每个设备用户的变更日志同步进度
+type ClientChangelogStatus struct {
+	DeviceID                string    `gorm:"primaryKey;type:varchar(255)"`
+	UserID                  string    `gorm:"index;type:varchar(255)"`
+	LastChangelogSequenceID int64     `gorm:"not null;column:last_synced_sequence_id"`
+	LastSeenTimestamp       time.Time `gorm:"not null"`
 }
 
 // TableName 指定表名（GORM 标准方法）
-func (ClientSyncStatus) TableName() string {
+func (ClientChangelogStatus) TableName() string {
 	return "client_sync_statuses"
 }
 

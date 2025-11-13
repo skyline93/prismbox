@@ -373,8 +373,8 @@ func (s *service) GetProfile(ctx context.Context, userID uint) (*Profile, error)
 		Email:        user.Email,
 		AvatarURL:    avatarURL,
 		HasPassword:  user.Password != "",
-		UsedStorage:  0,
-		TotalStorage: 0,
+		UsedStorage:  20,
+		TotalStorage: 100,
 		CreatedAt:    user.CreatedAt,
 	}, nil
 }

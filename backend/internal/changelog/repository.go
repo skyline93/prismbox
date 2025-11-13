@@ -10,7 +10,7 @@ import (
 
 // changelogRepository 是一个实现了 WritableRepository 接口的通用仓储包装器
 // 它包装了业务仓储，自动处理事务和 Changelog 的原子性写入
-type changelogRepository[T SyncedModel] struct {
+type changelogRepository[T ChangelogModel] struct {
 	db      *gorm.DB
 	wrapped WritableRepository[T]
 	config  *Config
@@ -19,7 +19,7 @@ type changelogRepository[T SyncedModel] struct {
 // WithChangelog 是此包装器的构造函数
 // 它接收一个业务仓储，返回一个同样实现了 WritableRepository 接口的新仓储实例
 // 如果 config.Enabled=false，直接返回原始仓储（零开销）
-func WithChangelog[T SyncedModel](
+func WithChangelog[T ChangelogModel](
 	db *gorm.DB,
 	wrapped WritableRepository[T],
 	config *Config,
@@ -136,7 +136,7 @@ func NewWrapperFactory(db *gorm.DB, config *Config) *WrapperFactory {
 // WrapRepository 包装仓储（包级函数，因为 Go 不支持泛型方法）
 // 如果 changelog 未启用，直接返回原始仓储（零开销）
 // 如果启用，返回包装后的仓储
-func WrapRepository[T SyncedModel](
+func WrapRepository[T ChangelogModel](
 	factory *WrapperFactory,
 	repo WritableRepository[T],
 ) WritableRepository[T] {

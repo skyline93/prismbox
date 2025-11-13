@@ -258,24 +258,24 @@ func (b *Builder) BuildChangelog() error {
 	var changelogConfig *changelog.Config
 	if b.cfg.Changelog != nil {
 		changelogConfig = &changelog.Config{
-			Enabled:              b.cfg.Changelog.Enabled,
-			CleanupInterval:      b.cfg.Changelog.CleanupInterval,
-			DeviceActiveThreshold: b.cfg.Changelog.DeviceActiveThreshold,
-			DefaultSyncPageLimit: b.cfg.Changelog.DefaultSyncPageLimit,
-			FullSyncTables:       make(map[string]changelog.FullSyncTableConfig),
+			Enabled:                   b.cfg.Changelog.Enabled,
+			CleanupInterval:           b.cfg.Changelog.CleanupInterval,
+			DeviceActiveThreshold:     b.cfg.Changelog.DeviceActiveThreshold,
+			DefaultChangelogPageLimit: b.cfg.Changelog.DefaultChangelogPageLimit,
+			FullChangelogTables:       make(map[string]changelog.FullChangelogTableConfig),
 		}
 
-		// 转换全量同步表配置
-		for table, tableCfg := range b.cfg.Changelog.FullSyncTables {
-			changelogConfig.FullSyncTables[table] = changelog.FullSyncTableConfig{
+		// 转换全量变更日志表配置
+		for table, tableCfg := range b.cfg.Changelog.FullChangelogTables {
+			changelogConfig.FullChangelogTables[table] = changelog.FullChangelogTableConfig{
 				PrimaryKeyColumn: tableCfg.PrimaryKeyColumn,
 			}
 		}
 	} else {
 		// 使用默认配置（默认启用）
 		changelogConfig = changelog.DefaultConfig()
-		// 配置 media 表的全量同步
-		changelogConfig.FullSyncTables["medias"] = changelog.FullSyncTableConfig{
+		// 配置 media 表的全量变更日志
+		changelogConfig.FullChangelogTables["medias"] = changelog.FullChangelogTableConfig{
 			PrimaryKeyColumn: "uuid",
 		}
 	}
@@ -346,7 +346,7 @@ func (b *Builder) BuildServices() error {
 	if b.cfg.Server != nil {
 		avatarBaseURL = b.cfg.Server.PublicBaseURL + "/static/avatars/"
 	}
-	
+
 	// 创建URLBuilder
 	urlBuilder := &groupURLBuilder{
 		publicBaseURL: b.cfg.Server.PublicBaseURL,
@@ -371,7 +371,7 @@ func (b *Builder) BuildServices() error {
 	shareURLBuilder := &shareURLBuilder{
 		publicBaseURL: b.cfg.Server.PublicBaseURL,
 	}
-	
+
 	signedURLLoadTTL := 5 * time.Minute // 默认5分钟
 	if b.cfg.Auth != nil && b.cfg.Auth.SignedURLLoadTTL.Duration() > 0 {
 		signedURLLoadTTL = b.cfg.Auth.SignedURLLoadTTL.Duration()
@@ -397,6 +397,15 @@ type groupURLBuilder struct {
 
 func (b *groupURLBuilder) BuildGroupMediaURL(groupUUID, mediaUUID string) string {
 	return fmt.Sprintf("%s/api/v1/groups/%s/media/%s/thumbnail", b.publicBaseURL, groupUUID, mediaUUID)
+}
+
+func (b *groupURLBuilder) BuildGroupMediaPreviewURL(groupUUID, mediaUUID string) string {
+	return fmt.Sprintf("%s/api/v1/groups/%s/media/%s/preview", b.publicBaseURL, groupUUID, mediaUUID)
+}
+
+func (b *groupURLBuilder) BuildMediaDownloadURL(mediaUUID string) string {
+	// 使用通用的media download路由
+	return fmt.Sprintf("%s/api/v1/media/%s/download/original", b.publicBaseURL, mediaUUID)
 }
 
 // shareURLBuilder 实现share.Service的URLBuilder接口

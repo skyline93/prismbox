@@ -7,30 +7,38 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// syncHandler 封装了与同步相关的 API 接口
-type syncHandler struct {
-	service *syncService
+// changelogHandler 封装了与变更日志相关的 API 接口
+type changelogHandler struct {
+	service *changelogService
 	config  *Config
 }
 
-func newSyncHandler(service *syncService, config *Config) *syncHandler {
-	return &syncHandler{
+func newChangelogHandler(service *changelogService, config *Config) *changelogHandler {
+	return &changelogHandler{
 		service: service,
 		config:  config,
 	}
 }
 
-func (h *syncHandler) registerRoutes(router *gin.RouterGroup) {
+func (h *changelogHandler) registerRoutes(router *gin.RouterGroup) {
+	changelogGroup := router.Group("/changelog")
+	{
+		changelogGroup.GET("", h.handleIncrementalChanges)
+		changelogGroup.GET("/full_init", h.handleFullChangelogInit)
+		changelogGroup.GET("/full_data", h.handleFullChangelogData)
+	}
+
+	// 向后兼容：/sync (保持与旧架构server一致)
 	syncGroup := router.Group("/sync")
 	{
-		syncGroup.GET("", h.handleSync)
-		syncGroup.GET("/full_init", h.handleFullSyncInit)
-		syncGroup.GET("/full_data", h.handleFullSyncData)
+		syncGroup.GET("", h.handleIncrementalChanges)
+		syncGroup.GET("/full_init", h.handleFullChangelogInit)
+		syncGroup.GET("/full_data", h.handleFullChangelogData)
 	}
 }
 
-// handleSync 处理增量同步请求
-func (h *syncHandler) handleSync(c *gin.Context) {
+// handleIncrementalChanges 处理增量变更日志请求
+func (h *changelogHandler) handleIncrementalChanges(c *gin.Context) {
 	// 获取隔离信息（从请求头或查询参数）
 	// 这里使用通用的方式，不硬编码 user_id
 	isolationKey := c.GetHeader("X-Isolation-Key")     // 如 "user_id"
@@ -58,13 +66,13 @@ func (h *syncHandler) handleSync(c *gin.Context) {
 	}
 
 	lastSeqID, _ := strconv.ParseInt(c.Query("last_seq_id"), 10, 64)
-	limit, err := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(h.config.DefaultSyncPageLimit)))
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(h.config.DefaultChangelogPageLimit)))
 	if err != nil || limit <= 0 {
-		limit = h.config.DefaultSyncPageLimit
+		limit = h.config.DefaultChangelogPageLimit
 	}
 
 	// 构建查询条件
-	query := &SyncQuery{
+	query := &ChangelogQuery{
 		IsolationKey:   isolationKey,
 		IsolationValue: isolationValue,
 	}
@@ -89,9 +97,9 @@ func (h *syncHandler) handleSync(c *gin.Context) {
 	})
 }
 
-// handleFullSyncInit 处理全量同步初始化请求
-func (h *syncHandler) handleFullSyncInit(c *gin.Context) {
-	tables, snapshotSeqID, err := h.service.GetFullSyncSnapshotInfo()
+// handleFullChangelogInit 处理全量变更日志初始化请求
+func (h *changelogHandler) handleFullChangelogInit(c *gin.Context) {
+	tables, snapshotSeqID, err := h.service.GetFullChangelogSnapshotInfo()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get snapshot info"})
 		return
@@ -102,8 +110,8 @@ func (h *syncHandler) handleFullSyncInit(c *gin.Context) {
 	})
 }
 
-// handleFullSyncData 处理全量同步数据请求
-func (h *syncHandler) handleFullSyncData(c *gin.Context) {
+// handleFullChangelogData 处理全量变更日志数据请求
+func (h *changelogHandler) handleFullChangelogData(c *gin.Context) {
 	tableName := c.Query("table")
 	if tableName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "table query parameter is required"})
@@ -123,21 +131,21 @@ func (h *syncHandler) handleFullSyncData(c *gin.Context) {
 		}
 	}
 
-	limit, err := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(h.config.DefaultSyncPageLimit)))
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(h.config.DefaultChangelogPageLimit)))
 	if err != nil || limit <= 0 {
-		limit = h.config.DefaultSyncPageLimit
+		limit = h.config.DefaultChangelogPageLimit
 	}
 
 	pageToken := c.Query("page_token")
 
 	// 构建查询条件
-	query := &SyncQuery{
+	query := &ChangelogQuery{
 		IsolationKey:   isolationKey,
 		IsolationValue: isolationValue,
 		TableName:      tableName,
 	}
 
-	changes, nextToken, err := h.service.GetFullSyncDataForTable(query, tableName, pageToken, limit)
+	changes, nextToken, err := h.service.GetFullChangelogDataForTable(query, tableName, pageToken, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch full data"})
 		return

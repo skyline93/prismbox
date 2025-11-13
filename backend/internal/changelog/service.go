@@ -8,8 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// SyncQuery 同步查询条件
-type SyncQuery struct {
+// ChangelogQuery 变更日志查询条件
+type ChangelogQuery struct {
 	// IsolationKey 隔离键，如 "user_id", "organization_id" 等
 	IsolationKey string
 
@@ -20,19 +20,19 @@ type SyncQuery struct {
 	TableName string
 }
 
-// syncService 提供了同步所需的核心业务逻辑
-type syncService struct {
+// changelogService 提供了变更日志所需的核心业务逻辑
+type changelogService struct {
 	db     *gorm.DB
 	config *Config
 }
 
-func newSyncService(db *gorm.DB, config *Config) *syncService {
-	return &syncService{db: db, config: config}
+func newChangelogService(db *gorm.DB, config *Config) *changelogService {
+	return &changelogService{db: db, config: config}
 }
 
 // GetIncrementalChanges 获取增量变更
-func (s *syncService) GetIncrementalChanges(
-	query *SyncQuery,
+func (s *changelogService) GetIncrementalChanges(
+	query *ChangelogQuery,
 	lastSeqID int64,
 	limit int,
 ) ([]Changelog, int64, bool, error) {
@@ -77,8 +77,8 @@ func (s *syncService) GetIncrementalChanges(
 	return changes, latestSeqID, count > 0, nil
 }
 
-// GetFullSyncSnapshotInfo 获取全量同步快照信息
-func (s *syncService) GetFullSyncSnapshotInfo() ([]string, int64, error) {
+// GetFullChangelogSnapshotInfo 获取全量变更日志快照信息
+func (s *changelogService) GetFullChangelogSnapshotInfo() ([]string, int64, error) {
 	var maxSeqID int64
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		return tx.Model(&Changelog{}).Select("COALESCE(MAX(sequence_id), 0)").Row().Scan(&maxSeqID)
@@ -87,23 +87,23 @@ func (s *syncService) GetFullSyncSnapshotInfo() ([]string, int64, error) {
 		return nil, 0, err
 	}
 
-	tables := make([]string, 0, len(s.config.FullSyncTables))
-	for table := range s.config.FullSyncTables {
+	tables := make([]string, 0, len(s.config.FullChangelogTables))
+	for table := range s.config.FullChangelogTables {
 		tables = append(tables, table)
 	}
 
 	return tables, maxSeqID, nil
 }
 
-// GetFullSyncDataForTable 获取全量同步数据
-func (s *syncService) GetFullSyncDataForTable(
-	query *SyncQuery,
+// GetFullChangelogDataForTable 获取全量变更日志数据
+func (s *changelogService) GetFullChangelogDataForTable(
+	query *ChangelogQuery,
 	tableName, pageToken string,
 	limit int,
 ) ([]Changelog, *string, error) {
-	tableConfig, ok := s.config.FullSyncTables[tableName]
+	tableConfig, ok := s.config.FullChangelogTables[tableName]
 	if !ok {
-		return nil, nil, fmt.Errorf("table '%s' is not configured for full sync", tableName)
+		return nil, nil, fmt.Errorf("table '%s' is not configured for full changelog", tableName)
 	}
 
 	var results []map[string]interface{}
@@ -154,13 +154,13 @@ func (s *syncService) GetFullSyncDataForTable(
 	return changes, nextToken, nil
 }
 
-// UpdateClientStatus 更新客户端同步状态
-func (s *syncService) UpdateClientStatus(deviceID, userID string, lastSeqID int64) error {
-	status := ClientSyncStatus{
-		DeviceID:             deviceID,
-		UserID:               userID,
-		LastSyncedSequenceID: lastSeqID,
-		LastSeenTimestamp:    time.Now().UTC(),
+// UpdateClientStatus 更新客户端变更日志同步状态
+func (s *changelogService) UpdateClientStatus(deviceID, userID string, lastSeqID int64) error {
+	status := ClientChangelogStatus{
+		DeviceID:                deviceID,
+		UserID:                  userID,
+		LastChangelogSequenceID: lastSeqID,
+		LastSeenTimestamp:       time.Now().UTC(),
 	}
 	return s.db.Save(&status).Error
 }

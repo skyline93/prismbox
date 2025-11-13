@@ -4,7 +4,7 @@
 server:
   host: "0.0.0.0"
   port: 8080
-  public_base_url: "http://localhost:8080"
+  public_base_url: "http://10.168.1.161:8080"
 
 # 数据库配置
 database:
@@ -134,8 +134,8 @@ changelog:
   enabled: true                    # 是否启用变更日志功能
   cleanup_interval: 24h            # 清理任务运行周期
   device_active_threshold: 4320h   # 设备活跃阈值（180天）
-  default_sync_page_limit: 500     # 默认同步分页大小
-  full_sync_tables:                # 全量同步表配置
+  default_changelog_page_limit: 500     # 默认变更日志分页大小
+  full_changelog_tables:                # 全量变更日志表配置
     medias:
       primary_key_column: "uuid"   # 主键列名
 

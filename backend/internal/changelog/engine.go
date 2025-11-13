@@ -5,10 +5,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// Engine 变更日志同步引擎
+// Engine 变更日志引擎
 type Engine struct {
 	config  *Config
-	handler *syncHandler
+	handler *changelogHandler
 	cleanup *cleanupService
 	enabled bool
 }
@@ -24,14 +24,14 @@ func NewEngine(db *gorm.DB, config *Config) *Engine {
 	// 只有在启用时才初始化组件
 	if config.Enabled {
 		// 自动迁移数据库表
-		if err := db.AutoMigrate(&Changelog{}, &ClientSyncStatus{}); err != nil {
+		if err := db.AutoMigrate(&Changelog{}, &ClientChangelogStatus{}); err != nil {
 			// 如果迁移失败，记录错误但不阻止启动
 			// 在实际应用中，可以使用 logger 记录
 		}
 
 		// 初始化内部组件
-		syncSvc := newSyncService(db, config)
-		engine.handler = newSyncHandler(syncSvc, config)
+		changelogSvc := newChangelogService(db, config)
+		engine.handler = newChangelogHandler(changelogSvc, config)
 		engine.cleanup = newCleanupService(db, config)
 	}
 

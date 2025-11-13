@@ -83,15 +83,15 @@ type Service interface {
 
 // GroupDetail 圈子详情
 type GroupDetail struct {
-	UUID            string         `json:"uuid"`
-	Name            string         `json:"name"`
-	Description     string         `json:"description"`
-	CoverMediaUUID  string         `json:"cover_media_uuid"`
-	OwnerID         uint           `json:"owner_id"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
-	MemberCount     int64          `json:"member_count"`
-	CurrentUserID   uint           `json:"current_user_id"`
+	UUID            string           `json:"uuid"`
+	Name            string           `json:"name"`
+	Description     string           `json:"description"`
+	CoverMediaUUID  string           `json:"cover_media_uuid"`
+	OwnerID         uint             `json:"owner_id"`
+	CreatedAt       time.Time        `json:"created_at"`
+	UpdatedAt       time.Time        `json:"updated_at"`
+	MemberCount     int64            `json:"member_count"`
+	CurrentUserID   uint             `json:"current_user_id"`
 	CurrentUserRole models.GroupRole `json:"current_user_role"`
 }
 
@@ -113,52 +113,61 @@ type GroupFeedResult struct {
 
 // GroupPostInfo 帖子信息
 type GroupPostInfo struct {
-	ID            uint                   `json:"id"`
-	Caption       string                 `json:"caption"`
-	CreatedAt     time.Time              `json:"created_at"`
-	Creator       *UserSimpleInfo        `json:"creator"`
-	Media         []*MediaInfo           `json:"media"`
-	LikesCount    int64                  `json:"likes_count"`
-	CommentsCount int64                  `json:"comments_count"`
+	ID            uint            `json:"id"`
+	Caption       string          `json:"caption"`
+	CreatedAt     time.Time       `json:"created_at"`
+	Creator       *UserSimpleInfo `json:"creator"`
+	Media         []*MediaInfo    `json:"media"`
+	LikesCount    int64           `json:"likes_count"`
+	CommentsCount int64           `json:"comments_count"`
 }
 
 // UserSimpleInfo 用户简单信息
 type UserSimpleInfo struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
+	UserID    uint   `json:"user_id"`
+	Username  string `json:"username"`
 	AvatarURL string `json:"avatar_url"`
 }
 
 // MediaInfo 媒体信息
 type MediaInfo struct {
-	UUID         string `json:"uuid"`
-	ItemType     string `json:"item_type"`
-	ThumbnailURL string `json:"thumbnail_url,omitempty"`
-	PreviewURL   string `json:"preview_url,omitempty"`
+	UUID             string  `json:"uuid"`
+	Filename         string  `json:"filename,omitempty"`
+	OriginalFilename string  `json:"original_filename,omitempty"`
+	ItemType         string  `json:"item_type"`
+	Hash             string  `json:"hash,omitempty"`
+	Width            int     `json:"width,omitempty"`
+	Height           int     `json:"height,omitempty"`
+	CreatedAt        string  `json:"created_at,omitempty"`
+	UpdatedAt        string  `json:"updated_at,omitempty"`
+	MediaTakenAt     *string `json:"media_taken_at,omitempty"`
+	ThumbnailURL     string  `json:"thumbnail_url,omitempty"`
+	PreviewURL       string  `json:"preview_url,omitempty"`
+	DownloadURL      string  `json:"download_url,omitempty"`
 }
 
 // CommentInfo 评论信息
 type CommentInfo struct {
-	ID         string         `json:"id"`
-	CreatedAt  time.Time      `json:"created_at"`
-	Content    string         `json:"content"`
+	ID         string          `json:"id"`
+	CreatedAt  time.Time       `json:"created_at"`
+	Content    string          `json:"content"`
 	User       *UserSimpleInfo `json:"author"`
-	LikesCount int            `json:"likes_count"`
-	Replies    []*CommentInfo `json:"replies,omitempty"`
+	LikesCount int             `json:"likes_count"`
+	Replies    []*CommentInfo  `json:"replies,omitempty"`
 }
 
 type service struct {
 	logger logger.Logger
 	db     *gorm.DB
 
-	groupRepo         repository.GroupRepository
-	groupMemberRepo   repository.GroupMemberRepository
-	groupPostRepo     repository.GroupPostRepository
-	groupMediaRepo    repository.GroupMediaRepository
-	commentRepo       repository.CommentRepository
-	likeRepo          repository.LikeRepository
-	groupInviteRepo   repository.GroupInviteRepository
-	mediaRepo         repository.MediaRepository
+	groupRepo       repository.GroupRepository
+	groupMemberRepo repository.GroupMemberRepository
+	groupPostRepo   repository.GroupPostRepository
+	groupMediaRepo  repository.GroupMediaRepository
+	commentRepo     repository.CommentRepository
+	likeRepo        repository.LikeRepository
+	groupInviteRepo repository.GroupInviteRepository
+	mediaRepo       repository.MediaRepository
 
 	avatarBaseURL string
 	urlBuilder    URLBuilder
@@ -167,6 +176,8 @@ type service struct {
 // URLBuilder URL构建器接口
 type URLBuilder interface {
 	BuildGroupMediaURL(groupUUID, mediaUUID string) string
+	BuildGroupMediaPreviewURL(groupUUID, mediaUUID string) string
+	BuildMediaDownloadURL(mediaUUID string) string
 }
 
 // NewService 创建圈子服务
@@ -638,11 +649,25 @@ func (s *service) GetGroupFeed(ctx context.Context, groupUUID string, userID uin
 	for _, gm := range allGroupMedias {
 		if media, ok := mediaMap[gm.MediaUUID]; ok {
 			mediaInfo := &MediaInfo{
-				UUID:     media.UUID,
-				ItemType: media.ItemType,
+				UUID:             media.UUID,
+				Filename:         media.Filename,
+				OriginalFilename: media.OriginalFilename,
+				ItemType:         media.ItemType,
+				Hash:             media.Hash,
+				Width:            media.Width,
+				Height:           media.Height,
+				CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:        media.UpdatedAt.Format(time.RFC3339),
+			}
+			// 处理可选的 MediaTakenAt 字段
+			if media.MediaTakenAt != nil {
+				takenAt := media.MediaTakenAt.Format(time.RFC3339)
+				mediaInfo.MediaTakenAt = &takenAt
 			}
 			if s.urlBuilder != nil {
 				mediaInfo.ThumbnailURL = s.urlBuilder.BuildGroupMediaURL(groupUUID, media.UUID)
+				mediaInfo.PreviewURL = s.urlBuilder.BuildGroupMediaPreviewURL(groupUUID, media.UUID)
+				mediaInfo.DownloadURL = s.urlBuilder.BuildMediaDownloadURL(media.UUID)
 			}
 			postMediaMap[gm.PostID] = append(postMediaMap[gm.PostID], mediaInfo)
 		}
@@ -878,4 +903,3 @@ func generateInviteCode() string {
 	}
 	return string(b)
 }
-
