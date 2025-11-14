@@ -264,50 +264,104 @@ album storage
 - 关键操作（disable/reconcile/add/update）需鉴权并记录审计日志。
 - 若命令在本地模式运行，可直接通过 `Builder` 构建 app 后调用 Service 层；文档先按远程方案实现。
 
-## 7.11.10 首次部署初始化命令（`album init storage`）
+## 7.11.10 首次部署初始化命令（`album init *`）
 
-> 目标：当主服务尚未启动时，为运维人员提供本地初始化工具，完成最基本的资源（存储池）创建，确保服务可以顺利启动。命令运行在 **local 模式**，直接加载配置和数据库，不依赖 HTTP/Unix Socket。
+> 目标：当主服务尚未启动时，为运维人员提供本地初始化工具，完成配置生成、基础资源（存储池、管理员账户）创建，确保服务可顺利拉起。全部命令运行在 **local 模式**，直接加载配置和数据库，不依赖 HTTP/Unix Socket。
 
 ### 使用场景
 
-1. 全新部署：数据库里还没有任何存储池。
-2. 服务启动失败，日志提示 “no enabled storage pools for type local”。
+1. 全新部署：数据库为空，需要一次性准备配置/存储池/管理员。
+2. 服务启动失败，日志提示 “no enabled storage pools for type local” 或缺少管理员登录。
+3. 容器化/自动化场景中，通过 Init Job 一次性完成基础准备。
 
 ### 典型流程
 
 ```
-album --config configs/config.yaml init storage \
-  --local-path /data/storage1 \
-  --max-size 1TB
+album --config configs/config.yaml init config --storage-path /data/storage1
+album --config configs/config.yaml init migrate
+album --config configs/config.yaml init storage --local-path /data/storage1 --max-size 1TB
+album --config configs/config.yaml init admin --email you@example.com --password 'StrongPass' --reset-password
 ```
 
-执行步骤：
-1. 读取 `--config`（默认 `configs/config.yaml`），加载数据库配置。
-2. 连接数据库，检查 `storage_pools` 表是否已有记录。
-3. 若无记录（或 `--force` 指定），按参数创建 `local` 存储池。
-4. 输出结果；若 `--json` 则返回结构化信息。
-5. 完成后建议：
-   - 如果服务未启动：直接启动 `album server`。
-   - 如果服务已在运行：执行 `album storage pool refresh` 让各实例立即感知新池。
+### 配置文件初始化（`album init config`）
 
-### Flags
+- 功能：当配置文件不存在时，基于默认模板写入一份可直接使用的 `config.yaml`，并自动生成 JWT / URL 签名密钥。可通过 Flag 覆盖数据库、Server、存储路径等关键字段。
+- 常用 Flags：
 
 | Flag | 说明 | 默认值 |
 | ---- | ---- | ------ |
-| `--config, -c` | 配置文件路径 | `configs/config.yaml` |
-| `--name` | 存储池名称 | `default-local` |
-| `--type` | 存储类型（暂只推荐 `local`） | `local` |
-| `--local-path` | 本地路径（type=local 必填） | `./uploads` |
-| `--max-size` | 最大容量（支持 `500GB`/`1TB` 等） | `1TB` |
-| `--priority` | 优先级（数字越小越优先） | `1` |
-| `--auto-disable-threshold` | 自动禁用阈值（0-1） | `0.9` |
-| `--description` | 描述 | `"initial storage pool"` |
-| `--force` | 即使数据库已有池也继续执行 | `false` |
-| `--json` | JSON 格式输出 | `false` |
+| `--force` | 已存在配置时仍然覆盖 | `false` |
+| `--db-type` | 数据库类型（`sqlite`/`postgres`） | 模板默认 |
+| `--database-dsn` | 数据库 DSN | 模板默认 |
+| `--server-host` / `--server-port` | 服务监听地址/端口 | 模板默认 |
+| `--public-base-url` | 对外访问地址 | 模板默认 |
+| `--storage-path` | `storage.primary.local.base_path` | `./uploads` |
+| `--temp-path` | 临时文件目录 | `./data` |
+| `--jwt-secret` | 自定义 JWT 密钥（留空则自动生成） | - |
+| `--url-signer-secret` | 自定义 URL 签名密钥（留空则自动生成） | - |
+
+命令输出包含最终写入路径，并支持 `--json`。
+
+### 数据库迁移（`album init migrate`）
+
+- 功能：加载配置并直接对目标数据库执行 GORM 自动迁移（业务表 + `pkg/gq` 任务表），等效于应用启动时的 `AutoMigrate`。
+- 无额外 Flags，仅提供 `--json`；执行成功后输出“数据库迁移完成”或 JSON 状态。
+- 适用于新环境建库、升级版本后的结构同步，避免必须先启动主服务。
+
+### 存储池初始化（`album init storage`）
+
+- 功能：向 `storage_pools` 表写入首个 `local` 存储池，供主服务启动时使用。
+- 常用 Flags：与之前一致（`--name`、`--local-path`、`--max-size`、`--force` 等），详见命令帮助。
+- 执行步骤：
+  1. 加载 `--config`；
+  2. 连接数据库并检查现有存储池；
+  3. 在无记录或 `--force` 场景下创建存储池；
+  4. 输出结构化信息（支持 `--json`）。
+- 完成后若主服务已运行，可执行 `album storage pool refresh` 让各实例即时加载。
+
+### 管理员账户初始化（`album init admin`）
+
+- 功能：绕过 HTTP API，直接访问数据库，创建或重置管理员账户，以便后续远程 CLI 登录。
+- 常用 Flags：
+
+| Flag | 说明 | 默认值 |
+| ---- | ---- | ------ |
+| `--email` | 管理员邮箱（Env: `ALBUM_INIT_ADMIN_EMAIL`） | - |
+| `--password` | 管理员密码（Env: `ALBUM_INIT_ADMIN_PASSWORD`） | - |
+| `--username` | 用户名（缺省取邮箱前缀） | `邮箱前缀` |
+| `--reset-password` | 邮箱已存在时执行密码重置 | `false` |
+| `--json` | JSON 输出 | `false` |
+
+命令会对密码执行 bcrypt 加密，并在需要时更新用户名。
+
+### 容器化自动化脚本
+
+`backend/scripts/init-container.sh` 封装了完整初始化流程，可在 Kubernetes Init Container 或任意 CI/CD 步骤中执行：
+
+1. `album init config`：根据挂载路径生成/覆盖配置；
+2. `album init migrate`：确保数据库结构与当前版本一致；
+3. `album init storage --force`：注册宿主机/卷的本地存储池；
+4. `album init admin --reset-password`：确保管理员凭据与容器环境变量一致。
+
+核心环境变量：
+
+| 变量 | 说明 | 默认值 |
+| ---- | ---- | ------ |
+| `CLI_BIN` | CLI 可执行文件路径 | `album` |
+| `CONFIG_PATH` | 配置文件写入路径 | `/data/configs/config.yaml` |
+| `STORAGE_PATH` | 主存储挂载路径 | `/data/storage` |
+| `MAX_SIZE` | 存储池容量 | `1TB` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_USERNAME` | 管理员凭据 | - / - / `admin` |
+| `INIT_FORCE` | 是否强制覆盖配置 | `true` |
+
+脚本默认 `set -euo pipefail`，若任一步骤失败会立即退出，适合自动化部署。
 
 ### 最佳实践
 
-1. 准备数据库与配置。
-2. 使用 `album init storage` 创建首个 `local` 存储池。
-3. 启动主服务；如需更多存储池，再使用 `album storage pool add` 或后台管理界面。
+1. 运行 `album init config` 生成配置文件，并根据环境需求调整 DSN、路径等；
+2. 执行 `album init migrate`，确保数据库结构与当前版本对齐；
+3. 确保数据库和存储卷已就绪，再执行 `album init storage`；
+4. 使用 `album init admin` 写入（或重置）管理员账号；
+5. 在容器/自动化场景中，可直接运行 `scripts/init-container.sh` 串联全部操作；
+6. 启动主服务；若需更多存储池，可使用 `album storage pool add` 或后台管理界面。
 

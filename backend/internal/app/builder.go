@@ -8,13 +8,12 @@ import (
 	"github.com/album/backend/internal/config"
 	"github.com/album/backend/internal/config/modules"
 	"github.com/album/backend/internal/database"
-	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/group"
 	"github.com/album/backend/internal/service/media"
-	"github.com/album/backend/internal/service/storagepool"
 	"github.com/album/backend/internal/service/share"
+	"github.com/album/backend/internal/service/storagepool"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
@@ -122,28 +121,8 @@ func (b *Builder) BuildDatabase() error {
 	b.app.DB = db
 
 	// 自动迁移数据库表
-	if err := db.AutoMigrate(
-		&models.User{},
-		&models.AuthProvider{},
-		&models.RefreshToken{},
-		&models.Media{},
-		&models.StoragePool{},
-		&models.Group{},
-		&models.GroupMember{},
-		&models.GroupPost{},
-		&models.GroupMedia{},
-		&models.Comment{},
-		&models.CommentLike{},
-		&models.Like{},
-		&models.GroupInvite{},
-		&models.Share{},
-	); err != nil {
-		return fmt.Errorf("auto migrate models: %w", err)
-	}
-
-	// 自动迁移gq任务表
-	if err := gq.AutoMigrate(db); err != nil {
-		return fmt.Errorf("auto migrate gq: %w", err)
+	if err := database.RunAutoMigrations(db); err != nil {
+		return err
 	}
 
 	return nil
