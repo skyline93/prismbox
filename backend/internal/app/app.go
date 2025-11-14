@@ -6,6 +6,7 @@ import (
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/media"
+	"github.com/album/backend/internal/service/storagepool"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
@@ -44,6 +45,7 @@ type App struct {
 	LikeRepo         repository.LikeRepository
 	GroupInviteRepo  repository.GroupInviteRepository
 	ShareRepo        repository.ShareRepository
+	StoragePoolRepo  repository.StoragePoolRepository
 
 	// 媒体处理
 	MediaProcessor       mediaprocessor.MediaProcessor
@@ -52,6 +54,7 @@ type App struct {
 	// 服务
 	MediaService media.Service
 	AuthService  auth.Service
+	StoragePoolService storagepool.Service
 	GroupService interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
 	ShareService interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/album/backend/internal/config/modules"
 	"github.com/album/backend/internal/database/models"
+	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/storage/primary/local"
 	"github.com/album/backend/pkg/logger"
@@ -111,6 +112,68 @@ func (m *mockPoolRepo) FindEnabledByStorageType(ctx context.Context, storageType
 	return result, nil
 }
 
+func (m *mockPoolRepo) List(ctx context.Context, filter repository.StoragePoolFilter) ([]*models.StoragePool, error) {
+	var result []*models.StoragePool
+	for _, pool := range m.pools {
+		if filter.StorageType != "" && pool.StorageType != filter.StorageType {
+			continue
+		}
+		if filter.Status != "" && pool.Status != filter.Status {
+			continue
+		}
+		result = append(result, pool)
+	}
+	return result, nil
+}
+
+func (m *mockPoolRepo) FindByUUID(ctx context.Context, uuid string) (*models.StoragePool, error) {
+	pool, ok := m.pools[uuid]
+	if !ok {
+		return nil, fmt.Errorf("pool not found: %s", uuid)
+	}
+	return pool, nil
+}
+
+func (m *mockPoolRepo) Create(ctx context.Context, pool *models.StoragePool) error {
+	m.pools[pool.UUID] = pool
+	return nil
+}
+
+func (m *mockPoolRepo) UpdateByUUID(ctx context.Context, uuid string, updates map[string]interface{}) error {
+	pool, ok := m.pools[uuid]
+	if !ok {
+		return fmt.Errorf("pool not found: %s", uuid)
+	}
+	for k, v := range updates {
+		switch k {
+		case "name":
+			pool.Name = v.(string)
+		case "local_path":
+			pool.LocalPath = v.(string)
+		case "description":
+			pool.Description = v.(string)
+		case "max_size":
+			pool.MaxSize = v.(int64)
+		case "priority":
+			pool.Priority = v.(int)
+		case "enabled":
+			pool.Enabled = v.(bool)
+		case "auto_disable_threshold":
+			pool.AutoDisableThreshold = v.(float64)
+		}
+	}
+	return nil
+}
+
+func (m *mockPoolRepo) SetEnabled(ctx context.Context, uuid string, enabled bool) error {
+	pool, ok := m.pools[uuid]
+	if !ok {
+		return fmt.Errorf("pool not found: %s", uuid)
+	}
+	pool.Enabled = enabled
+	return nil
+}
+
 func (m *mockPoolRepo) IncrementCurrentSize(ctx context.Context, poolUUID string, delta int64) error {
 	pool, ok := m.pools[poolUUID]
 	if !ok {
@@ -139,6 +202,22 @@ func (m *mockPoolRepo) UpdateState(ctx context.Context, poolUUID string, enabled
 	pool.CurrentSize = currentSize
 	pool.LastCheckedAt = lastCheckedAt
 	return nil
+}
+
+func (m *mockPoolRepo) FindUsage(ctx context.Context, poolUUID string) ([]repository.StoragePoolUsageRow, error) {
+	var rows []repository.StoragePoolUsageRow
+	for _, pool := range m.pools {
+		if poolUUID != "" && pool.UUID != poolUUID {
+			continue
+		}
+		rows = append(rows, repository.StoragePoolUsageRow{
+			UUID:          pool.UUID,
+			DatabaseSize:  pool.CurrentSize,
+			ActualSize:    pool.CurrentSize,
+			LastCheckedAt: pool.LastCheckedAt,
+		})
+	}
+	return rows, nil
 }
 
 // demonstratePut 演示上传文件

@@ -35,6 +35,25 @@ type PoolInfo struct {
 	Enabled     bool
 }
 
+// PoolOperationResult 存储池操作结果
+type PoolOperationResult struct {
+	Message string
+	TaskID  string
+}
+
+// PoolRefreshRequest 缓存刷新请求
+type PoolRefreshRequest struct {
+	Node  string
+	Async bool
+}
+
+// PoolReconcileRequest 存储池对账请求
+type PoolReconcileRequest struct {
+	PoolUUID string
+	DryRun   bool
+	Parallel int
+}
+
 // PrimaryStorage 主存储接口（同步操作，必须成功）
 type PrimaryStorage interface {
 	// 基础操作
@@ -74,6 +93,12 @@ type SecondaryStorage interface {
 	// 存储池管理
 	SelectPool(size int64) (string, error)
 	GetPoolInfo(poolID string) (*PoolInfo, error)
+}
+
+// PoolMaintenance 可选接口：实现额外的存储池维护能力
+type PoolMaintenance interface {
+	RefreshPools(ctx context.Context, req *PoolRefreshRequest) (*PoolOperationResult, error)
+	ReconcilePools(ctx context.Context, req *PoolReconcileRequest) (*PoolOperationResult, error)
 }
 
 // UploadStatus 上传状态

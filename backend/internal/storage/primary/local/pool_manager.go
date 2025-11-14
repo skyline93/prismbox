@@ -169,6 +169,50 @@ func (pm *PoolManager) GetPoolInfo(poolUUID string) (*interfaces.PoolInfo, error
 	}, nil
 }
 
+// RefreshCache 手动刷新缓存
+func (pm *PoolManager) RefreshCache(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return pm.refreshCache(ctx)
+}
+
+// Reconcile 执行一次对账，可选指定单个存储池
+func (pm *PoolManager) Reconcile(ctx context.Context, poolUUID string, dryRun bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	targets := pm.snapshotPools()
+	if poolUUID != "" {
+		filtered := make([]*StoragePool, 0, 1)
+		for _, pool := range targets {
+			if pool.UUID == poolUUID {
+				filtered = append(filtered, pool)
+				break
+			}
+		}
+		if len(filtered) == 0 {
+			return fmt.Errorf("pool not found: %s", poolUUID)
+		}
+		targets = filtered
+	}
+
+	for _, pool := range targets {
+		if err := pool.refreshActualUsage(); err != nil {
+			return err
+		}
+		if dryRun {
+			continue
+		}
+		now := time.Now()
+		if err := pm.repo.UpdateState(ctx, pool.UUID, pool.Enabled, pool.Status, pool.CurrentSize, &now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CheckAndUpdatePools 手动触发检查（主要用于测试）
 func (pm *PoolManager) CheckAndUpdatePools(ctx context.Context) error {
 	pools := pm.snapshotPools()

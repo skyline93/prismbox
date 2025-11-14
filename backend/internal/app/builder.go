@@ -13,6 +13,7 @@ import (
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/group"
 	"github.com/album/backend/internal/service/media"
+	"github.com/album/backend/internal/service/storagepool"
 	"github.com/album/backend/internal/service/share"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
@@ -245,6 +246,7 @@ func (b *Builder) BuildRepositories() error {
 	b.app.LikeRepo = repository.NewLikeRepository(b.app.DB)
 	b.app.GroupInviteRepo = repository.NewGroupInviteRepository(b.app.DB)
 	b.app.ShareRepo = repository.NewShareRepository(b.app.DB)
+	b.app.StoragePoolRepo = repository.NewStoragePoolRepository(b.app.DB)
 
 	return nil
 }
@@ -387,6 +389,11 @@ func (b *Builder) BuildServices() error {
 		signedURLLoadTTL,
 	)
 	b.app.ShareService = shareService
+
+	if b.app.StoragePoolRepo == nil {
+		return fmt.Errorf("storage pool repository is required")
+	}
+	b.app.StoragePoolService = storagepool.NewService(b.app.StoragePoolRepo, b.app.PrimaryStorage)
 
 	return nil
 }

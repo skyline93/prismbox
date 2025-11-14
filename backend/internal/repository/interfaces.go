@@ -178,7 +178,27 @@ type ShareRepository interface {
 // StoragePoolRepository 存储池仓储接口
 type StoragePoolRepository interface {
 	FindEnabledByStorageType(ctx context.Context, storageType string) ([]*models.StoragePool, error)
+	List(ctx context.Context, filter StoragePoolFilter) ([]*models.StoragePool, error)
+	FindByUUID(ctx context.Context, uuid string) (*models.StoragePool, error)
+	Create(ctx context.Context, pool *models.StoragePool) error
+	UpdateByUUID(ctx context.Context, uuid string, updates map[string]interface{}) error
+	SetEnabled(ctx context.Context, uuid string, enabled bool) error
 	IncrementCurrentSize(ctx context.Context, poolUUID string, delta int64) error
 	UpdateCurrentSize(ctx context.Context, poolUUID string, size int64) error
 	UpdateState(ctx context.Context, poolUUID string, enabled bool, status string, currentSize int64, lastCheckedAt *time.Time) error
+	FindUsage(ctx context.Context, poolUUID string) ([]StoragePoolUsageRow, error)
+}
+
+// StoragePoolFilter 查询条件
+type StoragePoolFilter struct {
+	StorageType string
+	Status      string
+}
+
+// StoragePoolUsageRow 用于容量统计的结果
+type StoragePoolUsageRow struct {
+	UUID          string
+	DatabaseSize  int64
+	ActualSize    int64
+	LastCheckedAt *time.Time
 }

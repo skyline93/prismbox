@@ -147,6 +147,7 @@ type PutOptions struct {
   - 进程退出或收到 flush 信号时会强制刷写 pending 增量，确保不会丢数据。
 - **定期校验**：PoolManager 支持可选的 `reconcile_interval`，在低频周期内重新遍历文件系统并与数据库对账，及时发现漂移。
 - **缓存刷新**：`cache_refresh_interval` 用于定时从数据库重新加载元数据，保证多实例在几分钟内收敛；也提供手动 `InvalidateCache` 接口。
+- **管理 API**：`internal/api/v1/storage` 暴露 REST 接口（list/info/add/update/enable/disable/refresh/reconcile/usage），CLI (`album storage pool ...`) 与运维面板均通过该接口调度。
 - **配置参数**：
   - `delta_channel_size`：增量队列长度，防止高峰期阻塞。
   - `delta_batch_size`：一次批量写库的最大池数量。

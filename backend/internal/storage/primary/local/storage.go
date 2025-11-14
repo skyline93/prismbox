@@ -417,6 +417,32 @@ func (ls *LocalStorage) GetPoolInfo(poolID string) (*interfaces.PoolInfo, error)
 	return ls.poolManager.GetPoolInfo(poolID)
 }
 
+// RefreshPools 触发存储池缓存刷新
+func (ls *LocalStorage) RefreshPools(ctx context.Context, req *interfaces.PoolRefreshRequest) (*interfaces.PoolOperationResult, error) {
+	if req == nil {
+		req = &interfaces.PoolRefreshRequest{}
+	}
+	if err := ls.poolManager.RefreshCache(ctx); err != nil {
+		return nil, err
+	}
+	return &interfaces.PoolOperationResult{
+		Message: "storage pool cache refreshed",
+	}, nil
+}
+
+// ReconcilePools 触发一次对账
+func (ls *LocalStorage) ReconcilePools(ctx context.Context, req *interfaces.PoolReconcileRequest) (*interfaces.PoolOperationResult, error) {
+	if req == nil {
+		req = &interfaces.PoolReconcileRequest{}
+	}
+	if err := ls.poolManager.Reconcile(ctx, req.PoolUUID, req.DryRun); err != nil {
+		return nil, err
+	}
+	return &interfaces.PoolOperationResult{
+		Message: "storage pool reconcile completed",
+	}, nil
+}
+
 // generateHash 生成Hash（简化实现）
 func generateHash(data io.Reader) string {
 	hash := sha256.New()

@@ -71,6 +71,8 @@ func main() {
 			newUploadCommand(),
 			newVersionCommand(),
 			newMediaCommand(),
+			newStorageCommand(),
+			newInitCommand(),
 		},
 	}
 

@@ -174,3 +174,140 @@ Manifest 文件可覆盖上述自动推断值，格式示例：
 
 CLI 与现有服务共同演进，为运维、调试、自动化脚本提供统一入口。
 
+## 7.11.9 存储管理命令（`album storage`）
+
+> 目标：为主/次存储池提供可观测、可控、可操作的 CLI 入口，覆盖常见运维场景（查看、扩展、禁用、刷新、对账、容量比对、迁移预案）。
+
+### 命令树
+
+```
+album storage
+└── pool
+    ├── list                      # 列出存储池
+    ├── info <uuid>               # 查看单个存储池详情
+    ├── add                       # 新增存储池
+    ├── update <uuid>             # 更新存储池配置
+    ├── enable <uuid>             # 启用写入
+    ├── disable <uuid>            # 禁用写入（维护/退役）
+    ├── refresh                   # 触发 PoolManager 缓存刷新
+    ├── reconcile                 # 触发一次对账（扫描磁盘）
+    └── usage                     # 查看容量对比（DB vs 实际）
+```
+
+所有子命令默认要求 **远程模式**，通过 REST API 调用后台；若未来提供本地模式，可在 `commandProfile` 中调整。
+
+### 统一 Flags
+
+所有需要鉴权的子命令共享以下 Flags（与 `album upload` 一致）：
+
+| Flag | 说明 |
+| ---- | ---- |
+| `--email`, `--password` | 管理员账号，支持 `ALBUM_CLI_EMAIL` / `ALBUM_CLI_PASSWORD` 环境变量 |
+| `--timeout` | 请求超时，默认 `2m` |
+| `--json` | JSON 格式输出 |
+| `--base-url` / `--socket-path` | 复用 CLI 全局 Flag，决定远程调用方式 |
+
+### 各子命令行为
+
+1. **`pool list`**
+   - Flags：`--type`（local/s3/...）、`--status`（active/disabled/...）
+   - 输出：表格列示 `UUID/Name/Type/Enabled/Status/Usage%/Priority/LastCheckedAt`，或 JSON。
+   - API：`GET /api/v1/storage/pools?storage_type=&status=`
+
+2. **`pool info <uuid>`**
+   - 返回单个存储池详情，包括 `cloud_config` 摘要、当前容量、状态、描述、最近对账时间等。
+   - API：`GET /api/v1/storage/pools/{uuid}`
+
+3. **`pool add`**
+   - Flags：
+     - `--name`（必填）、`--type`（必填）
+     - `--local-path`（type=local 必填）
+     - `--cloud-config`（JSON 字符串或 `@path/to/file.json`）
+     - `--max-size`（支持 `500GB/1TB` 等写法）
+     - `--priority`, `--auto-disable-threshold`, `--enabled`, `--description`
+   - API：`POST /api/v1/storage/pools`
+   - 成功后提示立即执行 `pool refresh` 以让在线实例感知变更。
+
+4. **`pool update <uuid>`**
+   - Flags 与 `add` 相同但全部可选；CLI 仅发送被修改的字段。
+   - 支持修改描述、容量、阈值、优先级、路径/云配置等。
+   - API：`PATCH /api/v1/storage/pools/{uuid}`
+
+5. **`pool enable/disable <uuid>`**
+   - 用于临时维护或恢复写入。
+   - API：`POST /api/v1/storage/pools/{uuid}/enable` / `.../disable`
+   - CLI 会提示操作 ID 并建议刷新缓存。
+
+6. **`pool refresh`**
+   - Flags：`--node`（指定节点，默认广播），`--async`
+   - API：`POST /api/v1/storage/pools/refresh`
+   - 后端负责唤醒各实例执行 `PoolManager.InvalidateCache`。
+
+7. **`pool reconcile`**
+   - Flags：`--pool <uuid>`（缺省全量）、`--dry-run`、`--parallel`
+   - API：`POST /api/v1/storage/pools/reconcile`
+   - 后端以 Job 形式串行执行，CLI 可获取任务 ID 与结果。
+
+8. **`pool usage`**
+   - 展示数据库记录容量与实际扫描（或 PoolManager 缓存）之间的偏差：`UUID | DB Size | Actual Size | Drift% | CheckedAt`
+   - API：`GET /api/v1/storage/pools/usage`
+
+### 输出规范
+
+- 默认使用 `text/tabwriter` 以表格方式展示。
+- `--json` 时输出结构化数据，方便脚本集成。
+- 所有命令统一错误格式：明确 HTTP 状态码 / API message。
+
+### 后端配合
+
+- 需要实现对应 REST API（已在 `internal/api/v1/storage` 落地），复用 Service/Repository。
+- 关键操作（disable/reconcile/add/update）需鉴权并记录审计日志。
+- 若命令在本地模式运行，可直接通过 `Builder` 构建 app 后调用 Service 层；文档先按远程方案实现。
+
+## 7.11.10 首次部署初始化命令（`album init storage`）
+
+> 目标：当主服务尚未启动时，为运维人员提供本地初始化工具，完成最基本的资源（存储池）创建，确保服务可以顺利启动。命令运行在 **local 模式**，直接加载配置和数据库，不依赖 HTTP/Unix Socket。
+
+### 使用场景
+
+1. 全新部署：数据库里还没有任何存储池。
+2. 服务启动失败，日志提示 “no enabled storage pools for type local”。
+
+### 典型流程
+
+```
+album --config configs/config.yaml init storage \
+  --local-path /data/storage1 \
+  --max-size 1TB
+```
+
+执行步骤：
+1. 读取 `--config`（默认 `configs/config.yaml`），加载数据库配置。
+2. 连接数据库，检查 `storage_pools` 表是否已有记录。
+3. 若无记录（或 `--force` 指定），按参数创建 `local` 存储池。
+4. 输出结果；若 `--json` 则返回结构化信息。
+5. 完成后建议：
+   - 如果服务未启动：直接启动 `album server`。
+   - 如果服务已在运行：执行 `album storage pool refresh` 让各实例立即感知新池。
+
+### Flags
+
+| Flag | 说明 | 默认值 |
+| ---- | ---- | ------ |
+| `--config, -c` | 配置文件路径 | `configs/config.yaml` |
+| `--name` | 存储池名称 | `default-local` |
+| `--type` | 存储类型（暂只推荐 `local`） | `local` |
+| `--local-path` | 本地路径（type=local 必填） | `./uploads` |
+| `--max-size` | 最大容量（支持 `500GB`/`1TB` 等） | `1TB` |
+| `--priority` | 优先级（数字越小越优先） | `1` |
+| `--auto-disable-threshold` | 自动禁用阈值（0-1） | `0.9` |
+| `--description` | 描述 | `"initial storage pool"` |
+| `--force` | 即使数据库已有池也继续执行 | `false` |
+| `--json` | JSON 格式输出 | `false` |
+
+### 最佳实践
+
+1. 准备数据库与配置。
+2. 使用 `album init storage` 创建首个 `local` 存储池。
+3. 启动主服务；如需更多存储池，再使用 `album storage pool add` 或后台管理界面。
+
