@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/album/backend/internal/database/models"
 )
@@ -172,4 +173,12 @@ type ShareRepository interface {
 	FindByTargetUserID(ctx context.Context, userID uint) ([]*models.Share, error)
 	// Revoke 撤销分享
 	Revoke(ctx context.Context, shareID uint) error
+}
+
+// StoragePoolRepository 存储池仓储接口
+type StoragePoolRepository interface {
+	FindEnabledByStorageType(ctx context.Context, storageType string) ([]*models.StoragePool, error)
+	IncrementCurrentSize(ctx context.Context, poolUUID string, delta int64) error
+	UpdateCurrentSize(ctx context.Context, poolUUID string, size int64) error
+	UpdateState(ctx context.Context, poolUUID string, enabled bool, status string, currentSize int64, lastCheckedAt *time.Time) error
 }

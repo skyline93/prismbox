@@ -20,14 +20,13 @@ storage:
     local:
       base_path: "./"
       
-      # 存储池配置
-      pools:
-        - id: "pool-1"
-          path: "./data/pool1"
-          max_size: "1TB"
-          priority: 1
-          enabled: true
-          auto_disable_threshold: 0.9
+      # 存储池管理器配置（存储池改为数据库配置）
+      pool_manager:
+        delta_channel_size: 1024
+        delta_batch_size: 128
+        flush_interval: "2s"
+        cache_refresh_interval: "5m"
+        reconcile_interval: "0s"
       
       # 临时文件配置
       temp:

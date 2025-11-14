@@ -126,6 +126,7 @@ func (b *Builder) BuildDatabase() error {
 		&models.AuthProvider{},
 		&models.RefreshToken{},
 		&models.Media{},
+		&models.StoragePool{},
 		&models.Group{},
 		&models.GroupMember{},
 		&models.GroupPost{},
@@ -153,7 +154,7 @@ func (b *Builder) BuildPrimaryStorage() error {
 		return fmt.Errorf("primary storage config is required")
 	}
 
-	primary, err := storage.NewPrimaryStorage(b.cfg.Storage.Primary)
+	primary, err := storage.NewPrimaryStorage(b.cfg.Storage.Primary, b.app.DB)
 	if err != nil {
 		return fmt.Errorf("create primary storage: %w", err)
 	}

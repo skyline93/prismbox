@@ -4,18 +4,21 @@ import (
 	"fmt"
 
 	"github.com/album/backend/internal/config/modules"
+	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local"
+	"gorm.io/gorm"
 )
 
 // NewPrimaryStorage 创建主存储
-func NewPrimaryStorage(cfg *modules.PrimaryStorageConfig) (interfaces.PrimaryStorage, error) {
+func NewPrimaryStorage(cfg *modules.PrimaryStorageConfig, db *gorm.DB) (interfaces.PrimaryStorage, error) {
 	switch cfg.Type {
 	case "local":
 		if cfg.Local == nil {
 			return nil, fmt.Errorf("local config is required")
 		}
-		return local.NewLocalStorage(cfg.Local)
+		poolRepo := repository.NewStoragePoolRepository(db)
+		return local.NewLocalStorage(cfg.Local, poolRepo)
 	default:
 		return nil, fmt.Errorf("unsupported primary storage type: %s", cfg.Type)
 	}

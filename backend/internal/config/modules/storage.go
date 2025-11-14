@@ -48,11 +48,11 @@ func (c *PrimaryStorageConfig) Validate() error {
 
 // LocalStorageConfig 本地存储配置
 type LocalStorageConfig struct {
-	BasePath    string               `yaml:"base_path"`
-	Pools       []*StoragePoolConfig `yaml:"pools"`
-	Temp        *TempFileConfig      `yaml:"temp"`
-	Processing  *ProcessingConfig    `yaml:"processing"`
-	Performance *PerformanceConfig   `yaml:"performance"`
+	BasePath    string             `yaml:"base_path"`
+	PoolManager *PoolManagerConfig `yaml:"pool_manager"`
+	Temp        *TempFileConfig    `yaml:"temp"`
+	Processing  *ProcessingConfig  `yaml:"processing"`
+	Performance *PerformanceConfig `yaml:"performance"`
 }
 
 // Validate 验证本地存储配置
@@ -60,40 +60,39 @@ func (c *LocalStorageConfig) Validate() error {
 	if c.BasePath == "" {
 		return fmt.Errorf("base_path is required")
 	}
-	if len(c.Pools) == 0 {
-		return fmt.Errorf("at least one pool is required")
-	}
-	for i, pool := range c.Pools {
-		if err := pool.Validate(); err != nil {
-			return fmt.Errorf("pool[%d]: %w", i, err)
+	if c.PoolManager != nil {
+		if err := c.PoolManager.Validate(); err != nil {
+			return fmt.Errorf("pool_manager: %w", err)
 		}
 	}
 	return nil
 }
 
-// StoragePoolConfig 存储池配置
-type StoragePoolConfig struct {
-	ID                   string  `yaml:"id"`
-	Path                 string  `yaml:"path"`
-	MaxSize              Size    `yaml:"max_size"`
-	Priority             int     `yaml:"priority"`
-	Enabled              bool    `yaml:"enabled"`
-	AutoDisableThreshold float64 `yaml:"auto_disable_threshold"` // 0.0-1.0
+// PoolManagerConfig 存储池管理器配置
+type PoolManagerConfig struct {
+	DeltaChannelSize     int      `yaml:"delta_channel_size"`
+	DeltaBatchSize       int      `yaml:"delta_batch_size"`
+	FlushInterval        Duration `yaml:"flush_interval"`
+	CacheRefreshInterval Duration `yaml:"cache_refresh_interval"`
+	ReconcileInterval    Duration `yaml:"reconcile_interval"`
 }
 
-// Validate 验证存储池配置
-func (c *StoragePoolConfig) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("id is required")
+// Validate 验证存储池管理器配置
+func (c *PoolManagerConfig) Validate() error {
+	if c.DeltaChannelSize < 0 {
+		return fmt.Errorf("delta_channel_size must be >= 0")
 	}
-	if c.Path == "" {
-		return fmt.Errorf("path is required")
+	if c.DeltaBatchSize < 0 {
+		return fmt.Errorf("delta_batch_size must be >= 0")
 	}
-	if c.MaxSize.Int64() <= 0 {
-		return fmt.Errorf("max_size must be greater than 0")
+	if c.FlushInterval.Duration() <= 0 {
+		return fmt.Errorf("flush_interval must be > 0")
 	}
-	if c.AutoDisableThreshold < 0 || c.AutoDisableThreshold > 1 {
-		return fmt.Errorf("auto_disable_threshold must be between 0.0 and 1.0")
+	if c.CacheRefreshInterval.Duration() <= 0 {
+		return fmt.Errorf("cache_refresh_interval must be > 0")
+	}
+	if c.ReconcileInterval.Duration() < 0 {
+		return fmt.Errorf("reconcile_interval must be >= 0")
 	}
 	return nil
 }

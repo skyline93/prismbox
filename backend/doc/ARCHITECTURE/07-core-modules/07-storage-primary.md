@@ -252,76 +252,76 @@ func (s *StorageService) GetStorageUsage() (int64, error) {
 
 ### 存储池配置
 
+- **配置下放到数据库**：`storage_pools` 表描述所有主/次存储池，字段包含 `uuid`、`storage_type`、`local_path` / `cloud_config(JSON)`、`max_size`、`priority`、`auto_disable_threshold`、`status` 等。运维可以通过 Migration 或后台管理界面动态增删，应用层自动感知。
+- **Media 关联**：`medias.local_pool_uuid`、`medias.cloud_pool_uuid` 记录文件实际落在哪个池，方便下载和迁移。
+- **YAML 只保留 PoolManager 行为配置**：
+
 ```yaml
 storage:
   primary:
     local:
-      pools:
-        - id: "pool-1"
-          path: "/data/storage1"
-          max_size: "1TB"
-          current_size: "500GB"
-          priority: 1
-          enabled: true
-          auto_disable_threshold: 0.9  # 90% 时自动禁用
-        - id: "pool-2"
-          path: "/data/storage2"
-          max_size: "2TB"
-          current_size: "1.5TB"
-          priority: 2
-          enabled: true
-          auto_disable_threshold: 0.9
+      base_path: "/data/uploads"
+      pool_manager:
+        delta_channel_size: 1024     # 内存增量队列
+        delta_batch_size: 128        # 批量落库阈值
+        flush_interval: "2s"         # 定时刷盘
+        cache_refresh_interval: "5m" # 定期重载数据库配置
+        reconcile_interval: "1h"     # 可选：重新扫描磁盘对账，0 表示关闭
 ```
 
 ### 存储池管理器
 
 ```go
-// internal/storage/primary/local/pool_manager.go
 type PoolManager struct {
-    pools []StoragePool
-    mu    sync.RWMutex
+    repo        repository.StoragePoolRepository
+    cache       map[string]*StoragePool
+    deltaCh     chan PoolDelta         // 增量队列：pool_uuid + delta
+    flushCh     chan struct{}          // 手动刷新
+    stopCh      chan struct{}
+    flushInterval        time.Duration
+    cacheRefreshInterval time.Duration
+    reconcileInterval    time.Duration
 }
 
-type StoragePool struct {
-    ID          string
-    Path        string
-    MaxSize     int64
-    CurrentSize int64
-    Priority    int
-    Enabled     bool
-    AutoDisableThreshold float64
-}
-
-// SelectPool 根据策略选择可用的存储池
 func (pm *PoolManager) SelectPool(requiredSize int64) (*StoragePool, error) {
-    pm.mu.RLock()
-    defer pm.mu.RUnlock()
-    
-    // 1. 过滤可用的池（启用且空间充足）
-    availablePools := pm.filterAvailablePools(requiredSize)
-    
-    if len(availablePools) == 0 {
-        return nil, ErrNoAvailablePool
-    }
-    
-    // 2. 按优先级排序
-    sort.Slice(availablePools, func(i, j int) bool {
-        return availablePools[i].Priority < availablePools[j].Priority
+    pools := pm.snapshotPools()
+    available := filterAvailablePools(pools, requiredSize)
+    sort.Slice(available, func(i, j int) bool {
+        return available[i].Priority < available[j].Priority
     })
-    
-    // 3. 选择最空闲的池（负载均衡）
-    return pm.selectLeastLoadedPool(availablePools), nil
+    return selectLeastLoadedPool(available), nil
 }
 
-// CheckAndUpdatePools 定期检查存储池状态
-func (pm *PoolManager) CheckAndUpdatePools() {
-    for _, pool := range pm.pools {
-        usedRatio := float64(pool.CurrentSize) / float64(pool.MaxSize)
-        if usedRatio >= pool.AutoDisableThreshold {
-            pm.DisablePool(pool.ID)
-            log.Printf("Pool %s disabled due to capacity threshold", pool.ID)
+func (pm *PoolManager) RecordUsage(poolUUID string, delta int64) {
+    pool := pm.cache[poolUUID]
+    pool.applyDelta(delta)           // 内存即时更新
+    pm.deltaCh <- PoolDelta{PoolUUID: poolUUID, Delta: delta, Occurred: time.Now()}
+}
+```
+
+### 内存计数 + 可靠串行持久化
+
+1. **缓存即时更新**：每次 Put/Delete 先在内存池对象上加锁修改 `CurrentSize`，保证剩余空间判断准确。
+2. **串行落库**：
+   - PoolManager 内置单 goroutine worker，周期性（或 batch 满时）拉取 `deltaCh`，按池聚合后执行 `UPDATE storage_pools SET current_size = current_size + ? WHERE uuid = ?`。
+   - 写库失败会把增量重新塞回队列并记录报警，确保最终一致。
+3. **可控刷新**：`flush_interval`、`delta_batch_size` 可以按磁盘性能调节；Stop 或重启前会 `flushCh <- struct{}{}` 强制刷盘。
+4. **多实例一致性**：每个实例独立做内存计数，但数据库层使用原子自增语句，不会互相覆盖；`cache_refresh_interval` 让各实例自动收敛配置。
+5. **定期对账**：`reconcile_interval`（可选）触发全量扫描磁盘并与数据库对比，发现漂移后更新 `current_size` 和状态，保证长期准确。
+
+```go
+func (pm *PoolManager) persistDeltas(deltas map[string]int64) error {
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    for poolUUID, delta := range deltas {
+        if delta == 0 {
+            continue
+        }
+        if err := pm.repo.IncrementCurrentSize(ctx, poolUUID, delta); err != nil {
+            return err
         }
     }
+    return nil
 }
 ```
 
@@ -502,6 +502,43 @@ func (pp *ProcessingPipeline) Process(ctx context.Context, input io.Reader) (io.
     return current, nil
 }
 ```
+
+## 7.2.7 未来特性规划
+
+- **存储池切换（Switch-over）**  
+  - 背景：单个磁盘达到阈值或需要下线维护时，需要把新的写流切到其他池。  
+  - 预案：PoolManager 已支持动态禁用池并在缓存刷新后立即生效；后续将增加 API/CLI 以手动触发切换，并记录审计日志。
+
+- **分级迁移（Migration）**  
+  - 背景：需要在不停机情况下将历史文件从旧池迁往新池（容量扩缩、性能优化）。  
+  - 设想流程：  
+    1. 通过后台开启迁移任务，读取 `medias.local_pool_uuid = old_pool` 的记录。  
+    2. 逐条复制文件到目标池，校验哈希后更新 `LocalPoolUUID` 与 `LocalPath`。  
+    3. 迁移任务与 PoolManager 的 delta worker 协调（写入增量走同一 channel），确保容量统计一致。  
+  - 后续会补充“迁移 window、速率控制、失败重试、任务监控”等细节。
+
+- **多副本策略**  
+  - 当前仅支持“主 + 备份”两级。未来可扩展为多副本策略（例如本地双写 + 云备份），并在 Media 模型中记录副本状态。
+
+- **访问加速**  
+  - 预留 `Cache` 层接口，可根据访问热度把热门文件同步到 SSD 池或 CDN，对应的 `StoragePool` 可标记为 `cache` 类型，PoolManager 根据策略自动放置。
+
+## 7.2.8 已知问题与风险
+
+1. **数据库配置与实例状态存在刷新窗口**  
+   - PoolManager 周期性刷新缓存，极端情况下数据库已修改但实例尚未感知，可能在短时间内继续写入旧池。可通过手动触发 `InvalidateCache` 或缩短 `cache_refresh_interval` 缓解。
+
+2. **增量队列过载风险**  
+   - 若写入速率超过 `delta_channel_size`，会阻塞写操作。需要配合监控（队列长度、flush 延迟），并在参数中预留足够余量。
+
+3. **Reconcile 对账成本高**  
+   - 全量遍历文件系统耗时、耗 I/O。需根据业务体量设置较长周期，并在执行前通知运营窗口。
+
+4. **数据库写失败导致容量偏移**  
+   - 虽有重试机制，但长期失败会导致 `CurrentSize` 与实际使用量差距，需要通过 reconcile/告警及时处理。后续可以引入轻量 WAL 或任务队列，提高可靠性。
+
+5. **多实例并发写导致容量抖动**  
+   - 虽然数据库层使用 `current_size = current_size + ?` 原子更新，但若多个实例的内存缓存长期不刷新，可能在池被禁用后仍短暂写入。需要全局监控池状态并快速刷新。
 
 ### 处理步骤
 

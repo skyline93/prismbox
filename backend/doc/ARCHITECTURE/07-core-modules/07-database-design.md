@@ -142,9 +142,11 @@ backend/internal/
 - `ProcessingStatus`: `string` (ProcessingStatus 枚举值: "PENDING", "COMPLETED", "FAILED")
 - `Deleted`: `bool`, 默认 false（业务软删除标志，与 DeletedAt 区分）
 
-**存储路径**（新增，用于 7.2 主存储设计）：
-- `LocalPath`: `string` (本地存储路径)
+**存储路径与存储池**（新增，用于 7.2 主存储设计）：
+- `LocalPath`: `string` (本地存储路径，hash-based key)
 - `CloudPath`: `string` (云存储路径，备份完成后)
+- `LocalPoolUUID`: `string` (本地存储池 UUID，用于定位实际磁盘/挂载点)
+- `CloudPoolUUID`: `string` (云存储池 UUID，用于备份多云策略)
 
 **备份状态**（新增，用于 7.4 备份调度器）：
 - `BackupStatus`: `string` (BackupStatus 枚举值: "pending", "processing", "completed", "failed")
@@ -373,6 +375,37 @@ GORM 自动创建，包含 `album_id` 和 `media_id` 字段。
 **设计说明**：
 - 用于清理任务判断设备是否活跃
 - 支持多设备同步，每个设备独立追踪同步进度
+
+### 7.9.5.8 存储池模型
+
+#### StoragePool（存储池）
+继承 `gorm.Model`
+
+**字段**：
+- `UUID`: `string`, 唯一索引，对外暴露的存储池 ID
+- `Name`: `string`
+- `Description`: `string`
+- `StorageType`: `string` (`"local"`, `"openlist"`, `"s3"`, `"oss"`, `"cos"`)
+- `LocalPath`: `string`（仅 `local` 类型使用）
+- `CloudConfig`: `datatypes.JSON`（S3/OSS/COS/OpenList 连接配置）
+- `MaxSize`: `int64`
+- `CurrentSize`: `int64`
+- `Priority`: `int`
+- `Enabled`: `bool`
+- `AutoDisableThreshold`: `float64`
+- `Status`: `string` (`"active"`, `"disabled"`, `"maintenance"`)
+- `LastCheckedAt`: `*time.Time`
+- `ErrorMessage`: `string`
+
+**索引**：
+- `uuid` 唯一索引
+- `storage_type` 普通索引
+- `(enabled, status)` 组合索引，PoolManager 只扫描启用且 active 的存储池
+
+**设计说明**：
+- 存储池配置完全数据库化，替代 YAML 中的 `pools`。
+- `StoragePoolRepository` 负责查询/更新，`PoolManager` 通过它加载缓存、原子更新 `current_size`、刷新状态。
+- 支持本地与多云统一建模，为未来的故障转移、迁移、权限管理等功能预留字段。
 
 ## 7.9.6 枚举类型设计
 

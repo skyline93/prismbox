@@ -163,15 +163,12 @@ func (l *Loader) defaultConfig() *Config {
 				Type: "local",
 				Local: &modules.LocalStorageConfig{
 					BasePath: "./uploads",
-					Pools: []*modules.StoragePoolConfig{
-						{
-							ID:                   "pool-1",
-							Path:                 "./uploads",
-							MaxSize:              modules.Size(1024 * 1024 * 1024 * 1024), // 1TB
-							Priority:             1,
-							Enabled:              true,
-							AutoDisableThreshold: 0.9,
-						},
+					PoolManager: &modules.PoolManagerConfig{
+						DeltaChannelSize:     1024,
+						DeltaBatchSize:       128,
+						FlushInterval:        modules.Duration(2 * time.Second),
+						CacheRefreshInterval: modules.Duration(5 * time.Minute),
+						ReconcileInterval:    modules.Duration(0),
 					},
 				},
 			},

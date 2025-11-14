@@ -104,7 +104,7 @@ func BuildAll(cfg *config.Config) (*App, error) {
 ```go
 // internal/app/builder.go
 func (b *Builder) BuildPrimaryStorage() error {
-    primary, err := storage.NewPrimaryStorage(b.cfg.Storage.Primary)
+    primary, err := storage.NewPrimaryStorage(b.cfg.Storage.Primary, b.app.DB)
     if err != nil {
         return err
     }

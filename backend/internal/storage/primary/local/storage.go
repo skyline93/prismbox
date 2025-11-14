@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/album/backend/internal/config/modules"
+	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local/processor"
 	"github.com/album/backend/pkg/logger"
@@ -28,12 +29,12 @@ type LocalStorage struct {
 }
 
 // NewLocalStorage 创建本地存储（公开函数，供factory调用）
-func NewLocalStorage(cfg *modules.LocalStorageConfig) (interfaces.PrimaryStorage, error) {
+func NewLocalStorage(cfg *modules.LocalStorageConfig, poolRepo repository.StoragePoolRepository) (interfaces.PrimaryStorage, error) {
 	// 创建路径解析器
 	pathResolver := NewPathResolver(cfg.BasePath)
 
 	// 创建存储池管理器
-	poolManager, err := NewPoolManager(cfg.Pools)
+	poolManager, err := NewPoolManager(cfg.PoolManager, "local", poolRepo)
 	if err != nil {
 		return nil, fmt.Errorf("create pool manager: %w", err)
 	}
@@ -82,6 +83,9 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 	pool, err := ls.poolManager.SelectPool(size)
 	if err != nil {
 		return fmt.Errorf("select pool: %w", err)
+	}
+	if opts != nil {
+		opts.PoolID = pool.UUID
 	}
 
 	// 2. 解析路径（从key中提取hash、扩展名和变体，必要时重新生成）
@@ -180,13 +184,13 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 	}
 
 	// 7. 更新存储池使用量
-	pool.AddSize(written)
+	ls.poolManager.RecordUsage(pool.UUID, written)
 
 	ls.log.Info("file uploaded",
 		logger.String("key", key),
 		logger.String("path", fullPath),
 		logger.Int64("size", written),
-		logger.String("pool_id", pool.ID),
+		logger.String("pool_id", pool.UUID),
 	)
 
 	return nil
@@ -207,7 +211,7 @@ func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, err
 	}
 
 	// 3. 查找文件（在所有存储池中）
-	for _, pool := range ls.poolManager.pools {
+	for _, pool := range ls.poolManager.snapshotPools() {
 		fullPath := filepath.Join(pool.Path, filePath)
 		if _, err := os.Stat(fullPath); err == nil {
 			file, err := os.Open(fullPath)
@@ -237,7 +241,7 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 
 	// 3. 查找并删除文件（在所有存储池中）
 	var deleted bool
-	for _, pool := range ls.poolManager.pools {
+	for _, pool := range ls.poolManager.snapshotPools() {
 		fullPath := filepath.Join(pool.Path, filePath)
 		info, err := os.Stat(fullPath)
 		if err != nil {
@@ -249,7 +253,7 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 		}
 
 		// 更新存储池使用量
-		pool.SubtractSize(info.Size())
+		ls.poolManager.RecordUsage(pool.UUID, -info.Size())
 		deleted = true
 		break
 	}
@@ -280,7 +284,7 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	}
 
 	// 3. 查找文件（在所有存储池中）
-	for _, pool := range ls.poolManager.pools {
+	for _, pool := range ls.poolManager.snapshotPools() {
 		fullPath := filepath.Join(pool.Path, filePath)
 		if _, err := os.Stat(fullPath); err == nil {
 			return true, nil
@@ -304,7 +308,7 @@ func (ls *LocalStorage) GetSignedURL(ctx context.Context, key string, duration t
 	}
 
 	// 返回第一个找到的文件路径
-	for _, pool := range ls.poolManager.pools {
+	for _, pool := range ls.poolManager.snapshotPools() {
 		fullPath := filepath.Join(pool.Path, filePath)
 		if _, err := os.Stat(fullPath); err == nil {
 			return fullPath, nil
@@ -377,7 +381,7 @@ func (ls *LocalStorage) Stat(ctx context.Context, key string) (*interfaces.FileI
 	}
 
 	// 3. 查找文件（在所有存储池中）
-	for _, pool := range ls.poolManager.pools {
+	for _, pool := range ls.poolManager.snapshotPools() {
 		fullPath := filepath.Join(pool.Path, filePath)
 		info, err := os.Stat(fullPath)
 		if err != nil {
@@ -405,7 +409,7 @@ func (ls *LocalStorage) SelectPool(size int64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pool.ID, nil
+	return pool.UUID, nil
 }
 
 // GetPoolInfo 获取存储池信息

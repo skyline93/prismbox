@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/album/backend/internal/config/modules"
+	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/storage/primary/local"
 	"github.com/album/backend/pkg/logger"
@@ -24,15 +25,12 @@ func main() {
 	// 创建配置
 	cfg := &modules.LocalStorageConfig{
 		BasePath: "./uploads",
-		Pools: []*modules.StoragePoolConfig{
-			{
-				ID:                   "pool-1",
-				Path:                 "./pool-1-path",
-				MaxSize:              modules.Size(1024 * 1024 * 1024), // 1GB
-				Priority:             1,
-				Enabled:              true,
-				AutoDisableThreshold: 0.9,
-			},
+		PoolManager: &modules.PoolManagerConfig{
+			DeltaChannelSize:     16,
+			DeltaBatchSize:       4,
+			FlushInterval:        modules.Duration(1 * time.Second),
+			CacheRefreshInterval: modules.Duration(10 * time.Second),
+			ReconcileInterval:    modules.Duration(0),
 		},
 		Temp: &modules.TempFileConfig{
 			BasePath:        "./temp",
@@ -50,7 +48,9 @@ func main() {
 	}
 
 	// 创建本地存储
-	localStorage, err := local.NewLocalStorage(cfg)
+	mockRepo := newMockPoolRepo()
+
+	localStorage, err := local.NewLocalStorage(cfg, mockRepo)
 	if err != nil {
 		panic(fmt.Sprintf("创建本地存储失败: %v", err))
 	}
@@ -75,6 +75,70 @@ func main() {
 
 	// 示例6: 存储池管理
 	demonstratePoolManagement(localStorage)
+}
+
+// mockPoolRepo 是一个简单的内存实现，方便示例运行
+type mockPoolRepo struct {
+	pools map[string]*models.StoragePool
+}
+
+func newMockPoolRepo() *mockPoolRepo {
+	return &mockPoolRepo{
+		pools: map[string]*models.StoragePool{
+			"pool-1": {
+				UUID:                 "pool-1",
+				Name:                 "pool-1",
+				StorageType:          "local",
+				LocalPath:            "./pool-1-path",
+				MaxSize:              1024 * 1024 * 1024,
+				CurrentSize:          0,
+				Priority:             1,
+				Enabled:              true,
+				AutoDisableThreshold: 0.9,
+				Status:               "active",
+			},
+		},
+	}
+}
+
+func (m *mockPoolRepo) FindEnabledByStorageType(ctx context.Context, storageType string) ([]*models.StoragePool, error) {
+	var result []*models.StoragePool
+	for _, pool := range m.pools {
+		if pool.StorageType == storageType && pool.Enabled && pool.Status == "active" {
+			result = append(result, pool)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockPoolRepo) IncrementCurrentSize(ctx context.Context, poolUUID string, delta int64) error {
+	pool, ok := m.pools[poolUUID]
+	if !ok {
+		return fmt.Errorf("pool not found: %s", poolUUID)
+	}
+	pool.CurrentSize += delta
+	return nil
+}
+
+func (m *mockPoolRepo) UpdateCurrentSize(ctx context.Context, poolUUID string, size int64) error {
+	pool, ok := m.pools[poolUUID]
+	if !ok {
+		return fmt.Errorf("pool not found: %s", poolUUID)
+	}
+	pool.CurrentSize = size
+	return nil
+}
+
+func (m *mockPoolRepo) UpdateState(ctx context.Context, poolUUID string, enabled bool, status string, currentSize int64, lastCheckedAt *time.Time) error {
+	pool, ok := m.pools[poolUUID]
+	if !ok {
+		return fmt.Errorf("pool not found: %s", poolUUID)
+	}
+	pool.Enabled = enabled
+	pool.Status = status
+	pool.CurrentSize = currentSize
+	pool.LastCheckedAt = lastCheckedAt
+	return nil
 }
 
 // demonstratePut 演示上传文件

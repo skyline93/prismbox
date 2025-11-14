@@ -69,20 +69,20 @@ import (
 // 创建配置
 cfg := &modules.LocalStorageConfig{
     BasePath: "./uploads",
-    Pools: []*modules.StoragePoolConfig{
-        {
-            ID:                   "pool-1",
-            Path:                 "./uploads",
-            MaxSize:              config.Size(1024 * 1024 * 1024), // 1GB
-            Priority:             1,
-            Enabled:              true,
-            AutoDisableThreshold: 0.9,
-        },
+    PoolManager: &modules.PoolManagerConfig{
+        DeltaChannelSize:     1024,
+        DeltaBatchSize:       128,
+        FlushInterval:        modules.Duration(2 * time.Second),
+        CacheRefreshInterval: modules.Duration(5 * time.Minute),
+        ReconcileInterval:    modules.Duration(0),
     },
 }
 
+// 构建仓储（依赖数据库）
+poolRepo := repository.NewStoragePoolRepository(db)
+
 // 创建本地存储
-localStorage, err := local.NewLocalStorage(cfg)
+localStorage, err := local.NewLocalStorage(cfg, poolRepo)
 if err != nil {
     panic(err)
 }
@@ -658,3 +658,20 @@ A: 合理设置缓存大小和过期时间，监控缓存命中率，根据实�
 
 - [PERFORMANCE.md](./PERFORMANCE.md) - 性能优化 Issue 清单和优化路线图
 - [示例代码](./example/main.go) - 完整的使用示例
+
+## 未来规划
+
+| 规划方向 | 说明 |
+| -------- | ---- |
+| 存储池切换 | 提供 API/后台控制在不停机情况下切换默认写入池，结合 PoolManager 的动态禁用能力，实现平滑迁移/维护 |
+| 批量迁移 | 引入迁移任务，批量将旧池上的 Media 搬到新池，过程中保持 hash 去重与 LocalPoolUUID 更新一致 |
+| 多副本策略 | 支持同一 Hash 写入多个池（SSD/HDD/云）以满足不同 SLA，未来会在 Media 模型中扩展副本状态 |
+| 热冷分层 | 根据访问日志把热点文件迁入高性能池，冷数据迁回归档池，和 PoolManager 的 `storage_type` 配合 |
+
+## 已知风险与注意事项
+
+1. **Delta 队列积压**：如果写入峰值超过 `delta_channel_size`，会阻塞上传。需要监控并按需调大参数或拆分 worker。
+2. **缓存刷新窗口**：数据库更新后的池状态需要等待 `cache_refresh_interval` 才能生效，关键操作可手动触发 `InvalidateCache`。
+3. **Reconcile 成本高**：全量扫描磁盘耗时，建议在低峰期执行并限制并发，避免影响线上 I/O。
+4. **数据库写失败导致容量漂移**：虽然有重试机制，但长时间失败会造成 `CurrentSize` 偏差，需要结合日志/告警及时处理。
+5. **缺少自动化迁移工具**：目前对大规模磁盘退役仍需手动操作，后续需配合迁移任务和审计能力。

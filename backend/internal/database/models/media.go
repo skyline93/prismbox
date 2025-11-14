@@ -39,8 +39,10 @@ type Media struct {
 	Deleted          bool   `gorm:"default:false"`                      // 业务软删除标志
 
 	// 存储路径（用于 7.2 主存储设计）
-	LocalPath string `gorm:"type:varchar(512)"` // 本地存储路径
-	CloudPath string `gorm:"type:varchar(512)"` // 云存储路径（备份完成后）
+	LocalPath     string `gorm:"type:varchar(512)"` // 本地存储路径（hash-based key）
+	CloudPath     string `gorm:"type:varchar(512)"` // 云存储路径（备份完成后）
+	LocalPoolUUID string `gorm:"type:varchar(255);index"`
+	CloudPoolUUID string `gorm:"type:varchar(255);index"`
 
 	// 备份状态（用于 7.4 备份调度器）
 	BackupStatus      string `gorm:"type:varchar(50);default:'pending'"` // "pending", "processing", "completed", "failed"

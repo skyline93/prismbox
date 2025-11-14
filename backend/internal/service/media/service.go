@@ -187,7 +187,12 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 		return nil, fmt.Errorf("upload to storage: %w", err)
 	}
 
-	media := s.newMediaModel(req, storageKey, mimeType)
+	localPoolUUID := ""
+	if putOpts != nil {
+		localPoolUUID = putOpts.PoolID
+	}
+
+	media := s.newMediaModel(req, storageKey, mimeType, localPoolUUID)
 	if err := s.repo.Create(ctx, media); err != nil {
 		s.storageManager.Delete(ctx, storageKey)
 		return nil, fmt.Errorf("create media record: %w", err)
@@ -276,7 +281,7 @@ func wrapDataReader(data io.Reader, head []byte) io.Reader {
 	return io.MultiReader(bytes.NewReader(head), data)
 }
 
-func (s *service) newMediaModel(req *UploadMediaRequest, storageKey, mimeType string) *models.Media {
+func (s *service) newMediaModel(req *UploadMediaRequest, storageKey, mimeType string, localPoolUUID string) *models.Media {
 	return &models.Media{
 		UUID:             req.CloudUUID,
 		UserID:           req.UserID,
@@ -290,6 +295,7 @@ func (s *service) newMediaModel(req *UploadMediaRequest, storageKey, mimeType st
 		ProcessingStatus: "PROCESSING",
 		Deleted:          false,
 		LocalPath:        storageKey,
+		LocalPoolUUID:    localPoolUUID,
 		BackupStatus:     "pending",
 	}
 }
