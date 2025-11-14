@@ -75,14 +75,17 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	var mediaTakenAt *time.Time
 	if mediaTakenAtStr != "" {
 		parsed, err := time.Parse(time.RFC3339, mediaTakenAtStr)
-		if err == nil {
-			mediaTakenAt = &parsed
-		} else {
-			h.log.Warn("failed to parse media_taken_at",
+		if err != nil {
+			h.log.Error("invalid media_taken_at format",
 				logger.String("media_taken_at", mediaTakenAtStr),
 				logger.Error(err),
 			)
+			apiresponse.Error(c, "Invalid 'media_taken_at' format. Must be RFC3339 format (e.g., 2025-09-17T14:28:29.000Z)")
+			return
 		}
+		// 统一转换为 UTC 存储
+		utcTime := parsed.UTC()
+		mediaTakenAt = &utcTime
 	}
 
 	// 5. 秒传检查（在打开文件流之前，优化性能）

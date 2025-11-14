@@ -32,6 +32,8 @@ var (
 	ErrAlreadyMember = errors.New("user is already a member of this group")
 	// ErrMediaNotFound 媒体未找到
 	ErrMediaNotFound = errors.New("media not found")
+	// ErrGroupMediaNotFound 圈子中未找到该媒体
+	ErrGroupMediaNotFound = errors.New("group media not found")
 	// ErrMediaNotOwned 媒体不属于用户
 	ErrMediaNotOwned = errors.New("media does not belong to user")
 	// ErrPostNotFound 帖子未找到
@@ -79,6 +81,8 @@ type Service interface {
 	GetUserRole(ctx context.Context, groupUUID string, userID uint) (models.GroupRole, error)
 	// CheckGroupMembership 检查用户是否是圈子成员
 	CheckGroupMembership(ctx context.Context, groupUUID string, userID uint) error
+	// GetGroupMedia 获取圈子中的媒体
+	GetGroupMedia(ctx context.Context, groupUUID string, mediaUUID string) (*models.Media, error)
 }
 
 // GroupDetail 圈子详情
@@ -884,6 +888,34 @@ func (s *service) DeleteComment(ctx context.Context, commentID uint, userID uint
 
 func (s *service) GetUserRole(ctx context.Context, groupUUID string, userID uint) (models.GroupRole, error) {
 	return s.groupMemberRepo.GetUserRole(ctx, groupUUID, userID)
+}
+
+func (s *service) GetGroupMedia(ctx context.Context, groupUUID string, mediaUUID string) (*models.Media, error) {
+	group, err := s.groupRepo.FindByUUID(ctx, groupUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrGroupNotFound
+		}
+		return nil, fmt.Errorf("failed to find group: %w", err)
+	}
+
+	groupMedia, err := s.groupMediaRepo.FindByGroupAndMediaUUID(ctx, group.ID, mediaUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrGroupMediaNotFound
+		}
+		return nil, fmt.Errorf("failed to find group media: %w", err)
+	}
+
+	media, err := s.mediaRepo.FindByUUID(ctx, groupMedia.MediaUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrMediaNotFound
+		}
+		return nil, fmt.Errorf("failed to get media: %w", err)
+	}
+
+	return media, nil
 }
 
 func (s *service) CheckGroupMembership(ctx context.Context, groupUUID string, userID uint) error {

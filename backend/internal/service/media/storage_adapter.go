@@ -56,11 +56,11 @@ func (a *StorageAdapter) ToStorageOptions(itemType string, mediaType MediaFileTy
 		if category == MediaCategoryImage {
 			// 图片缩略图：统一使用 jpg 格式
 			opts.Extension = "jpg"
-			opts.Variant = "thumb"
+			opts.Variant = "thumbnail"
 		} else if category == MediaCategoryVideo {
 			// 视频缩略图：使用 jpg 格式（视频封面图）
 			opts.Extension = "jpg"
-			opts.Variant = "thumb"
+			opts.Variant = "thumbnail"
 		}
 
 	case MediaFileTypePreview:
@@ -68,11 +68,11 @@ func (a *StorageAdapter) ToStorageOptions(itemType string, mediaType MediaFileTy
 		if category == MediaCategoryImage {
 			// 图片预览图：统一使用 jpg 格式
 			opts.Extension = "jpg"
-			opts.Variant = "prev"
+			opts.Variant = "preview"
 		} else if category == MediaCategoryVideo {
 			// 视频预览图：使用 mp4 格式（与旧架构保持一致）
 			opts.Extension = "mp4"
-			opts.Variant = "prev"
+			opts.Variant = "preview"
 		}
 
 	default:

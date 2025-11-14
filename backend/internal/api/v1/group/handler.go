@@ -2,24 +2,31 @@ package group
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"strconv"
+	"strings"
 
 	"github.com/album/backend/internal/api/dto"
 	"github.com/album/backend/internal/api/middleware"
 	"github.com/album/backend/internal/api/response"
+	"github.com/album/backend/internal/database/models"
 	groupservice "github.com/album/backend/internal/service/group"
+	mediaservice "github.com/album/backend/internal/service/media"
 	"github.com/gin-gonic/gin"
 )
 
 // Handler 圈子处理器
 type Handler struct {
 	groupService groupservice.Service
+	mediaService mediaservice.Service
 }
 
 // NewHandler 创建圈子处理器
-func NewHandler(groupService groupservice.Service) *Handler {
+func NewHandler(groupService groupservice.Service, mediaService mediaservice.Service) *Handler {
 	return &Handler{
 		groupService: groupService,
+		mediaService: mediaService,
 	}
 }
 
@@ -440,18 +447,30 @@ func (h *Handler) GetGroupMediaThumbnail(c *gin.Context) {
 	}
 
 	groupUUID := c.Param("uuid")
-	_ = c.Param("media_uuid") // TODO: 使用mediaUUID
-
-	// 检查用户是否是圈子成员
-	err := h.groupService.CheckGroupMembership(c.Request.Context(), groupUUID, userID)
-	if err != nil {
-		response.Error(c, "Permission denied or group not found")
+	mediaUUID := c.Param("media_uuid")
+	if mediaUUID == "" {
+		response.Error(c, "Media UUID is required")
 		return
 	}
 
-	// TODO: 实现媒体文件下载逻辑
-	// 这里需要调用media service来获取文件
-	response.Error(c, "Not implemented yet")
+	media, ok := h.authorizeGroupMedia(c, groupUUID, mediaUUID, userID)
+	if !ok {
+		return
+	}
+
+	if media.ProcessingStatus != "COMPLETED" {
+		response.Error(c, fmt.Sprintf("Thumbnail is not ready yet. Current status: %s", media.ProcessingStatus))
+		return
+	}
+
+	storageKey, err := h.mediaService.BuildThumbnailKey(media)
+	if err != nil {
+		response.Error(c, "Failed to build thumbnail key")
+		return
+	}
+
+	mimeType := h.mediaService.GetThumbnailMimeType(media)
+	h.serveMediaFile(c, storageKey, mimeType)
 }
 
 // GetGroupMediaPreview 获取圈子媒体预览图
@@ -462,16 +481,88 @@ func (h *Handler) GetGroupMediaPreview(c *gin.Context) {
 	}
 
 	groupUUID := c.Param("uuid")
-	_ = c.Param("media_uuid") // TODO: 使用mediaUUID
-
-	// 检查用户是否是圈子成员
-	err := h.groupService.CheckGroupMembership(c.Request.Context(), groupUUID, userID)
-	if err != nil {
-		response.Error(c, "Permission denied or group not found")
+	mediaUUID := c.Param("media_uuid")
+	if mediaUUID == "" {
+		response.Error(c, "Media UUID is required")
 		return
 	}
 
-	// TODO: 实现媒体文件下载逻辑
-	// 这里需要调用media service来获取文件
-	response.Error(c, "Not implemented yet")
+	media, ok := h.authorizeGroupMedia(c, groupUUID, mediaUUID, userID)
+	if !ok {
+		return
+	}
+
+	if media.ProcessingStatus != "COMPLETED" {
+		response.Error(c, fmt.Sprintf("Preview is not ready yet. Current status: %s", media.ProcessingStatus))
+		return
+	}
+
+	storageKey, err := h.mediaService.BuildPreviewKey(media)
+	if err != nil {
+		response.Error(c, "Failed to build preview key")
+		return
+	}
+
+	mimeType := h.mediaService.GetPreviewMimeType(media)
+	h.serveMediaFile(c, storageKey, mimeType)
+}
+
+func (h *Handler) authorizeGroupMedia(c *gin.Context, groupUUID, mediaUUID string, userID uint) (*models.Media, bool) {
+	// 检查用户是否是圈子成员
+	if err := h.groupService.CheckGroupMembership(c.Request.Context(), groupUUID, userID); err != nil {
+		response.Error(c, "Permission denied or group not found")
+		return nil, false
+	}
+
+	media, err := h.groupService.GetGroupMedia(c.Request.Context(), groupUUID, mediaUUID)
+	if err != nil {
+		switch {
+		case errors.Is(err, groupservice.ErrGroupNotFound):
+			response.Error(c, "Group not found or permission denied")
+		case errors.Is(err, groupservice.ErrGroupMediaNotFound), errors.Is(err, groupservice.ErrMediaNotFound):
+			response.Error(c, "Media not found or permission denied")
+		default:
+			response.Error(c, "Failed to fetch media")
+		}
+		return nil, false
+	}
+	return media, true
+}
+
+func (h *Handler) serveMediaFile(c *gin.Context, storageKey, mimeType string) {
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+	if err != nil {
+		response.Error(c, "File not available on server")
+		return
+	}
+	defer reader.Close()
+
+	contentType := mimeType
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	c.Header("Content-Type", contentType)
+
+	disposition := "inline"
+	if !strings.HasPrefix(contentType, "image/") && !strings.HasPrefix(contentType, "video/") {
+		disposition = "attachment"
+	}
+	c.Header("Content-Disposition", fmt.Sprintf("%s; filename=\"%s\"", disposition, getFilename(storageKey)))
+
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		if !c.Writer.Written() {
+			response.Error(c, "Failed to serve file")
+		}
+		return
+	}
+
+	c.Status(200)
+}
+
+func getFilename(storageKey string) string {
+	parts := strings.Split(storageKey, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return storageKey
 }

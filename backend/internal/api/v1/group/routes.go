@@ -12,7 +12,7 @@ type Service = groupservice.Service
 
 // RegisterRoutes 注册圈子相关路由
 func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
-	if app == nil || app.GroupService == nil {
+	if app == nil || app.GroupService == nil || app.MediaService == nil {
 		return
 	}
 
@@ -22,7 +22,7 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 		return
 	}
 
-	handler := NewHandler(groupService)
+	handler := NewHandler(groupService, app.MediaService)
 
 	// 圈子相关路由
 	groupRoutes := rg.Group("/groups")
@@ -58,4 +58,3 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 		commentRoutes.DELETE("/:commentId", handler.DeleteComment)
 	}
 }
-

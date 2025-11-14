@@ -223,7 +223,7 @@ class UploadService {
         'hash': fileHash,
         'item_type': taskPayload.mediaType.name,
         'original_filename': filename,
-        'media_taken_at': taskPayload.mediaTakenAt.toIso8601String(), // 传递媒体拍摄时间
+        'media_taken_at': taskPayload.mediaTakenAt.toUtc().toIso8601String(), // 传递媒体拍摄时间（RFC3339格式，UTC时区）
       };
 
       // [认证优化]: 在任务创建时动态获取有效的token
