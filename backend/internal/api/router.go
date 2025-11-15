@@ -11,6 +11,7 @@ import (
 	"github.com/album/backend/internal/api/v1/share"
 	"github.com/album/backend/internal/api/v1/storage"
 	"github.com/album/backend/internal/app"
+	"github.com/album/backend/internal/version"
 	"github.com/album/backend/pkg/logger"
 	"github.com/gin-gonic/gin"
 )
@@ -69,6 +70,9 @@ func (r *Router) setupGlobalMiddleware() {
 func (r *Router) setupAPIV1() {
 	v1 := r.engine.Group("/api/v1")
 
+	// 注册版本信息路由（公开，不需要认证）
+	v1.GET("/version", r.getVersion)
+
 	// 注册认证路由
 	auth.RegisterRoutes(v1, r.app)
 
@@ -101,6 +105,12 @@ func (r *Router) setupStatic() {
 func (r *Router) setupPublicRoutes() {
 	// 公开的分享资源路由在share/routes.go中注册
 	// 因为需要在根路由注册，所以通过RegisterPublicRoutes函数处理
+}
+
+// getVersion 返回服务端版本信息
+func (r *Router) getVersion(c *gin.Context) {
+	info := version.Get()
+	c.JSON(200, info)
 }
 
 // Engine 返回Gin引擎

@@ -264,11 +264,130 @@ docker build -f deploy/linux-arm64/Dockerfile.base \
 
 ### 构建应用镜像
 
+#### 方式一：使用 deploy.sh（推荐）
+
+```bash
+# 在 backend 目录下
+./deploy.sh
+```
+
+脚本会自动：
+1. 检测系统架构
+2. 获取 Git 版本信息（如果有 `.git` 目录）
+3. 注入版本信息到构建参数
+4. 构建并启动服务
+
+#### 方式二：手动构建
+
 ```bash
 # 在 backend 目录下
 docker build -f deploy/linux-amd64/Dockerfile \
+    --build-arg VERSION=v1.0.0 \
+    --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+    --build-arg GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") \
+    --build-arg GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown") \
     -t registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest .
 ```
+
+### 版本信息注入
+
+应用在构建时会注入版本信息到二进制文件中，包括：
+
+| 字段 | 说明 | 默认值 |
+|------|------|--------|
+| `VERSION` | 版本号 | `dev` |
+| `BUILD_TIME` | 构建时间 | 自动生成 |
+| `GIT_COMMIT` | Git 提交哈希 | `unknown` |
+| `GIT_BRANCH` | Git 分支名 | `unknown` |
+| `GoVersion` | Go 版本 | 运行时获取 |
+| `Platform` | 构建平台 | 运行时获取 |
+
+#### 自动注入
+
+使用 `deploy.sh` 脚本时，会自动检测并注入版本信息：
+
+```bash
+# 脚本会自动获取以下信息：
+# - Version: 从 git describe 获取（如有 tag）
+# - BuildTime: 当前 UTC 时间
+# - GitCommit: git rev-parse --short HEAD
+# - GitBranch: git rev-parse --abbrev-ref HEAD
+./deploy.sh
+```
+
+#### 通过环境变量注入
+
+可以通过环境变量手动指定版本信息：
+
+```bash
+export ALBUM_VERSION=v1.0.0
+export ALBUM_BUILD_TIME=2025-01-15T10:30:00Z
+export ALBUM_GIT_COMMIT=abc1234
+export ALBUM_GIT_BRANCH=main
+./deploy.sh
+```
+
+这些环境变量会被 `docker-compose.yaml` 传递给 Docker 构建参数。
+
+#### CI/CD 环境中的注入
+
+在 CI/CD 环境中，可以通过环境变量注入版本信息：
+
+**GitHub Actions 示例**：
+
+```yaml
+- name: Set version info
+  run: |
+    export ALBUM_VERSION=${GITHUB_REF#refs/tags/}
+    export ALBUM_GIT_COMMIT=${GITHUB_SHA:0:7}
+    export ALBUM_GIT_BRANCH=${GITHUB_REF#refs/heads/}
+    export ALBUM_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    echo "ALBUM_VERSION=$ALBUM_VERSION" >> $GITHUB_ENV
+    echo "ALBUM_GIT_COMMIT=$ALBUM_GIT_COMMIT" >> $GITHUB_ENV
+    echo "ALBUM_GIT_BRANCH=$ALBUM_GIT_BRANCH" >> $GITHUB_ENV
+    echo "ALBUM_BUILD_TIME=$ALBUM_BUILD_TIME" >> $GITHUB_ENV
+
+- name: Build and deploy
+  run: |
+    ./deploy.sh
+```
+
+**GitLab CI 示例**：
+
+```yaml
+build:
+  variables:
+    ALBUM_VERSION: $CI_COMMIT_TAG
+    ALBUM_GIT_COMMIT: ${CI_COMMIT_SHA:0:7}
+    ALBUM_GIT_BRANCH: $CI_COMMIT_REF_NAME
+    ALBUM_BUILD_TIME: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  script:
+    - ./deploy.sh
+```
+
+#### 查看版本信息
+
+构建完成后，可以通过 API 查询版本信息：
+
+```bash
+# 查询版本信息
+curl http://localhost/api/v1/version
+
+# 返回示例
+{
+  "version": "v1.0.0",
+  "build_time": "2025-01-15T10:30:00Z",
+  "git_commit": "abc1234",
+  "git_branch": "main",
+  "go_version": "go1.23.6",
+  "platform": "linux/arm64"
+}
+```
+
+**注意**：
+- 如果没有 `.git` 目录或无法获取 git 信息，`git_commit` 和 `git_branch` 会显示为 `unknown`
+- 构建时间始终会自动生成，即使未手动指定
+- 版本信息在构建时注入到二进制文件中，运行时无法修改
 
 ## 部署服务
 

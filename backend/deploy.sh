@@ -84,19 +84,25 @@ if [ "$1" = "--build-base" ]; then
     echo ""
 fi
 
-# 设置版本信息（如果可用）
+# 设置版本信息（总是设置，即使没有 .git 目录）
+export ALBUM_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 if [ -d ".git" ]; then
     export ALBUM_VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
-    export ALBUM_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     export ALBUM_GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     export ALBUM_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-    echo "构建版本信息:"
-    echo "  Version: $ALBUM_VERSION"
-    echo "  BuildTime: $ALBUM_BUILD_TIME"
-    echo "  GitCommit: $ALBUM_GIT_COMMIT"
-    echo "  GitBranch: $ALBUM_GIT_BRANCH"
-    echo ""
+else
+    export ALBUM_VERSION=${ALBUM_VERSION:-dev}
+    export ALBUM_GIT_COMMIT=${ALBUM_GIT_COMMIT:-unknown}
+    export ALBUM_GIT_BRANCH=${ALBUM_GIT_BRANCH:-unknown}
 fi
+
+echo "构建版本信息:"
+echo "  Version: $ALBUM_VERSION"
+echo "  BuildTime: $ALBUM_BUILD_TIME"
+echo "  GitCommit: $ALBUM_GIT_COMMIT"
+echo "  GitBranch: $ALBUM_GIT_BRANCH"
+echo ""
 
 # 启动服务
 echo "启动服务..."

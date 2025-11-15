@@ -21,9 +21,9 @@ COPY ./cmd ./cmd
 COPY ./go.mod ./go.sum ./
 
 # 构建应用（server 和 cli）并注入版本信息
-RUN BUILD_TIME_VAL=${BUILD_TIME:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")} && \
-    GIT_COMMIT_VAL=${GIT_COMMIT:-unknown} && \
-    GIT_BRANCH_VAL=${GIT_BRANCH:-unknown} && \
+RUN BUILD_TIME_VAL=$([ -z "$BUILD_TIME" ] && date -u +"%Y-%m-%dT%H:%M:%SZ" || echo "$BUILD_TIME") && \
+    GIT_COMMIT_VAL=$([ -z "$GIT_COMMIT" ] && echo "unknown" || echo "$GIT_COMMIT") && \
+    GIT_BRANCH_VAL=$([ -z "$GIT_BRANCH" ] && echo "unknown" || echo "$GIT_BRANCH") && \
     VERSION_VAL=${VERSION:-dev} && \
     LDFLAGS="-X 'github.com/album/backend/internal/version.Version=${VERSION_VAL}' \
              -X 'github.com/album/backend/internal/version.BuildTime=${BUILD_TIME_VAL}' \

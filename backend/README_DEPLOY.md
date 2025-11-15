@@ -132,12 +132,96 @@ backend/
 └── ...
 ```
 
+### 版本信息注入
+
+在构建镜像时，系统会自动注入版本信息，包括：
+- **Version**: 版本号（从 git tag 获取，如 v1.0.0）
+- **BuildTime**: 构建时间（自动生成）
+- **GitCommit**: Git 提交哈希（short commit hash）
+- **GitBranch**: Git 分支名
+- **GoVersion**: Go 版本
+- **Platform**: 构建平台
+
+#### 自动注入（推荐）
+
+使用 `deploy.sh` 脚本会自动检测并注入版本信息：
+
+```bash
+# 在有 .git 目录的情况下，自动获取 git 信息
+./deploy.sh
+```
+
+脚本会：
+1. 自动检测 `.git` 目录
+2. 获取 git 版本、提交哈希、分支名
+3. 设置构建时间
+4. 通过环境变量传递给 Docker 构建
+
+#### 手动注入
+
+如果需要手动指定版本信息，可以设置环境变量：
+
+```bash
+export ALBUM_VERSION=v1.0.0
+export ALBUM_BUILD_TIME=2025-01-15T10:30:00Z
+export ALBUM_GIT_COMMIT=abc1234
+export ALBUM_GIT_BRANCH=main
+./deploy.sh
+```
+
+或者在 `.env` 文件中设置：
+
+```bash
+ALBUM_VERSION=v1.0.0
+ALBUM_BUILD_TIME=2025-01-15T10:30:00Z
+ALBUM_GIT_COMMIT=abc1234
+ALBUM_GIT_BRANCH=main
+```
+
+#### 在 CI/CD 中注入
+
+在 CI/CD 环境中，可以通过环境变量注入版本信息：
+
+```bash
+# GitHub Actions 示例
+export ALBUM_VERSION=${GITHUB_REF#refs/tags/}
+export ALBUM_GIT_COMMIT=${GITHUB_SHA:0:7}
+export ALBUM_GIT_BRANCH=${GITHUB_REF#refs/heads/}
+export ALBUM_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# GitLab CI 示例
+export ALBUM_VERSION=$CI_COMMIT_TAG
+export ALBUM_GIT_COMMIT=${CI_COMMIT_SHA:0:7}
+export ALBUM_GIT_BRANCH=$CI_COMMIT_REF_NAME
+export ALBUM_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+```
+
+#### 查看版本信息
+
+部署后，可以通过 API 查看版本信息：
+
+```bash
+# 查询版本信息
+curl http://localhost/api/v1/version
+
+# 返回 JSON 格式
+{
+  "version": "v1.0.0",
+  "build_time": "2025-01-15T10:30:00Z",
+  "git_commit": "abc1234",
+  "git_branch": "main",
+  "go_version": "go1.23.6",
+  "platform": "linux/arm64"
+}
+```
+
 ### 验证部署
 
 部署完成后，访问：
 
 - **API 地址**: http://localhost/api/v1
 - **健康检查**: http://localhost/api/v1/health
+- **版本信息**: http://localhost/api/v1/version
 
 ### 生产环境注意事项
 
