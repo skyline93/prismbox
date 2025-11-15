@@ -1,6 +1,9 @@
 package api
 
 import (
+	"os"
+
+	"github.com/album/backend/internal/api/middleware"
 	"github.com/album/backend/internal/api/v1/auth"
 	"github.com/album/backend/internal/api/v1/changelog"
 	"github.com/album/backend/internal/api/v1/group"
@@ -50,8 +53,13 @@ func (r *Router) setupGlobalMiddleware() {
 	// TODO: 添加恢复中间件
 	// r.engine.Use(middleware.RecoveryMiddleware())
 
-	// TODO: 添加CORS中间件
-	// r.engine.Use(middleware.CORSMiddleware())
+	// CORS中间件（可选，如果nginx处理CORS，这里可以禁用）
+	// 通过环境变量 ALBUM_ENABLE_APP_CORS 控制，默认禁用
+	if os.Getenv("ALBUM_ENABLE_APP_CORS") == "true" {
+		r.engine.Use(middleware.CORSMiddleware())
+		log := logger.New("api.router")
+		log.Info("CORS middleware enabled (application level)")
+	}
 
 	log := logger.New("api.router")
 	log.Info("global middleware setup completed")

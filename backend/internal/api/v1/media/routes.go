@@ -12,7 +12,7 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 		return
 	}
 
-	handler := NewHandler(app.MediaService)
+	handler := NewHandler(app.MediaService, app)
 
 	protected := rg.Group("/media")
 	if app.AuthService != nil {

@@ -1,0 +1,92 @@
+services:
+  postgresql:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: ${ALBUM_POSTGRES_USER:-album}
+      POSTGRES_PASSWORD: ${ALBUM_POSTGRES_PASSWORD:-album}
+      POSTGRES_DB: ${ALBUM_POSTGRES_DB:-album}
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "./data/postgresql:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ALBUM_POSTGRES_USER:-album} -d ${ALBUM_POSTGRES_DB:-album}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  album-backend:
+    image: registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest
+    restart: always
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    expose:
+      - "8080"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "./data:/app/data"
+      - "./configs:/app/configs:ro"
+      - "./public:/app/public"
+    environment:
+      # 服务器配置
+      - ALBUM_SERVER_HOST=0.0.0.0
+      - ALBUM_SERVER_PORT=8080
+      - ALBUM_SERVER_PUBLIC_BASE_URL=${ALBUM_SERVER_PUBLIC_BASE_URL:-http://localhost}
+      
+      # 数据库配置
+      - ALBUM_DATABASE_TYPE=postgres
+      - ALBUM_DATABASE_DSN=host=postgresql user=${ALBUM_POSTGRES_USER:-album} password=${ALBUM_POSTGRES_PASSWORD:-album} dbname=${ALBUM_POSTGRES_DB:-album} port=5432 sslmode=disable TimeZone=Asia/Shanghai
+      
+      # 存储配置
+      - ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH=/app/data
+      
+      # 认证配置
+      - ALBUM_AUTH_JWT_SECRET=${ALBUM_AUTH_JWT_SECRET:-change-me-in-production}
+      - ALBUM_AUTH_URL_SIGNER_SECRET=${ALBUM_AUTH_URL_SIGNER_SECRET:-change-me-in-production}
+      
+      # 媒体配置
+      - ALBUM_MEDIA_MAX_FILE_SIZE=${ALBUM_MEDIA_MAX_FILE_SIZE:-2GB}
+      
+      # 日志配置
+      - ALBUM_LOGGER_LEVEL=${ALBUM_LOGGER_LEVEL:-info}
+      - ALBUM_LOGGER_FORMAT=${ALBUM_LOGGER_FORMAT:-json}
+      - ALBUM_LOGGER_OUTPUT=stdout
+      
+      # CORS配置（应用层，可选，默认禁用，由nginx处理）
+      - ALBUM_ENABLE_APP_CORS=false
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 800M
+        reservations:
+          cpus: '0.5'
+          memory: 400M
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - album-backend
+    ports:
+      - "${ALBUM_HTTP_PORT:-80}:80"
+      - "${ALBUM_HTTPS_PORT:-443}:443"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "./default.conf.template:/etc/nginx/templates/default.conf.template:ro"
+      - "./docker-entrypoint.sh:/docker-entrypoint.sh:ro"
+      - "./data/cert:/etc/nginx/ssl:ro"
+      - "./data/logs/nginx:/var/log/nginx"
+    environment:
+      - ENABLE_HTTPS=${ALBUM_ENABLE_HTTPS:-false}
+      - SSL_CERT_PATH=${ALBUM_SSL_CERT_PATH:-/etc/nginx/ssl/cert.pem}
+      - SSL_KEY_PATH=${ALBUM_SSL_KEY_PATH:-/etc/nginx/ssl/key.pem}
+      - NGINX_ACCESS_LOG_LEVEL=${ALBUM_NGINX_ACCESS_LOG_LEVEL:-combined}
+      - NGINX_ERROR_LOG_LEVEL=${ALBUM_NGINX_ERROR_LOG_LEVEL:-warn}
+      - CLIENT_MAX_BODY_SIZE=${ALBUM_NGINX_CLIENT_MAX_BODY_SIZE:-2G}
+    entrypoint: ["/docker-entrypoint.sh"]
+    command: ["nginx", "-g", "daemon off;"]

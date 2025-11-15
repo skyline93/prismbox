@@ -11,6 +11,7 @@ import (
 	"github.com/album/backend/internal/api/dto"
 	"github.com/album/backend/internal/api/middleware"
 	apiresponse "github.com/album/backend/internal/api/response"
+	appctx "github.com/album/backend/internal/app"
 	mediaservice "github.com/album/backend/internal/service/media"
 	"github.com/album/backend/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -20,13 +21,15 @@ import (
 // Handler 媒体处理器
 type Handler struct {
 	mediaService mediaservice.Service
+	app          *appctx.App
 	log          logger.Logger
 }
 
 // NewHandler 创建媒体处理器
-func NewHandler(mediaService mediaservice.Service) *Handler {
+func NewHandler(mediaService mediaservice.Service, app *appctx.App) *Handler {
 	return &Handler{
 		mediaService: mediaService,
+		app:          app,
 		log:          logger.New("api.v1.media"),
 	}
 }
@@ -135,7 +138,21 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 7. 打开文件流（流式处理）
+	// 7. 验证文件大小（如果配置了最大文件大小）
+	if h.app != nil && h.app.Config != nil && h.app.Config.Media != nil && h.app.Config.Media.MaxFileSize > 0 {
+		maxSize := int64(h.app.Config.Media.MaxFileSize)
+		if file.Size > maxSize {
+			h.log.Warn("file size exceeds maximum allowed size",
+				logger.Int64("file_size", file.Size),
+				logger.Int64("max_size", maxSize),
+				logger.String("filename", file.Filename),
+			)
+			apiresponse.Error(c, fmt.Sprintf("File size (%d bytes) exceeds maximum allowed size (%d bytes)", file.Size, maxSize))
+			return
+		}
+	}
+
+	// 8. 打开文件流（流式处理）
 	src, err := file.Open()
 	if err != nil {
 		h.log.Error("failed to open uploaded file",
@@ -147,7 +164,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	}
 	defer src.Close()
 
-	// 8. 调用Service层上传媒体（传入所有参数）
+	// 9. 调用Service层上传媒体（传入所有参数）
 	media, err := h.mediaService.UploadMedia(c.Request.Context(), &mediaservice.UploadMediaRequest{
 		UserID:           userID,
 		Hash:             hash,
@@ -169,7 +186,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 9. 转换为响应格式
+	// 10. 转换为响应格式
 	response := &dto.MediaResponse{
 		UUID:             media.UUID,
 		UserID:           media.UserID,

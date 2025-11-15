@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,12 +63,12 @@ func (l *Loader) loadYAML() (*Config, error) {
 	return &cfg, nil
 }
 
-// overrideWithEnv 使用环境变量覆盖配置
+// overrideWithEnv 使用环境变量覆盖配置（所有环境变量使用 ALBUM_ 前缀）
 func (l *Loader) overrideWithEnv(cfg *Config) {
 	// 存储配置
 	if cfg.Storage != nil {
 		if cfg.Storage.Primary != nil && cfg.Storage.Primary.Local != nil {
-			if basePath := os.Getenv("STORAGE_PRIMARY_LOCAL_BASE_PATH"); basePath != "" {
+			if basePath := os.Getenv("ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH"); basePath != "" {
 				cfg.Storage.Primary.Local.BasePath = basePath
 			}
 		}
@@ -75,73 +76,138 @@ func (l *Loader) overrideWithEnv(cfg *Config) {
 
 	// 服务器配置
 	if cfg.Server != nil {
-		if host := os.Getenv("SERVER_HOST"); host != "" {
+		if host := os.Getenv("ALBUM_SERVER_HOST"); host != "" {
 			cfg.Server.Host = host
 		}
-		if port := os.Getenv("SERVER_PORT"); port != "" {
+		if port := os.Getenv("ALBUM_SERVER_PORT"); port != "" {
 			var p int
 			if _, err := fmt.Sscanf(port, "%d", &p); err == nil {
 				cfg.Server.Port = p
 			}
 		}
-		if publicBaseURL := os.Getenv("SERVER_PUBLIC_BASE_URL"); publicBaseURL != "" {
+		if publicBaseURL := os.Getenv("ALBUM_SERVER_PUBLIC_BASE_URL"); publicBaseURL != "" {
 			cfg.Server.PublicBaseURL = publicBaseURL
 		}
 	}
 
 	// 数据库配置
 	if cfg.Database != nil {
-		if dsn := os.Getenv("DATABASE_DSN"); dsn != "" {
+		if dbType := os.Getenv("ALBUM_DATABASE_TYPE"); dbType != "" {
+			cfg.Database.Type = dbType
+		}
+		if dsn := os.Getenv("ALBUM_DATABASE_DSN"); dsn != "" {
 			cfg.Database.DSN = dsn
 		}
 	}
 
 	// 认证配置
 	if cfg.Auth != nil {
-		if secret := os.Getenv("AUTH_JWT_SECRET"); secret != "" {
+		if secret := os.Getenv("ALBUM_AUTH_JWT_SECRET"); secret != "" {
 			cfg.Auth.JWTSecret = secret
 		}
-		if accessTTL := os.Getenv("AUTH_ACCESS_TOKEN_EXPIRES_IN"); accessTTL != "" {
+		if accessTTL := os.Getenv("ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN"); accessTTL != "" {
 			if duration, err := time.ParseDuration(accessTTL); err == nil {
 				cfg.Auth.AccessTokenExpiresIn = modules.Duration(duration)
 			}
 		}
-		if refreshTTL := os.Getenv("AUTH_REFRESH_TOKEN_EXPIRES_IN"); refreshTTL != "" {
+		if refreshTTL := os.Getenv("ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN"); refreshTTL != "" {
 			if duration, err := time.ParseDuration(refreshTTL); err == nil {
 				cfg.Auth.RefreshTokenExpiresIn = modules.Duration(duration)
 			}
 		}
-		if bundleID := os.Getenv("AUTH_APPLE_APP_BUNDLE_ID"); bundleID != "" {
+		if bundleID := os.Getenv("ALBUM_AUTH_APPLE_APP_BUNDLE_ID"); bundleID != "" {
 			cfg.Auth.AppleAppBundleID = bundleID
 		}
-		if avatarPath := os.Getenv("AUTH_AVATAR_SAVE_PATH"); avatarPath != "" {
+		if avatarPath := os.Getenv("ALBUM_AUTH_AVATAR_SAVE_PATH"); avatarPath != "" {
 			cfg.Auth.AvatarSavePath = avatarPath
 		}
-		if maxAvatar := os.Getenv("AUTH_MAX_AVATAR_SIZE"); maxAvatar != "" {
+		if maxAvatar := os.Getenv("ALBUM_AUTH_MAX_AVATAR_SIZE"); maxAvatar != "" {
 			if size, err := parseSize(maxAvatar); err == nil {
 				cfg.Auth.MaxAvatarSize = modules.Size(size)
 			}
 		}
-		if signerSecret := os.Getenv("AUTH_URL_SIGNER_SECRET"); signerSecret != "" {
+		if signerSecret := os.Getenv("ALBUM_AUTH_URL_SIGNER_SECRET"); signerSecret != "" {
 			cfg.Auth.URLSignerSecret = signerSecret
 		}
-		if signedTTL := os.Getenv("AUTH_SIGNED_URL_LOAD_TTL"); signedTTL != "" {
+		if signedTTL := os.Getenv("ALBUM_AUTH_SIGNED_URL_LOAD_TTL"); signedTTL != "" {
 			if duration, err := time.ParseDuration(signedTTL); err == nil {
 				cfg.Auth.SignedURLLoadTTL = modules.Duration(duration)
 			}
 		}
 	}
 
+	// 媒体配置
+	if cfg.Media != nil {
+		if maxSize := os.Getenv("ALBUM_MEDIA_MAX_FILE_SIZE"); maxSize != "" {
+			if size, err := parseSize(maxSize); err == nil {
+				cfg.Media.MaxFileSize = modules.Size(size)
+			}
+		}
+		if cfg.Media.Processor != nil {
+			// Imagick配置
+			if cfg.Media.Processor.Imagick != nil {
+				if poolSize := os.Getenv("ALBUM_MEDIA_PROCESSOR_IMAGICK_POOL_SIZE"); poolSize != "" {
+					if ps, err := strconv.Atoi(poolSize); err == nil {
+						cfg.Media.Processor.Imagick.PoolSize = ps
+					}
+				}
+				if memLimit := os.Getenv("ALBUM_MEDIA_PROCESSOR_IMAGICK_MEMORY_LIMIT"); memLimit != "" {
+					cfg.Media.Processor.Imagick.MemoryLimit = memLimit
+				}
+				if diskLimit := os.Getenv("ALBUM_MEDIA_PROCESSOR_IMAGICK_DISK_LIMIT"); diskLimit != "" {
+					cfg.Media.Processor.Imagick.DiskLimit = diskLimit
+				}
+			}
+			// FFmpeg配置
+			if cfg.Media.Processor.FFmpeg != nil {
+				if binPath := os.Getenv("ALBUM_MEDIA_PROCESSOR_FFMPEG_BINARY_PATH"); binPath != "" {
+					cfg.Media.Processor.FFmpeg.BinaryPath = binPath
+				}
+				if probePath := os.Getenv("ALBUM_MEDIA_PROCESSOR_FFMPEG_PROBE_PATH"); probePath != "" {
+					cfg.Media.Processor.FFmpeg.ProbePath = probePath
+				}
+				if maxConcurrency := os.Getenv("ALBUM_MEDIA_PROCESSOR_FFMPEG_MAX_CONCURRENCY"); maxConcurrency != "" {
+					if mc, err := strconv.Atoi(maxConcurrency); err == nil {
+						cfg.Media.Processor.FFmpeg.MaxConcurrency = mc
+					}
+				}
+			}
+			// 并发配置
+			if concurrency := os.Getenv("ALBUM_MEDIA_PROCESSOR_CONCURRENCY"); concurrency != "" {
+				if c, err := strconv.Atoi(concurrency); err == nil {
+					cfg.Media.Processor.Concurrency = c
+				}
+			}
+		}
+	}
+
 	// 日志配置
 	if cfg.Logger != nil {
-		if level := os.Getenv("LOGGER_LEVEL"); level != "" {
+		if level := os.Getenv("ALBUM_LOGGER_LEVEL"); level != "" {
 			cfg.Logger.Level = level
 		}
-		if format := os.Getenv("LOGGER_FORMAT"); format != "" {
+		if format := os.Getenv("ALBUM_LOGGER_FORMAT"); format != "" {
 			cfg.Logger.Format = format
 		}
-		if output := os.Getenv("LOGGER_OUTPUT"); output != "" {
+		if output := os.Getenv("ALBUM_LOGGER_OUTPUT"); output != "" {
 			cfg.Logger.Output = output
+		}
+	}
+
+	// 变更日志配置
+	if cfg.Changelog != nil {
+		if enabled := os.Getenv("ALBUM_CHANGELOG_ENABLED"); enabled != "" {
+			cfg.Changelog.Enabled = enabled == "true" || enabled == "1"
+		}
+		if cleanupInterval := os.Getenv("ALBUM_CHANGELOG_CLEANUP_INTERVAL"); cleanupInterval != "" {
+			if duration, err := time.ParseDuration(cleanupInterval); err == nil {
+				cfg.Changelog.CleanupInterval = duration
+			}
+		}
+		if pageLimit := os.Getenv("ALBUM_CHANGELOG_DEFAULT_PAGE_LIMIT"); pageLimit != "" {
+			if pl, err := strconv.Atoi(pageLimit); err == nil {
+				cfg.Changelog.DefaultChangelogPageLimit = pl
+			}
 		}
 	}
 }

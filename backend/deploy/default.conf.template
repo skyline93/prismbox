@@ -1,0 +1,110 @@
+# Album Backend Nginx 配置模板
+
+# DNS解析器设置
+resolver 127.0.0.11 valid=10s;
+
+# 日志格式定义
+log_format json escape=json '{'
+    '"time_local":"$time_local",'
+    '"remote_addr":"$remote_addr",'
+    '"remote_user":"$remote_user",'
+    '"request":"$request",'
+    '"status": "$status",'
+    '"body_bytes_sent":"$body_bytes_sent",'
+    '"request_time":"$request_time",'
+    '"http_referrer":"$http_referer",'
+    '"http_user_agent":"$http_user_agent",'
+    '"http_x_forwarded_for":"$http_x_forwarded_for",'
+    '"http_host":"$http_host",'
+    '"server_name":"$server_name",'
+    '"request_uri":"$request_uri",'
+    '"upstream_addr":"$upstream_addr",'
+    '"upstream_status":"$upstream_status",'
+    '"upstream_response_time":"$upstream_response_time",'
+    '"upstream_connect_time":"$upstream_connect_time",'
+    '"upstream_header_time":"$upstream_header_time"'
+'}';
+
+# 错误日志级别由 docker-entrypoint.sh 设置
+
+# 大文件上传下载配置（全局）
+client_max_body_size ${CLIENT_MAX_BODY_SIZE};
+client_body_buffer_size 1M;
+client_body_timeout 300s;
+client_header_timeout 300s;
+
+# 此块将根据 ENABLE_HTTPS 的值动态填充或留空
+${HTTP_REDIRECT_BLOCK}
+
+# HTTPS/HTTP 配置 - API 服务
+server {
+    ${USER_LISTEN_DIRECTIVE}
+    server_name _ "";  # 允许空的host header
+    
+    # 访问日志配置
+    access_log /var/log/nginx/api-access.log ${NGINX_ACCESS_LOG_FORMAT};
+    
+    # SSL 配置块，如果禁用 HTTPS 则此块为空
+    ${SSL_CONFIG_BLOCK}
+
+    # 通用配置
+    include /etc/nginx/snippets/common.conf;
+    include /etc/nginx/snippets/proxy.conf;
+
+    # API 反向代理
+    location /api {
+        # CORS 预检请求处理
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin $http_origin always;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, PATCH, OPTIONS' always;
+            add_header Access-Control-Allow-Headers 'Origin, Content-Type, Accept, Authorization, X-Requested-With, X-File-Name, X-File-Path, X-File-Hash, X-File-Size, X-Chunk-Size, X-File-SHA256, X-Chunk-Hash, X-Album-ID' always;
+            add_header Access-Control-Allow-Credentials true always;
+            add_header Access-Control-Max-Age 86400 always;
+            add_header Content-Length 0;
+            add_header Content-Type text/plain;
+            return 204;
+        }
+        
+        # CORS 响应头
+        add_header Access-Control-Allow-Origin $http_origin always;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, PATCH, OPTIONS' always;
+        add_header Access-Control-Allow-Headers 'Origin, Content-Type, Accept, Authorization, X-Requested-With, X-File-Name, X-File-Path, X-File-Hash, X-File-Size, X-Chunk-Size, X-File-SHA256, X-Chunk-Hash, X-Album-ID' always;
+        add_header Access-Control-Allow-Credentials true always;
+        add_header Access-Control-Expose-Headers 'Content-Disposition, Content-Length' always;
+        
+        # 反向代理到后端服务
+        proxy_pass http://album-backend:8080;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $http_host;
+        
+        # 超时配置（支持大文件上传下载）
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        
+        # 流式传输（关闭缓冲，支持大文件）
+        proxy_request_buffering off;
+        proxy_buffering off;
+        proxy_max_temp_file_size 0;
+        
+        # 错误处理
+        error_page 502 503 504 = @api_fallback;
+    }
+    
+    # API 服务不可用时的回退处理
+    location @api_fallback {
+        add_header Content-Type application/json always;
+        add_header Access-Control-Allow-Origin $http_origin always;
+        return 503 '{"error": "Backend service temporarily unavailable"}';
+    }
+    
+    # 健康检查端点（可选）
+    location /health {
+        access_log off;
+        proxy_pass http://album-backend:8080/api/v1/health;
+        proxy_set_header Host $http_host;
+    }
+}
