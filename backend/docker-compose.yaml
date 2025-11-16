@@ -27,15 +27,7 @@ services:
       - album-network
 
   album-backend:
-    build:
-      context: .
-      dockerfile: deploy/linux-arm64/Dockerfile  # 默认使用 amd64，deploy.sh 会自动替换
-      args:
-        # 版本信息（构建时注入）
-        - VERSION=${ALBUM_VERSION:-dev}
-        - BUILD_TIME=${ALBUM_BUILD_TIME:-}
-        - GIT_COMMIT=${ALBUM_GIT_COMMIT:-}
-        - GIT_BRANCH=${ALBUM_GIT_BRANCH:-}
+    image: registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest-${ALBUM_ARCH:-amd64}
     restart: always
     container_name: album-backend
     depends_on:
