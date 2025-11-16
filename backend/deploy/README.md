@@ -8,6 +8,7 @@
 - [环境变量配置](#环境变量配置)
 - [首次部署](#首次部署)
 - [构建镜像](#构建镜像)
+- [生产环境部署](#生产环境部署)
 - [部署服务](#部署服务)
 - [配置说明](#配置说明)
 - [故障排查](#故障排查)
@@ -264,7 +265,33 @@ docker build -f deploy/linux-arm64/Dockerfile.base \
 
 ### 构建应用镜像
 
-#### 方式一：使用 deploy.sh（推荐）
+本项目包含两个应用镜像：
+- **album-backend**: 后端 API 服务镜像
+- **album-nginx**: Nginx 反向代理镜像（包含配置和脚本）
+
+#### 方式一：使用 Makefile（推荐）
+
+```bash
+# 构建所有镜像（backend + nginx）
+make docker-build
+
+# 仅构建 backend 镜像
+make docker-build-backend
+
+# 仅构建 nginx 镜像
+make docker-build-nginx
+
+# 推送所有镜像到 registry
+make docker-push
+
+# 仅推送 backend 镜像
+make docker-push-backend
+
+# 仅推送 nginx 镜像
+make docker-push-nginx
+```
+
+#### 方式二：使用 deploy.sh
 
 ```bash
 # 在 backend 目录下
@@ -277,7 +304,9 @@ docker build -f deploy/linux-arm64/Dockerfile.base \
 3. 注入版本信息到构建参数
 4. 构建并启动服务
 
-#### 方式二：手动构建
+#### 方式三：手动构建
+
+**构建 Backend 镜像**：
 
 ```bash
 # 在 backend 目录下
@@ -286,8 +315,25 @@ docker build -f deploy/linux-amd64/Dockerfile \
     --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
     --build-arg GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") \
     --build-arg GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown") \
-    -t registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest .
+    -t registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest-amd64 .
 ```
+
+**构建 Nginx 镜像**：
+
+```bash
+# 在 backend 目录下
+docker build -f deploy/linux-amd64/Dockerfile.nginx \
+    -t registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-amd64 .
+```
+
+**镜像标签说明**：
+
+- Backend 镜像：`registry.cn-shenzhen.aliyuncs.com/greene/album-backend:VERSION-ARCH` 和 `latest-ARCH`
+- Nginx 镜像：`registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:VERSION-ARCH` 和 `latest-ARCH`
+
+其中：
+- `VERSION` 是版本号（如 `v1.0.0` 或 `dev`）
+- `ARCH` 是架构（`amd64` 或 `arm64`）
 
 ### 版本信息注入
 
@@ -388,6 +434,155 @@ curl http://localhost/api/v1/version
 - 如果没有 `.git` 目录或无法获取 git 信息，`git_commit` 和 `git_branch` 会显示为 `unknown`
 - 构建时间始终会自动生成，即使未手动指定
 - 版本信息在构建时注入到二进制文件中，运行时无法修改
+
+## 生产环境部署
+
+### 前置条件
+
+生产环境部署使用已构建并推送到镜像仓库的镜像，只需要：
+
+1. ✅ `docker-compose.yaml` 文件
+2. ✅ `.env` 环境变量配置文件
+3. ✅ 创建必要的目录
+
+**不需要**：
+- ❌ Makefile
+- ❌ Dockerfile
+- ❌ 源代码
+- ❌ 构建工具
+
+### 部署步骤
+
+#### 1. 准备环境
+
+确保已安装：
+- Docker 20.10+
+- Docker Compose 2.0+
+
+#### 2. 创建必要目录
+
+在 `backend` 目录下执行：
+
+```bash
+cd backend
+
+# 创建所有必需目录
+mkdir -p deploy/data/postgresql \
+         deploy/data \
+         deploy/public \
+         deploy/data/cert \
+         deploy/data/logs/nginx \
+         configs
+```
+
+#### 3. 配置环境变量
+
+确保 `.env` 文件已配置（在 `backend` 目录下）：
+
+```bash
+# 首次部署必须设置
+ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+ALBUM_INIT_ADMIN_PASSWORD=your-secret-password
+
+# 数据库配置（生产环境请修改）
+ALBUM_POSTGRES_USER=album
+ALBUM_POSTGRES_PASSWORD=your-database-password
+ALBUM_POSTGRES_DB=album
+
+# 服务器配置
+ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
+
+# 认证配置（生产环境请务必修改）
+ALBUM_AUTH_JWT_SECRET=your-jwt-secret-key
+ALBUM_AUTH_URL_SIGNER_SECRET=your-signer-secret-key
+
+# 架构配置（重要：根据服务器架构设置）
+ALBUM_ARCH=amd64  # 或 arm64
+```
+
+#### 4. 设置架构环境变量
+
+```bash
+# 自动检测架构
+export ALBUM_ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+
+# 或手动设置
+export ALBUM_ARCH=amd64  # 或 arm64
+```
+
+#### 5. 启动服务
+
+```bash
+# 使用 docker compose（推荐）
+ALBUM_ARCH=${ALBUM_ARCH:-amd64} docker compose up -d
+
+# 或使用 docker-compose
+ALBUM_ARCH=${ALBUM_ARCH:-amd64} docker-compose up -d
+```
+
+#### 6. 验证部署
+
+```bash
+# 查看服务状态
+docker compose ps
+# 或
+docker-compose ps
+
+# 查看日志
+docker compose logs -f
+# 或
+docker-compose logs -f
+
+# 测试 API
+curl http://localhost/api/v1/health
+
+# 查看版本信息
+curl http://localhost/api/v1/version
+```
+
+### 生产环境部署完整示例
+
+```bash
+# 1. 进入 backend 目录
+cd backend
+
+# 2. 创建必要目录
+mkdir -p deploy/data/postgresql \
+         deploy/data \
+         deploy/public \
+         deploy/data/cert \
+         deploy/data/logs/nginx \
+         configs
+
+# 3. 设置架构（根据服务器架构）
+export ALBUM_ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+
+# 4. 确保 .env 文件已配置（包含 ALBUM_INIT_ADMIN_EMAIL 等）
+
+# 5. 启动服务
+ALBUM_ARCH=${ALBUM_ARCH} docker compose up -d
+
+# 6. 查看状态
+docker compose ps
+docker compose logs -f
+```
+
+### 镜像说明
+
+生产环境使用的镜像：
+
+- **Backend**: `registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest-ARCH`
+- **Nginx**: `registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-ARCH`
+- **PostgreSQL**: `postgres:14`（官方镜像）
+
+Nginx 镜像已包含：
+- ✅ 配置模板文件（`default.conf.template`）
+- ✅ 启动脚本（`docker-entrypoint.sh`）
+- ✅ 所有必需的目录结构
+
+因此不需要挂载配置文件和脚本，只需挂载：
+- SSL 证书目录（如果启用 HTTPS）
+- 日志目录
 
 ## 部署服务
 

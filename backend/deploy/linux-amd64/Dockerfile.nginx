@@ -1,0 +1,18 @@
+FROM nginx:alpine
+
+# 创建必要的目录
+RUN mkdir -p /etc/nginx/conf.d /etc/nginx/snippets /etc/nginx/templates /var/log/nginx && \
+    chown -R nginx:nginx /var/log/nginx /etc/nginx/conf.d /etc/nginx/snippets /etc/nginx/templates && \
+    chmod -R 755 /var/log/nginx /etc/nginx/conf.d /etc/nginx/snippets /etc/nginx/templates
+
+# 复制 nginx 配置模板和启动脚本
+COPY ./deploy/default.conf.template /etc/nginx/templates/default.conf.template
+COPY ./deploy/docker-entrypoint.sh /docker-entrypoint.sh
+
+# 设置执行权限
+RUN chmod +x /docker-entrypoint.sh
+
+# 使用自定义的启动脚本
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
+

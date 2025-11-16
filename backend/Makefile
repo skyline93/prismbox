@@ -17,17 +17,20 @@ LDFLAGS := -X '$(PROJECT)/internal/version.Version=$(VERSION)' \
 # Docker 镜像配置
 REGISTRY := registry.cn-shenzhen.aliyuncs.com/greene
 IMAGE_NAME := album-backend
+NGINX_IMAGE_NAME := album-nginx
 ARCH ?= $(shell uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 PLATFORM := linux-$(ARCH)
 
 # 镜像标签
 IMAGE_VERSION_TAG := $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-$(ARCH)
 IMAGE_LATEST_TAG := $(REGISTRY)/$(IMAGE_NAME):latest-$(ARCH)
+NGINX_IMAGE_VERSION_TAG := $(REGISTRY)/$(NGINX_IMAGE_NAME):$(VERSION)-$(ARCH)
+NGINX_IMAGE_LATEST_TAG := $(REGISTRY)/$(NGINX_IMAGE_NAME):latest-$(ARCH)
 
 # Docker Compose 命令检测
 DOCKER_COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
 
-.PHONY: help all build build-server build-cli clean print-version docker-build docker-push docker-build-base deploy deploy-up deploy-down deploy-logs deploy-ps deploy-init
+.PHONY: help all build build-server build-cli clean print-version docker-build docker-build-backend docker-build-nginx docker-push docker-push-backend docker-push-nginx docker-build-base deploy deploy-up deploy-down deploy-logs deploy-ps deploy-init
 
 # 默认目标：显示帮助信息
 .DEFAULT_GOAL := help
@@ -41,9 +44,13 @@ help: ## 显示此帮助信息
 	@echo ""
 	@echo "示例:"
 	@echo "  make build              # 构建 server 和 cli"
-	@echo "  make docker-build       # 构建 Docker 镜像（自动检测架构）"
+	@echo "  make docker-build       # 构建所有 Docker 镜像（backend + nginx）"
 	@echo "  make docker-build ARCH=amd64  # 构建指定架构的镜像"
-	@echo "  make docker-push        # 推送镜像到 registry"
+	@echo "  make docker-build-backend  # 仅构建 backend 镜像"
+	@echo "  make docker-build-nginx    # 仅构建 nginx 镜像"
+	@echo "  make docker-push        # 推送所有镜像到 registry"
+	@echo "  make docker-push-backend  # 仅推送 backend 镜像"
+	@echo "  make docker-push-nginx    # 仅推送 nginx 镜像"
 	@echo "  make deploy             # 部署服务（确保镜像已构建）"
 	@echo "  make deploy-up          # 启动服务"
 	@echo "  make deploy-down        # 停止服务"
@@ -78,8 +85,10 @@ clean: ## 清理构建产物
 	rm -rf $(BIN_DIR)
 
 # Docker 构建目标
-docker-build: ## 构建 Docker 镜像（同时打版本标签和 latest-ARCH 标签）
-	@echo ">> building docker image (version: $(VERSION), arch: $(ARCH))"
+docker-build: docker-build-backend docker-build-nginx ## 构建所有 Docker 镜像（backend + nginx）
+
+docker-build-backend: ## 构建 Backend Docker 镜像
+	@echo ">> building backend docker image (version: $(VERSION), arch: $(ARCH))"
 	@echo ">> Dockerfile: deploy/$(PLATFORM)/Dockerfile"
 	@echo ">> Version tag: $(IMAGE_VERSION_TAG)"
 	@echo ">> Latest tag: $(IMAGE_LATEST_TAG)"
@@ -92,18 +101,42 @@ docker-build: ## 构建 Docker 镜像（同时打版本标签和 latest-ARCH 标
 		-t $(IMAGE_VERSION_TAG) \
 		-t $(IMAGE_LATEST_TAG) \
 		.
-	@echo ">> image built successfully"
+	@echo ">> backend image built successfully"
 	@echo ">>   - $(IMAGE_VERSION_TAG)"
 	@echo ">>   - $(IMAGE_LATEST_TAG)"
 
+docker-build-nginx: ## 构建 Nginx Docker 镜像
+	@echo ">> building nginx docker image (version: $(VERSION), arch: $(ARCH))"
+	@echo ">> Dockerfile: deploy/$(PLATFORM)/Dockerfile.nginx"
+	@echo ">> Version tag: $(NGINX_IMAGE_VERSION_TAG)"
+	@echo ">> Latest tag: $(NGINX_IMAGE_LATEST_TAG)"
+	docker build \
+		-f deploy/$(PLATFORM)/Dockerfile.nginx \
+		-t $(NGINX_IMAGE_VERSION_TAG) \
+		-t $(NGINX_IMAGE_LATEST_TAG) \
+		.
+	@echo ">> nginx image built successfully"
+	@echo ">>   - $(NGINX_IMAGE_VERSION_TAG)"
+	@echo ">>   - $(NGINX_IMAGE_LATEST_TAG)"
+
 # Docker 推送目标
-docker-push: ## 推送 Docker 镜像到 registry
-	@echo ">> pushing docker images to registry"
+docker-push: docker-push-backend docker-push-nginx ## 推送所有 Docker 镜像到 registry
+
+docker-push-backend: ## 推送 Backend Docker 镜像到 registry
+	@echo ">> pushing backend docker images to registry"
 	docker push $(IMAGE_VERSION_TAG)
 	docker push $(IMAGE_LATEST_TAG)
-	@echo ">> images pushed successfully"
+	@echo ">> backend images pushed successfully"
 	@echo ">>   - $(IMAGE_VERSION_TAG)"
 	@echo ">>   - $(IMAGE_LATEST_TAG)"
+
+docker-push-nginx: ## 推送 Nginx Docker 镜像到 registry
+	@echo ">> pushing nginx docker images to registry"
+	docker push $(NGINX_IMAGE_VERSION_TAG)
+	docker push $(NGINX_IMAGE_LATEST_TAG)
+	@echo ">> nginx images pushed successfully"
+	@echo ">>   - $(NGINX_IMAGE_VERSION_TAG)"
+	@echo ">>   - $(NGINX_IMAGE_LATEST_TAG)"
 
 # Docker 基础镜像构建
 docker-build-base: ## 构建基础镜像（用于构建应用镜像）

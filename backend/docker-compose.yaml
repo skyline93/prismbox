@@ -100,7 +100,7 @@ services:
       - album-network
 
   nginx:
-    image: nginx:alpine
+    image: registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-${ALBUM_ARCH:-amd64}
     restart: always
     container_name: album-nginx
     depends_on:
@@ -111,8 +111,6 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
-      - "./deploy/default.conf.template:/etc/nginx/templates/default.conf.template:ro"
-      - "./deploy/docker-entrypoint.sh:/docker-entrypoint.sh"
       - "./deploy/data/cert:/etc/nginx/ssl:ro"
       - "./deploy/data/logs/nginx:/var/log/nginx"
     environment:
@@ -122,8 +120,6 @@ services:
       - NGINX_ACCESS_LOG_LEVEL=${ALBUM_NGINX_ACCESS_LOG_LEVEL:-combined}
       - NGINX_ERROR_LOG_LEVEL=${ALBUM_NGINX_ERROR_LOG_LEVEL:-warn}
       - CLIENT_MAX_BODY_SIZE=${ALBUM_NGINX_CLIENT_MAX_BODY_SIZE:-2G}
-    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
-    command: ["nginx", "-g", "daemon off;"]
     networks:
       - album-network
 
