@@ -52,9 +52,9 @@ class MediaResponse with _$MediaResponse {
     @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
     required int width,
     required int height,
-    @JsonKey(name: 'download_url') required String downloadUrl,
-    @JsonKey(name: 'preview_url') required String previewUrl,
-    @JsonKey(name: 'thumbnail_url') required String thumbnailUrl,
+    @JsonKey(name: 'download_url') String? downloadUrl,
+    @JsonKey(name: 'preview_url') String? previewUrl,
+    @JsonKey(name: 'thumbnail_url') String? thumbnailUrl,
   }) = _MediaResponse;
 
   factory MediaResponse.fromJson(Map<String, dynamic> json) =>

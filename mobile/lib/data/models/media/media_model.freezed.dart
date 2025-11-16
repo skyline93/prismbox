@@ -636,11 +636,11 @@ mixin _$MediaResponse {
   int get width => throw _privateConstructorUsedError;
   int get height => throw _privateConstructorUsedError;
   @JsonKey(name: 'download_url')
-  String get downloadUrl => throw _privateConstructorUsedError;
+  String? get downloadUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'preview_url')
-  String get previewUrl => throw _privateConstructorUsedError;
+  String? get previewUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'thumbnail_url')
-  String get thumbnailUrl => throw _privateConstructorUsedError;
+  String? get thumbnailUrl => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -665,9 +665,9 @@ abstract class $MediaResponseCopyWith<$Res> {
       @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
       int width,
       int height,
-      @JsonKey(name: 'download_url') String downloadUrl,
-      @JsonKey(name: 'preview_url') String previewUrl,
-      @JsonKey(name: 'thumbnail_url') String thumbnailUrl});
+      @JsonKey(name: 'download_url') String? downloadUrl,
+      @JsonKey(name: 'preview_url') String? previewUrl,
+      @JsonKey(name: 'thumbnail_url') String? thumbnailUrl});
 }
 
 /// @nodoc
@@ -693,9 +693,9 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
     Object? mediaTakenAt = freezed,
     Object? width = null,
     Object? height = null,
-    Object? downloadUrl = null,
-    Object? previewUrl = null,
-    Object? thumbnailUrl = null,
+    Object? downloadUrl = freezed,
+    Object? previewUrl = freezed,
+    Object? thumbnailUrl = freezed,
   }) {
     return _then(_value.copyWith(
       uuid: null == uuid
@@ -738,18 +738,18 @@ class _$MediaResponseCopyWithImpl<$Res, $Val extends MediaResponse>
           ? _value.height
           : height // ignore: cast_nullable_to_non_nullable
               as int,
-      downloadUrl: null == downloadUrl
+      downloadUrl: freezed == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
-              as String,
-      previewUrl: null == previewUrl
+              as String?,
+      previewUrl: freezed == previewUrl
           ? _value.previewUrl
           : previewUrl // ignore: cast_nullable_to_non_nullable
-              as String,
-      thumbnailUrl: null == thumbnailUrl
+              as String?,
+      thumbnailUrl: freezed == thumbnailUrl
           ? _value.thumbnailUrl
           : thumbnailUrl // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
     ) as $Val);
   }
 }
@@ -773,9 +773,9 @@ abstract class _$$MediaResponseImplCopyWith<$Res>
       @JsonKey(name: 'media_taken_at') String? mediaTakenAt,
       int width,
       int height,
-      @JsonKey(name: 'download_url') String downloadUrl,
-      @JsonKey(name: 'preview_url') String previewUrl,
-      @JsonKey(name: 'thumbnail_url') String thumbnailUrl});
+      @JsonKey(name: 'download_url') String? downloadUrl,
+      @JsonKey(name: 'preview_url') String? previewUrl,
+      @JsonKey(name: 'thumbnail_url') String? thumbnailUrl});
 }
 
 /// @nodoc
@@ -799,9 +799,9 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
     Object? mediaTakenAt = freezed,
     Object? width = null,
     Object? height = null,
-    Object? downloadUrl = null,
-    Object? previewUrl = null,
-    Object? thumbnailUrl = null,
+    Object? downloadUrl = freezed,
+    Object? previewUrl = freezed,
+    Object? thumbnailUrl = freezed,
   }) {
     return _then(_$MediaResponseImpl(
       uuid: null == uuid
@@ -844,18 +844,18 @@ class __$$MediaResponseImplCopyWithImpl<$Res>
           ? _value.height
           : height // ignore: cast_nullable_to_non_nullable
               as int,
-      downloadUrl: null == downloadUrl
+      downloadUrl: freezed == downloadUrl
           ? _value.downloadUrl
           : downloadUrl // ignore: cast_nullable_to_non_nullable
-              as String,
-      previewUrl: null == previewUrl
+              as String?,
+      previewUrl: freezed == previewUrl
           ? _value.previewUrl
           : previewUrl // ignore: cast_nullable_to_non_nullable
-              as String,
-      thumbnailUrl: null == thumbnailUrl
+              as String?,
+      thumbnailUrl: freezed == thumbnailUrl
           ? _value.thumbnailUrl
           : thumbnailUrl // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
     ));
   }
 }
@@ -874,9 +874,9 @@ class _$MediaResponseImpl implements _MediaResponse {
       @JsonKey(name: 'media_taken_at') this.mediaTakenAt,
       required this.width,
       required this.height,
-      @JsonKey(name: 'download_url') required this.downloadUrl,
-      @JsonKey(name: 'preview_url') required this.previewUrl,
-      @JsonKey(name: 'thumbnail_url') required this.thumbnailUrl});
+      @JsonKey(name: 'download_url') this.downloadUrl,
+      @JsonKey(name: 'preview_url') this.previewUrl,
+      @JsonKey(name: 'thumbnail_url') this.thumbnailUrl});
 
   factory _$MediaResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$MediaResponseImplFromJson(json);
@@ -909,13 +909,13 @@ class _$MediaResponseImpl implements _MediaResponse {
   final int height;
   @override
   @JsonKey(name: 'download_url')
-  final String downloadUrl;
+  final String? downloadUrl;
   @override
   @JsonKey(name: 'preview_url')
-  final String previewUrl;
+  final String? previewUrl;
   @override
   @JsonKey(name: 'thumbnail_url')
-  final String thumbnailUrl;
+  final String? thumbnailUrl;
 
   @override
   String toString() {
@@ -996,9 +996,9 @@ abstract class _MediaResponse implements MediaResponse {
           @JsonKey(name: 'media_taken_at') final String? mediaTakenAt,
           required final int width,
           required final int height,
-          @JsonKey(name: 'download_url') required final String downloadUrl,
-          @JsonKey(name: 'preview_url') required final String previewUrl,
-          @JsonKey(name: 'thumbnail_url') required final String thumbnailUrl}) =
+          @JsonKey(name: 'download_url') final String? downloadUrl,
+          @JsonKey(name: 'preview_url') final String? previewUrl,
+          @JsonKey(name: 'thumbnail_url') final String? thumbnailUrl}) =
       _$MediaResponseImpl;
 
   factory _MediaResponse.fromJson(Map<String, dynamic> json) =
@@ -1032,13 +1032,13 @@ abstract class _MediaResponse implements MediaResponse {
   int get height;
   @override
   @JsonKey(name: 'download_url')
-  String get downloadUrl;
+  String? get downloadUrl;
   @override
   @JsonKey(name: 'preview_url')
-  String get previewUrl;
+  String? get previewUrl;
   @override
   @JsonKey(name: 'thumbnail_url')
-  String get thumbnailUrl;
+  String? get thumbnailUrl;
   @override
   @JsonKey(ignore: true)
   _$$MediaResponseImplCopyWith<_$MediaResponseImpl> get copyWith =>

@@ -219,6 +219,10 @@ class DownloadService {
       final mediaDetail = await _remoteMediaSource.getMediaDetail(mediaUuid);
       final downloadUrl = mediaDetail.downloadUrl;
 
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        throw Exception('下载URL不可用，媒体可能还在处理中');
+      }
+
       final newJob = DownloadJobsCompanion(
         jobId: d.Value(jobId),
         mediaUuid: d.Value(mediaUuid),

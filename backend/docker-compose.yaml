@@ -8,6 +8,8 @@ services:
     image: postgres:14
     restart: always
     container_name: album-postgresql
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${ALBUM_POSTGRES_USER:-album}
       POSTGRES_PASSWORD: ${ALBUM_POSTGRES_PASSWORD:-album}

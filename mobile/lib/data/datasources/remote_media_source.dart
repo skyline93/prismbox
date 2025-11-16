@@ -1,14 +1,10 @@
 // lib/data/datasources/remote_media_source.dart
 
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'dart:typed_data';
 import 'package:mobile/data/models/media/media_model.dart';
 import 'package:mobile/data/services/dio_client.dart';
-import 'package:mobile/core/enums.dart';
 import 'package:mobile/config/app_config.dart';
-import 'package:mobile/utils/hash.dart';
-import 'package:path/path.dart' as p;
 
 class RemoteMediaDataSource {
   // ignore: unused_field
@@ -88,12 +84,16 @@ class RemoteMediaDataSource {
     try {
       mediaItem = await getMediaDetail(uuid);
     } on DioException catch (e) {
-      throw _handleDioError(e, '下载缩略图');
+      throw _handleDioError(e, '下载预览文件');
+    }
+
+    if (mediaItem.previewUrl == null || mediaItem.previewUrl!.isEmpty) {
+      throw Exception('预览URL不可用，媒体可能还在处理中');
     }
 
     try {
       final response = await _fileDio.get(
-        mediaItem.previewUrl,
+        mediaItem.previewUrl!,
         options: Options(responseType: ResponseType.bytes),
       );
 
@@ -115,9 +115,13 @@ class RemoteMediaDataSource {
       throw _handleDioError(e, '下载缩略图');
     }
 
+    if (mediaItem.thumbnailUrl == null || mediaItem.thumbnailUrl!.isEmpty) {
+      throw Exception('缩略图URL不可用，媒体可能还在处理中');
+    }
+
     try {
       final response = await _fileDio.get(
-        mediaItem.thumbnailUrl,
+        mediaItem.thumbnailUrl!,
         options: Options(responseType: ResponseType.bytes),
       );
 
@@ -136,7 +140,10 @@ class RemoteMediaDataSource {
       // 我们可以优化这个调用，如果 thumbnail URL 可以直接拼接，就不需要先获取详情
       // 但为了保持与现有逻辑一致，我们先调用 getMediaDetail
       final mediaItem = await getMediaDetail(uuid);
-      return mediaItem.thumbnailUrl;
+      if (mediaItem.thumbnailUrl == null || mediaItem.thumbnailUrl!.isEmpty) {
+        throw Exception('缩略图URL不可用，媒体可能还在处理中');
+      }
+      return mediaItem.thumbnailUrl!;
     } on DioException catch (e) {
       throw _handleDioError(e, '获取缩略图URL');
     }

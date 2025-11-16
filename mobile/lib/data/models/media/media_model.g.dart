@@ -82,9 +82,9 @@ _$MediaResponseImpl _$$MediaResponseImplFromJson(Map<String, dynamic> json) =>
       mediaTakenAt: json['media_taken_at'] as String?,
       width: (json['width'] as num).toInt(),
       height: (json['height'] as num).toInt(),
-      downloadUrl: json['download_url'] as String,
-      previewUrl: json['preview_url'] as String,
-      thumbnailUrl: json['thumbnail_url'] as String,
+      downloadUrl: json['download_url'] as String?,
+      previewUrl: json['preview_url'] as String?,
+      thumbnailUrl: json['thumbnail_url'] as String?,
     );
 
 Map<String, dynamic> _$$MediaResponseImplToJson(_$MediaResponseImpl instance) =>

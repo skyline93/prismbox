@@ -6,7 +6,7 @@ import 'package:mobile/core/di/service_locator.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/domain/repositories/user_repository.dart';
 
-final mediaTableName = 'media';
+final mediaTableName = 'medias';
 
 // 定义云端事件类型，以便与矩阵对应
 enum _CloudEvent {
