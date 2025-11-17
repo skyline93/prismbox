@@ -92,6 +92,17 @@ func NewPoolManager(cfg *modules.PoolManagerConfig, storageType string, repo rep
 		return nil, err
 	}
 
+	// 检查缓存是否为空，记录警告
+	pm.cacheMu.RLock()
+	cacheEmpty := len(pm.cache) == 0
+	pm.cacheMu.RUnlock()
+	if cacheEmpty {
+		pm.log.Warn("pool manager initialized with no storage pools",
+			logger.String("storage_type", storageType),
+			logger.String("message", "storage operations will fail until pools are created and enabled"),
+		)
+	}
+
 	pm.startDeltaWorker()
 	pm.startCacheRefresher()
 	pm.startReconciler()
@@ -253,8 +264,18 @@ func (pm *PoolManager) refreshCache(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load storage pools: %w", err)
 	}
+
+	// 没有存储池时记录警告，但不返回错误，允许服务继续启动
 	if len(pools) == 0 {
-		return fmt.Errorf("no enabled storage pools for type %s", pm.storageType)
+		pm.log.Warn("no enabled storage pools found",
+			logger.String("storage_type", pm.storageType),
+			logger.String("message", "service will start but storage operations may fail until pools are configured"),
+		)
+		// 清空缓存，允许服务继续启动
+		pm.cacheMu.Lock()
+		pm.cache = make(map[string]*StoragePool)
+		pm.cacheMu.Unlock()
+		return nil
 	}
 
 	newCache := make(map[string]*StoragePool, len(pools))
