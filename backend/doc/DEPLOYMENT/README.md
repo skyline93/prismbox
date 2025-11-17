@@ -1,10 +1,11 @@
-# Album Backend 容器化部署文档
+# Album Backend 部署文档
 
 ## 📋 目录
 
 - [概述](#概述)
-- [前置要求](#前置要求)
 - [快速开始](#快速开始)
+- [前置要求](#前置要求)
+- [一键部署](#一键部署)
 - [环境变量配置](#环境变量配置)
 - [首次部署](#首次部署)
 - [构建镜像](#构建镜像)
@@ -40,13 +41,6 @@
 └─────────────────┘
 ```
 
-## 前置要求
-
-- Docker 20.10+
-- Docker Compose 2.0+
-- 至少 2GB 可用内存
-- 至少 10GB 可用磁盘空间
-
 ## 快速开始
 
 ### 方式一：一键部署（推荐）
@@ -59,15 +53,15 @@ cd backend
 ```
 
 脚本会自动：
-- 检测系统架构
-- 初始化必要目录
+- 检测系统架构（AMD64/ARM64）
+- 初始化必要的目录
 - 构建并启动所有服务
 - 注入版本信息
 
 **首次部署需要设置管理员信息**：
 ```bash
 export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-export ALBUM_INIT_ADMIN_PASSWORD=12345678
+export ALBUM_INIT_ADMIN_PASSWORD=your-password
 ./deploy.sh
 ```
 
@@ -114,6 +108,119 @@ docker-compose up -d
 ```bash
 docker-compose ps
 docker-compose logs -f album-backend
+```
+
+## 前置要求
+
+- Docker 20.10+
+- Docker Compose 2.0+
+- 至少 2GB 可用内存
+- 至少 10GB 可用磁盘空间
+
+## 一键部署
+
+在 `backend` 根目录下执行：
+
+```bash
+./deploy.sh
+```
+
+就这么简单！脚本会自动：
+- 检测系统架构（AMD64/ARM64）
+- 初始化必要的目录
+- 构建并启动所有服务
+
+### 默认配置
+
+所有配置都有合理的默认值，可以直接使用：
+
+- **数据库**: PostgreSQL，用户名/密码/数据库名均为 `album`
+- **服务器**: 监听 `0.0.0.0:8080`
+- **Nginx**: HTTP 端口 80，HTTPS 端口 443（默认禁用 HTTPS）
+- **文件大小**: 最大 2GB
+- **认证密钥**: 使用开发环境默认值（生产环境请修改）
+
+### 自定义配置
+
+如果需要自定义配置，可以：
+
+1. **使用环境变量**（推荐）：
+   ```bash
+   export ALBUM_POSTGRES_PASSWORD=your-password
+   export ALBUM_AUTH_JWT_SECRET=your-secret
+   ./deploy.sh
+   ```
+
+2. **创建 .env 文件**：
+   ```bash
+   # 首次运行会自动创建 .env 模板
+   ./deploy.sh
+   # 然后编辑 .env 文件
+   vim .env
+   # 再次运行
+   ./deploy.sh
+   ```
+
+3. **直接修改 docker-compose.yaml**：
+   编辑 `docker-compose.yaml` 中的环境变量
+
+### 常用命令
+
+```bash
+# 启动服务
+./deploy.sh
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 查看特定服务日志
+docker-compose logs -f album-backend
+docker-compose logs -f nginx
+
+# 停止服务
+docker-compose down
+
+# 重启服务
+docker-compose restart
+
+# 更新并重启
+docker-compose up -d --build
+```
+
+### 构建基础镜像（可选）
+
+如果需要构建自定义基础镜像：
+
+```bash
+./deploy.sh --build-base
+```
+
+### 架构支持
+
+脚本会自动检测系统架构：
+- **AMD64/x86_64**: 使用 `linux-amd64` 配置
+- **ARM64/aarch64**: 使用 `linux-arm64` 配置
+
+### 目录结构
+
+部署后的目录结构：
+
+```
+backend/
+├── docker-compose.yaml      # 主编排文件
+├── deploy.sh                # 一键部署脚本
+├── .env                     # 环境变量配置（可选）
+├── configs/                 # 配置文件目录
+├── deploy/
+│   ├── data/               # 数据目录
+│   │   ├── postgresql/     # 数据库数据
+│   │   ├── logs/           # 日志文件
+│   │   └── cert/           # SSL 证书（如果启用 HTTPS）
+│   └── public/             # 静态文件目录
+└── ...
 ```
 
 ## 环境变量配置
@@ -236,7 +343,7 @@ docker-compose logs -f album-backend
 curl http://localhost/api/v1/health
 ```
 
-### 初始化说明
+### 首次部署初始化
 
 首次部署时，容器会自动执行以下初始化步骤：
 
@@ -245,7 +352,20 @@ curl http://localhost/api/v1/health
 3. **初始化存储池** - 创建默认的本地存储池
 4. **创建管理员账户** - 使用提供的邮箱和密码创建管理员
 
-初始化完成后，后续启动会检测到数据库已初始化，自动跳过初始化步骤。
+**首次部署需要设置**：
+```bash
+export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+export ALBUM_INIT_ADMIN_PASSWORD=your-password
+./deploy.sh
+```
+
+或者在 `.env` 文件中设置：
+```bash
+ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+ALBUM_INIT_ADMIN_PASSWORD=your-password
+```
+
+**注意**：初始化完成后，可以删除这些环境变量，容器会检测到数据库已初始化并跳过初始化步骤。
 
 ## 构建镜像
 
@@ -348,7 +468,7 @@ docker build -f deploy/linux-amd64/Dockerfile.nginx \
 | `GoVersion` | Go 版本 | 运行时获取 |
 | `Platform` | 构建平台 | 运行时获取 |
 
-#### 自动注入
+#### 自动注入（推荐）
 
 使用 `deploy.sh` 脚本时，会自动检测并注入版本信息：
 
@@ -361,9 +481,15 @@ docker build -f deploy/linux-amd64/Dockerfile.nginx \
 ./deploy.sh
 ```
 
-#### 通过环境变量注入
+脚本会：
+1. 自动检测 `.git` 目录
+2. 获取 git 版本、提交哈希、分支名
+3. 设置构建时间
+4. 通过环境变量传递给 Docker 构建
 
-可以通过环境变量手动指定版本信息：
+#### 手动注入
+
+如果需要手动指定版本信息，可以设置环境变量：
 
 ```bash
 export ALBUM_VERSION=v1.0.0
@@ -373,9 +499,16 @@ export ALBUM_GIT_BRANCH=main
 ./deploy.sh
 ```
 
-这些环境变量会被 `docker-compose.yaml` 传递给 Docker 构建参数。
+或者在 `.env` 文件中设置：
 
-#### CI/CD 环境中的注入
+```bash
+ALBUM_VERSION=v1.0.0
+ALBUM_BUILD_TIME=2025-01-15T10:30:00Z
+ALBUM_GIT_COMMIT=abc1234
+ALBUM_GIT_BRANCH=main
+```
+
+#### 在 CI/CD 中注入
 
 在 CI/CD 环境中，可以通过环境变量注入版本信息：
 
@@ -584,6 +717,35 @@ Nginx 镜像已包含：
 - SSL 证书目录（如果启用 HTTPS）
 - 日志目录
 
+### 生产环境注意事项
+
+1. **修改认证密钥**：
+   ```bash
+   export ALBUM_AUTH_JWT_SECRET=your-secure-jwt-secret
+   export ALBUM_AUTH_URL_SIGNER_SECRET=your-secure-signer-secret
+   ```
+
+2. **修改数据库密码**：
+   ```bash
+   export ALBUM_POSTGRES_PASSWORD=your-secure-password
+   ```
+
+3. **启用 HTTPS**：
+   ```bash
+   # 将证书放置到 deploy/data/cert/
+   cp your-cert.pem deploy/data/cert/cert.pem
+   cp your-key.pem deploy/data/cert/key.pem
+   
+   # 启用 HTTPS
+   export ALBUM_ENABLE_HTTPS=true
+   ./deploy.sh
+   ```
+
+4. **配置服务器地址**：
+   ```bash
+   export ALBUM_SERVER_PUBLIC_BASE_URL=https://your-domain.com
+   ```
+
 ## 部署服务
 
 ### 启动所有服务
@@ -674,6 +836,14 @@ CORS 由 Nginx 统一处理，支持：
 - `./data/logs/nginx` - Nginx 日志
 - `./configs` - 配置文件（只读挂载）
 
+## 验证部署
+
+部署完成后，访问：
+
+- **API 地址**: http://localhost/api/v1
+- **健康检查**: http://localhost/api/v1/health
+- **版本信息**: http://localhost/api/v1/version
+
 ## 故障排查
 
 ### 服务无法启动
@@ -745,7 +915,7 @@ CORS 由 Nginx 统一处理，支持：
 
 ```
 deploy/
-├── README.md                    # 本文档
+├── README.md                    # 本文档（已迁移到 doc/DEPLOYMENT/README.md）
 ├── init.sh                      # 初始化脚本
 ├── default.conf.template        # Nginx 配置模板
 ├── docker-entrypoint.sh         # Nginx 启动脚本
@@ -762,6 +932,7 @@ deploy/
 ## 支持
 
 如有问题，请查看：
-- [项目文档](../../doc/INDEX.md)
-- [架构文档](../../doc/ARCHITECTURE/README.md)
-- [问题反馈](https://github.com/your-repo/issues)
+- [项目文档](../INDEX.md)
+- [架构文档](../ARCHITECTURE/README.md)
+- [环境变量完整列表](./ENV_VARS.md)
+

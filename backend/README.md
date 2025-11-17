@@ -26,7 +26,7 @@ cd backend
 ./deploy.sh
 ```
 
-详细说明请参考：[快速部署指南](./README_DEPLOY.md)
+详细说明请参考：[部署文档](./doc/DEPLOYMENT/README.md)
 
 ### 方式二：本地开发
 
@@ -59,11 +59,10 @@ go run cmd/server/main.go
 ### 主要文档
 
 - 📖 [文档索引](./doc/INDEX.md) - 所有文档的入口
-- 🚀 [快速部署指南](./README_DEPLOY.md) - 容器化一键部署
+- 🚀 [部署文档](./doc/DEPLOYMENT/README.md) - 完整的容器化部署指南
 - 🏗️ [架构设计文档](./doc/ARCHITECTURE/README.md) - 完整的架构设计说明
 - 📦 [GQ 任务队列框架](./pkg/gq/README.md) - 任务队列框架详细文档
 - 📝 [Logger 日志模块](./pkg/logger/README.md) - 结构化日志库文档
-- 📋 [完整部署文档](./deploy/README.md) - 详细的容器化部署说明
 
 ## 🛠️ 技术栈
 
