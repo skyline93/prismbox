@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/album/backend/internal/config/modules"
+	"github.com/album/backend/internal/config/types"
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
@@ -24,27 +24,27 @@ func main() {
 	})
 
 	// 创建配置
-	cfg := &modules.LocalStorageConfig{
+	cfg := &local.LocalStorageConfig{
 		BasePath: "./uploads",
-		PoolManager: &modules.PoolManagerConfig{
+		PoolManager: &local.PoolManagerConfig{
 			DeltaChannelSize:     16,
 			DeltaBatchSize:       4,
-			FlushInterval:        modules.Duration(1 * time.Second),
-			CacheRefreshInterval: modules.Duration(10 * time.Second),
-			ReconcileInterval:    modules.Duration(0),
+			FlushInterval:        types.Duration(1 * time.Second),
+			CacheRefreshInterval: types.Duration(10 * time.Second),
+			ReconcileInterval:    types.Duration(0),
 		},
-		Temp: &modules.TempFileConfig{
+		Temp: &local.TempFileConfig{
 			BasePath:        "./temp",
-			MaxAge:          modules.Duration(24 * time.Hour),
-			MaxSize:         modules.Size(10 * 1024 * 1024), // 10MB
-			CleanupInterval: modules.Duration(1 * time.Hour),
+			MaxAge:          types.Duration(24 * time.Hour),
+			MaxSize:         types.Size(10 * 1024 * 1024), // 10MB
+			CleanupInterval: types.Duration(1 * time.Hour),
 		},
-		Performance: &modules.PerformanceConfig{
+		Performance: &local.PerformanceConfig{
 			CacheEnabled:    true,
-			CacheSize:       modules.Size(100 * 1024 * 1024), // 100MB
-			CacheTTL:        modules.Duration(24 * time.Hour),
-			ReadBufferSize:  modules.Size(64 * 1024), // 64KB
-			WriteBufferSize: modules.Size(64 * 1024), // 64KB
+			CacheSize:       types.Size(100 * 1024 * 1024), // 100MB
+			CacheTTL:        types.Duration(24 * time.Hour),
+			ReadBufferSize:  types.Size(64 * 1024), // 64KB
+			WriteBufferSize: types.Size(64 * 1024), // 64KB
 		},
 	}
 

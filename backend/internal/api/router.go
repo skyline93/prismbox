@@ -25,7 +25,7 @@ type Router struct {
 // NewRouter 创建路由注册器
 func NewRouter(app *app.App) *Router {
 	// 设置Gin模式
-	// gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.Default()
 	return &Router{

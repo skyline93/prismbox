@@ -16,16 +16,20 @@ import (
 	"github.com/album/backend/internal/worker/media"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
+	"github.com/spf13/pflag"
 )
 
 func main() {
-	// 1. 加载配置
-	configPath := "configs/config.yaml"
-	if len(os.Args) > 1 {
-		configPath = os.Args[1]
-	}
+	// 1. 定义命令行参数
+	flags := pflag.NewFlagSet("server", pflag.ExitOnError)
+	config.AddFlags(flags)
+	flags.Parse(os.Args[1:])
 
+	// 2. 加载配置
+	configPath, _ := flags.GetString("config")
 	loader := config.NewLoader(configPath)
+	loader.BindPFlags(flags) // 绑定命令行参数
+
 	cfg, err := loader.Load()
 	if err != nil {
 		log.Fatalf("Could not load config: %v", err)

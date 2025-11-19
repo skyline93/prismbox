@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 
-	"github.com/album/backend/internal/config/modules"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local"
@@ -11,21 +10,29 @@ import (
 )
 
 // NewPrimaryStorage 创建主存储
-func NewPrimaryStorage(cfg *modules.PrimaryStorageConfig, db *gorm.DB) (interfaces.PrimaryStorage, error) {
+func NewPrimaryStorage(cfg *PrimaryStorageConfig, db *gorm.DB) (interfaces.PrimaryStorage, error) {
 	switch cfg.Type {
 	case "local":
 		if cfg.Local == nil {
 			return nil, fmt.Errorf("local config is required")
 		}
 		poolRepo := repository.NewStoragePoolRepository(db)
-		return local.NewLocalStorage(cfg.Local, poolRepo)
+		// 转换配置类型
+		localCfg := &local.LocalStorageConfig{
+			BasePath:    cfg.Local.BasePath,
+			PoolManager: convertPoolManagerConfig(cfg.Local.PoolManager),
+			Temp:        convertTempFileConfig(cfg.Local.Temp),
+			Processing:  convertProcessingConfig(cfg.Local.Processing),
+			Performance: convertPerformanceConfig(cfg.Local.Performance),
+		}
+		return local.NewLocalStorage(localCfg, poolRepo)
 	default:
 		return nil, fmt.Errorf("unsupported primary storage type: %s", cfg.Type)
 	}
 }
 
 // NewSecondaryStorage 创建次存储（可选）
-func NewSecondaryStorage(cfg *modules.SecondaryStorageConfig) (interfaces.SecondaryStorage, error) {
+func NewSecondaryStorage(cfg *SecondaryStorageConfig) (interfaces.SecondaryStorage, error) {
 	if cfg == nil || !cfg.Enabled {
 		return nil, nil // 未启用次存储
 	}
@@ -45,5 +52,59 @@ func NewSecondaryStorage(cfg *modules.SecondaryStorageConfig) (interfaces.Second
 		return nil, fmt.Errorf("cos storage not implemented yet")
 	default:
 		return nil, fmt.Errorf("unsupported secondary storage type: %s", cfg.Type)
+	}
+}
+
+// convertPoolManagerConfig 转换 PoolManagerConfig
+func convertPoolManagerConfig(cfg *PoolManagerConfig) *local.PoolManagerConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &local.PoolManagerConfig{
+		DeltaChannelSize:     cfg.DeltaChannelSize,
+		DeltaBatchSize:       cfg.DeltaBatchSize,
+		FlushInterval:        cfg.FlushInterval,
+		CacheRefreshInterval: cfg.CacheRefreshInterval,
+		ReconcileInterval:    cfg.ReconcileInterval,
+	}
+}
+
+// convertTempFileConfig 转换 TempFileConfig
+func convertTempFileConfig(cfg *TempFileConfig) *local.TempFileConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &local.TempFileConfig{
+		BasePath:        cfg.BasePath,
+		MaxAge:          cfg.MaxAge,
+		MaxSize:         cfg.MaxSize,
+		CleanupInterval: cfg.CleanupInterval,
+	}
+}
+
+// convertProcessingConfig 转换 ProcessingConfig
+func convertProcessingConfig(cfg *ProcessingConfig) *local.ProcessingConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &local.ProcessingConfig{
+		EnableCompression: cfg.EnableCompression,
+		CompressionLevel:  cfg.CompressionLevel,
+		EnableEncryption:  cfg.EnableEncryption,
+		EncryptionKeyPath: cfg.EncryptionKeyPath,
+	}
+}
+
+// convertPerformanceConfig 转换 PerformanceConfig
+func convertPerformanceConfig(cfg *PerformanceConfig) *local.PerformanceConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &local.PerformanceConfig{
+		CacheEnabled:    cfg.CacheEnabled,
+		CacheSize:       cfg.CacheSize,
+		CacheTTL:        cfg.CacheTTL,
+		ReadBufferSize:  cfg.ReadBufferSize,
+		WriteBufferSize: cfg.WriteBufferSize,
 	}
 }

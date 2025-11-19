@@ -1,259 +1,317 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
+	"reflect"
 	"strings"
 	"time"
 
-	"github.com/album/backend/internal/config/modules"
+	"github.com/album/backend/internal/changelog"
+	"github.com/album/backend/internal/config/types"
+	"github.com/album/backend/internal/database"
+	"github.com/album/backend/internal/server"
+	"github.com/album/backend/internal/service/auth"
+	"github.com/album/backend/internal/storage"
+	"github.com/album/backend/pkg/gq"
+	"github.com/album/backend/pkg/logger"
+	mediaprocessor "github.com/album/backend/pkg/media-processor"
 	"github.com/goccy/go-yaml"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 // Loader 配置加载器
 type Loader struct {
+	v          *viper.Viper
 	configPath string
 }
 
 // NewLoader 创建配置加载器
 func NewLoader(configPath string) *Loader {
+	v := viper.New()
+
+	// 设置环境变量前缀和替换规则
+	v.SetEnvPrefix("ALBUM")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv() // 自动读取环境变量
+
+	// 如果没有提供配置文件路径，使用当前目录下的 config.yaml
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+
+	v.SetConfigFile(configPath)
+
 	return &Loader{
+		v:          v,
 		configPath: configPath,
 	}
 }
 
-// Load 加载配置（YAML + 环境变量）
+// BindPFlags 绑定命令行参数到 Viper
+func (l *Loader) BindPFlags(flags *pflag.FlagSet) {
+	_ = l.v.BindPFlags(flags)
+}
+
+// Load 加载配置
+// 优先级：命令行参数 > 环境变量 > 配置文件 > 默认值
+// 如果配置文件不存在，会自动生成一份默认配置文件
 func (l *Loader) Load() (*Config, error) {
-	// 1. 加载YAML文件
-	cfg, err := l.loadYAML()
-	if err != nil {
-		return nil, fmt.Errorf("load yaml: %w", err)
+	// 1. 先创建完整默认配置
+	cfg := l.defaultConfig()
+
+	// 2. 尝试读取配置文件
+	if err := l.v.ReadInConfig(); err != nil {
+		// 检查是否是文件不存在的错误
+		if !l.isFileNotFoundError(err) {
+			return nil, fmt.Errorf("read config file: %w", err)
+		}
+
+		// 配置文件不存在，生成默认配置文件
+		if err := l.Save(cfg); err != nil {
+			return nil, fmt.Errorf("generate default config file: %w", err)
+		}
+
+		// 重新读取生成的配置文件
+		if err := l.v.ReadInConfig(); err != nil {
+			return nil, fmt.Errorf("read generated config file: %w", err)
+		}
 	}
 
-	// 2. 覆盖环境变量
-	l.overrideWithEnv(cfg)
-
-	// 3. 验证配置
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
+	// 3. 使用 Viper 的 Unmarshal 自动覆盖存在的字段
+	// Viper 只会覆盖配置文件中存在的字段，不存在的字段保持默认值
+	if err := l.v.Unmarshal(cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	// 4. 处理自定义类型（Duration 和 Size）
+	// 因为 Viper 可能无法直接处理这些自定义类型，需要手动转换
+	if err := l.bindCustomTypes(cfg); err != nil {
+		return nil, fmt.Errorf("bind custom types: %w", err)
+	}
+
+	// 不再验证，让运行时错误自然暴露
 	return cfg, nil
 }
 
-// loadYAML 加载YAML文件
-func (l *Loader) loadYAML() (*Config, error) {
-	// 如果配置文件不存在，返回默认配置
-	if _, err := os.Stat(l.configPath); os.IsNotExist(err) {
-		return l.defaultConfig(), nil
-	}
+// isFileNotFoundError 检查错误是否是文件不存在的错误
+func (l *Loader) isFileNotFoundError(err error) bool {
+	var configFileNotFoundErr viper.ConfigFileNotFoundError
+	var pathErr *os.PathError
 
-	data, err := os.ReadFile(l.configPath)
-	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
-	}
-
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse yaml: %w", err)
-	}
-
-	return &cfg, nil
+	return errors.As(err, &configFileNotFoundErr) ||
+		(errors.As(err, &pathErr) && os.IsNotExist(pathErr.Err))
 }
 
-// overrideWithEnv 使用环境变量覆盖配置（所有环境变量使用 ALBUM_ 前缀）
-func (l *Loader) overrideWithEnv(cfg *Config) {
-	// 存储配置
-	if cfg.Storage != nil {
-		if cfg.Storage.Primary != nil && cfg.Storage.Primary.Local != nil {
-			if basePath := os.Getenv("ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH"); basePath != "" {
-				cfg.Storage.Primary.Local.BasePath = basePath
-			}
-		}
-	}
-
-	// 服务器配置
-	if cfg.Server != nil {
-		if host := os.Getenv("ALBUM_SERVER_HOST"); host != "" {
-			cfg.Server.Host = host
-		}
-		if port := os.Getenv("ALBUM_SERVER_PORT"); port != "" {
-			var p int
-			if _, err := fmt.Sscanf(port, "%d", &p); err == nil {
-				cfg.Server.Port = p
-			}
-		}
-		if publicBaseURL := os.Getenv("ALBUM_SERVER_PUBLIC_BASE_URL"); publicBaseURL != "" {
-			cfg.Server.PublicBaseURL = publicBaseURL
-		}
-	}
-
-	// 数据库配置
-	if cfg.Database != nil {
-		if dbType := os.Getenv("ALBUM_DATABASE_TYPE"); dbType != "" {
-			cfg.Database.Type = dbType
-		}
-		if dsn := os.Getenv("ALBUM_DATABASE_DSN"); dsn != "" {
-			cfg.Database.DSN = dsn
-		}
-	}
-
-	// 认证配置
-	if cfg.Auth != nil {
-		if secret := os.Getenv("ALBUM_AUTH_JWT_SECRET"); secret != "" {
-			cfg.Auth.JWTSecret = secret
-		}
-		if accessTTL := os.Getenv("ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN"); accessTTL != "" {
-			if duration, err := time.ParseDuration(accessTTL); err == nil {
-				cfg.Auth.AccessTokenExpiresIn = modules.Duration(duration)
-			}
-		}
-		if refreshTTL := os.Getenv("ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN"); refreshTTL != "" {
-			if duration, err := time.ParseDuration(refreshTTL); err == nil {
-				cfg.Auth.RefreshTokenExpiresIn = modules.Duration(duration)
-			}
-		}
-		if bundleID := os.Getenv("ALBUM_AUTH_APPLE_APP_BUNDLE_ID"); bundleID != "" {
-			cfg.Auth.AppleAppBundleID = bundleID
-		}
-		if avatarPath := os.Getenv("ALBUM_AUTH_AVATAR_SAVE_PATH"); avatarPath != "" {
-			cfg.Auth.AvatarSavePath = avatarPath
-		}
-		if maxAvatar := os.Getenv("ALBUM_AUTH_MAX_AVATAR_SIZE"); maxAvatar != "" {
-			if size, err := parseSize(maxAvatar); err == nil {
-				cfg.Auth.MaxAvatarSize = modules.Size(size)
-			}
-		}
-		if signerSecret := os.Getenv("ALBUM_AUTH_URL_SIGNER_SECRET"); signerSecret != "" {
-			cfg.Auth.URLSignerSecret = signerSecret
-		}
-		if signedTTL := os.Getenv("ALBUM_AUTH_SIGNED_URL_LOAD_TTL"); signedTTL != "" {
-			if duration, err := time.ParseDuration(signedTTL); err == nil {
-				cfg.Auth.SignedURLLoadTTL = modules.Duration(duration)
-			}
-		}
-	}
-
-	// 媒体配置
-	if cfg.Media != nil {
-		if maxSize := os.Getenv("ALBUM_MEDIA_MAX_FILE_SIZE"); maxSize != "" {
-			if size, err := parseSize(maxSize); err == nil {
-				cfg.Media.MaxFileSize = modules.Size(size)
-			}
-		}
-		if cfg.Media.Processor != nil {
-			// Imagick配置
-			if cfg.Media.Processor.Imagick != nil {
-				if poolSize := os.Getenv("ALBUM_MEDIA_PROCESSOR_IMAGICK_POOL_SIZE"); poolSize != "" {
-					if ps, err := strconv.Atoi(poolSize); err == nil {
-						cfg.Media.Processor.Imagick.PoolSize = ps
-					}
-				}
-				if memLimit := os.Getenv("ALBUM_MEDIA_PROCESSOR_IMAGICK_MEMORY_LIMIT"); memLimit != "" {
-					cfg.Media.Processor.Imagick.MemoryLimit = memLimit
-				}
-				if diskLimit := os.Getenv("ALBUM_MEDIA_PROCESSOR_IMAGICK_DISK_LIMIT"); diskLimit != "" {
-					cfg.Media.Processor.Imagick.DiskLimit = diskLimit
-				}
-			}
-			// FFmpeg配置
-			if cfg.Media.Processor.FFmpeg != nil {
-				if binPath := os.Getenv("ALBUM_MEDIA_PROCESSOR_FFMPEG_BINARY_PATH"); binPath != "" {
-					cfg.Media.Processor.FFmpeg.BinaryPath = binPath
-				}
-				if probePath := os.Getenv("ALBUM_MEDIA_PROCESSOR_FFMPEG_PROBE_PATH"); probePath != "" {
-					cfg.Media.Processor.FFmpeg.ProbePath = probePath
-				}
-				if maxConcurrency := os.Getenv("ALBUM_MEDIA_PROCESSOR_FFMPEG_MAX_CONCURRENCY"); maxConcurrency != "" {
-					if mc, err := strconv.Atoi(maxConcurrency); err == nil {
-						cfg.Media.Processor.FFmpeg.MaxConcurrency = mc
-					}
-				}
-			}
-			// 并发配置
-			if concurrency := os.Getenv("ALBUM_MEDIA_PROCESSOR_CONCURRENCY"); concurrency != "" {
-				if c, err := strconv.Atoi(concurrency); err == nil {
-					cfg.Media.Processor.Concurrency = c
-				}
-			}
-		}
-	}
-
-	// 日志配置
-	if cfg.Logger != nil {
-		if level := os.Getenv("ALBUM_LOGGER_LEVEL"); level != "" {
-			cfg.Logger.Level = level
-		}
-		if format := os.Getenv("ALBUM_LOGGER_FORMAT"); format != "" {
-			cfg.Logger.Format = format
-		}
-		if output := os.Getenv("ALBUM_LOGGER_OUTPUT"); output != "" {
-			cfg.Logger.Output = output
-		}
-	}
-
-	// 变更日志配置
-	if cfg.Changelog != nil {
-		if enabled := os.Getenv("ALBUM_CHANGELOG_ENABLED"); enabled != "" {
-			cfg.Changelog.Enabled = enabled == "true" || enabled == "1"
-		}
-		if cleanupInterval := os.Getenv("ALBUM_CHANGELOG_CLEANUP_INTERVAL"); cleanupInterval != "" {
-			if duration, err := time.ParseDuration(cleanupInterval); err == nil {
-				cfg.Changelog.CleanupInterval = duration
-			}
-		}
-		if pageLimit := os.Getenv("ALBUM_CHANGELOG_DEFAULT_PAGE_LIMIT"); pageLimit != "" {
-			if pl, err := strconv.Atoi(pageLimit); err == nil {
-				cfg.Changelog.DefaultChangelogPageLimit = pl
-			}
-		}
-	}
+// bindCustomTypes 处理自定义类型（Duration 和 Size）
+// 从 Viper 读取字符串值，然后转换为自定义类型
+func (l *Loader) bindCustomTypes(cfg *Config) error {
+	// 使用反射遍历配置结构体，处理 Duration 和 Size 字段
+	return l.bindCustomTypesRecursive(cfg, "")
 }
 
-// defaultConfig 返回默认配置
+// bindCustomTypesRecursive 递归处理自定义类型
+func (l *Loader) bindCustomTypesRecursive(v interface{}, prefix string) error {
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return nil
+		}
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return nil
+	}
+
+	typ := val.Type()
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := typ.Field(i)
+
+		// 跳过不可设置的字段
+		if !field.CanSet() {
+			continue
+		}
+
+		// 获取字段的 YAML 标签
+		yamlTag := fieldType.Tag.Get("yaml")
+		if yamlTag == "" || yamlTag == "-" {
+			continue
+		}
+
+		// 构建配置路径
+		fieldPath := yamlTag
+		if prefix != "" {
+			fieldPath = prefix + "." + yamlTag
+		}
+
+		// 处理指针字段
+		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				continue
+			}
+			field = field.Elem()
+		}
+
+		// 处理 Duration 类型
+		if field.Type() == reflect.TypeOf(types.Duration(0)) {
+			if str := l.v.GetString(fieldPath); str != "" {
+				if d, err := time.ParseDuration(str); err == nil {
+					field.Set(reflect.ValueOf(types.Duration(d)))
+				}
+			}
+			continue
+		}
+
+		// 处理 Size 类型
+		if field.Type() == reflect.TypeOf(types.Size(0)) {
+			if str := l.v.GetString(fieldPath); str != "" {
+				if size, err := parseSizeString(str); err == nil {
+					field.Set(reflect.ValueOf(types.Size(size)))
+				}
+			}
+			continue
+		}
+
+		// 递归处理嵌套结构
+		if field.Kind() == reflect.Struct {
+			if err := l.bindCustomTypesRecursive(field.Addr().Interface(), fieldPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// parseSizeString 解析大小字符串（如 "1GB", "500MB"）
+func parseSizeString(s string) (int64, error) {
+	s = strings.TrimSpace(s)
+	s = strings.ToUpper(s)
+	s = strings.ReplaceAll(s, " ", "")
+
+	units := []string{"TB", "GB", "MB", "KB", "B"}
+	var unit string
+	var valueStr string
+
+	for _, u := range units {
+		if strings.HasSuffix(s, u) {
+			unit = u
+			valueStr = strings.TrimSuffix(s, u)
+			break
+		}
+	}
+
+	if unit == "" {
+		// 没有单位，尝试直接解析为字节
+		var result int64
+		if _, err := fmt.Sscanf(s, "%d", &result); err != nil {
+			return 0, fmt.Errorf("invalid size format: %s", s)
+		}
+		return result, nil
+	}
+
+	var value float64
+	if _, err := fmt.Sscanf(valueStr, "%f", &value); err != nil {
+		return 0, fmt.Errorf("invalid size value: %s", valueStr)
+	}
+
+	var multiplier int64
+	switch unit {
+	case "TB":
+		multiplier = 1024 * 1024 * 1024 * 1024
+	case "GB":
+		multiplier = 1024 * 1024 * 1024
+	case "MB":
+		multiplier = 1024 * 1024
+	case "KB":
+		multiplier = 1024
+	case "B":
+		multiplier = 1
+	default:
+		return 0, fmt.Errorf("unknown size unit: %s", unit)
+	}
+
+	return int64(value * float64(multiplier)), nil
+}
+
+// defaultConfig 返回完整默认配置
 func (l *Loader) defaultConfig() *Config {
 	return &Config{
-		Server: &modules.ServerConfig{
+		Server: &server.Config{
 			Host:          "0.0.0.0",
 			Port:          8080,
-			PublicBaseURL: "http://localhost:8080",
+			PublicBaseURL: "http://10.168.1.161:8080",
 		},
-		Database: &modules.DatabaseConfig{
-			Type: "sqlite",
-			DSN:  "data.db",
+		Database: &database.Config{
+			Type: "postgres",
+			DSN:  "host=127.0.0.1 user=album password=album@2025 dbname=album port=15432 sslmode=disable TimeZone=Asia/Shanghai",
 		},
-		Storage: &modules.StorageConfig{
-			Primary: &modules.PrimaryStorageConfig{
+		Storage: &storage.Config{
+			Primary: &storage.PrimaryStorageConfig{
 				Type: "local",
-				Local: &modules.LocalStorageConfig{
-					BasePath: "./uploads",
-					PoolManager: &modules.PoolManagerConfig{
+				Local: &storage.LocalStorageConfig{
+					BasePath: "./base",
+					PoolManager: &storage.PoolManagerConfig{
 						DeltaChannelSize:     1024,
 						DeltaBatchSize:       128,
-						FlushInterval:        modules.Duration(2 * time.Second),
-						CacheRefreshInterval: modules.Duration(5 * time.Minute),
-						ReconcileInterval:    modules.Duration(0),
+						FlushInterval:        types.Duration(2 * time.Second),
+						CacheRefreshInterval: types.Duration(5 * time.Minute),
+						ReconcileInterval:    types.Duration(0),
+					},
+					Temp: &storage.TempFileConfig{
+						BasePath:        "./data/temp",
+						MaxAge:          types.Duration(24 * time.Hour),
+						MaxSize:         types.Size(10 * 1024 * 1024 * 1024), // 10GB
+						CleanupInterval: types.Duration(1 * time.Hour),
+					},
+					Processing: &storage.ProcessingConfig{
+						EnableCompression: false,
+						CompressionLevel:  6,
+						EnableEncryption:  false,
+						EncryptionKeyPath: "",
+					},
+					Performance: &storage.PerformanceConfig{
+						CacheEnabled:    false,
+						CacheSize:       types.Size(100 * 1024 * 1024), // 100MB
+						CacheTTL:        types.Duration(24 * time.Hour),
+						ReadBufferSize:  types.Size(64 * 1024), // 64KB
+						WriteBufferSize: types.Size(64 * 1024), // 64KB
 					},
 				},
 			},
 		},
-		Auth: &modules.AuthConfig{
+		Auth: &auth.Config{
 			JWTSecret:             "change-me",
-			AccessTokenExpiresIn:  modules.Duration(30 * time.Minute),
-			RefreshTokenExpiresIn: modules.Duration(24 * time.Hour * 30),
+			AccessTokenExpiresIn:  types.Duration(30 * time.Minute),
+			RefreshTokenExpiresIn: types.Duration(24 * time.Hour * 30),
 			AppleAppBundleID:      "",
 			AvatarSavePath:        "./public/avatars",
-			MaxAvatarSize:         modules.Size(5 * 1024 * 1024),
+			MaxAvatarSize:         types.Size(5 * 1024 * 1024),
 			URLSignerSecret:       "change-me-too",
-			SignedURLLoadTTL:      modules.Duration(30 * time.Minute),
+			SignedURLLoadTTL:      types.Duration(30 * time.Minute),
 		},
-		Logger: &modules.LoggerConfig{
-			Level:  "info",
-			Format: "json",
+		API: &APIConfig{
+			MaxFileSize: types.Size(100 * 1024 * 1024), // 100MB
+		},
+		Logger: &logger.Config{
+			Level:  "debug",
+			Format: "console",
 			Output: "stdout",
 		},
+		Changelog: &changelog.Config{
+			Enabled:                   true,
+			CleanupInterval:           24 * time.Hour,
+			DeviceActiveThreshold:     5 * time.Minute,
+			DefaultChangelogPageLimit: 50,
+			FullChangelogTables:       make(map[string]changelog.FullChangelogTableConfig),
+		},
+		Queue: gq.DefaultServerConfig(),
+		Media: mediaprocessor.DefaultConfig(),
 	}
 }
 
@@ -275,15 +333,4 @@ func (l *Loader) Save(cfg *Config) error {
 	}
 
 	return nil
-}
-
-// GetEnvKey 获取环境变量键名（将配置路径转换为环境变量名）
-func GetEnvKey(path string) string {
-	// 将 "storage.primary.local.base_path" 转换为 "STORAGE_PRIMARY_LOCAL_BASE_PATH"
-	parts := strings.Split(path, ".")
-	var result []string
-	for _, part := range parts {
-		result = append(result, strings.ToUpper(part))
-	}
-	return strings.Join(result, "_")
 }

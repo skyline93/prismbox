@@ -29,9 +29,10 @@ type processor struct {
 }
 
 // NewProcessor 根据配置创建媒体处理器。
+// 如果配置为 nil，使用默认配置
 func NewProcessor(cfg *Config) (MediaProcessor, error) {
 	if cfg == nil {
-		return nil, ErrNilConfig
+		cfg = DefaultConfig()
 	}
 
 	imgProc, err := imageprocessor.NewImagickProcessor(cfg)

@@ -3,14 +3,13 @@ package database
 import (
 	"fmt"
 
-	"github.com/album/backend/internal/config/modules"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 // NewConnection 创建数据库连接
-func NewConnection(cfg *modules.DatabaseConfig) (*gorm.DB, error) {
+func NewConnection(cfg *Config) (*gorm.DB, error) {
 	switch cfg.Type {
 	case "sqlite":
 		return newSQLiteConnection(cfg.DSN)

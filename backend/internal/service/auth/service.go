@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
-	"github.com/album/backend/internal/config/modules"
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
+	"github.com/album/backend/internal/server"
 	"github.com/album/backend/pkg/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
@@ -99,8 +99,8 @@ type service struct {
 	authProviderRepo repository.AuthProviderRepository
 	refreshTokenRepo repository.RefreshTokenRepository
 
-	authCfg   *modules.AuthConfig
-	serverCfg *modules.ServerConfig
+	authCfg   *Config
+	serverCfg *server.Config
 
 	jwtSecret  []byte
 	accessTTL  time.Duration
@@ -120,8 +120,8 @@ func NewService(
 	userRepo repository.UserRepository,
 	authProviderRepo repository.AuthProviderRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
-	authCfg *modules.AuthConfig,
-	serverCfg *modules.ServerConfig,
+	authCfg *Config,
+	serverCfg *server.Config,
 ) (Service, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db is required")

@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/album/backend/internal/config/modules"
 )
 
 // CacheManager 缓存管理器
@@ -36,7 +34,7 @@ type CacheEntry struct {
 }
 
 // NewCacheManager 创建缓存管理器
-func NewCacheManager(cfg *modules.PerformanceConfig) (*CacheManager, error) {
+func NewCacheManager(cfg *PerformanceConfig) (*CacheManager, error) {
 	if cfg == nil || !cfg.CacheEnabled {
 		return nil, nil // 缓存未启用
 	}

@@ -6,30 +6,27 @@
 
 1. **模块化设计**：按功能模块组织配置结构，便于维护和扩展
 2. **类型安全**：使用 Go 结构体定义配置，避免 `map[string]interface{}`，提供编译时类型检查
-3. **优先级清晰**：环境变量 > YAML 配置文件 > 默认值
-4. **验证机制**：启动时验证必填项和格式，及早发现问题
-5. **与 Builder 集成**：配置加载后直接用于依赖注入构建，无缝集成
-6. **扩展性**：易于添加新模块和配置项，不影响现有代码
+3. **优先级清晰**：命令行参数 > 环境变量 > 配置文件 > 默认值
+4. **简化维护**：使用成熟的 Viper 库统一管理配置，减少手动代码
+5. **运行时验证**：移除启动时验证，让运行时错误自然暴露，更直观
+6. **依赖注入优化**：各服务只接收自己需要的配置块，职责清晰
+7. **扩展性**：易于添加新模块和配置项，不影响现有代码
 
 ## 10.2 目录结构
 
 ```
 internal/config/
-├── config.go          # 主配置结构体
-├── loader.go          # 配置加载器（YAML + 环境变量）
-├── validator.go       # 配置验证器
-├── types.go           # 自定义类型（Duration, Size 等）
-└── modules/           # 各模块配置
-    ├── server.go      # 服务器配置
-    ├── database.go    # 数据库配置
-    ├── storage.go     # 存储配置（主存储、次存储）
-    ├── backup.go      # 备份调度配置
-    ├── queue.go       # 队列配置
-    ├── auth.go        # 认证配置
-    ├── media.go        # 媒体配置
-    ├── logger.go      # 日志配置
-    └── changelog.go   # 变更日志配置
+├── config.go          # 主配置结构体定义（移除 Validate 方法）
+├── loader.go          # Viper 配置加载器
+├── flags.go           # 命令行参数定义（新增）
+└── types/
+    └── types.go       # 自定义类型（Duration, Size，从 modules 重命名）
 ```
+
+**变更说明**：
+- 删除 `validator.go`：移除配置验证器
+- 删除 `modules/` 目录：重命名为 `types/`，更清晰的命名
+- 新增 `flags.go`：命令行参数定义
 
 ## 10.3 核心设计
 
@@ -40,82 +37,223 @@ internal/config/
 package config
 
 import (
-    "internal/config/modules"
+    "github.com/album/backend/internal/changelog"
+    "github.com/album/backend/internal/config/types"  // 从 modules 改为 types
+    "github.com/album/backend/internal/database"
+    "github.com/album/backend/internal/server"
+    "github.com/album/backend/internal/service/auth"
+    "github.com/album/backend/internal/storage"
+    "github.com/album/backend/pkg/gq"
+    "github.com/album/backend/pkg/logger"
+    mediaprocessor "github.com/album/backend/pkg/media-processor"
 )
+
+// APIConfig API 配置
+type APIConfig struct {
+    MaxFileSize types.Size `yaml:"max_file_size"`
+}
 
 // Config 应用主配置
 // 所有模块配置都通过独立的结构体组织，便于维护和扩展
 type Config struct {
-    // 服务器配置
-    Server *modules.ServerConfig `yaml:"server"`
-    
-    // 数据库配置
-    Database *modules.DatabaseConfig `yaml:"database"`
-    
-    // 存储配置（最复杂，包含主存储、次存储、备份）
-    Storage *modules.StorageConfig `yaml:"storage"`
-    
-    // 队列配置
-    Queue *modules.QueueConfig `yaml:"queue"`
-    
-    // 认证配置
-    Auth *modules.AuthConfig `yaml:"auth"`
-    
-    // 媒体配置
-    Media *modules.MediaConfig `yaml:"media"`
-    
-    // 日志配置
-    Logger *modules.LoggerConfig `yaml:"logger"`
+    Server    *server.Config         `yaml:"server"`
+    Database  *database.Config       `yaml:"database"`
+    Storage   *storage.Config        `yaml:"storage"`
+    Auth      *auth.Config           `yaml:"auth"`
+    API       *APIConfig             `yaml:"api"`
+    Logger    *logger.Config         `yaml:"logger"`
+    Changelog *changelog.Config      `yaml:"changelog"`
+    Queue     *gq.ServerConfig       `yaml:"queue"`
+    Media     *mediaprocessor.Config `yaml:"media"`
 }
+
+// 注意：已移除 Validate 方法，让运行时错误自然暴露
 ```
 
-### 10.3.2 配置加载器
+### 10.3.2 配置加载器（使用 Viper）
 
-配置加载器负责按优先级加载配置：环境变量 > YAML 文件 > 默认值
+配置加载器使用 [Viper](https://github.com/spf13/viper) 统一管理配置，自动处理配置文件、环境变量和命令行参数。
+
+**核心特性**：
+- 自动读取环境变量（支持嵌套结构）
+- 支持多种配置文件格式（YAML、JSON、TOML 等）
+- 命令行参数支持（通过 Pflag）
+- 自动合并配置（无需手动合并逻辑）
 
 ```go
 // internal/config/loader.go
+package config
+
+import (
+    "fmt"
+    "strings"
+    "github.com/spf13/viper"
+    "github.com/spf13/pflag"
+)
+
 type Loader struct {
+    v          *viper.Viper
     configPath string
-    envPrefix  string // 环境变量前缀，如 "ALBUM_"
+}
+
+// NewLoader 创建配置加载器
+func NewLoader(configPath string) *Loader {
+    v := viper.New()
+    
+    // 设置环境变量前缀和替换规则
+    v.SetEnvPrefix("ALBUM")
+    v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+    v.AutomaticEnv() // 自动读取环境变量
+    
+    // 设置配置文件
+    if configPath != "" {
+        v.SetConfigFile(configPath)
+    } else {
+        v.SetConfigName("config")
+        v.SetConfigType("yaml")
+        v.AddConfigPath("./configs")
+        v.AddConfigPath(".")
+    }
+    
+    return &Loader{v: v, configPath: configPath}
+}
+
+// BindPFlags 绑定命令行参数到 Viper
+func (l *Loader) BindPFlags(flags *pflag.FlagSet) {
+    l.v.BindPFlags(flags)
 }
 
 // Load 加载配置
-// 优先级：环境变量 > YAML 文件 > 默认值
+// 优先级：命令行参数 > 环境变量 > 配置文件 > 默认值
 func (l *Loader) Load() (*Config, error) {
-    cfg := &Config{}
+    // 1. 先创建完整默认配置
+    cfg := l.defaultConfig()
     
-    // 1. 设置默认值
-    l.setDefaults(cfg)
-    
-    // 2. 加载 YAML 文件（如果存在）
-    if l.configPath != "" {
-        if err := l.loadYAML(cfg); err != nil {
-            return nil, fmt.Errorf("load YAML config: %w", err)
+    // 2. 读取配置文件（如果存在）
+    if err := l.v.ReadInConfig(); err != nil {
+        if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+            return nil, fmt.Errorf("read config file: %w", err)
         }
+        // 配置文件不存在，直接返回默认配置
+        return cfg, nil
     }
     
-    // 3. 环境变量覆盖（最高优先级）
-    if err := l.loadEnv(cfg); err != nil {
-        return nil, fmt.Errorf("load env config: %w", err)
+    // 3. 使用 Viper 的 Unmarshal 自动覆盖存在的字段
+    // Viper 只会覆盖配置文件中存在的字段，不存在的字段保持默认值
+    if err := l.v.Unmarshal(cfg); err != nil {
+        return nil, fmt.Errorf("unmarshal config: %w", err)
     }
     
-    // 4. 验证配置
-    validator := NewValidator()
-    if err := validator.Validate(cfg); err != nil {
-        return nil, fmt.Errorf("validate config: %w", err)
+    // 4. 处理自定义类型（Duration 和 Size）
+    // 因为 Viper 可能无法直接处理这些自定义类型，需要手动转换
+    if err := l.bindCustomTypes(cfg); err != nil {
+        return nil, fmt.Errorf("bind custom types: %w", err)
     }
     
+    // 不再验证，让运行时错误自然暴露
     return cfg, nil
+}
+
+// bindCustomTypes 处理自定义类型（Duration 和 Size）
+// 从 Viper 读取字符串值，然后转换为自定义类型
+func (l *Loader) bindCustomTypes(cfg *Config) error {
+    // 遍历配置结构体，找到所有 Duration 和 Size 类型的字段
+    // 从 Viper 读取对应的字符串值，然后转换
+    // 可以使用反射实现，或者手动处理关键字段
+    // ... 实现细节
+    return nil
+}
+
+// defaultConfig 返回完整默认配置
+func (l *Loader) defaultConfig() *Config {
+    return &Config{
+        Server: &server.Config{
+            Host:          "0.0.0.0",
+            Port:          8080,
+            PublicBaseURL: "http://10.168.1.161:8080",
+        },
+        Database: &database.Config{
+            Type: "postgres",
+            DSN:  "host=127.0.0.1 user=album password=album@2025 dbname=album port=15432 sslmode=disable TimeZone=Asia/Shanghai",
+        },
+        // ... 其他默认配置
+        Changelog: changelog.DefaultConfig(),
+        Queue:     gq.DefaultServerConfig(),
+        Media:     mediaprocessor.DefaultConfig(),
+    }
 }
 ```
 
-### 10.3.3 自定义类型
+**关键优势**：
+- **无需手动合并**：Viper 自动处理配置合并，只需先设置默认值，然后 Unmarshal
+- **自动环境变量支持**：通过 `AutomaticEnv()` 和 `SetEnvKeyReplacer` 自动读取环境变量
+- **支持嵌套结构**：环境变量 `ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH` 自动映射到 `storage.primary.local.base_path`
+
+### 10.3.3 命令行参数支持
+
+使用 [Pflag](https://github.com/spf13/pflag) 定义命令行参数，与 Viper 无缝集成。
+
+```go
+// internal/config/flags.go
+package config
+
+import (
+    "github.com/spf13/pflag"
+)
+
+// AddFlags 添加命令行参数到 FlagSet
+func AddFlags(flags *pflag.FlagSet) {
+    // 配置文件路径
+    flags.StringP("config", "c", "configs/config.yaml", "配置文件路径")
+    
+    // 服务器配置
+    flags.String("server.host", "", "服务器主机地址")
+    flags.Int("server.port", 0, "服务器端口")
+    flags.String("server.public_base_url", "", "服务器公共基础URL")
+    
+    // 数据库配置
+    flags.String("database.type", "", "数据库类型")
+    flags.String("database.dsn", "", "数据库连接字符串")
+    
+    // 存储配置（只添加最常用的）
+    flags.String("storage.primary.type", "", "主存储类型")
+    flags.String("storage.primary.local.base_path", "", "本地存储基础路径")
+    
+    // 认证配置
+    flags.String("auth.jwt_secret", "", "JWT 密钥")
+    flags.String("auth.access_token_expires_in", "", "访问令牌过期时间")
+    
+    // 日志配置
+    flags.String("logger.level", "", "日志级别")
+    flags.String("logger.format", "", "日志格式")
+    flags.String("logger.output", "", "日志输出")
+}
+```
+
+**使用示例**：
+```bash
+# 使用命令行参数
+./server --config configs/prod.yaml --server.port 9090
+
+# 组合使用（命令行参数优先级最高）
+ALBUM_SERVER_PORT=8080 ./server --server.port 9090
+# 最终 port = 9090（命令行参数覆盖环境变量）
+```
+
+### 10.3.4 自定义类型
 
 配置模块提供了自定义类型，支持 YAML 中的友好格式：
 
 **Duration 类型**：支持 `"30m"`, `"24h"`, `"5m"` 等格式
 ```go
+// internal/config/types/types.go
+package types
+
+import (
+    "fmt"
+    "time"
+)
+
 type Duration time.Duration
 
 func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -125,10 +263,14 @@ func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
     }
     dur, err := time.ParseDuration(s)
     if err != nil {
-        return err
+        return fmt.Errorf("invalid duration format: %s", s)
     }
     *d = Duration(dur)
     return nil
+}
+
+func (d Duration) Duration() time.Duration {
+    return time.Duration(d)
 }
 ```
 
@@ -148,382 +290,428 @@ func (s *Size) UnmarshalYAML(unmarshal func(interface{}) error) error {
     *s = Size(size)
     return nil
 }
-```
 
-### 10.3.4 配置验证器
-
-配置验证器在启动时验证配置的有效性：
-
-```go
-// internal/config/validator.go
-type Validator struct{}
-
-// Validate 验证配置
-func (v *Validator) Validate(cfg *Config) error {
-    if err := v.validateServer(cfg.Server); err != nil {
-        return fmt.Errorf("server: %w", err)
-    }
-    
-    if err := v.validateDatabase(cfg.Database); err != nil {
-        return fmt.Errorf("database: %w", err)
-    }
-    
-    if err := v.validateStorage(cfg.Storage); err != nil {
-        return fmt.Errorf("storage: %w", err)
-    }
-    
-    // ... 其他验证
-    
-    return nil
+func (s Size) Int64() int64 {
+    return int64(s)
 }
 ```
 
-验证内容包括：
-- 必填项检查
-- 路径存在性和可写性检查
-- 格式验证（日志级别、数据库类型等）
-- 数值范围验证（端口号、超时时间等）
+**注意**：这些自定义类型需要特殊处理，因为 Viper 可能无法直接 Unmarshal。需要在 `bindCustomTypes` 中手动转换。
 
-### 10.3.5 与 Builder 模式集成
+### 10.3.5 配置验证策略
+
+**设计决策**：移除启动时配置验证，让运行时错误自然暴露。
+
+**理由**：
+1. **更直观**：运行时错误（如数据库连接失败）比验证错误更清晰
+2. **减少维护成本**：无需维护大量验证逻辑
+3. **更灵活**：允许部分配置为空，由业务逻辑决定是否必需
+4. **Viper 已提供基本检查**：类型检查由 Viper 自动完成
+
+**示例**：
+```go
+// 不再需要这样的验证代码
+func (c *Config) Validate() error {
+    if c.Server.Port <= 0 {
+        return fmt.Errorf("port must be > 0")
+    }
+    // ...
+}
+
+// 运行时错误更清晰
+// 如果端口无效，服务器启动时会直接报错：
+// "listen tcp :invalid: bind: invalid argument"
+```
+
+### 10.3.6 配置注入优化
+
+**原则**：各服务只接收自己需要的配置块，服务内部处理 nil 配置。
+
+**优势**：
+1. **职责清晰**：Builder 只负责传递配置，不处理配置细节
+2. **易于测试**：服务可独立测试，不依赖 Builder
+3. **减少耦合**：Builder 不需要了解配置的内部结构
+
+**示例**：
+
+```go
+// internal/app/builder.go
+
+// BuildMediaProcessor 构建媒体处理器
+func (b *Builder) BuildMediaProcessor() error {
+    // 直接传递配置，不需要合并
+    processor, err := mediaprocessor.NewProcessor(b.cfg.Media)
+    if err != nil {
+        return fmt.Errorf("create media processor: %w", err)
+    }
+    
+    b.app.MediaProcessor = processor
+    // 保存实际使用的配置
+    if b.cfg.Media != nil {
+        b.app.MediaProcessorConfig = b.cfg.Media
+    } else {
+        b.app.MediaProcessorConfig = mediaprocessor.DefaultConfig()
+    }
+    return nil
+}
+
+// BuildTaskQueue 构建任务队列
+func (b *Builder) BuildTaskQueue() error {
+    if b.app.DB == nil {
+        return fmt.Errorf("database is required")
+    }
+    
+    b.app.TaskQueueClient = gq.NewClient(b.app.DB)
+    // 直接传递配置，服务内部处理 nil
+    b.app.TaskQueueServer = gq.NewServer(b.app.DB, b.cfg.Queue)
+    return nil
+}
+
+// 删除 mergeMediaConfig 函数（不再需要！）
+```
+
+**服务内部处理 nil**：
+
+```go
+// pkg/media-processor/processor.go
+func NewProcessor(cfg *Config) (*Processor, error) {
+    // 如果配置为 nil，使用默认值
+    if cfg == nil {
+        cfg = DefaultConfig()
+    }
+    
+    // 直接使用配置，Viper 已经处理了合并
+    // ... 初始化逻辑
+}
+
+// pkg/gq/server.go
+func NewServer(db *gorm.DB, cfg *ServerConfig) *Server {
+    // 如果配置为 nil，使用默认值
+    if cfg == nil {
+        cfg = DefaultServerConfig()
+    }
+    
+    // ... 初始化逻辑
+}
+```
+
+### 10.3.7 与 Builder 模式集成
 
 配置加载后直接用于依赖注入构建：
 
 ```go
 // cmd/server/main.go
+package main
+
+import (
+    "github.com/spf13/pflag"
+    "github.com/album/backend/internal/config"
+    // ...
+)
+
 func main() {
-    // 1. 加载配置
-    loader := config.NewLoader("configs/config.yaml")
+    // 1. 定义命令行参数
+    flags := pflag.NewFlagSet("server", pflag.ExitOnError)
+    config.AddFlags(flags)
+    flags.Parse(os.Args[1:])
+    
+    // 2. 加载配置
+    configPath, _ := flags.GetString("config")
+    loader := config.NewLoader(configPath)
+    loader.BindPFlags(flags) // 绑定命令行参数
+    
     cfg, err := loader.Load()
     if err != nil {
         log.Fatalf("Could not load config: %v", err)
     }
     
-    // 2. 构建应用（使用 Builder 模式）
+    // 3. 构建应用（使用 Builder 模式）
     builder := app.NewBuilder(cfg)
-    
-    // 按顺序构建各个组件
-    if err := builder.BuildLogger(); err != nil {
-        log.Fatalf("Failed to build logger: %v", err)
+    if err := builder.BuildAll(); err != nil {
+        log.Fatalf("Failed to build app: %v", err)
     }
     defer logger.Sync()
     
-    if err := builder.BuildDatabase(); err != nil {
-        log.Fatalf("Failed to build database: %v", err)
-    }
-    
-    // ... 构建其他组件
-    
     app := builder.Build()
     
-    // 3. 启动服务
+    // 4. 启动服务
     // ...
 }
 ```
 
-## 10.4 配置文件结构
+## 10.4 配置加载优先级
+
+配置加载遵循以下优先级（从高到低）：
+
+```
+命令行参数 > 环境变量 > 配置文件 > 默认值
+```
+
+**工作流程**：
+1. 创建完整默认配置（所有字段都有值）
+2. 读取配置文件（如果存在），Viper 自动覆盖存在的字段
+3. 读取环境变量（如果存在），Viper 自动覆盖存在的字段
+4. 读取命令行参数（如果存在），Viper 自动覆盖存在的字段
+5. 最终配置传递给服务
+
+**示例**：
+```bash
+# 方式1：使用配置文件
+./server --config configs/config.yaml
+
+# 方式2：使用环境变量
+ALBUM_SERVER_PORT=9090 ./server
+
+# 方式3：使用命令行参数
+./server --server.port 9090
+
+# 方式4：组合使用（命令行参数优先级最高）
+ALBUM_SERVER_PORT=8080 ./server --server.port 9090
+# 最终 port = 9090（命令行参数覆盖环境变量）
+```
+
+## 10.5 配置文件结构
+
+配置文件使用 YAML 格式，结构清晰，支持嵌套：
 
 ```yaml
 # configs/config.yaml
 server:
-  # HTTP/HTTPS 服务器配置
-  http:
-    enabled: true
-    address: "0.0.0.0:8080"
-    read_timeout: "30s"
-    write_timeout: "30s"
-    idle_timeout: "120s"
-    tls:
-      enabled: false
-      cert_file: ""
-      key_file: ""
-  
-  # Unix Socket 服务器配置（用于本地访问）
-  unix:
-    enabled: true
-    socket_path: "/tmp/album.sock"
-    mode: "0666"  # 八进制字符串，支持本地用户访问
-    read_timeout: "30s"
-    write_timeout: "30s"
-    idle_timeout: "120s"
-  
-  # 未来：WebSocket 服务器配置（预留）
-  # websocket:
-  #   enabled: false
-  #   path: "/api/v1/ws"
-  
-  # 未来：WebDAV 服务器配置（预留）
-  # webdav:
-  #   enabled: false
-  #   path: "/webdav"
+  host: 0.0.0.0
+  port: 8080
+  public_base_url: http://10.168.1.161:8080
 
 database:
-  type: "postgres"  # postgres, mysql, sqlite
-  host: "localhost"
-  port: 5432
-  user: "mobile"
-  password: "mobile"
-  dbname: "mobile"
-  sslmode: "disable"
+  type: postgres
+  dsn: host=127.0.0.1 user=album password=album@2025 dbname=album port=15432 sslmode=disable TimeZone=Asia/Shanghai
 
 storage:
-  # 主存储配置（本地存储）
   primary:
-    type: "local"
+    type: local
     local:
-      base_path: "/data/uploads"
-      
-      # 存储池配置
-      pools:
-        - id: "pool-1"
-          path: "/data/storage1"
-          max_size: "1TB"
-          priority: 1
-          enabled: true
-          auto_disable_threshold: 0.9
-        - id: "pool-2"
-          path: "/data/storage2"
-          max_size: "2TB"
-          priority: 2
-          enabled: true
-          auto_disable_threshold: 0.9
-      
-      # 临时文件配置
+      base_path: ./base
+      pool_manager:
+        delta_channel_size: 1024
+        delta_batch_size: 128
+        flush_interval: 2s
+        cache_refresh_interval: 5m0s
+        reconcile_interval: 0s
       temp:
-        base_path: "/data/temp"
-        max_age: "24h"
-        max_size: "10GB"
-        cleanup_interval: "1h"
-      
-      # 处理配置
+        base_path: ./data/temp
+        max_age: 24h0m0s
+        max_size: 10.00GB
+        cleanup_interval: 1h0m0s
       processing:
-        enable_compression: true
+        enable_compression: false
         compression_level: 6
         enable_encryption: false
-        encryption_key_path: "/etc/album/encryption.key"
-      
-      # 性能配置
+        encryption_key_path: ""
       performance:
-        cache_enabled: true
-        cache_size: "1GB"
-        cache_ttl: "24h"
-        read_buffer_size: "64KB"
-        write_buffer_size: "64KB"
-  
-  # 次存储配置（云存储备份，可选）
-  secondary:
-    enabled: true
-    type: "openlist"  # openlist, s3, oss, cos
-    openlist:
-      # OpenList 服务配置
-      base_url: "http://openlist:5244"
-      api_key: "your-api-key"
-      
-      # 连接配置
-      timeout: 30s
-      max_retries: 3
-      retry_backoff: 1s
-      
-      # 连接池配置
-      max_connections: 100
-      idle_timeout: 90s
-      
-      # 缓存配置
-      cache:
-        enabled: true
-        ttl: 5m
-        max_size: 100MB
-      
-      # 存储池配置（对应 OpenList 的 Drivers）
-      pools:
-        - id: "s3-backup"
-          name: "S3 备份存储"
-          driver_id: "s3-driver-1"
-          type: "s3"
-          max_size: "10TB"
-          priority: 1
-          enabled: true
-        - id: "baidu-cloud"
-          name: "百度网盘"
-          driver_id: "baidu-driver-1"
-          type: "baidu"
-          max_size: "2TB"
-          priority: 2
-          enabled: true
-      
-      # 路径映射
-      path_mapping:
-        base_path: "/album"
-        virtual_paths:
-          - virtual: "/files"
-            physical: "/album/files"
-    
-    # 直接对接的云存储（可选）
-    s3:
-      region: "us-east-1"
-      bucket: "my-bucket"
-      access_key: "..."
-      secret_key: "..."
-  
-  # 备份调度配置
-  backup:
-    enabled: true
-    scheduler:
-      scan_interval: "5m"        # 扫描间隔：5分钟
-      batch_size: 100            # 批量处理大小：100个文件
-      idle_threshold: 0.3        # 系统空闲阈值：30%
-      max_concurrency: 5         # 最大并发数：5
-      delay_execution: "5m"      # 延迟执行：5分钟
-    
-    # 备份策略
-    strategy:
-      priority: 1                # 低优先级
-      retry_times: 3             # 重试次数
-      retry_interval: "10m"      # 重试间隔：10分钟
-      max_age: "24h"              # 最大等待时间：24小时
+        cache_enabled: false
+        cache_size: 100.00MB
+        cache_ttl: 24h0m0s
+        read_buffer_size: 64.00KB
+        write_buffer_size: 64.00KB
+
+auth:
+  jwt_secret: 920b2d7afc726e01d92c28ab556ffef552ce650632be1fd7a47476220fda5b72
+  access_token_expires_in: 30m0s
+  refresh_token_expires_in: 720h0m0s
+  apple_app_bundle_id: ""
+  avatar_save_path: ./data/public/avatars
+  max_avatar_size: 5.00MB
+  url_signer_secret: 400c2793c98192b46fbda4102c83db9e4c6246d953f7d1827bfeceba9d939c9e
+  signed_url_load_ttl: 30m0s
+
+api:
+  max_file_size: 100.00MB
+
+logger:
+  level: debug
+  format: console
+  output: stdout
+
+changelog:
+  enabled: true
+  cleanup_interval: 24h0m0s
+  device_active_threshold: 5m0s
+  default_changelog_page_limit: 50
+  full_changelog_tables: {}
 
 queue:
   concurrency: 10
-  min_poll_interval_ms: 200
-  max_poll_interval_ms: 3000
-
-auth:
-  jwt_secret: "..."
-  access_token_expires_in: 30m
-  refresh_token_expires_in: 720h
+  minpollintervalms: 100
+  maxpollintervalms: 5000
 
 media:
-  upload_dir: "./uploads"
-  max_file_size: 100MB
-  allowed_types: ["image/jpeg", "image/png", "video/mp4"]
-
-logger:
-  level: "info"              # debug, info, warn, error
-  format: "json"             # json, console
-  output: "/var/log/album/app.log"  # stdout, stderr, 或文件路径
-  enable_caller: true        # 包含调用位置（文件名:行号）
-  enable_stack: true         # 包含堆栈信息（Error 级别）
-  async: true                # 异步写入
-  buffer_size: 1000          # 异步缓冲大小
-  
-  # 文件配置（output 为文件时生效）
-  file:
-    max_size: 104857600      # 单个文件最大大小（字节），100MB
-    max_backups: 10          # 保留文件数量
-    max_age: 30              # 保留天数
-    compress: true           # 是否压缩旧文件
+  defaultimagespecs:
+    - name: thumbnail
+      max_width: 400
+      max_height: 400
+      quality: 75
+      format: jpg
+      crop: true
+  concurrency: 4
+  imagick:
+    poolsize: 10
+    memorylimit: 2GB
+    disklimit: 10GB
+  ffmpeg:
+    binarypath: /usr/bin/ffmpeg
+    probepath: /usr/bin/ffprobe
+    maxconcurrency: 4
+    processtimeout: 10m0s
+    thumbnailoffset: 1.5
 ```
 
-## 10.5 环境变量支持
+## 10.6 环境变量支持
 
-配置可以通过环境变量覆盖，优先级：**环境变量 > YAML 配置文件 > 默认值**
+配置可以通过环境变量覆盖，优先级：**命令行参数 > 环境变量 > 配置文件 > 默认值**
 
-环境变量统一使用 `ALBUM_` 前缀，便于区分和管理。
+环境变量统一使用 `ALBUM_` 前缀，嵌套结构使用下划线分隔。
 
-### 10.5.1 服务器配置
+### 10.6.1 环境变量命名规则
 
-#### HTTP/HTTPS 服务器
+- 前缀：`ALBUM_`
+- 分隔符：嵌套结构使用下划线 `_` 替代点号 `.`
+- 示例：`storage.primary.local.base_path` → `ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH`
 
-- `ALBUM_SERVER_HTTP_ENABLED`: 是否启用 HTTP 服务器（`true`/`false`）
-- `ALBUM_SERVER_HTTP_ADDRESS`: HTTP 服务器监听地址（如 `0.0.0.0:8080`）
-- `ALBUM_SERVER_HTTP_READ_TIMEOUT`: 读超时时间（如 `30s`）
-- `ALBUM_SERVER_HTTP_WRITE_TIMEOUT`: 写超时时间（如 `30s`）
-- `ALBUM_SERVER_HTTP_IDLE_TIMEOUT`: 空闲连接超时时间（如 `120s`）
-- `ALBUM_SERVER_HTTP_TLS_ENABLED`: 是否启用 TLS（`true`/`false`）
-- `ALBUM_SERVER_HTTP_TLS_CERT_FILE`: TLS 证书文件路径
-- `ALBUM_SERVER_HTTP_TLS_KEY_FILE`: TLS 密钥文件路径
+### 10.6.2 常用环境变量
 
-#### Unix Socket 服务器
+#### 服务器配置
+- `ALBUM_SERVER_HOST`: 服务器主机地址
+- `ALBUM_SERVER_PORT`: 服务器端口
+- `ALBUM_SERVER_PUBLIC_BASE_URL`: 公共基础URL
 
-- `ALBUM_SERVER_UNIX_ENABLED`: 是否启用 Unix Socket 服务器（`true`/`false`）
-- `ALBUM_SERVER_UNIX_SOCKET_PATH`: Unix Socket 文件路径（如 `/tmp/album.sock`）
-- `ALBUM_SERVER_UNIX_MODE`: Socket 文件权限（八进制字符串，如 `0666`）
-- `ALBUM_SERVER_UNIX_READ_TIMEOUT`: 读超时时间（如 `30s`）
-- `ALBUM_SERVER_UNIX_WRITE_TIMEOUT`: 写超时时间（如 `30s`）
-- `ALBUM_SERVER_UNIX_IDLE_TIMEOUT`: 空闲连接超时时间（如 `120s`）
+#### 数据库配置
+- `ALBUM_DATABASE_TYPE`: 数据库类型
+- `ALBUM_DATABASE_DSN`: 数据库连接字符串
 
-#### 公共配置
+#### 存储配置
+- `ALBUM_STORAGE_PRIMARY_TYPE`: 主存储类型
+- `ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH`: 本地存储基础路径
+- `ALBUM_STORAGE_PRIMARY_LOCAL_TEMP_BASE_PATH`: 临时文件基础路径
+- `ALBUM_STORAGE_PRIMARY_LOCAL_TEMP_MAX_AGE`: 临时文件最大存活时间
+- `ALBUM_STORAGE_PRIMARY_LOCAL_TEMP_MAX_SIZE`: 临时文件最大大小
 
-- `ALBUM_PUBLIC_BASE_URL`: 公共基础 URL（如 `http://localhost:8080`）
-
-### 10.5.2 数据库配置
-
-- `ALBUM_DB_TYPE`: 数据库类型（`postgres`, `mysql`, `sqlite`）
-- `ALBUM_DB_HOST`: 数据库主机地址
-- `ALBUM_DB_PORT`: 数据库端口
-- `ALBUM_DB_USER`: 数据库用户名
-- `ALBUM_DB_PASSWORD`: 数据库密码
-- `ALBUM_DB_NAME`: 数据库名称
-- `ALBUM_DB_SSLMODE`: SSL 模式（`disable`, `require`, `verify-full` 等）
-
-### 10.5.3 存储配置
-
-- `ALBUM_STORAGE_PRIMARY_BASE_PATH`: 主存储基础路径
-- `ALBUM_STORAGE_SECONDARY_ENABLED`: 是否启用次存储（`true`/`false`）
-- `ALBUM_STORAGE_SECONDARY_TYPE`: 次存储类型（`openlist`, `s3`, `oss`, `cos`）
-- `ALBUM_STORAGE_SECONDARY_OPENLIST_BASE_URL`: OpenList 服务地址
-- `ALBUM_STORAGE_SECONDARY_OPENLIST_API_KEY`: OpenList API 密钥
-- `ALBUM_STORAGE_BACKUP_ENABLED`: 是否启用备份调度（`true`/`false`）
-
-### 10.5.4 认证配置
-
+#### 认证配置
 - `ALBUM_AUTH_JWT_SECRET`: JWT 密钥
-- `ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN`: 访问令牌过期时间（如 `30m`）
-- `ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN`: 刷新令牌过期时间（如 `720h`）
+- `ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN`: 访问令牌过期时间
+- `ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN`: 刷新令牌过期时间
 
-### 10.5.5 日志配置
+#### 日志配置
+- `ALBUM_LOGGER_LEVEL`: 日志级别（debug, info, warn, error）
+- `ALBUM_LOGGER_FORMAT`: 日志格式（json, console）
+- `ALBUM_LOGGER_OUTPUT`: 输出目标（stdout, stderr, 或文件路径）
 
-- `ALBUM_LOG_LEVEL`: 日志级别（`debug`, `info`, `warn`, `error`）
-- `ALBUM_LOG_FORMAT`: 日志格式（`json`, `console`）
-- `ALBUM_LOG_OUTPUT`: 输出目标（`stdout`, `stderr`, 或文件路径）
-- `ALBUM_LOG_ENABLE_CALLER`: 是否包含调用位置（`true`/`false`）
-- `ALBUM_LOG_ENABLE_STACK`: 是否包含堆栈信息（`true`/`false`）
-- `ALBUM_LOG_ASYNC`: 是否异步写入（`true`/`false`）
-
-### Changelog 模块配置
-
-变更日志同步模块的配置项：
-
-**YAML 配置**：
-```yaml
-changelog:
-  enabled: true                    # 是否启用变更日志功能
-  cleanup_interval: 24h            # 清理任务运行周期
-  device_active_threshold: 4320h   # 设备活跃阈值（180天）
-  default_sync_page_limit: 500     # 默认同步分页大小
-  full_sync_tables:                # 全量同步表配置
-    medias:
-      primary_key_column: "uuid"   # 主键列名
-```
-
-**环境变量**（如果支持）：
-- `ALBUM_CHANGELOG_ENABLED`: 是否启用（`true`/`false`）
-- `ALBUM_CHANGELOG_CLEANUP_INTERVAL`: 清理周期（如 `24h`）
-- `ALBUM_CHANGELOG_DEVICE_ACTIVE_THRESHOLD`: 设备活跃阈值（如 `4320h`）
-- `ALBUM_CHANGELOG_DEFAULT_SYNC_PAGE_LIMIT`: 默认分页大小（如 `500`）
-
-**配置说明**：
-- `enabled`: 设置为 `false` 可完全禁用模块，此时零开销、零侵入
-- `cleanup_interval`: 后台清理任务运行周期，建议 24 小时
-- `device_active_threshold`: 超过此时间未同步的设备视为不活跃，其之前的变更日志可被清理
-- `default_sync_page_limit`: 同步 API 的默认分页大小
-- `full_sync_tables`: 配置需要支持全量同步的表，必须指定主键列名
-
-### 10.5.7 队列配置
-
+#### 队列配置
 - `ALBUM_QUEUE_CONCURRENCY`: 并发处理数量
 - `ALBUM_QUEUE_MIN_POLL_INTERVAL_MS`: 最小轮询间隔（毫秒）
 - `ALBUM_QUEUE_MAX_POLL_INTERVAL_MS`: 最大轮询间隔（毫秒）
 
-### 10.5.7 使用示例
+#### Changelog 配置
+- `ALBUM_CHANGELOG_ENABLED`: 是否启用（true/false）
+- `ALBUM_CHANGELOG_CLEANUP_INTERVAL`: 清理周期（如 24h）
+- `ALBUM_CHANGELOG_DEVICE_ACTIVE_THRESHOLD`: 设备活跃阈值（如 5m0s）
+- `ALBUM_CHANGELOG_DEFAULT_PAGE_LIMIT`: 默认分页大小
+
+### 10.6.3 使用示例
 
 ```bash
 # 通过环境变量覆盖配置
-export ALBUM_SERVER_ADDRESS="0.0.0.0:9090"
-export ALBUM_DB_HOST="production-db.example.com"
-export ALBUM_LOG_LEVEL="warn"
-export ALBUM_STORAGE_PRIMARY_BASE_PATH="/data/uploads"
+export ALBUM_SERVER_PORT=9090
+export ALBUM_DATABASE_DSN="host=prod-db.example.com user=album password=secret dbname=album"
+export ALBUM_LOGGER_LEVEL=warn
+export ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH="/data/uploads"
 
 # 运行服务
-go run cmd/server/main.go
+./server
+
+# 或者一行设置
+ALBUM_SERVER_PORT=9090 ALBUM_LOGGER_LEVEL=warn ./server
+
+# 组合使用（命令行参数优先级最高）
+ALBUM_SERVER_PORT=8080 ./server --server.port 9090
+# 最终 port = 9090
 ```
 
+## 10.7 重构优势总结
+
+### 10.7.1 代码简化
+
+**删除的代码**：
+- `overrideWithEnv` 方法：~300 行（环境变量覆盖逻辑）
+- 所有 `Validate` 方法：~200 行（配置验证逻辑）
+- `mergeMediaConfig` 函数：~60 行（配置合并逻辑）
+- `validator.go` 文件：~30 行
+- **总计：约 590 行代码**
+
+**新增的代码**：
+- 新的 `loader.go`：~200 行（使用 Viper）
+- `flags.go`：~50 行（命令行参数定义）
+- 服务内部 nil 处理：~30 行
+- **总计：约 280 行代码**
+
+**净减少**：约 310 行代码
+
+### 10.7.2 功能增强
+
+1. **命令行参数支持**：通过 Pflag 支持命令行参数
+2. **自动环境变量**：Viper 自动读取环境变量，无需手动处理
+3. **自动配置合并**：Viper 自动处理配置合并，无需手动逻辑
+4. **多种配置格式**：支持 YAML、JSON、TOML 等多种格式
+
+### 10.7.3 维护性提升
+
+1. **更易扩展**：新增配置项只需在结构体中添加字段，无需修改加载逻辑
+2. **职责清晰**：配置加载、服务初始化各司其职
+3. **更易测试**：各组件可独立测试
+4. **使用成熟库**：基于 Viper 和 Pflag，社区支持好
+
+## 10.8 迁移指南
+
+### 10.8.1 依赖添加
+
+```bash
+go get github.com/spf13/viper
+go get github.com/spf13/pflag
+```
+
+### 10.8.2 代码变更
+
+1. **重命名 modules → types**
+   - 移动文件：`internal/config/modules/types.go` → `internal/config/types/types.go`
+   - 更新包名：`package modules` → `package types`
+   - 更新所有导入路径
+
+2. **删除验证代码**
+   - 删除所有 `Validate()` 方法
+   - 删除 `internal/config/validator.go`
+
+3. **删除配置合并逻辑**
+   - 删除 `mergeMediaConfig` 函数
+   - 简化 Builder 中的配置处理
+
+4. **更新服务构造函数**
+   - 添加 nil 配置处理
+   - 使用默认配置
+
+### 10.8.3 向后兼容
+
+- 配置文件格式保持不变
+- 环境变量命名规则保持不变
+- 配置结构体定义保持不变
+
+## 10.9 最佳实践
+
+1. **使用默认值**：在 `defaultConfig()` 中提供完整的默认配置
+2. **服务处理 nil**：服务构造函数应处理 nil 配置，使用默认值
+3. **避免手动合并**：让 Viper 自动处理配置合并
+4. **自定义类型处理**：在 `bindCustomTypes` 中处理 Duration 和 Size
+5. **运行时验证**：让运行时错误自然暴露，而不是启动时验证
+
+## 10.10 参考资源
+
+- [Viper 文档](https://github.com/spf13/viper)
+- [Pflag 文档](https://github.com/spf13/pflag)
+- [Go 配置管理最佳实践](https://github.com/golang-standards/project-layout)

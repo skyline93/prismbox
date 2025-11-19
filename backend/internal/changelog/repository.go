@@ -126,7 +126,22 @@ type WrapperFactory struct {
 }
 
 // NewWrapperFactory 创建包装器工厂
+// 如果配置为 nil，使用默认配置
 func NewWrapperFactory(db *gorm.DB, config *Config) *WrapperFactory {
+	if config == nil {
+		config = DefaultConfig()
+	}
+
+	// 确保必要的字段已初始化
+	if config.FullChangelogTables == nil {
+		config.FullChangelogTables = make(map[string]FullChangelogTableConfig)
+	}
+	if _, exists := config.FullChangelogTables["medias"]; !exists {
+		config.FullChangelogTables["medias"] = FullChangelogTableConfig{
+			PrimaryKeyColumn: "uuid",
+		}
+	}
+
 	return &WrapperFactory{
 		db:     db,
 		config: config,

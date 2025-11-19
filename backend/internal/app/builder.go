@@ -6,7 +6,6 @@ import (
 
 	"github.com/album/backend/internal/changelog"
 	"github.com/album/backend/internal/config"
-	"github.com/album/backend/internal/config/modules"
 	"github.com/album/backend/internal/database"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/service/auth"
@@ -87,20 +86,14 @@ func (b *Builder) BuildAll() error {
 func (b *Builder) BuildLogger() error {
 	if b.cfg.Logger == nil {
 		// 使用默认配置
-		b.cfg.Logger = &modules.LoggerConfig{
+		b.cfg.Logger = &logger.Config{
 			Level:  "info",
-			Format: "console",
+			Format: "json",
 			Output: "stdout",
 		}
 	}
 
-	loggerConfig := &logger.Config{
-		Level:  b.cfg.Logger.Level,
-		Format: b.cfg.Logger.Format,
-		Output: b.cfg.Logger.Output,
-	}
-
-	if err := logger.Init(loggerConfig); err != nil {
+	if err := logger.Init(b.cfg.Logger); err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
 
@@ -161,21 +154,10 @@ func (b *Builder) BuildTaskQueue() error {
 	}
 
 	// 创建任务队列客户端
-	client := gq.NewClient(b.app.DB)
-	b.app.TaskQueueClient = client
+	b.app.TaskQueueClient = gq.NewClient(b.app.DB)
 
-	// 创建任务队列服务器
-	serverConfig := &gq.ServerConfig{
-		Concurrency:       5,
-		MinPollIntervalMs: 200,
-		MaxPollIntervalMs: 3000,
-	}
-	if b.cfg.Queue != nil {
-		// TODO: 从配置中读取队列配置
-	}
-
-	server := gq.NewServer(b.app.DB, serverConfig)
-	b.app.TaskQueueServer = server
+	// 创建任务队列服务器（直接传递配置，服务内部处理 nil）
+	b.app.TaskQueueServer = gq.NewServer(b.app.DB, b.cfg.Queue)
 
 	return nil
 }
@@ -236,37 +218,9 @@ func (b *Builder) BuildChangelog() error {
 		return fmt.Errorf("database is required")
 	}
 
-	// 获取配置或使用默认配置
-	var changelogConfig *changelog.Config
-	if b.cfg.Changelog != nil {
-		changelogConfig = &changelog.Config{
-			Enabled:                   b.cfg.Changelog.Enabled,
-			CleanupInterval:           b.cfg.Changelog.CleanupInterval,
-			DeviceActiveThreshold:     b.cfg.Changelog.DeviceActiveThreshold,
-			DefaultChangelogPageLimit: b.cfg.Changelog.DefaultChangelogPageLimit,
-			FullChangelogTables:       make(map[string]changelog.FullChangelogTableConfig),
-		}
-
-		// 转换全量变更日志表配置
-		for table, tableCfg := range b.cfg.Changelog.FullChangelogTables {
-			changelogConfig.FullChangelogTables[table] = changelog.FullChangelogTableConfig{
-				PrimaryKeyColumn: tableCfg.PrimaryKeyColumn,
-			}
-		}
-	} else {
-		// 使用默认配置（默认启用）
-		changelogConfig = changelog.DefaultConfig()
-		// 配置 media 表的全量变更日志
-		changelogConfig.FullChangelogTables["medias"] = changelog.FullChangelogTableConfig{
-			PrimaryKeyColumn: "uuid",
-		}
-	}
-
-	// 创建引擎
-	b.app.ChangelogEngine = changelog.NewEngine(b.app.DB, changelogConfig)
-
-	// 创建包装器工厂
-	b.app.ChangelogFactory = changelog.NewWrapperFactory(b.app.DB, changelogConfig)
+	// 直接传递配置，服务内部处理 nil 和初始化
+	b.app.ChangelogEngine = changelog.NewEngine(b.app.DB, b.cfg.Changelog)
+	b.app.ChangelogFactory = changelog.NewWrapperFactory(b.app.DB, b.cfg.Changelog)
 
 	return nil
 }
@@ -413,103 +367,20 @@ func (b *Builder) Build() *App {
 	return b.app
 }
 
-// BuildMediaProcessor 构建媒体处理器。
+// BuildMediaProcessor 构建媒体处理器
 func (b *Builder) BuildMediaProcessor() error {
-	cfg := mediaprocessor.DefaultConfig()
-
-	if b.cfg.Media != nil && b.cfg.Media.Processor != nil {
-		applyMediaProcessorConfig(cfg, b.cfg.Media.Processor)
-	}
-
-	processor, err := mediaprocessor.NewProcessor(cfg)
+	// 直接传递配置，不需要合并（Viper 已经处理了）
+	processor, err := mediaprocessor.NewProcessor(b.cfg.Media)
 	if err != nil {
-		return err
+		return fmt.Errorf("create media processor: %w", err)
 	}
 
 	b.app.MediaProcessor = processor
-	b.app.MediaProcessorConfig = cfg
+	// 保存实际使用的配置
+	if b.cfg.Media != nil {
+		b.app.MediaProcessorConfig = b.cfg.Media
+	} else {
+		b.app.MediaProcessorConfig = mediaprocessor.DefaultConfig()
+	}
 	return nil
-}
-
-func applyMediaProcessorConfig(cfg *mediaprocessor.Config, moduleCfg *modules.MediaProcessorConfig) {
-	if moduleCfg == nil {
-		return
-	}
-
-	if moduleCfg.Concurrency > 0 {
-		cfg.Concurrency = moduleCfg.Concurrency
-	}
-
-	if len(moduleCfg.DefaultImageSpecs) > 0 {
-		cfg.DefaultImageSpecs = make([]mediaprocessor.ImageSpec, 0, len(moduleCfg.DefaultImageSpecs))
-		for _, spec := range moduleCfg.DefaultImageSpecs {
-			cfg.DefaultImageSpecs = append(cfg.DefaultImageSpecs, mediaprocessor.ImageSpec{
-				Name:      spec.Name,
-				MaxWidth:  spec.MaxWidth,
-				MaxHeight: spec.MaxHeight,
-				Quality:   spec.Quality,
-				Format:    spec.Format,
-				Crop:      spec.Crop,
-			})
-		}
-	}
-
-	if len(moduleCfg.DefaultVideoSpecs) > 0 {
-		cfg.DefaultVideoSpecs = make([]mediaprocessor.VideoSpec, 0, len(moduleCfg.DefaultVideoSpecs))
-		for _, spec := range moduleCfg.DefaultVideoSpecs {
-			cfg.DefaultVideoSpecs = append(cfg.DefaultVideoSpecs, mediaprocessor.VideoSpec{
-				Name:     spec.Name,
-				MaxWidth: spec.MaxWidth,
-				Quality:  spec.Quality,
-				Format:   spec.Format,
-			})
-		}
-	}
-
-	if moduleCfg.Imagick != nil {
-		if moduleCfg.Imagick.PoolSize > 0 {
-			cfg.Imagick.PoolSize = moduleCfg.Imagick.PoolSize
-		}
-		if moduleCfg.Imagick.MemoryLimit != "" {
-			cfg.Imagick.MemoryLimit = moduleCfg.Imagick.MemoryLimit
-		}
-		if moduleCfg.Imagick.DiskLimit != "" {
-			cfg.Imagick.DiskLimit = moduleCfg.Imagick.DiskLimit
-		}
-		if moduleCfg.Imagick.RAW != nil {
-			if moduleCfg.Imagick.RAW.Quality > 0 {
-				cfg.Imagick.RAW.Quality = moduleCfg.Imagick.RAW.Quality
-			}
-			if moduleCfg.Imagick.RAW.Format != "" {
-				cfg.Imagick.RAW.Format = moduleCfg.Imagick.RAW.Format
-			}
-			if moduleCfg.Imagick.RAW.MaxRetries > 0 {
-				cfg.Imagick.RAW.MaxRetries = moduleCfg.Imagick.RAW.MaxRetries
-			}
-			if moduleCfg.Imagick.RAW.RetryDelay > 0 {
-				cfg.Imagick.RAW.RetryDelay = moduleCfg.Imagick.RAW.RetryDelay
-			}
-			if len(moduleCfg.Imagick.RAW.SupportedFormats) > 0 {
-				cfg.Imagick.RAW.SupportedFormats = append([]string(nil), moduleCfg.Imagick.RAW.SupportedFormats...)
-			}
-		}
-	}
-
-	if moduleCfg.FFmpeg != nil {
-		if moduleCfg.FFmpeg.BinaryPath != "" {
-			cfg.FFmpeg.BinaryPath = moduleCfg.FFmpeg.BinaryPath
-		}
-		if moduleCfg.FFmpeg.ProbePath != "" {
-			cfg.FFmpeg.ProbePath = moduleCfg.FFmpeg.ProbePath
-		}
-		if moduleCfg.FFmpeg.MaxConcurrency > 0 {
-			cfg.FFmpeg.MaxConcurrency = moduleCfg.FFmpeg.MaxConcurrency
-		}
-		if moduleCfg.FFmpeg.ProcessTimeout > 0 {
-			cfg.FFmpeg.ProcessTimeout = moduleCfg.FFmpeg.ProcessTimeout
-		}
-		if moduleCfg.FFmpeg.ThumbnailOffset > 0 {
-			cfg.FFmpeg.ThumbnailOffset = moduleCfg.FFmpeg.ThumbnailOffset
-		}
-	}
 }

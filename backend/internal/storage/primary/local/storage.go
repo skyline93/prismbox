@@ -9,13 +9,56 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/album/backend/internal/config/modules"
+	"github.com/album/backend/internal/config/types"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local/processor"
 	"github.com/album/backend/pkg/logger"
 	"github.com/gabriel-vasile/mimetype"
 )
+
+// LocalStorageConfig 本地存储配置（类型别名，避免循环导入）
+type LocalStorageConfig struct {
+	BasePath    string
+	PoolManager *PoolManagerConfig
+	Temp        *TempFileConfig
+	Processing  *ProcessingConfig
+	Performance *PerformanceConfig
+}
+
+// PoolManagerConfig 存储池管理器配置（类型别名）
+type PoolManagerConfig struct {
+	DeltaChannelSize     int
+	DeltaBatchSize       int
+	FlushInterval        types.Duration
+	CacheRefreshInterval types.Duration
+	ReconcileInterval    types.Duration
+}
+
+// TempFileConfig 临时文件配置（类型别名）
+type TempFileConfig struct {
+	BasePath        string
+	MaxAge          types.Duration
+	MaxSize         types.Size
+	CleanupInterval types.Duration
+}
+
+// ProcessingConfig 处理配置（类型别名）
+type ProcessingConfig struct {
+	EnableCompression bool
+	CompressionLevel  int
+	EnableEncryption  bool
+	EncryptionKeyPath string
+}
+
+// PerformanceConfig 性能配置（类型别名）
+type PerformanceConfig struct {
+	CacheEnabled    bool
+	CacheSize       types.Size
+	CacheTTL        types.Duration
+	ReadBufferSize  types.Size
+	WriteBufferSize types.Size
+}
 
 // LocalStorage 本地存储实现
 type LocalStorage struct {
@@ -29,7 +72,7 @@ type LocalStorage struct {
 }
 
 // NewLocalStorage 创建本地存储（公开函数，供factory调用）
-func NewLocalStorage(cfg *modules.LocalStorageConfig, poolRepo repository.StoragePoolRepository) (interfaces.PrimaryStorage, error) {
+func NewLocalStorage(cfg *LocalStorageConfig, poolRepo repository.StoragePoolRepository) (interfaces.PrimaryStorage, error) {
 	// 创建路径解析器
 	pathResolver := NewPathResolver(cfg.BasePath)
 

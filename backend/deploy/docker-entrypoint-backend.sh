@@ -65,7 +65,6 @@ elif [ "$INIT_REQUIRED" = "true" ]; then
     echo "  - ALBUM_INIT_ADMIN_PASSWORD: 管理员密码"
     echo "可选参数："
     echo "  - ALBUM_INIT_ADMIN_USERNAME: 管理员用户名（默认: admin）"
-    echo "  - ALBUM_INIT_STORAGE_MAX_SIZE: 存储池最大大小（默认: 1TB）"
     echo "  - ALBUM_INIT_FORCE: 强制初始化（默认: true）"
     echo ""
     echo "如果数据库已初始化，可以忽略此警告并继续启动服务"

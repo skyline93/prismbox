@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/album/backend/internal/config/modules"
 )
 
 // TempFileManager 临时文件管理器
@@ -22,7 +20,7 @@ type TempFileManager struct {
 }
 
 // NewTempFileManager 创建临时文件管理器
-func NewTempFileManager(cfg *modules.TempFileConfig) (*TempFileManager, error) {
+func NewTempFileManager(cfg *TempFileConfig) (*TempFileManager, error) {
 	if cfg == nil {
 		return nil, nil // 临时文件管理未启用
 	}

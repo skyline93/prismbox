@@ -139,8 +139,8 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	}
 
 	// 7. 验证文件大小（如果配置了最大文件大小）
-	if h.app != nil && h.app.Config != nil && h.app.Config.Media != nil && h.app.Config.Media.MaxFileSize > 0 {
-		maxSize := int64(h.app.Config.Media.MaxFileSize)
+	if h.app != nil && h.app.Config != nil && h.app.Config.API != nil && h.app.Config.API.MaxFileSize > 0 {
+		maxSize := int64(h.app.Config.API.MaxFileSize)
 		if file.Size > maxSize {
 			h.log.Warn("file size exceeds maximum allowed size",
 				logger.Int64("file_size", file.Size),

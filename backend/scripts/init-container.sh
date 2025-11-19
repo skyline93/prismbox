@@ -18,7 +18,7 @@ if [[ -z "${ADMIN_EMAIL}" ]] || [[ -z "${ADMIN_PASSWORD}" ]]; then
   SKIP_ADMIN=true
 fi
 
-echo "[1/4] 生成配置文件..."
+echo "[1/3] 生成配置文件..."
 FORCE_FLAG=()
 if [[ "${INIT_FORCE}" == "true" ]]; then
   FORCE_FLAG=(--force)
@@ -33,22 +33,16 @@ mkdir -p "$(dirname "${CONFIG_PATH}")"
     echo "警告: 配置文件生成失败或已存在，继续执行后续步骤..."
   }
 
-echo "[2/4] 执行数据库迁移..."
+echo "[2/3] 执行数据库迁移..."
 "${CLI_BIN}" --config "${CONFIG_PATH}" init migrate || {
     echo "错误: 数据库迁移失败" >&2
     exit 1
 }
 
-echo "[3/4] 初始化存储池..."
-"${CLI_BIN}" --config "${CONFIG_PATH}" init storage \
-  --local-path "${STORAGE_PATH}" \
-  --max-size "${MAX_SIZE}" \
-  --force || {
-    echo "警告: 存储池初始化失败或已存在，继续执行后续步骤..."
-  }
+# 注意: 存储池初始化已移除，可通过 API 或 CLI 手动创建
 
 if [[ "${SKIP_ADMIN}" == "false" ]]; then
-  echo "[4/4] 创建管理员账户..."
+  echo "[3/3] 创建管理员账户..."
   "${CLI_BIN}" --config "${CONFIG_PATH}" init admin \
     --email "${ADMIN_EMAIL}" \
     --password "${ADMIN_PASSWORD}" \
@@ -57,8 +51,9 @@ if [[ "${SKIP_ADMIN}" == "false" ]]; then
       echo "警告: 管理员账户创建失败或已存在" >&2
     }
 else
-  echo "[4/4] 跳过管理员账户创建（未提供管理员信息）"
+  echo "[3/3] 跳过管理员账户创建（未提供管理员信息）"
 fi
 
 echo "初始化完成，可启动 Album Backend 服务。"
+echo "提示: 存储池需要通过 API 或 CLI 手动创建，服务可以在没有存储池的情况下启动。"
 

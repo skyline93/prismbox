@@ -42,7 +42,7 @@ type ServerConfig struct {
 // DefaultServerConfig 返回默认配置
 func DefaultServerConfig() *ServerConfig {
 	return &ServerConfig{
-		Concurrency:       10,
+		Concurrency:       2,
 		MinPollIntervalMs: 100,
 		MaxPollIntervalMs: 5000,
 	}
