@@ -3,7 +3,7 @@ set -euo pipefail
 
 # 环境变量（可在容器运行时覆盖）
 CLI_BIN=${CLI_BIN:-/app/album-cli}
-CONFIG_PATH=${CONFIG_PATH:-/app/configs/config.yaml}
+CONFIG_PATH=${CONFIG_PATH:-/app/data/configs/config.yaml}
 STORAGE_PATH=${STORAGE_PATH:-/app/data}
 MAX_SIZE=${MAX_SIZE:-1TB}
 ADMIN_EMAIL=${ADMIN_EMAIL:-}

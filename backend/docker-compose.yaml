@@ -39,11 +39,10 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
       - "./deploy/data:/app/data"
-      - "./configs:/app/configs:ro"
       - "./deploy/public:/app/public"
     environment:
-      # 配置文件路径
-      - ALBUM_CONFIG_PATH=/app/configs/config.yaml
+      # 配置文件路径（使用可写目录）
+      - ALBUM_CONFIG_PATH=/app/data/configs/config.yaml
       
       # 初始化配置（首次部署时需要）
       - ALBUM_INIT_ADMIN_EMAIL=${ALBUM_INIT_ADMIN_EMAIL:-}

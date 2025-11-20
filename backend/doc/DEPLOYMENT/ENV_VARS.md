@@ -94,7 +94,7 @@
 | `ALBUM_INIT_ADMIN_USERNAME` | 管理员用户名 | string | `admin` | `admin` |
 | `ALBUM_INIT_STORAGE_MAX_SIZE` | 存储池最大大小 | size | `1TB` | `1TB`, `2TB` |
 | `ALBUM_INIT_FORCE` | 强制初始化 | bool | `true` | `true`, `false` |
-| `ALBUM_CONFIG_PATH` | 配置文件路径 | string | `/app/configs/config.yaml` | `/app/configs/config.yaml` |
+| `ALBUM_CONFIG_PATH` | 配置文件路径 | string | `/app/data/configs/config.yaml` | `/app/data/configs/config.yaml` |
 
 ## PostgreSQL 配置（docker-compose）
 

@@ -9,7 +9,7 @@ echo "Album Backend 容器启动"
 echo "=========================================="
 
 # 检查是否需要初始化
-CONFIG_PATH="${ALBUM_CONFIG_PATH:-/app/configs/config.yaml}"
+CONFIG_PATH="${ALBUM_CONFIG_PATH:-/app/data/configs/config.yaml}"
 INIT_REQUIRED=false
 
 # 检查配置文件是否存在

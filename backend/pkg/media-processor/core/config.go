@@ -84,11 +84,11 @@ func DefaultConfig() *Config {
 				Format:   "mp4",
 			},
 		},
-		Concurrency: 4,
+		Concurrency: 1,
 		Imagick: ImagickConfig{
-			PoolSize:    10,
-			MemoryLimit: "2GB",
-			DiskLimit:   "10GB",
+			PoolSize:    1,
+			MemoryLimit: "512MB",
+			DiskLimit:   "1GB",
 			RAW: RAWConfig{
 				Quality:          90,
 				Format:           "jpg",
@@ -100,7 +100,7 @@ func DefaultConfig() *Config {
 		FFmpeg: FFmpegConfig{
 			BinaryPath:      "/usr/bin/ffmpeg",
 			ProbePath:       "/usr/bin/ffprobe",
-			MaxConcurrency:  4,
+			MaxConcurrency:  1,
 			ProcessTimeout:  10 * time.Minute,
 			ThumbnailOffset: 1.5,
 		},
