@@ -602,7 +602,7 @@ cd backend
 # 创建所有必需目录
 mkdir -p deploy/data/postgresql \
          deploy/data \
-         deploy/public \
+         deploy/data/public \
          deploy/data/cert \
          deploy/data/logs/nginx \
          configs

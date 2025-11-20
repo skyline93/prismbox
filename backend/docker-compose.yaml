@@ -39,7 +39,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
       - "./deploy/data:/app/data"
-      - "./deploy/public:/app/public"
+      - "./deploy/data/public:/app/public"
     environment:
       # 配置文件路径（使用可写目录）
       - ALBUM_CONFIG_PATH=/app/data/configs/config.yaml
@@ -61,7 +61,7 @@ services:
       - ALBUM_DATABASE_DSN=host=postgresql user=${ALBUM_POSTGRES_USER:-album} password=${ALBUM_POSTGRES_PASSWORD:-album} dbname=${ALBUM_POSTGRES_DB:-album} port=5432 sslmode=disable TimeZone=Asia/Shanghai
       
       # 存储配置
-      - ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH=/app/data
+      - ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH=${ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH:-/app/data}
       
       # 认证配置（生产环境请务必修改）
       - ALBUM_AUTH_JWT_SECRET=${ALBUM_AUTH_JWT_SECRET:-album-dev-jwt-secret-key-change-in-production}
@@ -78,8 +78,8 @@ services:
       - ALBUM_MEDIA_PROCESSOR_FFMPEG_PROBE_PATH=${ALBUM_MEDIA_PROCESSOR_FFMPEG_PROBE_PATH:-/usr/bin/ffprobe}
       
       # 日志配置
-      - ALBUM_LOGGER_LEVEL=${ALBUM_LOGGER_LEVEL:-info}
-      - ALBUM_LOGGER_FORMAT=${ALBUM_LOGGER_FORMAT:-json}
+      - ALBUM_LOGGER_LEVEL=${ALBUM_LOGGER_LEVEL:-debug}
+      - ALBUM_LOGGER_FORMAT=${ALBUM_LOGGER_FORMAT:-console}
       - ALBUM_LOGGER_OUTPUT=stdout
       
       # 变更日志配置
@@ -87,14 +87,14 @@ services:
       
       # CORS配置（应用层，可选，默认禁用，由nginx处理）
       - ALBUM_ENABLE_APP_CORS=false
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 800M
-        reservations:
-          cpus: '0.5'
-          memory: 400M
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 800M
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 400M
     networks:
       - album-network
 
