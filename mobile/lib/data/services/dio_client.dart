@@ -29,8 +29,12 @@ class DioClient {
   final Dio _tokenDio = Dio();
 
   DioClient(this._storage) : dio = Dio(), fileDio = Dio() {
+    // 初始化 baseUrl（异步）
+    _initBaseUrl();
+    
     // ---- 1. 配置常规API的Dio实例 (dio) ----
-    dio.options.baseUrl = ApiConfig.baseUrl;
+    // baseUrl 将在 _initBaseUrl 中异步设置
+    dio.options.baseUrl = ApiConfig.baseUrlSync;  // 临时使用同步地址
     dio.options.connectTimeout = const Duration(seconds: 60);
     dio.options.receiveTimeout = const Duration(minutes: 30);
     dio.options.responseType = ResponseType.json;
@@ -116,7 +120,19 @@ class DioClient {
     ]);
 
     // ---- 3. 配置用于刷新Token的Dio实例 (_tokenDio) ----
-    _tokenDio.options.baseUrl = ApiConfig.baseUrl;
+    _tokenDio.options.baseUrl = ApiConfig.baseUrlSync;  // 临时使用同步地址
+  }
+
+  // 异步初始化 baseUrl
+  Future<void> _initBaseUrl() async {
+    try {
+      final baseUrl = await ApiConfig.baseUrl;
+      dio.options.baseUrl = baseUrl;
+      _tokenDio.options.baseUrl = baseUrl;
+    } catch (e) {
+      // 如果获取失败，使用默认地址
+      log('Failed to load custom server address, using default: $e');
+    }
   }
 
   InterceptorsWrapper _createAuthInterceptor() {

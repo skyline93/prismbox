@@ -38,7 +38,7 @@ class UploadAuthHandler {
 
   void _initializeTokenDio() {
     _tokenDio = Dio();
-    _tokenDio.options.baseUrl = ApiConfig.baseUrl;
+    _tokenDio.options.baseUrl = ApiConfig.baseUrlSync;
     _tokenDio.options.connectTimeout = const Duration(seconds: 10);
     _tokenDio.options.receiveTimeout = const Duration(seconds: 10);
   }
@@ -119,7 +119,7 @@ class UploadAuthHandler {
   static Future<bool> _isTokenValidStatic(String token) async {
     try {
       final dio = Dio();
-      dio.options.baseUrl = ApiConfig.baseUrl;
+      dio.options.baseUrl = ApiConfig.baseUrlSync;
       dio.options.connectTimeout = const Duration(seconds: 10);
       dio.options.receiveTimeout = const Duration(seconds: 10);
       
@@ -151,7 +151,7 @@ class UploadAuthHandler {
       }
 
       final dio = Dio();
-      dio.options.baseUrl = ApiConfig.baseUrl;
+      dio.options.baseUrl = ApiConfig.baseUrlSync;
       dio.options.connectTimeout = const Duration(seconds: 10);
       dio.options.receiveTimeout = const Duration(seconds: 10);
       

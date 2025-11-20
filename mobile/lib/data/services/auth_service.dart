@@ -9,7 +9,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 class AuthService {
   final Dio _dio;
   final SecureStorageService _storageService;
-  final baseUrl = ApiConfig.baseUrl;
+  final baseUrl = ApiConfig.baseUrlSync;
 
   AuthService(this._dio, this._storageService);
 

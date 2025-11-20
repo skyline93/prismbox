@@ -92,11 +92,21 @@ if [ "$ENABLE_HTTPS" = "true" ]; then
     export USER_LISTEN_DIRECTIVE="listen 443 ssl;"
     
     # 使用 heredoc 定义多行变量
+    # HTTP 重定向块（包含 Let's Encrypt 验证路径和 HTTPS 重定向）
     export HTTP_REDIRECT_BLOCK=$(cat <<EOF
 server {
     listen 80;
-    server_name localhost;
-    return 301 https://\$host\$request_uri;
+    server_name _ "";
+    
+    # Let's Encrypt 验证路径
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    
+    # 其他请求重定向到 HTTPS
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
 }
 EOF
 )

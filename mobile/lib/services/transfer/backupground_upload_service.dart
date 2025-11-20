@@ -390,7 +390,7 @@ class BackupgroundUploadService {
 
       final task = UploadTask.fromFile(
         file: taskPayload.file,
-        url: '${ApiConfig.baseUrl}/media/upload-stream',
+        url: '${ApiConfig.baseUrlSync}/media/upload-stream',
         fileField: 'file',
         fields: fields,
         headers: {'Authorization': 'Bearer $accessToken'},

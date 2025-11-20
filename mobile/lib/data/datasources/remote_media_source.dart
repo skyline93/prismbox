@@ -11,7 +11,7 @@ class RemoteMediaDataSource {
   final DioClient _dioClient;
   final Dio _dio;
   final Dio _fileDio;
-  final String baseUrl = ApiConfig.baseUrl;
+  final String baseUrl = ApiConfig.baseUrlSync;
 
   RemoteMediaDataSource(this._dioClient)
     : _dio = _dioClient.dio,

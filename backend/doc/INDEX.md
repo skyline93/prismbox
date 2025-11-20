@@ -56,5 +56,6 @@
 ## 🔒 安全与扩展
 
 - [安全考虑](./ARCHITECTURE/14-security.md)
+- [HTTPS 架构设计](./ARCHITECTURE/18-https-architecture.md) - 后端和移动端 HTTPS 架构设计
 - [扩展性考虑](./ARCHITECTURE/09-scalability.md)
 

@@ -31,6 +31,7 @@
 - [15. 监控和运维](./15-monitoring.md)
 - [16. 部署流程](./16-deployment.md)
 - [17. 总结](./17-summary.md)
+- [18. HTTPS 架构设计](./18-https-architecture.md)
 
 ## 快速导航
 
@@ -64,6 +65,7 @@
 - [错误处理](./11-error-handling.md) - 错误分类和响应格式
 - [性能优化](./13-performance.md) - 数据库、存储、任务队列优化
 - [安全考虑](./14-security.md) - 认证授权、数据安全、文件安全
+- [HTTPS 架构设计](./18-https-architecture.md) - 后端和移动端 HTTPS 架构设计
 
 ### 扩展和维护
 - [扩展性考虑](./09-scalability.md) - 存储、任务、服务、数据库扩展

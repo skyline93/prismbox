@@ -111,6 +111,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
       - "./deploy/data/cert:/etc/nginx/ssl:ro"
+      - "./deploy/data/certbot-www:/var/www/certbot:ro"
       - "./deploy/data/logs/nginx:/var/log/nginx"
     environment:
       - ENABLE_HTTPS=${ALBUM_ENABLE_HTTPS:-false}
@@ -121,6 +122,19 @@ services:
       - CLIENT_MAX_BODY_SIZE=${ALBUM_NGINX_CLIENT_MAX_BODY_SIZE:-2G}
     networks:
       - album-network
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: album-certbot
+    restart: unless-stopped
+    volumes:
+      - "./deploy/data/cert:/etc/letsencrypt"
+      - "./deploy/data/certbot-www:/var/www/certbot"
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
+    networks:
+      - album-network
+    profiles:
+      - https  # 仅在启用 HTTPS 时启动
 
 networks:
   album-network:

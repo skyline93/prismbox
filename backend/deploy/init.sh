@@ -16,6 +16,7 @@ echo "创建必要的目录..."
 mkdir -p deploy/data/postgresql
 mkdir -p deploy/data/logs/nginx
 mkdir -p deploy/data/cert
+mkdir -p deploy/data/certbot-www
 mkdir -p deploy/public
 mkdir -p configs
 
@@ -75,6 +76,11 @@ ALBUM_ENABLE_HTTPS=false
 ALBUM_NGINX_CLIENT_MAX_BODY_SIZE=2G
 ALBUM_NGINX_ACCESS_LOG_LEVEL=combined
 ALBUM_NGINX_ERROR_LOG_LEVEL=warn
+
+# Certbot 配置（HTTPS 证书管理）
+# ALBUM_CERTBOT_EMAIL=admin@example.com
+# ALBUM_CERTBOT_DOMAIN=api.example.com
+# ALBUM_CERTBOT_STAGING=false  # 生产环境设为 false
 EOF
     echo ".env 文件已创建，请根据实际情况修改配置"
     echo "注意：首次部署需要设置 ALBUM_INIT_ADMIN_EMAIL 和 ALBUM_INIT_ADMIN_PASSWORD"
@@ -86,9 +92,18 @@ fi
 if [ "${ALBUM_ENABLE_HTTPS:-false}" = "true" ]; then
     if [ ! -f "deploy/data/cert/cert.pem" ] || [ ! -f "deploy/data/cert/key.pem" ]; then
         echo "警告: 已启用 HTTPS，但未找到 SSL 证书"
-        echo "请将证书文件放置到 deploy/data/cert/ 目录下："
-        echo "  - deploy/data/cert/cert.pem"
-        echo "  - deploy/data/cert/key.pem"
+        echo ""
+        echo "选项 1: 使用 Let's Encrypt 自动获取证书（推荐）"
+        echo "  1. 设置环境变量："
+        echo "     export ALBUM_CERTBOT_EMAIL=admin@example.com"
+        echo "     export ALBUM_CERTBOT_DOMAIN=api.example.com"
+        echo "  2. 运行证书初始化脚本："
+        echo "     ./scripts/certbot-init.sh"
+        echo ""
+        echo "选项 2: 手动放置证书文件"
+        echo "  请将证书文件放置到 deploy/data/cert/ 目录下："
+        echo "    - deploy/data/cert/cert.pem"
+        echo "    - deploy/data/cert/key.pem"
     fi
 fi
 

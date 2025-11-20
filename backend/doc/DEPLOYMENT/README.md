@@ -811,21 +811,41 @@ CORS 由 Nginx 统一处理，支持：
 
 ### HTTPS 配置
 
-1. 将 SSL 证书放置到 `data/cert/` 目录：
-   - `data/cert/cert.pem` - 证书文件
-   - `data/cert/key.pem` - 私钥文件
+详细的 HTTPS 配置说明请参考 [HTTPS 部署指南](./HTTPS.md)。
 
-2. 在 `.env` 文件中启用 HTTPS：
-   ```bash
-   ALBUM_ENABLE_HTTPS=true
-   ALBUM_SSL_CERT_PATH=/etc/nginx/ssl/cert.pem
-   ALBUM_SSL_KEY_PATH=/etc/nginx/ssl/key.pem
-   ```
+#### 快速开始
 
-3. 重启服务：
-   ```bash
-   docker-compose restart nginx
-   ```
+**方式一：使用 Let's Encrypt 自动获取证书（推荐）**
+
+```bash
+# 1. 设置环境变量
+export ALBUM_CERTBOT_DOMAIN=api.example.com
+export ALBUM_CERTBOT_EMAIL=admin@example.com
+
+# 2. 初始化证书
+./scripts/certbot-init.sh
+
+# 3. 启用 HTTPS
+export ALBUM_ENABLE_HTTPS=true
+export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
+docker-compose --profile https up -d
+```
+
+**方式二：使用已有证书**
+
+```bash
+# 1. 放置证书文件
+cp your-cert.pem deploy/data/cert/cert.pem
+cp your-key.pem deploy/data/cert/key.pem
+chmod 600 deploy/data/cert/key.pem
+
+# 2. 启用 HTTPS
+export ALBUM_ENABLE_HTTPS=true
+export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
+docker-compose up -d
+```
+
+更多详细信息请参考 [HTTPS 部署指南](./HTTPS.md)。
 
 ### 数据持久化
 
