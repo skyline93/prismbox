@@ -13,10 +13,8 @@ import 'package:mobile/data/datasources/local_media_source.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:mobile/data/models/media/media_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:mobile/extensions/asset_type_extensions.dart';
 
 @LazySingleton(as: MediaRepository)
 class MediaRepositoryImpl implements MediaRepository {

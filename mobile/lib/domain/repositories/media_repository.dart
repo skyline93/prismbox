@@ -1,7 +1,6 @@
 // lib/domain/repositories/media_repository.dart
 
 import 'dart:typed_data';
-import 'package:photo_manager/photo_manager.dart';
 import 'package:mobile/core/enums.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/domain/entities/unified_album_entity.dart';
