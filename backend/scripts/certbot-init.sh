@@ -49,7 +49,7 @@ fi
 
 # 获取证书
 echo "开始获取证书..."
-docker-compose run --rm certbot certonly \
+docker-compose run --rm --entrypoint="" certbot certbot certonly \
     --webroot \
     --webroot-path=/var/www/certbot \
     --email "$EMAIL" \

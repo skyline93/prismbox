@@ -124,7 +124,8 @@ EOF
 else
     echo "HTTPS is disabled. Generating HTTP-only configuration."
 
-    # 定义HTTP模式下的变量（很多是空的）
+    # 定义HTTP模式下的变量
+    # 注意：acme-challenge 路径在 default.conf.template 的 server 块中已配置，无需在此设置
     export USER_LISTEN_DIRECTIVE="listen 80;"
     export HTTP_REDIRECT_BLOCK=""
     export SSL_CONFIG_BLOCK=""
@@ -134,6 +135,19 @@ fi
 # 指定所有需要替换的变量
 VARS_TO_SUBSTITUTE='$USER_LISTEN_DIRECTIVE $HTTP_REDIRECT_BLOCK $SSL_CONFIG_BLOCK $NGINX_ACCESS_LOG_FORMAT $SSL_CERT_PATH $SSL_KEY_PATH $CLIENT_MAX_BODY_SIZE'
 envsubst "$VARS_TO_SUBSTITUTE" < "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+# --- 4.5. 确保 acme-challenge 路径存在（用于证书初始化，无论是否启用 HTTPS） ---
+# 如果配置文件中没有 acme-challenge 路径，则添加它
+if ! grep -q "acme-challenge" "$CONFIG_FILE"; then
+    # 在 server 块的通用配置后、API 反向代理前添加 acme-challenge 路径
+    sed -i '/include \/etc\/nginx\/snippets\/proxy.conf;/a\
+\
+    # Let'\''s Encrypt 验证路径（用于证书初始化，无论是否启用 HTTPS）\
+    location /.well-known/acme-challenge/ {\
+        root /var/www/certbot;\
+    }\
+' "$CONFIG_FILE"
+fi
 
 echo "--- Generated Nginx Config (${CONFIG_FILE}) ---"
 cat ${CONFIG_FILE}

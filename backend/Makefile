@@ -30,6 +30,10 @@ NGINX_IMAGE_LATEST_TAG := $(REGISTRY)/$(NGINX_IMAGE_NAME):latest-$(ARCH)
 # Docker Compose 命令检测
 DOCKER_COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
 
+# Docker Compose Profile 配置（如果启用 HTTPS，则使用 https profile）
+# 使用 shell 命令检查环境变量，确保能正确读取
+DOCKER_COMPOSE_PROFILE := $(shell if [ "$${ALBUM_ENABLE_HTTPS:-false}" = "true" ]; then echo "--profile https"; fi)
+
 .PHONY: help all build build-server build-cli clean print-version docker-build docker-build-backend docker-build-nginx docker-push docker-push-backend docker-push-nginx docker-build-base deploy deploy-up deploy-down deploy-logs deploy-ps deploy-init
 
 # 默认目标：显示帮助信息
@@ -161,26 +165,33 @@ deploy-init: ## 初始化部署环境（创建必要目录）
 deploy-up: deploy-init ## 启动服务
 	@echo ">> starting services with $(DOCKER_COMPOSE)"
 	@echo ">> using image: $(IMAGE_LATEST_TAG)"
-	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) up -d
+	@if [ "$(ALBUM_ENABLE_HTTPS)" = "true" ]; then \
+		echo ">> HTTPS enabled, starting with https profile (includes certbot)"; \
+	fi
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) $(DOCKER_COMPOSE_PROFILE) up -d
 	@echo ">> services started"
 	@echo ""
 	@echo "Service status:"
-	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) ps
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) $(DOCKER_COMPOSE_PROFILE) ps
 	@echo ""
 	@echo "View logs: make deploy-logs"
 	@echo "Stop services: make deploy-down"
-	@echo "API: http://localhost/api/v1"
+	@if [ "$(ALBUM_ENABLE_HTTPS)" = "true" ]; then \
+		echo "API: https://localhost/api/v1"; \
+	else \
+		echo "API: http://localhost/api/v1"; \
+	fi
 
 deploy-down: ## 停止服务
 	@echo ">> stopping services"
-	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) down
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) $(DOCKER_COMPOSE_PROFILE) down
 	@echo ">> services stopped"
 
 deploy-logs: ## 查看服务日志（实时跟踪）
-	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) logs -f
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) $(DOCKER_COMPOSE_PROFILE) logs -f
 
 deploy-ps: ## 查看服务状态
-	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) ps
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) $(DOCKER_COMPOSE_PROFILE) ps
 
 deploy: docker-build deploy-up ## 部署服务（构建镜像并启动服务）
 	@echo ""

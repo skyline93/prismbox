@@ -51,6 +51,11 @@ server {
     include /etc/nginx/snippets/common.conf;
     include /etc/nginx/snippets/proxy.conf;
 
+    # Let's Encrypt 验证路径（用于证书初始化，无论是否启用 HTTPS）
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
     # API 反向代理
     location /api {
         # CORS 预检请求处理

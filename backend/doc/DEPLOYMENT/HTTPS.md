@@ -75,6 +75,20 @@ docker-compose up -d
 ./scripts/certbot-check.sh
 ```
 
+### 检查网络和防火墙配置
+
+```bash
+./scripts/check-firewall.sh
+```
+
+这个脚本会检查：
+- 服务器 IP 地址
+- 80 端口监听状态
+- Docker 容器端口映射
+- 防火墙状态（如果可用）
+- 本地访问测试
+- 域名解析（如果设置了环境变量）
+
 ### 手动续期证书
 
 ```bash
@@ -100,18 +114,93 @@ Certbot 容器会自动每 12 小时检查一次证书，如果剩余时间少�
 
 ### 证书获取失败
 
-**问题**：`certbot-init.sh` 执行失败
+**问题**：`certbot-init.sh` 执行失败，错误信息类似：
+```
+Certbot failed to authenticate some domains (authenticator: webroot). 
+Detail: Connection refused
+```
 
 **排查步骤**：
-1. 检查域名 DNS 解析是否正确
-2. 检查 80 端口是否可访问（HTTP-01 验证需要）
-3. 检查防火墙规则
-4. 查看 Certbot 日志：`docker-compose logs certbot`
 
-**解决方案**：
+1. **运行网络检查脚本**：
+```bash
+./scripts/check-firewall.sh
+```
+
+2. **检查域名 DNS 解析**：
+```bash
+nslookup api.prismbox.cn
+# 确认解析的 IP 地址是否正确指向服务器
+```
+
+3. **检查外网访问**：
+```bash
+# 从另一台机器或使用在线工具测试
+curl -I http://api.prismbox.cn/.well-known/acme-challenge/test
+# 或者访问 https://www.whatsmydns.net/ 检查域名解析
+```
+
+4. **检查本地访问**：
+```bash
+# 在服务器上测试本地访问
+curl -I http://localhost/.well-known/acme-challenge/test
+# 应该返回 200 OK
+```
+
+5. **检查 Docker 端口映射**：
+```bash
+docker-compose ps nginx
+# 应该显示：0.0.0.0:80->80/tcp
+```
+
+6. **查看 Certbot 日志**：
+```bash
+docker-compose logs certbot
+```
+
+**常见原因和解决方案**：
+
+1. **防火墙未开放 80 端口**
+   - **Linux (firewalld)**：
+     ```bash
+     sudo firewall-cmd --permanent --add-service=http
+     sudo firewall-cmd --reload
+     ```
+   - **Linux (ufw)**：
+     ```bash
+     sudo ufw allow 80/tcp
+     sudo ufw reload
+     ```
+   - **Linux (iptables)**：
+     ```bash
+     sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+     sudo iptables-save
+     ```
+
+2. **云服务商安全组未开放 80 端口**
+   - 登录云服务商控制台（阿里云、腾讯云、AWS 等）
+   - 找到安全组/防火墙规则
+   - 添加入站规则：允许 TCP 80 端口
+   - 源地址：`0.0.0.0/0` 或特定 IP
+
+3. **服务器在内网，需要端口映射**
+   - 如果服务器在内网（如 172.16.x.x），需要通过 NAT 网关或端口映射
+   - 配置路由器/NAT 设备的端口转发规则
+   - 确保公网 IP 的 80 端口映射到内网服务器的 80 端口
+
+4. **域名解析错误**
+   - 确保域名正确解析到服务器的公网 IP
+   - 如果使用 CDN 或代理，确保 80 端口透传
+
+5. **Nginx 容器未运行**
+   - 检查容器状态：`docker-compose ps nginx`
+   - 确保容器正常运行：`docker-compose up -d nginx`
+
+**测试步骤**：
 - 确保域名正确解析到服务器 IP
-- 确保 80 端口对外开放
+- 确保 80 端口对外开放（从外网可以访问）
 - 首次测试使用 `ALBUM_CERTBOT_STAGING=true` 避免速率限制
+- 本地测试通过后，再从外网测试
 
 ### Nginx SSL 错误
 
