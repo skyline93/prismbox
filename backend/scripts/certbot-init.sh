@@ -40,16 +40,16 @@ mkdir -p deploy/data/certbot-www
 
 # 确保 Nginx 正在运行（用于 HTTP-01 验证）
 echo "检查 Nginx 服务状态..."
-if ! docker-compose ps nginx | grep -q "Up"; then
+if ! docker compose ps nginx | grep -q "Up"; then
     echo "启动 Nginx 服务..."
-    docker-compose up -d nginx
+    docker compose up -d nginx
     echo "等待 Nginx 启动..."
     sleep 5
 fi
 
 # 获取证书
 echo "开始获取证书..."
-docker-compose run --rm --entrypoint="" certbot certbot certonly \
+docker compose run --rm --entrypoint="" certbot certbot certonly \
     --webroot \
     --webroot-path=/var/www/certbot \
     --email "$EMAIL" \
@@ -74,7 +74,7 @@ fi
 # 重新加载 Nginx（如果启用了 HTTPS）
 if [ "${ALBUM_ENABLE_HTTPS:-false}" = "true" ]; then
     echo "重新加载 Nginx 配置..."
-    docker-compose exec nginx nginx -s reload || true
+    docker compose exec nginx nginx -s reload || true
 fi
 
 echo ""
@@ -87,7 +87,7 @@ echo "私钥路径: deploy/data/cert/key.pem"
 echo ""
 echo "下一步:"
 echo "1. 设置 ALBUM_ENABLE_HTTPS=true"
-echo "2. 重启服务: docker-compose restart nginx"
+echo "2. 重启服务: docker compose restart nginx"
 echo "3. 验证 HTTPS: curl https://$DOMAIN/api/v1/version"
 echo "=========================================="
 

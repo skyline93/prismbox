@@ -16,7 +16,7 @@ echo "创建必要的目录..."
 mkdir -p deploy/data/postgresql
 mkdir -p deploy/data/logs/nginx
 mkdir -p deploy/data/cert
-mkdir -p deploy/data/certbot-www
+mkdir -p deploy/data/certbot-www/.well-known/acme-challenge
 mkdir -p deploy/public
 mkdir -p configs
 

@@ -4,14 +4,15 @@
 
 - [概述](#概述)
 - [快速开始](#快速开始)
-- [前置要求](#前置要求)
-- [一键部署](#一键部署)
+- [部署场景](#部署场景)
+  - [场景一：本地开发/测试](#场景一本地开发测试)
+  - [场景二：生产环境（HTTP）](#场景二生产环境http)
+  - [场景三：生产环境（HTTPS）](#场景三生产环境https)
+- [HTTPS 配置](#https-配置)
+  - [方式一：自签名证书（测试用）](#方式一自签名证书测试用)
+  - [方式二：Let's Encrypt 证书（生产环境）](#方式二lets-encrypt-证书生产环境)
+- [常用命令](#常用命令)
 - [环境变量配置](#环境变量配置)
-- [首次部署](#首次部署)
-- [构建镜像](#构建镜像)
-- [生产环境部署](#生产环境部署)
-- [部署服务](#部署服务)
-- [配置说明](#配置说明)
 - [故障排查](#故障排查)
 
 ## 概述
@@ -43,750 +44,273 @@
 
 ## 快速开始
 
-### 方式一：一键部署（推荐）
-
-在 `backend` 根目录下执行：
+### 使用 Makefile（推荐）
 
 ```bash
 cd backend
-./deploy.sh
+
+# 查看所有可用命令
+make help
+
+# 一键部署（构建镜像并启动服务）
+make deploy
+
+# 仅启动服务（镜像已存在）
+make deploy-up
 ```
 
-脚本会自动：
-- 检测系统架构（AMD64/ARM64）
-- 初始化必要的目录
-- 构建并启动所有服务
-- 注入版本信息
-
-**首次部署需要设置管理员信息**：
-```bash
-export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-export ALBUM_INIT_ADMIN_PASSWORD=your-password
-./deploy.sh
-```
-
-### 方式二：手动部署
-
-#### 1. 初始化部署环境
+### 使用 Docker Compose
 
 ```bash
 cd backend
-bash deploy/init.sh
-```
 
-初始化脚本会：
-- 创建必要的目录结构
-- 生成 `.env` 环境变量文件模板
-- 检查配置文件
+# 启动服务
+docker compose up -d
 
-#### 2. 配置环境变量
+# 查看状态
+docker compose ps
 
-编辑 `.env` 文件，修改必要的配置：
-
-```bash
-# 首次部署必须设置
-ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-ALBUM_INIT_ADMIN_PASSWORD=your-password
-
-# 生产环境请修改
-ALBUM_AUTH_JWT_SECRET=your-secret-key-here
-ALBUM_AUTH_URL_SIGNER_SECRET=your-signer-secret-here
-ALBUM_POSTGRES_PASSWORD=your-database-password
-
-# 服务器地址
-ALBUM_SERVER_PUBLIC_BASE_URL=http://your-domain.com
-```
-
-#### 3. 启动服务
-
-```bash
-docker-compose up -d
-```
-
-#### 4. 查看服务状态
-
-```bash
-docker-compose ps
-docker-compose logs -f album-backend
+# 查看日志
+docker compose logs -f
 ```
 
 ## 前置要求
 
 - Docker 20.10+
-- Docker Compose 2.0+
+- Docker Compose 2.0+ 或 `docker compose` 命令
 - 至少 2GB 可用内存
 - 至少 10GB 可用磁盘空间
 
-## 一键部署
+## 部署场景
 
-在 `backend` 根目录下执行：
+### 场景一：本地开发/测试
 
-```bash
-./deploy.sh
-```
-
-就这么简单！脚本会自动：
-- 检测系统架构（AMD64/ARM64）
-- 初始化必要的目录
-- 构建并启动所有服务
-
-### 默认配置
-
-所有配置都有合理的默认值，可以直接使用：
-
-- **数据库**: PostgreSQL，用户名/密码/数据库名均为 `album`
-- **服务器**: 监听 `0.0.0.0:8080`
-- **Nginx**: HTTP 端口 80，HTTPS 端口 443（默认禁用 HTTPS）
-- **文件大小**: 最大 2GB
-- **认证密钥**: 使用开发环境默认值（生产环境请修改）
-
-### 自定义配置
-
-如果需要自定义配置，可以：
-
-1. **使用环境变量**（推荐）：
-   ```bash
-   export ALBUM_POSTGRES_PASSWORD=your-password
-   export ALBUM_AUTH_JWT_SECRET=your-secret
-   ./deploy.sh
-   ```
-
-2. **创建 .env 文件**：
-   ```bash
-   # 首次运行会自动创建 .env 模板
-   ./deploy.sh
-   # 然后编辑 .env 文件
-   vim .env
-   # 再次运行
-   ./deploy.sh
-   ```
-
-3. **直接修改 docker-compose.yaml**：
-   编辑 `docker-compose.yaml` 中的环境变量
-
-### 常用命令
+**目标**：快速启动服务进行开发测试
 
 ```bash
-# 启动服务
-./deploy.sh
+cd backend
 
-# 查看服务状态
-docker-compose ps
+# 1. 设置管理员信息（首次部署）
+export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+export ALBUM_INIT_ADMIN_PASSWORD=your-password
 
-# 查看日志
-docker-compose logs -f
+# 2. 一键部署
+make deploy
 
-# 查看特定服务日志
-docker-compose logs -f album-backend
-docker-compose logs -f nginx
-
-# 停止服务
-docker-compose down
-
-# 重启服务
-docker-compose restart
-
-# 更新并重启
-docker-compose up -d --build
+# 3. 访问服务
+curl http://localhost/api/v1/version
 ```
 
-### 构建基础镜像（可选）
+**特点**：
+- 使用默认配置
+- HTTP 模式（端口 80）
+- 适合本地开发和测试
 
-如果需要构建自定义基础镜像：
+### 场景二：生产环境（HTTP）
+
+**目标**：生产环境部署，使用 HTTP（不加密）
 
 ```bash
-./deploy.sh --build-base
+cd backend
+
+# 1. 设置必要的环境变量
+export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+export ALBUM_INIT_ADMIN_PASSWORD=your-secure-password
+export ALBUM_POSTGRES_PASSWORD=your-db-password
+export ALBUM_AUTH_JWT_SECRET=your-jwt-secret
+export ALBUM_AUTH_URL_SIGNER_SECRET=your-signer-secret
+export ALBUM_SERVER_PUBLIC_BASE_URL=http://your-domain.com
+
+# 2. 部署服务
+make deploy
+
+# 3. 验证
+curl http://your-domain.com/api/v1/version
 ```
 
-### 架构支持
+**注意**：生产环境建议使用 HTTPS，见场景三。
 
-脚本会自动检测系统架构：
-- **AMD64/x86_64**: 使用 `linux-amd64` 配置
-- **ARM64/aarch64**: 使用 `linux-arm64` 配置
+### 场景三：生产环境（HTTPS）
 
-### 目录结构
+**目标**：生产环境部署，使用 HTTPS（加密）
 
-部署后的目录结构：
+#### 步骤 1：部署服务（HTTP 模式）
 
+```bash
+cd backend
+
+# 设置基本配置
+export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+export ALBUM_INIT_ADMIN_PASSWORD=your-secure-password
+export ALBUM_POSTGRES_PASSWORD=your-db-password
+export ALBUM_AUTH_JWT_SECRET=your-jwt-secret
+export ALBUM_AUTH_URL_SIGNER_SECRET=your-signer-secret
+
+# 确保 HTTPS 未启用
+export ALBUM_ENABLE_HTTPS=false
+
+# 部署服务
+make deploy
 ```
-backend/
-├── docker-compose.yaml      # 主编排文件
-├── deploy.sh                # 一键部署脚本
-├── .env                     # 环境变量配置（可选）
-├── configs/                 # 配置文件目录
-├── deploy/
-│   ├── data/               # 数据目录
-│   │   ├── postgresql/     # 数据库数据
-│   │   ├── logs/           # 日志文件
-│   │   └── cert/           # SSL 证书（如果启用 HTTPS）
-│   └── public/             # 静态文件目录
-└── ...
+
+#### 步骤 2：获取 SSL 证书
+
+选择以下方式之一：
+
+**方式 A：自签名证书（仅用于测试）**
+
+```bash
+# 生成自签名证书
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout deploy/data/cert/key.pem \
+  -out deploy/data/cert/cert.pem \
+  -subj "/CN=YOUR_IP_OR_DOMAIN" \
+  -addext "subjectAltName=IP:YOUR_IP"
+
+chmod 600 deploy/data/cert/key.pem
+```
+
+**方式 B：Let's Encrypt 证书（生产环境推荐）**
+
+```bash
+# 设置域名和邮箱
+export ALBUM_CERTBOT_DOMAIN=api.example.com
+export ALBUM_CERTBOT_EMAIL=admin@example.com
+
+# 获取证书（首次测试使用 staging）
+export ALBUM_CERTBOT_STAGING=true
+./scripts/certbot-init.sh
+
+# 验证成功后，切换到生产环境
+export ALBUM_CERTBOT_STAGING=false
+./scripts/certbot-init.sh
+```
+
+#### 步骤 3：启用 HTTPS
+
+```bash
+# 启用 HTTPS
+export ALBUM_ENABLE_HTTPS=true
+export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
+
+# 重启 Nginx
+docker compose up -d nginx
+
+# 验证
+curl -k https://api.example.com/api/v1/version
+```
+
+**完整流程示例**：
+
+```bash
+# 1. 部署（HTTP）
+export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
+export ALBUM_INIT_ADMIN_PASSWORD=secure-password
+make deploy
+
+# 2. 获取 Let's Encrypt 证书
+export ALBUM_CERTBOT_DOMAIN=api.example.com
+export ALBUM_CERTBOT_EMAIL=admin@example.com
+./scripts/certbot-init.sh
+
+# 3. 启用 HTTPS
+export ALBUM_ENABLE_HTTPS=true
+export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
+docker compose up -d nginx
+```
+
+## 常用命令
+
+### Makefile 命令
+
+```bash
+# 查看帮助
+make help
+
+# 构建镜像
+make docker-build              # 构建所有镜像
+make docker-build-backend      # 仅构建 backend
+make docker-build-nginx        # 仅构建 nginx
+
+# 部署服务
+make deploy                    # 构建并部署
+make deploy-up                 # 启动服务
+make deploy-down               # 停止服务
+make deploy-logs               # 查看日志
+make deploy-ps                 # 查看状态
+```
+
+### Docker Compose 命令
+
+```bash
+# 服务管理
+docker compose up -d           # 启动服务
+docker compose down             # 停止服务
+docker compose restart          # 重启服务
+docker compose ps               # 查看状态
+
+# 日志查看
+docker compose logs -f          # 查看所有日志
+docker compose logs -f nginx    # 查看 Nginx 日志
+docker compose logs -f album-backend  # 查看后端日志
+
+# 进入容器
+docker compose exec nginx sh    # 进入 Nginx 容器
+docker compose exec album-backend sh  # 进入后端容器
+```
+
+### HTTPS 相关命令
+
+```bash
+# 生成自签名证书
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout deploy/data/cert/key.pem \
+  -out deploy/data/cert/cert.pem \
+  -subj "/CN=YOUR_DOMAIN_OR_IP"
+
+# 获取 Let's Encrypt 证书
+export ALBUM_CERTBOT_DOMAIN=api.example.com
+export ALBUM_CERTBOT_EMAIL=admin@example.com
+./scripts/certbot-init.sh
+
+# 检查证书状态
+./scripts/certbot-check.sh
+
+# 检查网络配置
+./scripts/check-firewall.sh
 ```
 
 ## 环境变量配置
 
-所有环境变量使用 `ALBUM_` 前缀，防止与系统变量冲突。
+### 必需配置（首次部署）
 
-### 数据库配置
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| `ALBUM_INIT_ADMIN_EMAIL` | 管理员邮箱 | `admin@example.com` |
+| `ALBUM_INIT_ADMIN_PASSWORD` | 管理员密码 | `secure-password` |
 
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `ALBUM_POSTGRES_USER` | PostgreSQL 用户名 | `album` |
-| `ALBUM_POSTGRES_PASSWORD` | PostgreSQL 密码 | `album` |
-| `ALBUM_POSTGRES_DB` | 数据库名 | `album` |
-
-### 服务器配置
+### 生产环境推荐配置
 
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
-| `ALBUM_SERVER_HOST` | 服务器监听地址 | `0.0.0.0` |
-| `ALBUM_SERVER_PORT` | 服务器端口 | `8080` |
-| `ALBUM_SERVER_PUBLIC_BASE_URL` | 公共访问地址 | `http://localhost` |
-
-### 认证配置
-
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
+| `ALBUM_POSTGRES_PASSWORD` | 数据库密码 | `album` |
 | `ALBUM_AUTH_JWT_SECRET` | JWT 密钥 | `change-me-in-production` |
 | `ALBUM_AUTH_URL_SIGNER_SECRET` | URL 签名密钥 | `change-me-in-production` |
-| `ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN` | Access Token 过期时间 | `30m` |
-| `ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN` | Refresh Token 过期时间 | `720h` |
+| `ALBUM_SERVER_PUBLIC_BASE_URL` | 公共访问地址 | `http://localhost` |
 
-### 媒体配置
-
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `ALBUM_MEDIA_MAX_FILE_SIZE` | 最大文件大小 | `2GB` |
-| `ALBUM_MEDIA_PROCESSOR_IMAGICK_POOL_SIZE` | ImageMagick 池大小 | `10` |
-| `ALBUM_MEDIA_PROCESSOR_IMAGICK_MEMORY_LIMIT` | ImageMagick 内存限制 | `2GB` |
-| `ALBUM_MEDIA_PROCESSOR_FFMPEG_BINARY_PATH` | FFmpeg 二进制路径 | `/usr/bin/ffmpeg` |
-
-### 日志配置
+### HTTPS 配置
 
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
-| `ALBUM_LOGGER_LEVEL` | 日志级别 | `info` |
-| `ALBUM_LOGGER_FORMAT` | 日志格式 | `json` |
-| `ALBUM_LOGGER_OUTPUT` | 日志输出 | `stdout` |
-
-### Nginx 配置
-
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `ALBUM_HTTP_PORT` | HTTP 端口 | `80` |
-| `ALBUM_HTTPS_PORT` | HTTPS 端口 | `443` |
-| `ALBUM_ENABLE_HTTPS` | 是否启用 HTTPS | `false` |
-| `ALBUM_NGINX_CLIENT_MAX_BODY_SIZE` | 最大上传文件大小 | `2G` |
-| `ALBUM_NGINX_ACCESS_LOG_LEVEL` | 访问日志级别 | `combined` |
-| `ALBUM_NGINX_ERROR_LOG_LEVEL` | 错误日志级别 | `warn` |
+| `ALBUM_ENABLE_HTTPS` | 启用 HTTPS | `false` |
+| `ALBUM_CERTBOT_DOMAIN` | 域名（Let's Encrypt） | - |
+| `ALBUM_CERTBOT_EMAIL` | 邮箱（Let's Encrypt） | - |
+| `ALBUM_CERTBOT_STAGING` | 使用测试环境 | `false` |
 
 ### 完整环境变量列表
 
 更多环境变量请参考 [环境变量完整列表](./ENV_VARS.md)
 
-## 首次部署
-
-### 一键部署（推荐）
-
-在 `backend` 根目录下：
-
-```bash
-# 1. 设置管理员信息（首次部署必须）
-export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-export ALBUM_INIT_ADMIN_PASSWORD=your-password
-
-# 2. 一键部署
-./deploy.sh
-```
-
-### 手动部署步骤
-
-#### 步骤 1: 初始化
-
-```bash
-cd backend
-bash deploy/init.sh
-```
-
-#### 步骤 2: 配置环境变量
-
-编辑 `.env` 文件，设置必要的配置项，特别是：
-- `ALBUM_INIT_ADMIN_EMAIL` - 管理员邮箱
-- `ALBUM_INIT_ADMIN_PASSWORD` - 管理员密码
-
-#### 步骤 3: 构建基础镜像（可选）
-
-如果使用自定义镜像仓库，需要先构建基础镜像：
-
-```bash
-# 在 backend 目录下
-./deploy.sh --build-base
-```
-
-#### 步骤 4: 启动服务
-
-```bash
-# 在 backend 目录下
-docker-compose up -d --build
-```
-
-#### 步骤 5: 验证部署
-
-```bash
-# 检查服务状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f album-backend
-
-# 测试 API
-curl http://localhost/api/v1/health
-```
-
-### 首次部署初始化
-
-首次部署时，容器会自动执行以下初始化步骤：
-
-1. **生成配置文件** - 如果 `configs/config.yaml` 不存在
-2. **执行数据库迁移** - 创建所有必要的数据库表
-3. **初始化存储池** - 创建默认的本地存储池
-4. **创建管理员账户** - 使用提供的邮箱和密码创建管理员
-
-**首次部署需要设置**：
-```bash
-export ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-export ALBUM_INIT_ADMIN_PASSWORD=your-password
-./deploy.sh
-```
-
-或者在 `.env` 文件中设置：
-```bash
-ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-ALBUM_INIT_ADMIN_PASSWORD=your-password
-```
-
-**注意**：初始化完成后，可以删除这些环境变量，容器会检测到数据库已初始化并跳过初始化步骤。
-
-## 构建镜像
-
-### 构建基础镜像
-
-基础镜像包含 Go、ImageMagick、FFmpeg 等运行时依赖。
-
-```bash
-# AMD64
-docker build -f deploy/linux-amd64/Dockerfile.base \
-    -t registry.cn-shenzhen.aliyuncs.com/greene/album-base:linux-amd64-latest .
-
-# ARM64
-docker build -f deploy/linux-arm64/Dockerfile.base \
-    -t registry.cn-shenzhen.aliyuncs.com/greene/album-base:linux-arm64-latest .
-```
-
-### 构建应用镜像
-
-本项目包含两个应用镜像：
-- **album-backend**: 后端 API 服务镜像
-- **album-nginx**: Nginx 反向代理镜像（包含配置和脚本）
-
-#### 方式一：使用 Makefile（推荐）
-
-```bash
-# 构建所有镜像（backend + nginx）
-make docker-build
-
-# 仅构建 backend 镜像
-make docker-build-backend
-
-# 仅构建 nginx 镜像
-make docker-build-nginx
-
-# 推送所有镜像到 registry
-make docker-push
-
-# 仅推送 backend 镜像
-make docker-push-backend
-
-# 仅推送 nginx 镜像
-make docker-push-nginx
-```
-
-#### 方式二：使用 deploy.sh
-
-```bash
-# 在 backend 目录下
-./deploy.sh
-```
-
-脚本会自动：
-1. 检测系统架构
-2. 获取 Git 版本信息（如果有 `.git` 目录）
-3. 注入版本信息到构建参数
-4. 构建并启动服务
-
-#### 方式三：手动构建
-
-**构建 Backend 镜像**：
-
-```bash
-# 在 backend 目录下
-docker build -f deploy/linux-amd64/Dockerfile \
-    --build-arg VERSION=v1.0.0 \
-    --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-    --build-arg GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") \
-    --build-arg GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown") \
-    -t registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest-amd64 .
-```
-
-**构建 Nginx 镜像**：
-
-```bash
-# 在 backend 目录下
-docker build -f deploy/linux-amd64/Dockerfile.nginx \
-    -t registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-amd64 .
-```
-
-**镜像标签说明**：
-
-- Backend 镜像：`registry.cn-shenzhen.aliyuncs.com/greene/album-backend:VERSION-ARCH` 和 `latest-ARCH`
-- Nginx 镜像：`registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:VERSION-ARCH` 和 `latest-ARCH`
-
-其中：
-- `VERSION` 是版本号（如 `v1.0.0` 或 `dev`）
-- `ARCH` 是架构（`amd64` 或 `arm64`）
-
-### 版本信息注入
-
-应用在构建时会注入版本信息到二进制文件中，包括：
-
-| 字段 | 说明 | 默认值 |
-|------|------|--------|
-| `VERSION` | 版本号 | `dev` |
-| `BUILD_TIME` | 构建时间 | 自动生成 |
-| `GIT_COMMIT` | Git 提交哈希 | `unknown` |
-| `GIT_BRANCH` | Git 分支名 | `unknown` |
-| `GoVersion` | Go 版本 | 运行时获取 |
-| `Platform` | 构建平台 | 运行时获取 |
-
-#### 自动注入（推荐）
-
-使用 `deploy.sh` 脚本时，会自动检测并注入版本信息：
-
-```bash
-# 脚本会自动获取以下信息：
-# - Version: 从 git describe 获取（如有 tag）
-# - BuildTime: 当前 UTC 时间
-# - GitCommit: git rev-parse --short HEAD
-# - GitBranch: git rev-parse --abbrev-ref HEAD
-./deploy.sh
-```
-
-脚本会：
-1. 自动检测 `.git` 目录
-2. 获取 git 版本、提交哈希、分支名
-3. 设置构建时间
-4. 通过环境变量传递给 Docker 构建
-
-#### 手动注入
-
-如果需要手动指定版本信息，可以设置环境变量：
-
-```bash
-export ALBUM_VERSION=v1.0.0
-export ALBUM_BUILD_TIME=2025-01-15T10:30:00Z
-export ALBUM_GIT_COMMIT=abc1234
-export ALBUM_GIT_BRANCH=main
-./deploy.sh
-```
-
-或者在 `.env` 文件中设置：
-
-```bash
-ALBUM_VERSION=v1.0.0
-ALBUM_BUILD_TIME=2025-01-15T10:30:00Z
-ALBUM_GIT_COMMIT=abc1234
-ALBUM_GIT_BRANCH=main
-```
-
-#### 在 CI/CD 中注入
-
-在 CI/CD 环境中，可以通过环境变量注入版本信息：
-
-**GitHub Actions 示例**：
-
-```yaml
-- name: Set version info
-  run: |
-    export ALBUM_VERSION=${GITHUB_REF#refs/tags/}
-    export ALBUM_GIT_COMMIT=${GITHUB_SHA:0:7}
-    export ALBUM_GIT_BRANCH=${GITHUB_REF#refs/heads/}
-    export ALBUM_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    echo "ALBUM_VERSION=$ALBUM_VERSION" >> $GITHUB_ENV
-    echo "ALBUM_GIT_COMMIT=$ALBUM_GIT_COMMIT" >> $GITHUB_ENV
-    echo "ALBUM_GIT_BRANCH=$ALBUM_GIT_BRANCH" >> $GITHUB_ENV
-    echo "ALBUM_BUILD_TIME=$ALBUM_BUILD_TIME" >> $GITHUB_ENV
-
-- name: Build and deploy
-  run: |
-    ./deploy.sh
-```
-
-**GitLab CI 示例**：
-
-```yaml
-build:
-  variables:
-    ALBUM_VERSION: $CI_COMMIT_TAG
-    ALBUM_GIT_COMMIT: ${CI_COMMIT_SHA:0:7}
-    ALBUM_GIT_BRANCH: $CI_COMMIT_REF_NAME
-    ALBUM_BUILD_TIME: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  script:
-    - ./deploy.sh
-```
-
-#### 查看版本信息
-
-构建完成后，可以通过 API 查询版本信息：
-
-```bash
-# 查询版本信息
-curl http://localhost/api/v1/version
-
-# 返回示例
-{
-  "version": "v1.0.0",
-  "build_time": "2025-01-15T10:30:00Z",
-  "git_commit": "abc1234",
-  "git_branch": "main",
-  "go_version": "go1.23.6",
-  "platform": "linux/arm64"
-}
-```
-
-**注意**：
-- 如果没有 `.git` 目录或无法获取 git 信息，`git_commit` 和 `git_branch` 会显示为 `unknown`
-- 构建时间始终会自动生成，即使未手动指定
-- 版本信息在构建时注入到二进制文件中，运行时无法修改
-
-## 生产环境部署
-
-### 前置条件
-
-生产环境部署使用已构建并推送到镜像仓库的镜像，只需要：
-
-1. ✅ `docker-compose.yaml` 文件
-2. ✅ `.env` 环境变量配置文件
-3. ✅ 创建必要的目录
-
-**不需要**：
-- ❌ Makefile
-- ❌ Dockerfile
-- ❌ 源代码
-- ❌ 构建工具
-
-### 部署步骤
-
-#### 1. 准备环境
-
-确保已安装：
-- Docker 20.10+
-- Docker Compose 2.0+
-
-#### 2. 创建必要目录
-
-在 `backend` 目录下执行：
-
-```bash
-cd backend
-
-# 创建所有必需目录
-mkdir -p deploy/data/postgresql \
-         deploy/data \
-         deploy/data/public \
-         deploy/data/cert \
-         deploy/data/logs/nginx \
-         configs
-```
-
-#### 3. 配置环境变量
-
-确保 `.env` 文件已配置（在 `backend` 目录下）：
-
-```bash
-# 首次部署必须设置
-ALBUM_INIT_ADMIN_EMAIL=admin@example.com
-ALBUM_INIT_ADMIN_PASSWORD=your-secret-password
-
-# 数据库配置（生产环境请修改）
-ALBUM_POSTGRES_USER=album
-ALBUM_POSTGRES_PASSWORD=your-database-password
-ALBUM_POSTGRES_DB=album
-
-# 服务器配置
-ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
-
-# 认证配置（生产环境请务必修改）
-ALBUM_AUTH_JWT_SECRET=your-jwt-secret-key
-ALBUM_AUTH_URL_SIGNER_SECRET=your-signer-secret-key
-
-# 架构配置（重要：根据服务器架构设置）
-ALBUM_ARCH=amd64  # 或 arm64
-```
-
-#### 4. 设置架构环境变量
-
-```bash
-# 自动检测架构
-export ALBUM_ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
-
-# 或手动设置
-export ALBUM_ARCH=amd64  # 或 arm64
-```
-
-#### 5. 启动服务
-
-```bash
-# 使用 docker compose（推荐）
-ALBUM_ARCH=${ALBUM_ARCH:-amd64} docker compose up -d
-
-# 或使用 docker-compose
-ALBUM_ARCH=${ALBUM_ARCH:-amd64} docker-compose up -d
-```
-
-#### 6. 验证部署
-
-```bash
-# 查看服务状态
-docker compose ps
-# 或
-docker-compose ps
-
-# 查看日志
-docker compose logs -f
-# 或
-docker-compose logs -f
-
-# 测试 API
-curl http://localhost/api/v1/health
-
-# 查看版本信息
-curl http://localhost/api/v1/version
-```
-
-### 生产环境部署完整示例
-
-```bash
-# 1. 进入 backend 目录
-cd backend
-
-# 2. 创建必要目录
-mkdir -p deploy/data/postgresql \
-         deploy/data \
-         deploy/public \
-         deploy/data/cert \
-         deploy/data/logs/nginx \
-         configs
-
-# 3. 设置架构（根据服务器架构）
-export ALBUM_ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
-
-# 4. 确保 .env 文件已配置（包含 ALBUM_INIT_ADMIN_EMAIL 等）
-
-# 5. 启动服务
-ALBUM_ARCH=${ALBUM_ARCH} docker compose up -d
-
-# 6. 查看状态
-docker compose ps
-docker compose logs -f
-```
-
-### 镜像说明
-
-生产环境使用的镜像：
-
-- **Backend**: `registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest-ARCH`
-- **Nginx**: `registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-ARCH`
-- **PostgreSQL**: `postgres:14`（官方镜像）
-
-Nginx 镜像已包含：
-- ✅ 配置模板文件（`default.conf.template`）
-- ✅ 启动脚本（`docker-entrypoint.sh`）
-- ✅ 所有必需的目录结构
-
-因此不需要挂载配置文件和脚本，只需挂载：
-- SSL 证书目录（如果启用 HTTPS）
-- 日志目录
-
-### 生产环境注意事项
-
-1. **修改认证密钥**：
-   ```bash
-   export ALBUM_AUTH_JWT_SECRET=your-secure-jwt-secret
-   export ALBUM_AUTH_URL_SIGNER_SECRET=your-secure-signer-secret
-   ```
-
-2. **修改数据库密码**：
-   ```bash
-   export ALBUM_POSTGRES_PASSWORD=your-secure-password
-   ```
-
-3. **启用 HTTPS**：
-   ```bash
-   # 将证书放置到 deploy/data/cert/
-   cp your-cert.pem deploy/data/cert/cert.pem
-   cp your-key.pem deploy/data/cert/key.pem
-   
-   # 启用 HTTPS
-   export ALBUM_ENABLE_HTTPS=true
-   ./deploy.sh
-   ```
-
-4. **配置服务器地址**：
-   ```bash
-   export ALBUM_SERVER_PUBLIC_BASE_URL=https://your-domain.com
-   ```
-
-## 部署服务
-
-### 启动所有服务
-
-```bash
-docker-compose up -d
-```
-
-### 停止所有服务
-
-```bash
-docker-compose down
-```
-
-### 重启服务
-
-```bash
-docker-compose restart
-```
-
-### 查看日志
-
-```bash
-# 查看所有服务日志
-docker-compose logs -f
-
-# 查看特定服务日志
-docker-compose logs -f album-backend
-docker-compose logs -f nginx
-docker-compose logs -f postgresql
-```
-
-### 更新服务
-
-```bash
-# 拉取最新镜像
-docker-compose pull
-
-# 重新构建并启动
-docker-compose up -d --build
-```
 
 ## 配置说明
 
@@ -809,52 +333,111 @@ CORS 由 Nginx 统一处理，支持：
 
 应用层 CORS 默认禁用，可通过 `ALBUM_ENABLE_APP_CORS=true` 启用。
 
-### HTTPS 配置
+## HTTPS 配置
 
-详细的 HTTPS 配置说明请参考 [HTTPS 部署指南](./HTTPS.md)。
+### 方式一：自签名证书（测试用）
 
-#### 快速开始
-
-**方式一：使用 Let's Encrypt 自动获取证书（推荐）**
+适用于：本地测试、内网环境、IP 地址访问
 
 ```bash
-# 1. 设置环境变量
-export ALBUM_CERTBOT_DOMAIN=api.example.com
-export ALBUM_CERTBOT_EMAIL=admin@example.com
+# 1. 生成自签名证书
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout deploy/data/cert/key.pem \
+  -out deploy/data/cert/cert.pem \
+  -subj "/CN=47.107.63.140" \
+  -addext "subjectAltName=IP:47.107.63.140"
 
-# 2. 初始化证书
-./scripts/certbot-init.sh
-
-# 3. 启用 HTTPS
-export ALBUM_ENABLE_HTTPS=true
-export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
-docker-compose --profile https up -d
-```
-
-**方式二：使用已有证书**
-
-```bash
-# 1. 放置证书文件
-cp your-cert.pem deploy/data/cert/cert.pem
-cp your-key.pem deploy/data/cert/key.pem
 chmod 600 deploy/data/cert/key.pem
 
 # 2. 启用 HTTPS
 export ALBUM_ENABLE_HTTPS=true
+docker compose up -d nginx
+
+# 3. 测试（使用 -k 忽略证书警告）
+curl -k https://localhost/api/v1/version
+```
+
+**特点**：
+- ✅ 无需域名，支持 IP 地址
+- ✅ 无需外部验证
+- ⚠️ 浏览器会显示"不安全"警告
+- ⚠️ 仅用于测试，不适合生产环境
+
+### 方式二：Let's Encrypt 证书（生产环境）
+
+适用于：生产环境、有域名、需要浏览器信任
+
+#### 前置条件
+
+1. **域名已解析**：域名正确解析到服务器 IP
+2. **80 端口开放**：Let's Encrypt 需要通过 80 端口验证
+3. **防火墙配置**：确保 80 和 443 端口对外开放
+
+#### 部署步骤
+
+```bash
+# 1. 确保服务以 HTTP 模式运行
+export ALBUM_ENABLE_HTTPS=false
+docker compose up -d nginx
+
+# 2. 设置域名和邮箱
+export ALBUM_CERTBOT_DOMAIN=api.example.com
+export ALBUM_CERTBOT_EMAIL=admin@example.com
+
+# 3. 首次测试使用 staging 环境（避免速率限制）
+export ALBUM_CERTBOT_STAGING=true
+./scripts/certbot-init.sh
+
+# 4. 验证成功后，切换到生产环境
+export ALBUM_CERTBOT_STAGING=false
+./scripts/certbot-init.sh
+
+# 5. 启用 HTTPS
+export ALBUM_ENABLE_HTTPS=true
 export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
-docker-compose up -d
+docker compose up -d nginx
+
+# 6. 验证
+curl https://api.example.com/api/v1/version
+```
+
+**特点**：
+- ✅ 浏览器完全信任，无警告
+- ✅ 免费，自动续期
+- ✅ 适合生产环境
+- ⚠️ 需要域名（不支持 IP）
+- ⚠️ 需要域名验证（80 端口必须可访问）
+
+#### 常见问题
+
+**问题 1：证书获取失败 - Connection refused**
+
+**原因**：80 端口无法从外网访问
+
+**解决**：
+1. 检查防火墙：`sudo ufw allow 80/tcp` 或配置云服务商安全组
+2. 检查 frp/内网穿透：确保 80 端口已映射
+3. 运行诊断脚本：`./scripts/check-firewall.sh`
+
+**问题 2：证书获取失败 - 403 Forbidden**
+
+**原因**：Nginx 配置问题或目录权限问题
+
+**解决**：
+1. 检查 Nginx 配置：`docker compose exec nginx cat /etc/nginx/conf.d/default.conf | grep acme-challenge`
+2. 检查目录权限：`ls -la deploy/data/certbot-www/`
+3. 查看 Nginx 日志：`docker compose logs nginx`
+
+**问题 3：证书自动续期**
+
+Certbot 容器会自动每 12 小时检查一次，剩余时间少于 30 天时自动续期。
+
+手动检查证书状态：
+```bash
+./scripts/certbot-check.sh
 ```
 
 更多详细信息请参考 [HTTPS 部署指南](./HTTPS.md)。
-
-### 数据持久化
-
-以下目录会被持久化：
-
-- `./data/postgresql` - PostgreSQL 数据
-- `./data` - 应用数据（媒体文件等）
-- `./data/logs/nginx` - Nginx 日志
-- `./configs` - 配置文件（只读挂载）
 
 ## 验证部署
 
@@ -868,91 +451,64 @@ docker-compose up -d
 
 ### 服务无法启动
 
-1. 检查日志：
-   ```bash
-   docker-compose logs album-backend
-   ```
+```bash
+# 1. 查看日志
+docker compose logs album-backend
+docker compose logs nginx
 
-2. 检查端口占用：
-   ```bash
-   netstat -tulpn | grep -E '80|443|8080|5432'
-   ```
+# 2. 检查容器状态
+docker compose ps
 
-3. 检查环境变量：
-   ```bash
-   docker-compose config
-   ```
+# 3. 检查端口占用
+ss -tuln | grep -E '80|443|8080|5432'
+```
 
 ### 数据库连接失败
 
-1. 检查 PostgreSQL 服务状态：
-   ```bash
-   docker-compose ps postgresql
-   docker-compose logs postgresql
-   ```
+```bash
+# 1. 检查数据库容器
+docker compose ps postgresql
+docker compose logs postgresql
 
-2. 检查数据库连接配置：
-   ```bash
-   # 检查环境变量
-   docker-compose exec album-backend env | grep ALBUM_DATABASE
-   ```
-
-3. 手动连接数据库测试：
-   ```bash
-   docker-compose exec postgresql psql -U album -d album
-   ```
-
-### 大文件上传失败
-
-1. 检查 Nginx 配置：
-   ```bash
-   docker-compose exec nginx cat /etc/nginx/conf.d/default.conf | grep client_max_body_size
-   ```
-
-2. 检查应用配置：
-   ```bash
-   docker-compose exec album-backend env | grep ALBUM_MEDIA_MAX_FILE_SIZE
-   ```
-
-3. 查看 Nginx 错误日志：
-   ```bash
-   docker-compose exec nginx tail -f /var/log/nginx/error.log
-   ```
-
-### CORS 问题
-
-1. 检查 Nginx CORS 配置：
-   ```bash
-   docker-compose exec nginx cat /etc/nginx/conf.d/default.conf | grep -A 10 "location /api"
-   ```
-
-2. 检查请求头：
-   ```bash
-   curl -v -H "Origin: http://localhost" http://localhost/api/v1/health
-   ```
-
-## 目录结构
-
-```
-deploy/
-├── README.md                    # 本文档（已迁移到 doc/DEPLOYMENT/README.md）
-├── init.sh                      # 初始化脚本
-├── default.conf.template        # Nginx 配置模板
-├── docker-entrypoint.sh         # Nginx 启动脚本
-├── linux-amd64/                 # AMD64 平台配置
-│   ├── Dockerfile.base          # 基础镜像
-│   ├── Dockerfile               # 应用镜像
-│   └── docker-compose.yaml      # 编排文件
-└── linux-arm64/                 # ARM64 平台配置
-    ├── Dockerfile.base
-    ├── Dockerfile
-    └── docker-compose.yaml
+# 2. 测试数据库连接
+docker compose exec postgresql psql -U album -d album
 ```
 
-## 支持
+### HTTPS 证书问题
 
-如有问题，请查看：
-- [项目文档](../INDEX.md)
-- [架构文档](../ARCHITECTURE/README.md)
-- [环境变量完整列表](./ENV_VARS.md)
+```bash
+# 1. 检查证书文件
+ls -la deploy/data/cert/
+
+# 2. 检查 Nginx 配置
+docker compose exec nginx nginx -t
+
+# 3. 查看 Nginx 日志
+docker compose logs nginx | grep -i ssl
+
+# 4. 检查证书获取（Let's Encrypt）
+./scripts/certbot-check.sh
+./scripts/check-firewall.sh
+```
+
+### 网络问题
+
+```bash
+# 运行网络诊断脚本
+./scripts/check-firewall.sh
+
+# 检查域名解析
+nslookup your-domain.com
+
+# 测试端口访问
+curl -I http://your-domain.com
+```
+
+更多故障排查信息请参考 [HTTPS 部署指南](./HTTPS.md) 的故障排查章节。
+
+## 相关文档
+
+- [HTTPS 部署指南](./HTTPS.md) - 详细的 HTTPS 配置和故障排查
+- [环境变量完整列表](./ENV_VARS.md) - 所有环境变量说明
+- [架构文档](../ARCHITECTURE/README.md) - 系统架构设计
 

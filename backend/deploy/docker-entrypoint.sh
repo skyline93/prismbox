@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# 注意：/var/www/certbot 是只读挂载，目录结构应在主机上创建
+# 此脚本不尝试创建或修改该目录
+
 # --- 1. 定义模板和目标文件路径 ---
 TEMPLATE_FILE="/etc/nginx/templates/default.conf.template"
 CONFIG_FILE="/etc/nginx/conf.d/default.conf"
@@ -15,8 +18,11 @@ CLIENT_MAX_BODY_SIZE=${CLIENT_MAX_BODY_SIZE:-2G}
 
 # 创建必要的目录并设置权限
 mkdir -p /var/log/nginx /etc/nginx/conf.d /etc/nginx/snippets
-chown -R nginx:nginx /var/log/nginx /etc/nginx/conf.d /etc/nginx/snippets
+chown -R nginx:nginx /var/log/nginx /etc/nginx/conf.d /etc/nginx/snippets 2>/dev/null || true
 chmod -R 755 /var/log/nginx /etc/nginx/conf.d /etc/nginx/snippets
+
+# 注意：/var/www/certbot 是只读挂载（:ro），目录结构应在主机上创建
+# 不在此处创建或修改该目录，避免在只读文件系统上操作失败
 
 # 确保 snippets 配置文件存在
 # 1. 通用配置片段（注意：client_max_body_size 在模板中设置，这里不重复）
@@ -139,14 +145,29 @@ envsubst "$VARS_TO_SUBSTITUTE" < "$TEMPLATE_FILE" > "$CONFIG_FILE"
 # --- 4.5. 确保 acme-challenge 路径存在（用于证书初始化，无论是否启用 HTTPS） ---
 # 如果配置文件中没有 acme-challenge 路径，则添加它
 if ! grep -q "acme-challenge" "$CONFIG_FILE"; then
-    # 在 server 块的通用配置后、API 反向代理前添加 acme-challenge 路径
-    sed -i '/include \/etc\/nginx\/snippets\/proxy.conf;/a\
+    echo "Adding acme-challenge location block to Nginx config..."
+    # 在 include proxy.conf 之后、location /api 之前插入
+    # 使用 sed 的插入功能
+    if grep -q "location /api" "$CONFIG_FILE"; then
+        # 在 location /api 之前插入
+        sed -i '/^[[:space:]]*location \/api {/i\
+    # Let'\''s Encrypt 验证路径（用于证书初始化，无论是否启用 HTTPS）\
+    location /.well-known/acme-challenge/ {\
+        root /var/www/certbot;\
+        try_files $uri =404;\
+    }\
+' "$CONFIG_FILE"
+    elif grep -q "include /etc/nginx/snippets/proxy.conf;" "$CONFIG_FILE"; then
+        # 如果找不到 location /api，在 include proxy.conf 之后添加
+        sed -i '/include \/etc\/nginx\/snippets\/proxy.conf;/a\
 \
     # Let'\''s Encrypt 验证路径（用于证书初始化，无论是否启用 HTTPS）\
     location /.well-known/acme-challenge/ {\
         root /var/www/certbot;\
+        try_files $uri =404;\
     }\
 ' "$CONFIG_FILE"
+    fi
 fi
 
 echo "--- Generated Nginx Config (${CONFIG_FILE}) ---"
