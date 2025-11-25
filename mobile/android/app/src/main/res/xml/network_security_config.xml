@@ -17,4 +17,38 @@
         <domain includeSubdomains="true">47.107.63.140</domain>
     </domain-config>
     -->
+    
+    <!-- 开发环境：支持自签名证书（仅用于测试） -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">47.107.63.140</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+    <!-- 
+    方式一：信任用户安装的证书（需要在设备上手动安装证书）
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    方式二：为特定域名配置自签名证书支持
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">47.107.63.140</domain>
+        <domain includeSubdomains="true">api.example.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+            <certificates src="@raw/server_cert" />
+        </trust-anchors>
+    </domain-config>
+    
+    注意：
+    1. 将服务器证书文件复制到 android/app/src/main/res/raw/server_cert.pem
+    2. 或者让用户在设备上手动安装证书（设置 → 安全 → 加密与凭据）
+    3. 详细说明请参考 docs/SELF_SIGNED_CERT.md
+    -->
 </network-security-config>

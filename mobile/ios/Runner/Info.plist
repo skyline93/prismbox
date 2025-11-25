@@ -87,6 +87,48 @@
 			</dict>
 		</dict>
 		-->
+		
+		<!-- 开发环境：支持自签名证书（仅用于测试） -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>47.107.63.140</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+		<!--
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>47.107.63.140</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>api.example.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+		
+		注意：
+		1. 用户需要在设备上手动安装证书（设置 → 通用 → VPN与设备管理）
+		2. 或者使用 NSAllowsArbitraryLoads（不推荐，仅用于开发）
+		3. 详细说明请参考 docs/SELF_SIGNED_CERT.md
+		-->
 	</dict>
 	<key>FLTEnableImpeller</key>
 	<true/>
