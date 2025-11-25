@@ -291,10 +291,11 @@ class BackupgroundUploadService {
   }
 
   Future<void> enqueueMultipleJobs(
-    List<UnifiedMediaEntity> unifiedMediaEntity,
-  ) async {
+    List<UnifiedMediaEntity> unifiedMediaEntity, {
+    UploadSource source = UploadSource.autoBackup, // 默认为自动备份
+  }) async {
     final List<UploadTaskPayload> uploadTasks =
-        await _prepareUploadTasksInMainIsolate(unifiedMediaEntity);
+        await _prepareUploadTasksInMainIsolate(unifiedMediaEntity, source: source);
 
     if (uploadTasks.isEmpty) {
       debugPrint("后台任务：没有找到可上传的文件。");
@@ -334,8 +335,9 @@ class BackupgroundUploadService {
     bool canUpload = true;
     UploadJobStatus initialStatus = UploadJobStatus.uploading;
 
-    // [阶段三 修正]: 检查列表中是否包含 Wi-Fi
-    if (backupSettings.isBackupOnWifiOnly &&
+    // 仅在自动备份时检查WiFi限制，创建帖子上传不受WiFi限制
+    if (taskPayload.source == UploadSource.autoBackup &&
+        backupSettings.isBackupOnWifiOnly &&
         !connectivityResults.contains(ConnectivityResult.wifi)) {
       canUpload = false;
       initialStatus = UploadJobStatus.waitingForWifi;
@@ -379,6 +381,7 @@ class BackupgroundUploadService {
         'hash': fileHash,
         'item_type': taskPayload.mediaType.name,
         'original_filename': filename,
+        'media_taken_at': taskPayload.mediaTakenAt.toUtc().toIso8601String(), // 传递媒体拍摄时间（RFC3339格式，UTC时区）
       };
 
       // [认证优化]: 在任务创建时动态获取有效的token
@@ -429,8 +432,9 @@ class BackupgroundUploadService {
   }
 
   Future<List<UploadTaskPayload>> _prepareUploadTasksInMainIsolate(
-    List<UnifiedMediaEntity> entities,
-  ) async {
+    List<UnifiedMediaEntity> entities, {
+    UploadSource source = UploadSource.autoBackup,
+  }) async {
     final List<Future<UploadTaskPayload?>> futures = entities.map((
       entity,
     ) async {
@@ -455,6 +459,7 @@ class BackupgroundUploadService {
             assetId: asset.id,
             mediaType: asset.type.toMediaType(),
             mediaTakenAt: asset.createDateTime, // 使用 AssetEntity 的 createDateTime（拍摄时间或创建时间）
+            source: source, // 传递来源
           );
         } else {
           debugPrint('无法为 Asset ${asset.id} 获取文件，跳过上传。');
@@ -477,11 +482,14 @@ class UploadFileInput {
   final String assetId;
   final MediaType mediaType;
   final DateTime mediaTakenAt;
+  final UploadSource source; // 上传来源
+  
   UploadFileInput({
     required this.file,
     required this.assetId,
     required this.mediaType,
     required this.mediaTakenAt,
+    this.source = UploadSource.post, // 默认为创建帖子
   });
 }
 
@@ -495,6 +503,7 @@ extension BackupgroundUploadServiceExtensions on BackupgroundUploadService {
         assetId: i.assetId,
         mediaType: i.mediaType,
         mediaTakenAt: i.mediaTakenAt,
+        source: i.source, // 传递来源
       );
       try {
         await _enqueueUploadJob(payload, downloader);

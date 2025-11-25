@@ -82,3 +82,9 @@ enum UploadJobStatus {
   // [阶段三 新增]: 用于表示任务因网络限制而等待
   waitingForWifi,
 }
+
+enum UploadSource {
+  manual,      // 手动上传
+  post,        // 创建帖子
+  autoBackup,  // 自动备份
+}

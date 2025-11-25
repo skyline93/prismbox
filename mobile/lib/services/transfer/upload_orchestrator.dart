@@ -16,12 +16,14 @@ class UploadTaskPayload {
   final String assetId;
   final MediaType mediaType;
   final DateTime mediaTakenAt; // 媒体拍摄时间（如果没有拍摄时间则使用创建时间）
+  final UploadSource source; // 上传来源
 
   UploadTaskPayload({
     required this.file,
     required this.assetId,
     required this.mediaType,
     required this.mediaTakenAt,
+    this.source = UploadSource.manual, // 默认为手动上传
   });
 }
 
@@ -30,10 +32,11 @@ class UploadOrchestrator {
   UploadOrchestrator();
 
   Future<void> processAndEnqueueUploads(
-    List<UnifiedMediaEntity> entities,
-  ) async {
+    List<UnifiedMediaEntity> entities, {
+    UploadSource source = UploadSource.manual, // 新增参数，默认为手动上传
+  }) async {
     try {
-      await _runBackgroundTask(entities);
+      await _runBackgroundTask(entities, source: source);
     } catch (error, stackTrace) {
       debugPrint("后台上传准备任务失败: $error\n$stackTrace");
       // 你可能希望在这里重新抛出异常，以便调用方可以捕获它
@@ -41,9 +44,12 @@ class UploadOrchestrator {
     }
   }
 
-  Future<void> _runBackgroundTask(List<UnifiedMediaEntity> entities) async {
+  Future<void> _runBackgroundTask(
+    List<UnifiedMediaEntity> entities, {
+    UploadSource source = UploadSource.manual,
+  }) async {
     final List<UploadTaskPayload> uploadTasks =
-        await _prepareUploadTasksInMainIsolate(entities);
+        await _prepareUploadTasksInMainIsolate(entities, source: source);
 
     if (uploadTasks.isEmpty) {
       debugPrint("后台任务：没有找到可上传的文件。");
@@ -62,8 +68,9 @@ class UploadOrchestrator {
   /// 在主 Isolate 中处理所有平台通道调用，以准备上传负载。
   /// 使用 `Future.wait` 来并发获取文件，提高效率。
   Future<List<UploadTaskPayload>> _prepareUploadTasksInMainIsolate(
-    List<UnifiedMediaEntity> entities,
-  ) async {
+    List<UnifiedMediaEntity> entities, {
+    UploadSource source = UploadSource.manual,
+  }) async {
     final List<Future<UploadTaskPayload?>> futures = entities.map((
       entity,
     ) async {
@@ -88,6 +95,7 @@ class UploadOrchestrator {
             assetId: asset.id,
             mediaType: asset.type.toMediaType(),
             mediaTakenAt: asset.createDateTime, // 使用 AssetEntity 的 createDateTime（拍摄时间或创建时间）
+            source: source, // 传递来源
           );
         } else {
           debugPrint('无法为 Asset ${asset.id} 获取文件，跳过上传。');

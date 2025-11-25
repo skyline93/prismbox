@@ -179,8 +179,9 @@ class UploadService {
     bool canUpload = true;
     UploadJobStatus initialStatus = UploadJobStatus.uploading;
 
-    // [阶段三 修正]: 检查列表中是否包含 Wi-Fi
-    if (backupSettings.isBackupOnWifiOnly &&
+    // 仅在自动备份时检查WiFi限制
+    if (taskPayload.source == UploadSource.autoBackup &&
+        backupSettings.isBackupOnWifiOnly &&
         !connectivityResults.contains(ConnectivityResult.wifi)) {
       canUpload = false;
       initialStatus = UploadJobStatus.waitingForWifi;

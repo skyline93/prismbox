@@ -3,6 +3,7 @@
 import 'dart:isolate';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/data/datasources/local_db/app_database.dart';
 import 'package:mobile/domain/entities/unified_media_entity.dart';
 import 'package:mobile/features/background_jobs/core/contracts/isolate_task_handler.dart';
@@ -70,8 +71,11 @@ class AutoBackupIsolateHandler implements IsolateTaskHandler {
       return 'Assets found but could not be converted.';
     }
 
-    // 4. 调用接口加入上传队列
-    await _uploadOrchestrator.processAndEnqueueUploads(entitiesToUpload);
+    // 4. 调用接口加入上传队列，标识为自动备份
+    await _uploadOrchestrator.processAndEnqueueUploads(
+      entitiesToUpload,
+      source: UploadSource.autoBackup,
+    );
 
     _log.info(
       'Successfully enqueued ${entitiesToUpload.length} assets for upload.',
