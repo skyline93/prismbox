@@ -2,6 +2,17 @@
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// 证书类型枚举
+enum CertificateType {
+    /// Let's Encrypt 或其他受信任 CA 颁发的证书（生产环境）
+    /// 系统自动信任，无需特殊配置
+    trusted,
+
+    /// 自签名证书（测试环境）
+    /// 需要配置允许的域名/IP 列表
+    selfSigned,
+  }
+
 class AppConfig {
   AppConfig._();
 
@@ -14,10 +25,10 @@ class ApiConfig {
 
   // 默认服务器地址（生产环境使用 HTTPS）
   // 注意：如果后端启用了 HTTPS，请将地址改为 https://
-  static const String defaultServerAddr = 'https://47.107.63.140';
+  // static const String defaultServerAddr = 'https://47.107.63.140';
   // static const String defaultServerAddr = 'https://api.example.com';  // HTTPS 示例
   // static const String defaultServerAddr = 'http://10.0.2.2';  // Android 模拟器
-  // static const String defaultServerAddr = 'http://127.0.0.1';
+  static const String defaultServerAddr = 'https://127.0.0.1';
   // static const String defaultServerAddr = 'http://10.168.1.161';
 
   // 支持从本地存储读取自定义服务器地址
@@ -51,17 +62,6 @@ class SslConfig {
   /// 是否启用 HTTPS
   /// 如果为 true，服务器地址应使用 https:// 协议
   static const bool enableHttps = true;
-
-  /// 证书类型枚举
-  enum CertificateType {
-    /// Let's Encrypt 或其他受信任 CA 颁发的证书（生产环境）
-    /// 系统自动信任，无需特殊配置
-    trusted,
-
-    /// 自签名证书（测试环境）
-    /// 需要配置允许的域名/IP 列表
-    selfSigned,
-  }
 
   /// 当前使用的证书类型
   /// 
