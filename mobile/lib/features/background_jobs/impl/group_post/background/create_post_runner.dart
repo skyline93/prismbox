@@ -126,6 +126,7 @@ class CreatePostRunner {
           assetId: localId,
           mediaType: mediaType,
           mediaTakenAt: DateTime.fromMillisecondsSinceEpoch(takenAtMs),
+          source: UploadSource.post,
         ));
         waitIds.add(localId);
       }

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:mobile/core/enums.dart';
 import 'package:mobile/providers/providers.dart';
 import 'package:mobile/routing/app_router.dart';
 import 'package:auto_route/auto_route.dart';
@@ -76,7 +77,10 @@ class MediaSelectionDrawer extends ConsumerWidget {
                       // 2. 立即触发后台任务，不等待其完成
                       ref
                           .read(uploadOrchestratorProvider)
-                          .processAndEnqueueUploads(selectedItems.toList());
+                          .processAndEnqueueUploads(
+                            selectedItems.toList(),
+                            UploadSource.manual,
+                          );
 
                       // 3. 立即更新UI：清空选择并导航到新页面
                       selectionNotifier.clearSelection();

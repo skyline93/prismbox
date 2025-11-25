@@ -75,7 +75,10 @@ class AutoBackupHandler {
     // 4. 调用接口加入上传队列
 
     final uploadService = getIt<BackupgroundUploadService>();
-    await uploadService.enqueueMultipleJobs(entitiesToUpload);
+    await uploadService.enqueueMultipleJobs(
+      entitiesToUpload,
+      UploadSource.autoBackup,
+    );
 
     _log.info(
       'Successfully enqueued ${entitiesToUpload.length} assets for upload.',
@@ -291,11 +294,11 @@ class BackupgroundUploadService {
   }
 
   Future<void> enqueueMultipleJobs(
-    List<UnifiedMediaEntity> unifiedMediaEntity, {
-    UploadSource source = UploadSource.autoBackup, // 默认为自动备份
-  }) async {
+    List<UnifiedMediaEntity> unifiedMediaEntity,
+    UploadSource source, // 必传参数
+  ) async {
     final List<UploadTaskPayload> uploadTasks =
-        await _prepareUploadTasksInMainIsolate(unifiedMediaEntity, source: source);
+        await _prepareUploadTasksInMainIsolate(unifiedMediaEntity, source);
 
     if (uploadTasks.isEmpty) {
       debugPrint("后台任务：没有找到可上传的文件。");
@@ -432,9 +435,9 @@ class BackupgroundUploadService {
   }
 
   Future<List<UploadTaskPayload>> _prepareUploadTasksInMainIsolate(
-    List<UnifiedMediaEntity> entities, {
-    UploadSource source = UploadSource.autoBackup,
-  }) async {
+    List<UnifiedMediaEntity> entities,
+    UploadSource source,
+  ) async {
     final List<Future<UploadTaskPayload?>> futures = entities.map((
       entity,
     ) async {
@@ -489,7 +492,7 @@ class UploadFileInput {
     required this.assetId,
     required this.mediaType,
     required this.mediaTakenAt,
-    this.source = UploadSource.post, // 默认为创建帖子
+    required this.source, // 必传参数
   });
 }
 

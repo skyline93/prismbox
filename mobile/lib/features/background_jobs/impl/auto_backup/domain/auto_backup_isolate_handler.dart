@@ -74,7 +74,7 @@ class AutoBackupIsolateHandler implements IsolateTaskHandler {
     // 4. 调用接口加入上传队列，标识为自动备份
     await _uploadOrchestrator.processAndEnqueueUploads(
       entitiesToUpload,
-      source: UploadSource.autoBackup,
+      UploadSource.autoBackup,
     );
 
     _log.info(

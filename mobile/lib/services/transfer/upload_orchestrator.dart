@@ -23,7 +23,7 @@ class UploadTaskPayload {
     required this.assetId,
     required this.mediaType,
     required this.mediaTakenAt,
-    this.source = UploadSource.manual, // 默认为手动上传
+    required this.source, // 必传参数
   });
 }
 
@@ -32,11 +32,11 @@ class UploadOrchestrator {
   UploadOrchestrator();
 
   Future<void> processAndEnqueueUploads(
-    List<UnifiedMediaEntity> entities, {
-    UploadSource source = UploadSource.manual, // 新增参数，默认为手动上传
-  }) async {
+    List<UnifiedMediaEntity> entities,
+    UploadSource source, // 必传参数
+  ) async {
     try {
-      await _runBackgroundTask(entities, source: source);
+      await _runBackgroundTask(entities, source);
     } catch (error, stackTrace) {
       debugPrint("后台上传准备任务失败: $error\n$stackTrace");
       // 你可能希望在这里重新抛出异常，以便调用方可以捕获它
@@ -45,11 +45,11 @@ class UploadOrchestrator {
   }
 
   Future<void> _runBackgroundTask(
-    List<UnifiedMediaEntity> entities, {
-    UploadSource source = UploadSource.manual,
-  }) async {
+    List<UnifiedMediaEntity> entities,
+    UploadSource source,
+  ) async {
     final List<UploadTaskPayload> uploadTasks =
-        await _prepareUploadTasksInMainIsolate(entities, source: source);
+        await _prepareUploadTasksInMainIsolate(entities, source);
 
     if (uploadTasks.isEmpty) {
       debugPrint("后台任务：没有找到可上传的文件。");
@@ -68,9 +68,9 @@ class UploadOrchestrator {
   /// 在主 Isolate 中处理所有平台通道调用，以准备上传负载。
   /// 使用 `Future.wait` 来并发获取文件，提高效率。
   Future<List<UploadTaskPayload>> _prepareUploadTasksInMainIsolate(
-    List<UnifiedMediaEntity> entities, {
-    UploadSource source = UploadSource.manual,
-  }) async {
+    List<UnifiedMediaEntity> entities,
+    UploadSource source,
+  ) async {
     final List<Future<UploadTaskPayload?>> futures = entities.map((
       entity,
     ) async {

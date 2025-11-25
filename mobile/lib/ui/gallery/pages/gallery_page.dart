@@ -338,9 +338,10 @@ class GalleryPage extends HookConsumerWidget {
           icon: const Icon(Icons.cloud_upload_outlined),
           tooltip: '上传到云端',
           onPressed: () async {
-            ref.read(uploadOrchestratorProvider).processAndEnqueueUploads([
-              entity,
-            ]);
+            ref.read(uploadOrchestratorProvider).processAndEnqueueUploads(
+              [entity],
+              UploadSource.manual,
+            );
           },
         );
       case SyncStatus.uploadFailed:
@@ -351,9 +352,10 @@ class GalleryPage extends HookConsumerWidget {
           ),
           tooltip: '上传失败，点击重试',
           onPressed: () async {
-            ref.read(uploadOrchestratorProvider).processAndEnqueueUploads([
-              entity,
-            ]);
+            ref.read(uploadOrchestratorProvider).processAndEnqueueUploads(
+              [entity],
+              UploadSource.manual,
+            );
           },
         );
       case SyncStatus.uploading:
