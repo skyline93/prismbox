@@ -58,13 +58,19 @@ class UploadService {
     TaskStatus status,
     TaskException? exception,
   ) async {
-    if (task.metaData.isEmpty) return;
+    _log.info('收到任务状态更新: taskId=${task.taskId}, status=$status, exception=$exception');
+    
+    if (task.metaData.isEmpty) {
+      _log.warning('任务 ${task.taskId} 元数据为空，无法处理状态更新');
+      return;
+    }
+    
     final metadata = jsonDecode(task.metaData);
     final jobId = metadata['jobId'] as String?;
     final assetId = metadata['assetId'] as String?;
 
     if (jobId == null || assetId == null) {
-      _log.warning('任务 ${task.taskId} 状态更新元数据不完整。');
+      _log.warning('任务 ${task.taskId} 状态更新元数据不完整: jobId=$jobId, assetId=$assetId');
       return;
     }
 
@@ -78,7 +84,15 @@ class UploadService {
       return;
     }
 
-    _log.fine('上传任务 ${job.jobId} (资源 $assetId) 状态更新: $status');
+    _log.info('上传任务 ${job.jobId} (资源 $assetId) 状态更新: $status');
+    
+    // 如果任务失败，输出详细的错误信息
+    if (status == TaskStatus.failed && exception != null) {
+      _log.severe('任务失败详情: taskId=${task.taskId}, jobId=$jobId, assetId=$assetId');
+      _log.severe('异常类型: ${exception.runtimeType}');
+      _log.severe('异常描述: ${exception.description}');
+      _log.severe('异常详细信息: ${exception.toString()}');
+    }
 
     if (status == TaskStatus.complete) {
       _log.info('上传任务 ${job.jobId} (资源 $assetId) 成功完成。');
@@ -102,7 +116,14 @@ class UploadService {
       }
     } else if (status == TaskStatus.failed || status == TaskStatus.canceled) {
       if (status == TaskStatus.failed) {
-        _log.severe('上传任务 ${job.jobId} (资源 $assetId) 失败。', exception);
+        _log.severe('上传任务 ${job.jobId} (资源 $assetId) 失败。');
+        if (exception != null) {
+          _log.severe('失败异常详情: ${exception.toString()}');
+          _log.severe('异常描述: ${exception.description}');
+          _log.severe('异常类型: ${exception.runtimeType}');
+        } else {
+          _log.severe('失败但未提供异常信息');
+        }
       } else {
         _log.warning('上传任务 ${job.jobId} (资源 $assetId) 已被用户取消。');
       }
@@ -228,15 +249,27 @@ class UploadService {
       };
 
       // [认证优化]: 在任务创建时动态获取有效的token
+      _log.info('任务 $jobId: 开始获取访问令牌...');
       final accessToken = await _authHandler.getValidAccessToken();
       if (accessToken == null) {
         _log.severe('上传失败: 任务 $jobId 无法获取有效的访问令牌。');
         throw Exception('Cannot get valid access token for job $jobId');
       }
+      _log.info('任务 $jobId: 成功获取访问令牌 (长度: ${accessToken.length})');
+
+      final uploadUrl = '${ApiConfig.baseUrlSync}/media/upload-stream';
+      _log.info('任务 $jobId: 创建上传任务');
+      _log.info('  - URL: $uploadUrl');
+      _log.info('  - 文件路径: ${taskPayload.file.path}');
+      _log.info('  - 文件大小: $totalSize 字节');
+      _log.info('  - 文件名: $filename');
+      _log.info('  - 文件哈希: $fileHash');
+      _log.info('  - 字段: $fields');
+      _log.info('  - Headers: Authorization=Bearer ${accessToken.substring(0, 20)}...');
 
       final task = UploadTask.fromFile(
         file: taskPayload.file,
-        url: '${ApiConfig.baseUrlSync}/media/upload-stream',
+        url: uploadUrl,
         fileField: 'file',
         fields: fields,
         headers: {'Authorization': 'Bearer $accessToken'},
@@ -252,9 +285,10 @@ class UploadService {
         ),
       );
 
+      _log.info('任务 $jobId: 准备入队，taskId=${task.taskId}');
       // _taskQueue.add(task);
       await FileDownloader().enqueue(task);
-      _log.info('任务 $jobId 已成功加入后台上传队列。');
+      _log.info('任务 $jobId (taskId=${task.taskId}) 已成功加入后台上传队列。');
     });
 
     return jobId;

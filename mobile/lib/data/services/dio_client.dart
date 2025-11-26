@@ -1,9 +1,7 @@
 // lib/data/services/dio_client.dart
 
 import 'dart:developer';
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:injectable/injectable.dart';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
@@ -11,6 +9,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:mobile/core/storage/secure_storage_service.dart';
 import 'package:mobile/data/models/auth/auth_model.dart';
 import 'package:mobile/config/app_config.dart';
+import 'package:mobile/utils/dio_ssl_config.dart';
 
 @lazySingleton
 class DioClient {
@@ -35,9 +34,9 @@ class DioClient {
     _initBaseUrl();
     
     // 配置 SSL（根据 AppConfig 中的配置）
-    _configureSsl(dio);
-    _configureSsl(fileDio);
-    _configureSsl(_tokenDio);
+    DioSslConfig.configureSsl(dio);
+    DioSslConfig.configureSsl(fileDio);
+    DioSslConfig.configureSsl(_tokenDio);
     
     // ---- 1. 配置常规API的Dio实例 (dio) ----
     // baseUrl 将在 _initBaseUrl 中异步设置
@@ -142,31 +141,6 @@ class DioClient {
     }
   }
 
-  /// 根据 AppConfig 配置 SSL/TLS
-  /// 
-  /// 如果使用自签名证书，需要配置 badCertificateCallback
-  /// 如果使用受信任证书（Let's Encrypt），使用默认配置，无需特殊处理
-  void _configureSsl(Dio dioInstance) {
-    // 如果使用自签名证书，需要配置 badCertificateCallback
-    if (SslConfig.allowSelfSignedCert) {
-      (dioInstance.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient();
-        client.badCertificateCallback = (X509Certificate cert, String host, int port) {
-          // 检查是否在允许列表中
-          final isAllowed = SslConfig.isAllowedSelfSignedHost(host);
-          if (isAllowed) {
-            log('⚠️ 允许自签名证书: $host:$port');
-          } else {
-            log('❌ 拒绝自签名证书: $host:$port (不在允许列表中)');
-          }
-          return isAllowed;
-        };
-        return client;
-      };
-    }
-    // 如果使用受信任证书（Let's Encrypt），使用默认配置，无需特殊处理
-    // Dio 的 HttpClient 会自动信任系统信任的证书
-  }
 
   InterceptorsWrapper _createAuthInterceptor() {
     return InterceptorsWrapper(onRequest: _onRequest, onError: _onError);

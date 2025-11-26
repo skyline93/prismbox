@@ -68,37 +68,28 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- 生产环境：禁用任意加载，仅允许 HTTPS -->
-		<!-- 移除 NSAllowsArbitraryLoads -->
+		<!-- 开发环境：允许所有连接（包括自签名证书） -->
+		<!-- ⚠️ 警告：仅用于开发/测试环境，不要用于生产环境！ -->
+		<!-- 生产环境应使用 Let's Encrypt 等受信任证书，并移除 NSAllowsArbitraryLoads -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 		
-		<!-- 开发环境：如果需要支持 HTTP，可以添加特定域名例外 -->
-		<!--
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-			<key>127.0.0.1</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
-		-->
-		
-		<!-- 开发环境：支持自签名证书（仅用于测试） -->
+		<!-- 为特定域名添加更明确的配置，确保后台上传任务也能正常工作 -->
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>47.107.63.140</key>
 			<dict>
+				<!-- 不允许不安全的 HTTP，强制使用 HTTPS -->
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<false/>
+				<!-- 禁用前向保密要求（允许自签名证书） -->
 				<key>NSExceptionRequiresForwardSecrecy</key>
 				<false/>
+				<!-- 包含子域名 -->
 				<key>NSIncludesSubdomains</key>
 				<true/>
+				<!-- 允许任意加载（包括自签名证书） -->
+				<!-- 注意：这个键可能不是标准的，但有助于后台上传任务 -->
 			</dict>
 			<key>127.0.0.1</key>
 			<dict>
@@ -110,34 +101,6 @@
 				<true/>
 			</dict>
 		</dict>
-		<!--
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>47.107.63.140</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionRequiresForwardSecrecy</key>
-				<false/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>api.example.com</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionRequiresForwardSecrecy</key>
-				<false/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-		</dict>
-		
-		注意：
-		1. 用户需要在设备上手动安装证书（设置 → 通用 → VPN与设备管理）
-		2. 或者使用 NSAllowsArbitraryLoads（不推荐，仅用于开发）
-		3. 详细说明请参考 docs/SELF_SIGNED_CERT.md
-		-->
 	</dict>
 	<key>FLTEnableImpeller</key>
 	<true/>
