@@ -1,0 +1,40 @@
+// lib/data/database/tables/local_album_entity.dart
+
+import 'package:drift/drift.dart';
+import 'package:prismbox/data/database/tables/mixins/drift_defaults_mixin.dart';
+import 'package:prismbox/data/database/tables/remote_album_entity.dart';
+import 'package:prismbox/data/database/enums/backup_selection.dart';
+
+/// 本地相册实体表
+/// 存储设备上的相册信息
+@DataClassName('LocalAlbumEntityData')
+class LocalAlbumEntity extends Table with DriftDefaultsMixin {
+  const LocalAlbumEntity();
+
+  /// 主键（设备相册 ID）
+  TextColumn get id => text()();
+  
+  /// 相册名称
+  TextColumn get name => text()();
+  
+  /// 更新时间
+  DateTimeColumn get updatedAt => dateTime()();
+  
+  /// 备份选择枚举（none/selected/excluded）
+  IntColumn get backupSelection => integer()
+      .map(intEnum<BackupSelection>())
+      .withDefault(const Constant(BackupSelection.none))();
+  
+  /// 是否为 iOS 共享相册
+  BoolColumn get isIosSharedAlbum => boolean()
+      .withDefault(const Constant(false))();
+  
+  /// 关联的远程相册 ID
+  TextColumn get linkedRemoteAlbumId => text()
+      .nullable()
+      .references(RemoteAlbumEntity, #id, onDelete: KeyAction.setNull)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
