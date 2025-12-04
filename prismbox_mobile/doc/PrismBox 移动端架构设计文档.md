@@ -579,7 +579,7 @@ abstract class MediaRepository {
 #### 3.3.3 智能端点发现
 
 **端点发现流程**：
-1. 优先尝试 `/.well-known/immich` 发现端点
+1. 优先尝试 `/.well-known/prismbox` 发现端点
 2. 使用 `pingServer()` 验证端点可用性
 3. 支持端点切换（本地/远程）
 
@@ -592,13 +592,19 @@ abstract class MediaRepository {
 
 **统一异常处理**：
 - ApiException 统一异常类型
-- 网络错误自动重试
+- 网络错误自动重试（通过拦截器）
 - 友好的错误提示
+- 401 错误自动清除 Token 并触发回调
+
+**响应格式处理**：
+- 自动解析后端 `ApiResponse{code, message, data}` 格式
+- 自动提取业务数据，无需手动解析
 
 **重试机制**：
-- 指数退避策略
-- 可配置重试次数
-- 网络状态检测
+- 自动重试拦截器（网络错误和 5xx 错误）
+- 指数退避策略（1秒、2秒、3秒）
+- 最大重试 3 次
+- 支持手动重试控制（RetryHelper）
 
 ### 3.4 数据库模块
 
@@ -836,8 +842,10 @@ abstract class MediaRepository {
    - 实现数据迁移机制
 
 3. **API 对接架构**
-   - 实现 ApiService 统一管理
-   - 实现认证机制（Token 管理）
+   - 实现 ApiService 统一管理（基于 Dio）
+   - 实现认证机制（Token 管理，拦截器自动注入）
+   - 实现响应格式处理（自动解析 ApiResponse）
+   - 实现错误处理和重试机制（拦截器）
    - 实现 HTTP/HTTPS 支持
    - 实现端点发现机制
 
@@ -1253,13 +1261,20 @@ lib/
 │   │   ├── album_repository_impl.dart
 │   │   └── user_repository_impl.dart
 │   ├── api/                     # API 客户端
-│   │   ├── api_service.dart             # 统一 API 服务
-│   │   ├── dio_client.dart              # Dio 客户端配置
+│   │   ├── api_service.dart             # 统一 API 服务（Dio实现，包含所有拦截器）
+│   │   ├── models/
+│   │   │   └── api_response.dart        # 统一响应模型类
+│   │   ├── exceptions/
+│   │   │   ├── api_exception.dart       # API异常定义
+│   │   │   └── api_error_handler.dart   # 错误处理工具
 │   │   ├── ssl/                         # SSL 配置
-│   │   │   └── http_ssl_options.dart
-│   │   └── interceptors/                # 拦截器
-│   │       ├── auth_interceptor.dart
-│   │       └── error_interceptor.dart
+│   │   │   ├── http_ssl_options.dart
+│   │   │   └── http_ssl_cert_override.dart
+│   │   ├── network/
+│   │   │   └── endpoint_discovery.dart   # 端点发现服务
+│   │   └── utils/
+│   │       ├── retry_helper.dart        # 重试工具
+│   │       └── url_helper.dart           # URL工具类
 │   └── network/                 # 网络层
 │       ├── endpoint_discovery.dart      # 端点发现
 │       └── connectivity_service.dart    # 网络连接检测

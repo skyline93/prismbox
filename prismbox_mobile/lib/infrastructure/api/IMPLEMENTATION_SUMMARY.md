@@ -18,23 +18,30 @@
 - 数据库版本已更新到2
 - 自动创建Store表
 
-### 2. OpenAPI客户端生成脚本 ✅
+### 2. Dio 方式 API 对接实现 ✅
 
 **文件位置**：
-- `scripts/generate_openapi_client.sh` - 生成脚本
-- `lib/infrastructure/api/generated/README.md` - 使用说明
-- `lib/infrastructure/api/generated/openapi_client_wrapper.dart` - 客户端包装器
+- `lib/infrastructure/api/api_service.dart` - 统一API服务（Dio实现）
+- `lib/infrastructure/api/models/api_response.dart` - 统一响应模型类
+- `lib/infrastructure/api/DIO_USAGE.md` - 使用指南
+- `lib/infrastructure/api/DIO_REFACTOR_SUMMARY.md` - 整改总结
 
 **功能**：
-- 从swagger.yaml自动生成Dart客户端
-- 提供客户端包装器便于集成
-- 包含完整的使用文档
+- 使用 Dio 作为 HTTP 客户端
+- 统一响应格式处理（自动解析 `ApiResponse{code, message, data}`）
+- 自动重试机制（网络错误和 5xx 错误）
+- 自动错误转换（统一转换为 `ApiException`）
+- 401 自动处理（清除 Token 并触发回调）
+- 文件上传支持（专用 Dio 实例，超时时间更长）
+- 日志拦截器（记录请求/响应/错误）
+- 连接池配置（最大 16 个连接）
 
-**使用方法**：
-```bash
-npm install -g @openapitools/openapi-generator-cli
-./scripts/generate_openapi_client.sh
-```
+**核心拦截器**：
+- `_LoggingInterceptor` - 日志记录
+- `_AuthInterceptor` - 认证头注入
+- `_ResponseInterceptor` - 响应格式处理
+- `_RetryInterceptor` - 自动重试
+- `_ErrorInterceptor` - 错误转换
 
 ### 3. Android原生SSL配置 ✅
 
@@ -67,11 +74,15 @@ npm install -g @openapitools/openapi-generator-cli
 - ✅ Token存储和管理
 - ✅ 客户端证书存储
 
-### API服务
-- ✅ ApiService核心实现
+### API服务（Dio方式）
+- ✅ ApiService核心实现（基于Dio）
 - ✅ 端点管理
-- ✅ 认证管理
+- ✅ 认证管理（自动注入认证头）
 - ✅ 设备信息头设置
+- ✅ 统一响应格式处理
+- ✅ 自动重试机制
+- ✅ 日志拦截器
+- ✅ 文件上传专用Dio实例
 
 ### SSL配置
 - ✅ HttpSSLOptions管理
@@ -89,7 +100,8 @@ npm install -g @openapitools/openapi-generator-cli
 - ✅ 统一错误处理
 
 ### 重试机制
-- ✅ RetryHelper实现
+- ✅ RetryHelper实现（手动重试工具）
+- ✅ _RetryInterceptor实现（自动重试拦截器）
 - ✅ 指数退避策略
 - ✅ 可配置重试
 
@@ -112,21 +124,22 @@ lib/
 │
 └── infrastructure/
     └── api/
-        ├── api_service.dart
+        ├── api_service.dart (Dio实现)
+        ├── models/
+        │   └── api_response.dart (统一响应模型)
         ├── exceptions/
         │   ├── api_exception.dart
         │   └── api_error_handler.dart
         ├── ssl/
-        │   ├── http_ssl_options.dart (已更新)
+        │   ├── http_ssl_options.dart
         │   └── http_ssl_cert_override.dart
         ├── network/
         │   └── endpoint_discovery.dart
         ├── utils/
         │   ├── retry_helper.dart
         │   └── url_helper.dart
-        └── generated/
-            ├── README.md
-            └── openapi_client_wrapper.dart
+        ├── DIO_USAGE.md (使用指南)
+        └── DIO_REFACTOR_SUMMARY.md (整改总结)
 
 android/
 └── app/
@@ -138,9 +151,6 @@ android/
                 └── com/u163/glf9832/prismbox/
                     └── MainActivity.kt (已更新)
 
-scripts/
-├── generate_openapi_client.sh (新增)
-└── README.md (新增)
 ```
 
 ## 下一步操作
@@ -153,16 +163,9 @@ flutter pub get
 flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
-### 2. 生成OpenAPI客户端
+### 2. 集成到应用
 
-```bash
-npm install -g @openapitools/openapi-generator-cli
-./scripts/generate_openapi_client.sh
-```
-
-### 3. 集成到应用
-
-参考 `INTEGRATION_GUIDE.md` 进行完整集成。
+参考 `INTEGRATION_GUIDE.md` 和 `DIO_USAGE.md` 进行完整集成。
 
 ## 测试建议
 
@@ -179,22 +182,29 @@ npm install -g @openapitools/openapi-generator-cli
 3. **API调用测试**：
    - 测试端点发现
    - 测试认证头注入
+   - 测试响应格式处理
    - 测试错误处理
-   - 测试重试机制
+   - 测试自动重试机制
+   - 测试401自动处理
+   - 测试文件上传
 
 ## 注意事项
 
 1. **数据库迁移**：首次运行时会自动从版本1迁移到版本2，添加Store表。
 
-2. **OpenAPI客户端**：生成客户端后需要手动更新`openapi_client_wrapper.dart`或在`ApiService`中直接使用生成的客户端。
+2. **响应格式**：响应拦截器已自动处理 `ApiResponse` 格式，`response.data` 直接是业务数据，无需手动解析。
 
-3. **Android插件**：确保`MainActivity`正确注册了插件，否则Android原生SSL配置不会生效。
+3. **401错误**：必须设置 `onUnauthorized` 回调，否则不会自动跳转登录。
+
+4. **Android插件**：确保`MainActivity`正确注册了插件，否则Android原生SSL配置不会生效。
 
 4. **依赖安装**：运行`flutter pub get`安装所有依赖。
 
 ## 参考文档
 
+- [Dio 使用指南](./DIO_USAGE.md) - 详细的使用说明和示例
+- [整改总结](./DIO_REFACTOR_SUMMARY.md) - 整改完成情况
+- [集成指南](./INTEGRATION_GUIDE.md) - 集成步骤
 - [API对接模块详细设计文档](../../doc/modules/API对接模块详细设计文档.md)
 - [PrismBox移动端架构设计文档](../../doc/PrismBox%20移动端架构设计文档.md)
-- [集成指南](./INTEGRATION_GUIDE.md)
 

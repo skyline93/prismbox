@@ -21,9 +21,10 @@
 API 对接模块是 PrismBox 移动端与后端服务器通信的核心基础设施，负责：
 
 1. **统一 API 客户端管理**
-   - 管理所有 API 客户端实例（UsersApi、AssetsApi、AlbumsApi 等）
+   - 使用 Dio 作为 HTTP 客户端
    - 统一配置和初始化
-   - 提供类型安全的 API 调用接口
+   - 提供灵活的 API 调用接口
+   - 自动处理响应格式
 
 2. **认证机制**
    - Token 认证和自动注入
@@ -48,11 +49,11 @@ API 对接模块是 PrismBox 移动端与后端服务器通信的核心基础设
 
 ### 核心目标
 
-1. **类型安全**：使用 OpenAPI 生成的客户端，提供编译时类型检查
+1. **灵活可控**：使用 Dio 客户端，提供更高的灵活度和可控性
 2. **灵活配置**：支持多种部署场景（HTTP/HTTPS、自签名证书、客户端证书）
 3. **完善错误处理**：统一错误处理，自动重试，友好提示
 4. **安全可靠**：Token 安全存储，SSL 证书严格验证
-5. **易于使用**：自动注入认证头，无需手动管理
+5. **易于使用**：自动注入认证头，自动处理响应格式，无需手动管理
 
 ### 设计原则
 
@@ -90,9 +91,9 @@ API 对接模块是 PrismBox 移动端与后端服务器通信的核心基础设
                     │ 使用
                     ↓
 ┌─────────────────────────────────────────┐
-│         OpenAPI 客户端                    │
-│  - 自动生成的 API 客户端                  │
-│  - 类型安全的接口定义                     │
+│         Dio 客户端                        │
+│  - Dio HTTP 客户端                        │
+│  - 拦截器链（日志、认证、响应、重试、错误）│
 └─────────────────────────────────────────┘
                     │
                     │ HTTP/HTTPS
@@ -105,7 +106,7 @@ API 对接模块是 PrismBox 移动端与后端服务器通信的核心基础设
 ```
 
 **依赖关系**：
-- **依赖**：OpenAPI 生成的客户端、安全存储服务（Keychain/Keystore）、本地存储服务（Store）
+- **依赖**：Dio HTTP 客户端、安全存储服务（Keychain/Keystore）、本地存储服务（Store）
 - **被依赖**：Repository 层、Service 层、UI 层
 
 ---
@@ -118,7 +119,7 @@ API 对接模块采用分层架构，从下到上包括：
 
 1. **网络层**：Dart HTTP 客户端、平台原生网络栈
 2. **SSL 配置层**：HttpSSLOptions、HttpSSLCertOverride、平台原生 SSL 配置
-3. **OpenAPI 客户端层**：自动生成的 API 客户端（UsersApi、AssetsApi 等）
+3. **Dio 客户端层**：Dio HTTP 客户端，支持拦截器
 4. **API 服务层**：ApiService 统一管理
 5. **端点发现层**：EndpointDiscovery 服务
 
@@ -140,18 +141,21 @@ API 对接模块采用分层架构，从下到上包括：
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  ApiService                                           │   │
 │  │  - 端点管理                                           │   │
-│  │  - 认证头注入                                         │   │
-│  │  - OpenAPI 客户端管理                                 │   │
+│  │  - Dio 客户端管理                                     │   │
+│  │  - 拦截器配置                                         │   │
 │  │  - 设备信息头设置                                     │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                               │
 │  ┌──────────────────┐         ┌──────────────────┐          │
-│  │  OpenAPI Clients  │         │  EndpointDiscovery│         │
-│  │  - UsersApi       │         │  - well-known    │          │
-│  │  - AssetsApi     │         │  - pingServer    │          │
-│  │  - AlbumsApi     │         │  - 端点验证       │          │
-│  │  - SearchApi     │         │                  │          │
-│  │  - ...            │         │                  │          │
+│  │  Dio 客户端       │         │  EndpointDiscovery│         │
+│  │  - 标准 Dio      │         │  - well-known    │          │
+│  │  - 文件上传 Dio  │         │  - pingServer    │          │
+│  │  - 拦截器链      │         │  - 端点验证       │          │
+│  │    - 日志        │         │                  │          │
+│  │    - 认证        │         │                  │          │
+│  │    - 响应处理    │         │                  │          │
+│  │    - 重试        │         │                  │          │
+│  │    - 错误处理    │         │                  │          │
 │  └──────────────────┘         └──────────────────┘          │
 └─────────────────────────────────────────────────────────────┘
                             │
@@ -208,7 +212,7 @@ API 对接模块采用分层架构，从下到上包括：
 ### 核心组件
 
 1. **ApiService**：统一 API 服务管理
-   - 管理所有 OpenAPI 客户端实例
+   - 管理 Dio 客户端实例（标准 API 和文件上传）
    - 端点配置和管理
    - 认证头自动注入
    - 设备信息头设置
@@ -228,27 +232,24 @@ API 对接模块采用分层架构，从下到上包括：
    - pingServer 验证
    - 端点持久化
 
-5. **DioClient**（可选）：Dio 客户端配置
-   - 如果使用 Dio 而非 OpenAPI 客户端
-   - 拦截器配置
-   - 重试机制
-
 ### 技术选型
 
-#### OpenAPI 客户端
+#### Dio HTTP 客户端
 
 **选择理由**：
-- **类型安全**：自动生成的客户端提供编译时类型检查
-- **代码生成**：从 OpenAPI 规范自动生成，减少手动编写
-- **维护性**：API 变更时重新生成即可，减少维护成本
-- **标准化**：遵循 OpenAPI 标准，易于集成
+- **灵活性高**：提供丰富的拦截器机制，支持自定义处理
+- **功能完善**：支持请求/响应拦截、错误处理、重试、取消等
+- **易于扩展**：拦截器链设计，易于添加新功能
+- **社区成熟**：广泛使用，文档和示例丰富
+- **性能优秀**：支持连接池、请求合并等优化
 
 **实现方式**：
-- 使用 `openapi-generator` 从 OpenAPI 规范生成 Dart 客户端
-- 生成的客户端包含所有 API 接口和模型
-- ApiService 管理所有客户端实例
+- 使用 `dio` 包作为 HTTP 客户端
+- 通过拦截器链实现认证、响应处理、重试、错误处理等功能
+- 配置 `IOHttpClientAdapter` 支持 `HttpOverrides` 和连接池
+- 提供标准 Dio 实例和文件上传专用 Dio 实例
 
-#### HTTP 客户端
+#### HTTP 客户端底层
 
 **选择理由**：
 - **标准库**：Dart 标准库，无需额外依赖
@@ -256,8 +257,8 @@ API 对接模块采用分层架构，从下到上包括：
 - **可扩展**：通过 HttpOverrides 全局配置
 
 **实现方式**：
-- 使用 `dart:io` 的 `HttpClient`
-- 通过 `HttpOverrides.global` 全局配置
+- Dio 底层使用 `dart:io` 的 `HttpClient`
+- 通过 `HttpOverrides.global` 全局配置 SSL
 - 支持自定义证书验证和客户端证书
 
 #### SSL 配置
@@ -282,14 +283,15 @@ API 对接模块采用分层架构，从下到上包括：
 
 ApiService 是 API 对接模块的核心，负责：
 
-1. **统一管理所有 OpenAPI 客户端**
-   - 初始化和管理所有 API 客户端实例
+1. **统一管理 Dio 客户端**
+   - 初始化和管理 Dio 实例（标准 API 和文件上传）
    - 统一配置和端点设置
+   - 配置拦截器链
 
 2. **认证管理**
    - Token 存储和获取
-   - 认证头自动注入
-   - 实现 `Authentication` 接口
+   - 认证头自动注入（通过拦截器）
+   - 401 错误自动处理
 
 3. **端点管理**
    - 端点解析和设置
@@ -300,17 +302,17 @@ ApiService 是 API 对接模块的核心，负责：
    - 设备型号和设备类型头设置
    - User-Agent 头设置
 
+5. **响应格式处理**
+   - 自动解析后端 `ApiResponse{code, message, data}` 格式
+   - 自动提取业务数据
+
 #### 接口定义
 
 ```dart
-class ApiService implements Authentication {
-  // OpenAPI 客户端实例
-  late UsersApi usersApi;
-  late AssetsApi assetsApi;
-  late AlbumsApi albumsApi;
-  late SearchApi searchApi;
-  late ServerApi serverInfoApi;
-  // ... 其他 API 客户端
+class ApiService {
+  // Dio 客户端实例
+  Dio get dio;              // 标准 API 请求
+  Dio get fileDio;          // 文件上传专用（超时时间更长）
 
   // 端点管理
   void setEndpoint(String endpoint);
@@ -319,52 +321,69 @@ class ApiService implements Authentication {
 
   // 认证管理
   Future<void> setAccessToken(String accessToken);
+  String? getAccessToken();
+  Future<void> clearAccessToken();
   static Map<String, String> getRequestHeaders();
 
   // 设备信息
   Future<void> setDeviceInfoHeader();
+
+  // 401 错误回调
+  void setOnUnauthorizedCallback(OnUnauthorizedCallback? callback);
+
+  // 服务器健康检查
+  Future<void> pingServer();
 }
 ```
 
 #### 实现要点
 
-**1. 客户端初始化**
+**1. Dio 客户端初始化**
 
 ```dart
-class ApiService implements Authentication {
-  late ApiClient _apiClient;
+class ApiService {
+  final Dio _dio = Dio();
+  final Dio _fileDio = Dio(); // 文件上传专用
   
-  ApiService() {
-    // 初始化时设置空端点，避免 late 初始化错误
-    setEndpoint('');
+  void initialize() {
+    // 配置标准 API Dio
+    _configureDio(_dio);
     
-    // 如果已有保存的端点，恢复它
-    final endpoint = Store.tryGet(StoreKey.serverEndpoint);
-    if (endpoint != null && endpoint.isNotEmpty) {
-      setEndpoint(endpoint);
-    }
+    // 配置文件上传 Dio（超时时间更长）
+    _configureDio(_fileDio);
+    _fileDio.options.receiveTimeout = const Duration(hours: 1);
+    _fileDio.options.sendTimeout = const Duration(hours: 1);
+    
+    // 恢复已保存的端点和 Token
+    _restoreEndpointAndToken();
+  }
+
+  void _configureDio(Dio dio) {
+    dio.options.connectTimeout = const Duration(seconds: 60);
+    dio.options.receiveTimeout = const Duration(minutes: 30);
+    dio.options.responseType = ResponseType.json;
+    dio.options.headers['User-Agent'] = 'PrismBox-Mobile/1.0';
+    
+    // 配置 HttpClient 以支持 HttpOverrides 和连接池
+    (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.maxConnectionsPerHost = 16;
+      client.autoUncompress = true;
+      return client;
+    };
+    
+    // 添加拦截器（注意顺序很重要）
+    dio.interceptors.add(_LoggingInterceptor());
+    dio.interceptors.add(_AuthInterceptor(this));
+    dio.interceptors.add(_ResponseInterceptor());
+    dio.interceptors.add(_RetryInterceptor());
+    dio.interceptors.add(_ErrorInterceptor(this));
   }
 
   void setEndpoint(String endpoint) {
-    // 创建 ApiClient，设置认证
-    _apiClient = ApiClient(
-      basePath: endpoint,
-      authentication: this, // 实现 Authentication 接口
-    );
-    
-    // 设置 User-Agent
-    _setUserAgentHeader();
-    
-    // 如果已有 Token，设置它
-    if (_accessToken != null) {
-      setAccessToken(_accessToken!);
-    }
-    
-    // 初始化所有 API 客户端
-    usersApi = UsersApi(_apiClient);
-    assetsApi = AssetsApi(_apiClient);
-    albumsApi = AlbumsApi(_apiClient);
-    // ... 其他客户端
+    _endpoint = UrlHelper.sanitizeUrl(endpoint);
+    _dio.options.baseUrl = _endpoint!;
+    _fileDio.options.baseUrl = _endpoint!;
   }
 }
 ```
@@ -494,7 +513,7 @@ class ApiService {
       }
     } catch (e) {
       // well-known 发现失败，使用原始 URL
-      debugPrint("Could not locate /.well-known/immich at $baseUrl");
+      debugPrint("Could not locate /.well-known/prismbox at $baseUrl");
     } finally {
       client.close();
     }
@@ -885,124 +904,17 @@ class EndpointDiscovery {
 }
 ```
 
-### DioClient（可选）
+### 拦截器详解
 
-如果项目使用 Dio 而非 OpenAPI 客户端，需要配置 DioClient。
+ApiService 使用拦截器链实现各种功能，拦截器按以下顺序执行：
 
-#### 职责
+1. **日志拦截器** (`_LoggingInterceptor`) - 记录请求/响应/错误
+2. **认证拦截器** (`_AuthInterceptor`) - 注入认证头和自定义头
+3. **响应拦截器** (`_ResponseInterceptor`) - 处理响应格式
+4. **重试拦截器** (`_RetryInterceptor`) - 自动重试失败请求
+5. **错误拦截器** (`_ErrorInterceptor`) - 转换错误类型
 
-DioClient 负责配置 Dio 客户端：
-
-1. **基础配置**
-   - baseUrl 设置
-   - 超时配置
-   - 响应类型配置
-
-2. **拦截器配置**
-   - 认证拦截器
-   - 重试拦截器
-   - 日志拦截器
-   - 错误拦截器
-
-3. **SSL 配置**
-   - 应用 SSL 配置
-   - 证书验证
-
-#### 接口定义
-
-```dart
-class DioClient {
-  final Dio dio;
-  final Dio fileDio;
-  
-  DioClient(this._storage);
-  
-  // 初始化 baseUrl
-  Future<void> _initBaseUrl();
-  
-  // 创建认证拦截器
-  Interceptor _createAuthInterceptor();
-}
-```
-
-#### 实现要点
-
-```dart
-class DioClient {
-  final SecureStorageService _storage;
-  final Dio dio;
-  final Dio fileDio;
-
-  DioClient(this._storage)
-      : dio = Dio(),
-        fileDio = Dio() {
-    // 配置 SSL
-    DioSslConfig.configureSsl(dio);
-    DioSslConfig.configureSsl(fileDio);
-
-    // 配置基础选项
-    dio.options.baseUrl = ApiConfig.baseUrlSync;
-    dio.options.connectTimeout = const Duration(seconds: 60);
-    dio.options.receiveTimeout = const Duration(minutes: 30);
-    dio.options.responseType = ResponseType.json;
-
-    // 添加拦截器
-    dio.interceptors.addAll([
-      _createAuthInterceptor(),
-      RetryInterceptor(
-        dio: dio,
-        retries: 3,
-        retryDelays: const [
-          Duration(seconds: 1),
-          Duration(seconds: 3),
-          Duration(seconds: 5),
-        ],
-      ),
-      LogInterceptor(),
-    ]);
-
-    // 初始化 baseUrl（异步）
-    _initBaseUrl();
-  }
-
-  Interceptor _createAuthInterceptor() {
-    return InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        // 获取 Token
-        final token = await _storage.getAccessToken();
-        if (token != null) {
-          options.headers['x-immich-user-token'] = token;
-        }
-
-        // 添加自定义头
-        final customHeaders = await _storage.getCustomHeaders();
-        if (customHeaders != null) {
-          try {
-            final headers = jsonDecode(customHeaders) as Map<String, dynamic>;
-            headers.forEach((key, value) {
-              options.headers[key] = value.toString();
-            });
-          } catch (e) {
-            // 忽略解析错误
-          }
-        }
-
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        // 401 错误处理
-        if (error.response?.statusCode == 401) {
-          // 清除 Token
-          _storage.deleteAccessToken();
-          // 跳转登录
-          // ... 导航到登录页
-        }
-        handler.next(error);
-      },
-    );
-  }
-}
-```
+所有拦截器都在 `ApiService` 中实现，无需单独的 DioClient 类。
 
 ---
 
@@ -1067,15 +979,23 @@ ApiService.setAccessToken(token)
 ```
 应用发起 API 请求
     ↓
-调用 OpenAPI 客户端方法 (如 usersApi.getMyUser)
+调用 Dio 方法 (如 dio.get('/media'))
     ↓
-ApiClient 创建 HTTP 请求
+_LoggingInterceptor 记录请求
     ↓
-Authentication.applyToParams() 自动注入认证头
+_AuthInterceptor 注入认证头
     ↓
 添加自定义请求头（如果有）
     ↓
-HttpClient.createHttpClient()
+_ResponseInterceptor 处理响应格式（在响应返回后）
+    ↓
+_RetryInterceptor 处理重试（在错误时）
+    ↓
+_ErrorInterceptor 转换错误类型（在错误时）
+    ↓
+Dio 创建 HTTP 请求
+    ↓
+IOHttpClientAdapter 创建 HttpClient
     ↓
 HttpSSLCertOverride.createHttpClient()
     ↓
@@ -1095,7 +1015,9 @@ HttpSSLCertOverride.createHttpClient()
     ↓
 返回响应数据
     ↓
-OpenAPI 客户端解析响应
+_ResponseInterceptor 解析 ApiResponse 格式
+    ↓
+提取 data 字段，返回业务数据
     ↓
 返回业务对象
 ```
@@ -1109,7 +1031,7 @@ ApiService.resolveEndpoint(serverUrl)
     ↓
 清理 URL (sanitizeUrl)
     ↓
-尝试访问 /.well-known/immich
+尝试访问 /.well-known/prismbox
     ↓
 解析 JSON 响应，获取 endpoint
     ↓
@@ -1188,32 +1110,24 @@ API 请求失败
 
 ```dart
 /// 统一 API 服务管理
-class ApiService implements Authentication {
-  // ========== OpenAPI 客户端实例 ==========
+class ApiService {
+  // ========== Dio 客户端实例 ==========
   
-  /// 用户 API
-  late UsersApi usersApi;
+  /// 标准 API 请求的 Dio 实例
+  Dio get dio;
   
-  /// 资产 API
-  late AssetsApi assetsApi;
-  
-  /// 相册 API
-  late AlbumsApi albumsApi;
-  
-  /// 搜索 API
-  late SearchApi searchApi;
-  
-  /// 服务器信息 API
-  late ServerApi serverInfoApi;
-  
-  // ... 其他 API 客户端
+  /// 文件上传专用的 Dio 实例（超时时间更长）
+  Dio get fileDio;
 
   // ========== 端点管理 ==========
   
   /// 设置 API 端点
   /// 
-  /// [endpoint] 完整的 API 端点 URL（如 https://example.com/api）
+  /// [endpoint] 完整的 API 端点 URL（如 https://example.com/api/v1）
   void setEndpoint(String endpoint);
+  
+  /// 获取当前端点
+  String? get endpoint;
   
   /// 解析并设置端点
   /// 
@@ -1240,6 +1154,12 @@ class ApiService implements Authentication {
   /// [accessToken] 访问令牌
   Future<void> setAccessToken(String accessToken);
   
+  /// 获取 Access Token
+  String? getAccessToken();
+  
+  /// 清除 Access Token
+  Future<void> clearAccessToken();
+  
   /// 获取请求头（用于 background_downloader 等）
   /// 
   /// 返回包含认证头和自定义头的 Map
@@ -1252,17 +1172,26 @@ class ApiService implements Authentication {
   /// 自动设置 deviceModel 和 deviceType 头
   Future<void> setDeviceInfoHeader();
 
-  // ========== Authentication 接口实现 ==========
+  // ========== 401 错误处理 ==========
   
-  /// 自动注入认证头到请求参数
+  /// 设置 401 错误回调
   /// 
-  /// [queryParams] 查询参数列表
-  /// [headerParams] 请求头 Map
-  @override
-  void applyToParams(
-    List<QueryParam> queryParams,
-    Map<String, String> headerParams,
-  );
+  /// [callback] 401 错误时的回调函数（通常用于跳转登录）
+  void setOnUnauthorizedCallback(OnUnauthorizedCallback? callback);
+
+  // ========== 服务器健康检查 ==========
+  
+  /// 服务器健康检查（pingServer）
+  /// 
+  /// 抛出 [ApiException] 如果服务器不可用
+  Future<void> pingServer();
+  
+  // ========== 初始化 ==========
+  
+  /// 初始化 ApiService
+  /// 
+  /// 配置 Dio 客户端和拦截器
+  void initialize();
 }
 ```
 
@@ -1313,29 +1242,6 @@ class EndpointDiscovery {
 }
 ```
 
-### DioClient 接口（可选）
-
-```dart
-/// Dio 客户端配置
-class DioClient {
-  /// 标准 API 请求的 Dio 实例
-  final Dio dio;
-  
-  /// 文件上传/下载的 Dio 实例
-  final Dio fileDio;
-  
-  /// 创建 DioClient
-  /// 
-  /// [storage] 安全存储服务
-  DioClient(SecureStorageService storage);
-  
-  /// 初始化 baseUrl（异步）
-  Future<void> _initBaseUrl();
-  
-  /// 创建认证拦截器
-  Interceptor _createAuthInterceptor();
-}
-```
 
 ---
 
@@ -1366,53 +1272,49 @@ class ApiService {
 }
 ```
 
-#### Token 自动注入
+#### Token 自动注入（通过拦截器）
 
 ```dart
-class ApiService implements Authentication {
+class _AuthInterceptor extends Interceptor {
+  final ApiService _apiService;
+
+  _AuthInterceptor(this._apiService);
+
   @override
-  void applyToParams(
-    List<QueryParam> queryParams,
-    Map<String, String> headerParams,
-  ) {
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     // 注入认证头
-    final token = getAccessToken();
+    final token = _apiService.getAccessToken();
     if (token != null) {
-      headerParams['x-immich-user-token'] = token;
+      options.headers['x-immich-user-token'] = token;
     }
     
     // 注入自定义头
-    final customHeaders = Store.tryGet(StoreKey.customHeaders);
-    if (customHeaders != null) {
-      try {
-        final headers = jsonDecode(customHeaders) as Map<String, dynamic>;
-        headers.forEach((key, value) {
-          headerParams[key] = value.toString();
-        });
-      } catch (e) {
-        // 忽略解析错误
+    final store = StoreService();
+    if (store.isInitialized) {
+      final customHeaders = store.tryGet<String>(StoreKey.customHeaders);
+      if (customHeaders != null) {
+        try {
+          final custom = jsonDecode(customHeaders) as Map<String, dynamic>;
+          custom.forEach((key, value) {
+            options.headers[key] = value.toString();
+          });
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+      
+      // 注入设备信息头
+      final deviceModel = store.tryGet<String>(StoreKey.deviceModel);
+      final deviceType = store.tryGet<String>(StoreKey.deviceType);
+      if (deviceModel != null) {
+        options.headers['deviceModel'] = deviceModel;
+      }
+      if (deviceType != null) {
+        options.headers['deviceType'] = deviceType;
       }
     }
-  }
-}
-```
-
-### 认证头自动注入实现
-
-#### OpenAPI 客户端自动注入
-
-OpenAPI 客户端通过 `Authentication` 接口自动注入认证头：
-
-```dart
-class ApiService implements Authentication {
-  void setEndpoint(String endpoint) {
-    _apiClient = ApiClient(
-      basePath: endpoint,
-      authentication: this, // 实现 Authentication 接口
-    );
     
-    // 所有通过 _apiClient 创建的请求都会自动调用
-    // applyToParams() 注入认证头
+    handler.next(options);
   }
 }
 ```
@@ -1431,6 +1333,47 @@ final task = UploadTask(
   httpRequestMethod: 'POST',
   // ... 其他参数
 );
+```
+
+### 响应格式自动处理实现
+
+#### 响应拦截器自动处理
+
+```dart
+class _ResponseInterceptor extends Interceptor {
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    // 解析后端统一响应格式 ApiResponse{code, message, data}
+    if (response.data is Map) {
+      final data = response.data as Map<String, dynamic>;
+      final code = data['code'] as int?;
+      final message = data['message'] as String?;
+      final responseData = data['data'];
+      
+      // 如果 code != 0，视为业务错误
+      if (code != null && code != 0) {
+        handler.reject(
+          DioException(
+            requestOptions: response.requestOptions,
+            response: Response(
+              requestOptions: response.requestOptions,
+              statusCode: 400,
+              statusMessage: message ?? '请求失败',
+              data: {'message': message ?? '请求失败', 'code': code},
+            ),
+            type: DioExceptionType.badResponse,
+          ),
+        );
+        return;
+      }
+      
+      // 成功时，将 data 字段提取出来，直接返回业务数据
+      response.data = responseData;
+    }
+    
+    handler.next(response);
+  }
+}
 ```
 
 ### SSL/TLS 配置实现
@@ -1581,25 +1524,29 @@ Future<String> _getWellKnownEndpoint(String baseUrl) async {
     
     final response = await client
         .get(
-          Uri.parse("$baseUrl/.well-known/immich"),
+          Uri.parse("$baseUrl/.well-known/prismbox"),
           headers: headers,
         )
         .timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final endpoint = data['api']['endpoint'].toString();
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final apiData = data['api'] as Map<String, dynamic>?;
+      if (apiData != null) {
+        final endpoint = apiData['endpoint']?.toString() ?? '';
 
-      // 处理相对路径和绝对路径
-      if (endpoint.startsWith('/')) {
-        // 相对路径：拼接基础 URL
-        return "$baseUrl$endpoint";
+        // 处理相对路径和绝对路径
+        if (endpoint.startsWith('/')) {
+          // 相对路径：拼接基础 URL
+          return "$baseUrl$endpoint";
+        } else if (endpoint.isNotEmpty) {
+          // 绝对路径：直接返回
+          return endpoint;
+        }
       }
-      // 绝对路径：直接返回
-      return endpoint;
     }
   } catch (e) {
-    debugPrint("Could not locate /.well-known/immich at $baseUrl");
+    debugPrint("Could not locate /.well-known/prismbox at $baseUrl");
   } finally {
     client.close();
   }
@@ -1613,18 +1560,25 @@ Future<String> _getWellKnownEndpoint(String baseUrl) async {
 ```dart
 Future<bool> _isEndpointAvailable(String serverUrl) async {
   // 确保 URL 以 /api 结尾
-  if (!serverUrl.endsWith('/api')) {
-    serverUrl += '/api';
+  String url = serverUrl;
+  if (!url.endsWith('/api')) {
+    if (!url.endsWith('/')) {
+      url += '/';
+    }
+    url += 'api';
   }
 
   try {
     // 临时设置端点
-    setEndpoint(serverUrl);
+    setEndpoint(url);
     
     // 调用 pingServer 验证（超时 5 秒）
-    await serverInfoApi
-        .pingServer()
-        .timeout(const Duration(seconds: 5));
+    await pingServer().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        throw TimeoutException('服务器响应超时');
+      },
+    );
     
     return true;
   } on TimeoutException {
@@ -2576,13 +2530,15 @@ void main() {
       // 顺序请求
       final stopwatch1 = Stopwatch()..start();
       for (final id in assetIds) {
-        await apiService.assetsApi.getAssetById(id);
+        await apiService.dio.get('/media/$id');
       }
       stopwatch1.stop();
 
       // 批量请求
       final stopwatch2 = Stopwatch()..start();
-      await BatchRequestHelper.batchGetAssets(assetIds, apiService);
+      await Future.wait(
+        assetIds.map((id) => apiService.dio.get('/media/$id')),
+      );
       stopwatch2.stop();
 
       // 批量请求应该更快
@@ -2622,7 +2578,7 @@ void main() {
 **任务清单**：
 1. **创建 ApiService 基础结构**
    - 实现 ApiService 类
-   - 配置 OpenAPI 客户端
+   - 配置 Dio 客户端
    - 实现端点管理
 
 2. **实现认证机制**
@@ -2718,20 +2674,20 @@ void main() {
 lib/
 ├── infrastructure/
 │   └── api/
-│       ├── api_service.dart              # ApiService 主文件
-│       ├── dio_client.dart               # Dio 客户端配置（可选）
+│       ├── api_service.dart              # ApiService 主文件（包含所有拦截器）
+│       ├── models/
+│       │   └── api_response.dart         # 统一响应模型类
+│       ├── exceptions/
+│       │   ├── api_exception.dart        # API异常定义
+│       │   └── api_error_handler.dart    # 错误处理工具
 │       ├── ssl/
 │       │   ├── http_ssl_options.dart     # SSL 配置管理
 │       │   └── http_ssl_cert_override.dart # SSL 证书覆盖
-│       └── interceptors/
-│           ├── auth_interceptor.dart     # 认证拦截器
-│           └── error_interceptor.dart    # 错误拦截器
-├── core/
-│   └── network/
-│       └── endpoint_discovery.dart       # 端点发现服务
-└── utils/
-    ├── api_error_handler.dart            # 错误处理工具
-    └── retry_helper.dart                 # 重试工具
+│       ├── network/
+│       │   └── endpoint_discovery.dart   # 端点发现服务
+│       └── utils/
+│           ├── retry_helper.dart         # 重试工具
+│           └── url_helper.dart            # URL工具类
 ```
 
 #### Android 原生文件
@@ -2799,7 +2755,7 @@ class SslConfig {
 **症状**：无法自动发现 API 端点
 
 **解决方案**：
-1. 检查服务器是否支持 `/.well-known/immich`
+1. 检查服务器是否支持 `/.well-known/prismbox`
 2. 如果不支持，手动输入完整的 API 端点 URL
 3. 确保端点 URL 格式正确（包含协议和路径）
 4. 检查网络连接和防火墙设置
@@ -2840,11 +2796,14 @@ class SslConfig {
 
 ```dart
 // ✅ 正确：使用 ApiService 统一管理
-final user = await apiService.usersApi.getMyUser();
+final apiService = ApiService();
+final dio = apiService.dio;
+final response = await dio.get('/media');
+final data = response.data; // 已经是业务数据
 
-// ❌ 错误：直接创建 ApiClient
-final client = ApiClient();
-final api = UsersApi(client);
+// ❌ 错误：直接创建 Dio 实例
+final dio = Dio();
+final response = await dio.get('https://api.example.com/media');
 ```
 
 #### 2. 错误处理规范
@@ -2852,8 +2811,12 @@ final api = UsersApi(client);
 ```dart
 // ✅ 正确：统一错误处理
 try {
-  final assets = await apiService.assetsApi.getAllAssets();
+  final response = await apiService.dio.get('/media');
+  final assets = response.data as List;
   return assets;
+} on AuthenticationException catch (e) {
+  // 401 错误（已自动清除 Token 并触发回调）
+  return [];
 } on ApiException catch (e) {
   ErrorHandler.handleError(e);
   return [];
@@ -2863,24 +2826,31 @@ try {
 }
 
 // ❌ 错误：忽略错误
-final assets = await apiService.assetsApi.getAllAssets(); // 可能抛出异常
+final response = await apiService.dio.get('/media'); // 可能抛出异常
 ```
 
 #### 3. 重试机制使用
 
 ```dart
-// ✅ 正确：使用重试机制处理网络错误
+// ✅ 正确：自动重试（拦截器已自动处理）
+// 网络错误和 5xx 错误会自动重试，无需手动处理
+final response = await apiService.dio.get('/media');
+
+// ✅ 正确：手动控制重试（特殊场景）
 final assets = await RetryHelper.retry(
-  operation: () => apiService.assetsApi.getAllAssets(),
-  config: const RetryConfig(maxRetries: 3),
+  operation: () => apiService.dio.get('/media'),
+  config: const RetryConfig(
+    maxRetries: 5,
+    initialDelay: Duration(seconds: 2),
+  ),
   shouldRetry: RetryHelper.isRetryableError,
 );
 
-// ❌ 错误：手动重试逻辑
+// ❌ 错误：手动重试逻辑（拦截器已自动处理）
 var attempts = 0;
 while (attempts < 3) {
   try {
-    return await apiService.assetsApi.getAllAssets();
+    return await apiService.dio.get('/media');
   } catch (e) {
     attempts++;
     await Future.delayed(Duration(seconds: attempts));
@@ -2934,7 +2904,7 @@ Future<void> makeRequest() async {
 
 - [Immich API 架构文档](../../../docs/immich参考/API_ARCHITECTURE.md) - Immich 移动端 API 对接架构参考
 - [Immich HTTPS 模块详解](../../../docs/immich参考/架构详解/mobile-https-module.md) - SSL/TLS 配置详细实现
-- [OpenAPI 规范](https://swagger.io/specification/) - OpenAPI 标准规范
+- [Dio 文档](https://pub.dev/packages/dio) - Dio HTTP 客户端库文档
 - [Dart HTTP 文档](https://api.dart.dev/stable/dart-io/HttpClient-class.html) - Dart HTTP 客户端文档
 
 ### 技术文档

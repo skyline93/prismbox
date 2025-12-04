@@ -31,7 +31,9 @@ lib/
 │
 └── infrastructure/
     └── api/
-        ├── api_service.dart             # 统一API服务
+        ├── api_service.dart             # 统一API服务（Dio实现）
+        ├── models/
+        │   └── api_response.dart        # 统一响应模型类
         ├── exceptions/
         │   ├── api_exception.dart       # API异常定义
         │   └── api_error_handler.dart  # 错误处理工具
@@ -93,17 +95,45 @@ await apiService.setAccessToken('your_access_token');
 await apiService.setDeviceInfoHeader();
 ```
 
-### 4. 调用API
+### 4. 设置 401 回调
+
+```dart
+// 设置 401 错误回调（跳转登录）
+ApiService().setOnUnauthorizedCallback(() {
+  // 根据实际路由系统实现跳转
+  // 例如使用 GoRouter:
+  // goRouter.go('/login');
+  // 或使用 AutoRoute:
+  // appRouter.pushAndClearStack(LoginRoute());
+});
+```
+
+### 5. 调用API
 
 ```dart
 final apiService = ApiService();
 final dio = apiService.dio;
 
-// 使用Dio调用API
-final response = await dio.get('/api/v1/users/me');
+// GET 请求
+final response = await dio.get('/media');
+final data = response.data; // 已经是业务数据，无需解析 ApiResponse
+
+// POST 请求
+final response = await dio.post('/auth/login', data: {
+  'email': 'user@example.com',
+  'password': 'password123',
+});
+
+// 文件上传（使用专用 Dio 实例）
+final fileDio = apiService.fileDio;
+final formData = FormData.fromMap({
+  'file': await MultipartFile.fromFile('/path/to/file.jpg'),
+  'hash': 'sha256_hash_here',
+});
+final response = await fileDio.post('/media/upload-stream', data: formData);
 ```
 
-### 5. 错误处理
+### 6. 错误处理
 
 ```dart
 import 'package:prismbox/infrastructure/api/exceptions/api_error_handler.dart';
@@ -117,7 +147,7 @@ try {
 }
 ```
 
-### 6. 重试机制
+### 7. 重试机制
 
 ```dart
 import 'package:prismbox/infrastructure/api/utils/retry_helper.dart';
@@ -139,12 +169,20 @@ final result = await RetryHelper.retry(
 3. **端点设置**：在调用API之前，必须先设置端点（通过`setEndpoint`或`resolveAndSetEndpoint`）
 4. **Token管理**：Token会自动注入到所有API请求中，无需手动设置请求头
 
-## 待完善功能
+## 核心特性
 
-1. **OpenAPI客户端集成**：当前使用Dio直接调用API，后续可以集成OpenAPI生成的客户端
-2. **DriftStoreRepository实现**：当前Store仓库使用SharedPreferences临时实现，需要实现基于Drift的版本
-3. **Android原生SSL配置**：需要实现MethodChannel调用Android原生代码配置SSL
-4. **401自动跳转登录**：需要在错误拦截器中实现自动跳转登录的逻辑
+1. **统一响应格式处理**：自动解析后端 `ApiResponse{code, message, data}` 格式
+2. **自动重试机制**：网络错误和 5xx 错误自动重试 3 次
+3. **自动错误转换**：所有错误统一转换为 `ApiException` 及其子类
+4. **401 自动处理**：自动清除 Token 并触发回调
+5. **SSL/TLS 支持**：支持自签名证书和客户端证书
+6. **文件上传支持**：提供专用 Dio 实例，超时时间更长
+
+## 详细文档
+
+- [Dio 使用指南](./DIO_USAGE.md) - 详细的使用说明和示例
+- [整改总结](./DIO_REFACTOR_SUMMARY.md) - 整改完成情况
+- [API对接模块详细设计文档](../../doc/modules/API对接模块详细设计文档.md)
 
 ## 参考文档
 

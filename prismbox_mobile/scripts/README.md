@@ -1,36 +1,14 @@
 # 脚本说明
 
-## generate_openapi_client.sh
+本目录包含项目相关的脚本文件。
 
-生成OpenAPI客户端代码的脚本。
+## 当前状态
 
-### 使用方法
+项目已改为使用 Dio 方式实现 API 对接，不再需要生成 OpenAPI 客户端。
 
-```bash
-cd prismbox_mobile
-chmod +x scripts/generate_openapi_client.sh
-./scripts/generate_openapi_client.sh
-```
+所有 API 调用直接使用 Dio，通过拦截器实现认证、响应处理、重试、错误处理等功能。
 
-### 前置要求
-
-1. 安装openapi-generator:
-   ```bash
-   npm install -g @openapitools/openapi-generator-cli
-   ```
-
-2. 确保后端swagger文件存在:
-   - `../../backend/docs/swagger/swagger.yaml`
-
-### 输出
-
-生成的客户端代码将输出到:
-- `lib/infrastructure/api/generated/`
-
-### 后续步骤
-
-生成完成后：
-1. 运行 `flutter pub get` 安装依赖
-2. 更新 `lib/infrastructure/api/generated/openapi_client_wrapper.dart`
-3. 在 `ApiService` 中集成生成的客户端
+详细说明请参考：
+- [API对接模块使用指南](../lib/infrastructure/api/DIO_USAGE.md)
+- [API对接模块整改总结](../lib/infrastructure/api/DIO_REFACTOR_SUMMARY.md)
 

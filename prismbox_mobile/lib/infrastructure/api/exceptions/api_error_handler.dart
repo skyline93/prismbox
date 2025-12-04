@@ -76,7 +76,13 @@ class ApiErrorHandler {
     if (data == null) return null;
 
     if (data is Map) {
-      // 尝试常见的错误消息字段
+      // 优先使用后端 ApiResponse 格式的 message
+      // 后端格式：{code: 1, message: "...", data: null}
+      if (data['code'] != null && data['code'] != 0) {
+        return data['message'] as String?;
+      }
+
+      // 兼容其他格式
       return data['message'] as String? ??
           data['error'] as String? ??
           data['msg'] as String?;
