@@ -3505,6 +3505,210 @@ class AlbumAssetEntityCompanion extends UpdateCompanion<AlbumAssetEntityData> {
   }
 }
 
+class $StoreEntityTable extends StoreEntity
+    with TableInfo<$StoreEntityTable, StoreEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StoreEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<int> key = GeneratedColumn<int>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'store_entity';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StoreEntityData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  StoreEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StoreEntityData(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      ),
+    );
+  }
+
+  @override
+  $StoreEntityTable createAlias(String alias) {
+    return $StoreEntityTable(attachedDatabase, alias);
+  }
+}
+
+class StoreEntityData extends DataClass implements Insertable<StoreEntityData> {
+  /// 键ID（对应StoreKey.id）
+  final int key;
+
+  /// 值（JSON字符串）
+  final String? value;
+  const StoreEntityData({required this.key, this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<int>(key);
+    if (!nullToAbsent || value != null) {
+      map['value'] = Variable<String>(value);
+    }
+    return map;
+  }
+
+  StoreEntityCompanion toCompanion(bool nullToAbsent) {
+    return StoreEntityCompanion(
+      key: Value(key),
+      value: value == null && nullToAbsent
+          ? const Value.absent()
+          : Value(value),
+    );
+  }
+
+  factory StoreEntityData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StoreEntityData(
+      key: serializer.fromJson<int>(json['key']),
+      value: serializer.fromJson<String?>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<int>(key),
+      'value': serializer.toJson<String?>(value),
+    };
+  }
+
+  StoreEntityData copyWith({
+    int? key,
+    Value<String?> value = const Value.absent(),
+  }) => StoreEntityData(
+    key: key ?? this.key,
+    value: value.present ? value.value : this.value,
+  );
+  StoreEntityData copyWithCompanion(StoreEntityCompanion data) {
+    return StoreEntityData(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoreEntityData(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StoreEntityData &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class StoreEntityCompanion extends UpdateCompanion<StoreEntityData> {
+  final Value<int> key;
+  final Value<String?> value;
+  const StoreEntityCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+  });
+  StoreEntityCompanion.insert({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+  });
+  static Insertable<StoreEntityData> custom({
+    Expression<int>? key,
+    Expression<String>? value,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+    });
+  }
+
+  StoreEntityCompanion copyWith({Value<int>? key, Value<String?>? value}) {
+    return StoreEntityCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<int>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoreEntityCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3522,6 +3726,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AlbumAssetEntityTable albumAssetEntity = $AlbumAssetEntityTable(
     this,
   );
+  late final $StoreEntityTable storeEntity = $StoreEntityTable(this);
   late final Index idxLocalAssetChecksum = Index(
     'idx_local_asset_checksum',
     'CREATE INDEX IF NOT EXISTS idx_local_asset_checksum ON local_asset_entity (checksum)',
@@ -3559,6 +3764,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     remoteAlbumEntity,
     localAlbumEntity,
     albumAssetEntity,
+    storeEntity,
     idxLocalAssetChecksum,
     idxRemoteAssetOwnerChecksum,
     uQRemoteAssetsOwnerChecksum,
@@ -6624,6 +6830,131 @@ typedef $$AlbumAssetEntityTableProcessedTableManager =
       AlbumAssetEntityData,
       PrefetchHooks Function({bool assetId, bool albumId})
     >;
+typedef $$StoreEntityTableCreateCompanionBuilder =
+    StoreEntityCompanion Function({Value<int> key, Value<String?> value});
+typedef $$StoreEntityTableUpdateCompanionBuilder =
+    StoreEntityCompanion Function({Value<int> key, Value<String?> value});
+
+class $$StoreEntityTableFilterComposer
+    extends Composer<_$AppDatabase, $StoreEntityTable> {
+  $$StoreEntityTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$StoreEntityTableOrderingComposer
+    extends Composer<_$AppDatabase, $StoreEntityTable> {
+  $$StoreEntityTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StoreEntityTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StoreEntityTable> {
+  $$StoreEntityTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$StoreEntityTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StoreEntityTable,
+          StoreEntityData,
+          $$StoreEntityTableFilterComposer,
+          $$StoreEntityTableOrderingComposer,
+          $$StoreEntityTableAnnotationComposer,
+          $$StoreEntityTableCreateCompanionBuilder,
+          $$StoreEntityTableUpdateCompanionBuilder,
+          (
+            StoreEntityData,
+            BaseReferences<_$AppDatabase, $StoreEntityTable, StoreEntityData>,
+          ),
+          StoreEntityData,
+          PrefetchHooks Function()
+        > {
+  $$StoreEntityTableTableManager(_$AppDatabase db, $StoreEntityTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StoreEntityTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StoreEntityTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StoreEntityTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> key = const Value.absent(),
+                Value<String?> value = const Value.absent(),
+              }) => StoreEntityCompanion(key: key, value: value),
+          createCompanionCallback:
+              ({
+                Value<int> key = const Value.absent(),
+                Value<String?> value = const Value.absent(),
+              }) => StoreEntityCompanion.insert(key: key, value: value),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$StoreEntityTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StoreEntityTable,
+      StoreEntityData,
+      $$StoreEntityTableFilterComposer,
+      $$StoreEntityTableOrderingComposer,
+      $$StoreEntityTableAnnotationComposer,
+      $$StoreEntityTableCreateCompanionBuilder,
+      $$StoreEntityTableUpdateCompanionBuilder,
+      (
+        StoreEntityData,
+        BaseReferences<_$AppDatabase, $StoreEntityTable, StoreEntityData>,
+      ),
+      StoreEntityData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6640,4 +6971,6 @@ class $AppDatabaseManager {
       $$LocalAlbumEntityTableTableManager(_db, _db.localAlbumEntity);
   $$AlbumAssetEntityTableTableManager get albumAssetEntity =>
       $$AlbumAssetEntityTableTableManager(_db, _db.albumAssetEntity);
+  $$StoreEntityTableTableManager get storeEntity =>
+      $$StoreEntityTableTableManager(_db, _db.storeEntity);
 }

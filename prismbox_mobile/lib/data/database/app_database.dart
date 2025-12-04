@@ -7,6 +7,7 @@ import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/data/database/tables/local_album_entity.dart';
 import 'package:prismbox/data/database/tables/remote_album_entity.dart';
 import 'package:prismbox/data/database/tables/album_asset_entity.dart';
+import 'package:prismbox/data/database/tables/store_entity.dart';
 import 'package:prismbox/data/database/daos/user_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
@@ -30,6 +31,7 @@ part 'app_database.g.dart';
     LocalAlbumEntity,
     RemoteAlbumEntity,
     AlbumAssetEntity,
+    StoreEntity,
   ],
   daos: [
     UserDao,
@@ -42,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -80,7 +82,8 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _migrateToVersion(Migrator m, int version) async {
     switch (version) {
       case 2:
-        // 未来版本的迁移逻辑
+        // 添加Store表
+        await m.createTable(storeEntity);
         break;
       // ... 其他版本迁移
       default:
