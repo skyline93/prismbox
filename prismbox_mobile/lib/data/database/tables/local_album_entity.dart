@@ -21,9 +21,8 @@ class LocalAlbumEntity extends Table with DriftDefaultsMixin {
   DateTimeColumn get updatedAt => dateTime()();
   
   /// 备份选择枚举（none/selected/excluded）
-  IntColumn get backupSelection => integer()
-      .map(intEnum<BackupSelection>())
-      .withDefault(const Constant(BackupSelection.none))();
+  IntColumn get backupSelection => intEnum<BackupSelection>()
+      .withDefault(const Constant(0))(); // BackupSelection.none = 0
   
   /// 是否为 iOS 共享相册
   BoolColumn get isIosSharedAlbum => boolean()

@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 
-part '../../../../../prismbox_mobile.bak/lib/data/database/daos/remote_asset_dao.g.dart';
+part 'remote_asset_dao.g.dart';
 
 /// 远程资产数据访问对象
 /// 提供远程资产的查询和操作接口
@@ -60,21 +60,23 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 软删除资产
-  Future<bool> softDeleteAsset(String id) {
-    return (update(remoteAssetEntity)
+  Future<bool> softDeleteAsset(String id) async {
+    final count = await (update(remoteAssetEntity)
           ..where((t) => t.id.equals(id)))
         .write(RemoteAssetEntityCompanion(
           deletedAt: Value(DateTime.now()),
         ));
+    return count > 0;
   }
 
   /// 恢复软删除的资产
-  Future<bool> restoreAsset(String id) {
-    return (update(remoteAssetEntity)
+  Future<bool> restoreAsset(String id) async {
+    final count = await (update(remoteAssetEntity)
           ..where((t) => t.id.equals(id)))
         .write(RemoteAssetEntityCompanion(
           deletedAt: const Value.absent(),
         ));
+    return count > 0;
   }
 
   /// 流式查询：监听用户资产变化

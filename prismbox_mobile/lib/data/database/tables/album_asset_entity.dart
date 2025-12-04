@@ -3,11 +3,12 @@
 import 'package:drift/drift.dart';
 import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/data/database/tables/remote_album_entity.dart';
+import 'package:prismbox/data/database/tables/mixins/drift_defaults_mixin.dart';
 
 /// 相册-资产关联表
 /// 存储相册与资产的多对多关联关系
 @DataClassName('AlbumAssetEntityData')
-class AlbumAssetEntity extends Table {
+class AlbumAssetEntity extends Table with DriftDefaultsMixin {
   const AlbumAssetEntity();
 
   /// 资产 ID

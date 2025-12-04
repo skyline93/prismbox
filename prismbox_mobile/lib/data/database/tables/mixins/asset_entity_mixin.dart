@@ -9,7 +9,7 @@ mixin AssetEntityMixin on Table {
   TextColumn get name => text()();
   
   /// 资产类型
-  IntColumn get type => integer().map(intEnum<AssetType>())();
+  IntColumn get type => intEnum<AssetType>()();
   
   /// 创建时间
   DateTimeColumn get createdAt => dateTime()();

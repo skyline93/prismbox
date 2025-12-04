@@ -5,7 +5,7 @@ import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/tables/local_asset_entity.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
 
-part '../../../../../prismbox_mobile.bak/lib/data/database/daos/local_asset_dao.g.dart';
+part 'local_asset_dao.g.dart';
 
 /// 本地资产数据访问对象
 /// 提供本地资产的查询和操作接口
@@ -51,10 +51,11 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 删除资产
-  Future<bool> deleteAsset(String id) {
-    return (delete(localAssetEntity)
+  Future<bool> deleteAsset(String id) async {
+    final count = await (delete(localAssetEntity)
           ..where((t) => t.id.equals(id)))
         .go();
+    return count > 0;
   }
 
   /// 流式查询：监听资产变化
@@ -65,7 +66,7 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
   /// 按类型筛选资产
   Future<List<LocalAssetEntityData>> getAssetsByType(AssetType type) {
     return (select(localAssetEntity)
-          ..where((t) => t.type.equals(type.index)))
+          ..where((t) => t.type.equalsValue(type)))
         .get();
   }
 

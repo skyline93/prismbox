@@ -7,11 +7,18 @@ import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/data/database/tables/local_album_entity.dart';
 import 'package:prismbox/data/database/tables/remote_album_entity.dart';
 import 'package:prismbox/data/database/tables/album_asset_entity.dart';
+import 'package:prismbox/data/database/daos/user_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/daos/album_dao.dart';
+import 'package:prismbox/data/database/exceptions/database_exception.dart';
+// 导入枚举类型，供生成的代码使用
+import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/asset_visibility.dart';
+import 'package:prismbox/data/database/enums/backup_selection.dart';
+import 'package:prismbox/data/database/enums/album_order.dart';
 
-part '../../../../prismbox_mobile.bak/lib/data/database/app_database.g.dart';
+part 'app_database.g.dart';
 
 /// 应用数据库主文件
 /// 管理数据库连接、表定义、DAO 和迁移
@@ -25,13 +32,14 @@ part '../../../../prismbox_mobile.bak/lib/data/database/app_database.g.dart';
     AlbumAssetEntity,
   ],
   daos: [
+    UserDao,
     LocalAssetDao,
     RemoteAssetDao,
     AlbumDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(super.connection);
+  AppDatabase(QueryExecutor e) : super(e);
 
   @override
   int get schemaVersion => 1;
@@ -44,8 +52,17 @@ class AppDatabase extends _$AppDatabase {
       },
       onUpgrade: (Migrator m, int from, int to) async {
         // 逐步升级
-        for (int version = from + 1; version <= to; version++) {
-          await _migrateToVersion(m, version);
+        try {
+          for (int version = from + 1; version <= to; version++) {
+            await _migrateToVersion(m, version);
+          }
+        } catch (e, stackTrace) {
+          // 迁移失败时抛出 DatabaseException
+          throw DatabaseException(
+            type: DatabaseErrorType.migrationFailed,
+            message: '数据库迁移失败: 从版本 $from 升级到版本 $to 时出错\n错误信息: $e\n堆栈跟踪: $stackTrace',
+            originalError: e,
+          );
         }
       },
       beforeOpen: (details) async {

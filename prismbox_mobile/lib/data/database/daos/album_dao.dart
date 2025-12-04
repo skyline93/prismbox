@@ -7,7 +7,7 @@ import 'package:prismbox/data/database/tables/remote_album_entity.dart';
 import 'package:prismbox/data/database/tables/album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 
-part '../../../../../prismbox_mobile.bak/lib/data/database/daos/album_dao.g.dart';
+part 'album_dao.g.dart';
 
 /// 相册数据访问对象
 /// 提供相册的查询和操作接口
@@ -34,19 +34,19 @@ class AlbumDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 获取相册的所有资产
-  Future<List<RemoteAssetEntityData>> getAlbumAssets(String albumId) {
-    final query = select(remoteAssetEntity)
-      ..join([
-        innerJoin(
-          albumAssetEntity,
-          albumAssetEntity.assetId.equalsExp(remoteAssetEntity.id),
-        )
-      ])
-      ..where(albumAssetEntity.albumId.equals(albumId));
+  Future<List<RemoteAssetEntityData>> getAlbumAssets(String albumId) async {
+    final albumAssets = await (select(albumAssetEntity)
+          ..where((t) => t.albumId.equals(albumId)))
+        .get();
     
-    return query.get().then((rows) => 
-      rows.map((row) => row.readTable(remoteAssetEntity)).toList()
-    );
+    if (albumAssets.isEmpty) {
+      return [];
+    }
+
+    final assetIds = albumAssets.map((a) => a.assetId).toList();
+    return (select(remoteAssetEntity)
+          ..where((t) => t.id.isIn(assetIds)))
+        .get();
   }
 
   /// 添加资产到相册
@@ -60,12 +60,13 @@ class AlbumDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 从相册移除资产
-  Future<bool> removeAssetFromAlbum(String assetId, String albumId) {
-    return (delete(albumAssetEntity)
+  Future<bool> removeAssetFromAlbum(String assetId, String albumId) async {
+    final count = await (delete(albumAssetEntity)
           ..where((t) => 
               t.assetId.equals(assetId) & 
               t.albumId.equals(albumId)))
         .go();
+    return count > 0;
   }
 
   /// 创建相册
@@ -79,10 +80,11 @@ class AlbumDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 删除相册
-  Future<bool> deleteAlbum(String id) {
-    return (delete(remoteAlbumEntity)
+  Future<bool> deleteAlbum(String id) async {
+    final count = await (delete(remoteAlbumEntity)
           ..where((t) => t.id.equals(id)))
         .go();
+    return count > 0;
   }
 
   /// 获取所有本地相册
@@ -108,10 +110,11 @@ class AlbumDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 删除本地相册
-  Future<bool> deleteLocalAlbum(String id) {
-    return (delete(localAlbumEntity)
+  Future<bool> deleteLocalAlbum(String id) async {
+    final count = await (delete(localAlbumEntity)
           ..where((t) => t.id.equals(id)))
         .go();
+    return count > 0;
   }
 }
 

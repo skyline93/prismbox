@@ -58,9 +58,8 @@ class RemoteAssetEntity extends Table
   TextColumn get livePhotoVideoId => text().nullable()();
   
   /// 可见性枚举
-  IntColumn get visibility => integer()
-      .map(intEnum<AssetVisibility>())
-      .withDefault(const Constant(AssetVisibility.private))();
+  IntColumn get visibility => intEnum<AssetVisibility>()
+      .withDefault(const Constant(1))(); // AssetVisibility.private = 1
   
   /// 堆叠 ID
   TextColumn get stackId => text().nullable()();
