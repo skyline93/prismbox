@@ -1,6 +1,7 @@
 package dto
 
 // CreateShareInput 创建分享请求
+// @Description 创建分享链接的请求体
 type CreateShareInput struct {
 	MediaUUID      string `json:"media_uuid" binding:"required"`
 	TargetUserID   *uint  `json:"target_user_id,omitempty"`

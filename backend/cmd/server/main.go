@@ -17,7 +17,29 @@ import (
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	"github.com/spf13/pflag"
+
+	_ "github.com/album/backend/docs/swagger" // 导入 Swagger 文档
 )
+
+// @title           PrismBox Backend API
+// @version         1.0
+// @description     PrismBox 后端服务 API 文档
+// @termsOfService  https://prismbox.example.com/terms
+
+// @contact.name   API Support
+// @contact.url    https://prismbox.example.com/support
+// @contact.email  support@prismbox.example.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description 使用 "Bearer {token}" 格式，或使用 "x-prismbox-user-token: {token}" 格式
 
 func main() {
 	// 1. 定义命令行参数

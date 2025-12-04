@@ -27,6 +27,17 @@ func NewHandler(service storagepoolservice.Service) *Handler {
 }
 
 // ListPools 列出存储池
+// @Summary      列出存储池
+// @Description  获取所有存储池列表，支持按类型和状态筛选（需要认证）
+// @Tags         Storage
+// @Produce      json
+// @Security     BearerAuth
+// @Param        storage_type query string false "存储类型筛选"
+// @Param        status query string false "状态筛选"
+// @Success      200 {object} response.ApiResponse "获取成功"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Failure      500 {object} response.ApiResponse "服务器错误"
+// @Router       /storage/pools [get]
 func (h *Handler) ListPools(c *gin.Context) {
 	filter := repository.StoragePoolFilter{
 		StorageType: c.Query("storage_type"),
@@ -41,6 +52,16 @@ func (h *Handler) ListPools(c *gin.Context) {
 }
 
 // GetPool 读取单个存储池详情
+// @Summary      获取存储池详情
+// @Description  获取指定存储池的详细信息（需要认证）
+// @Tags         Storage
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "存储池 UUID"
+// @Success      200 {object} response.ApiResponse "获取成功"
+// @Failure      404 {object} response.ApiResponse "存储池不存在"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools/{uuid} [get]
 func (h *Handler) GetPool(c *gin.Context) {
 	pool, err := h.service.Get(c.Request.Context(), c.Param("uuid"))
 	if err != nil {
@@ -51,6 +72,17 @@ func (h *Handler) GetPool(c *gin.Context) {
 }
 
 // CreatePool 创建存储池
+// @Summary      创建存储池
+// @Description  创建新的存储池（需要认证）
+// @Tags         Storage
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body createPoolRequest true "存储池信息"
+// @Success      200 {object} response.ApiResponse "创建成功"
+// @Failure      400 {object} response.ApiResponse "请求参数错误"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools [post]
 func (h *Handler) CreatePool(c *gin.Context) {
 	var req createPoolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,6 +99,18 @@ func (h *Handler) CreatePool(c *gin.Context) {
 }
 
 // UpdatePool 更新存储池
+// @Summary      更新存储池
+// @Description  更新存储池的配置信息（需要认证）
+// @Tags         Storage
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "存储池 UUID"
+// @Param        input body updatePoolRequest true "更新信息"
+// @Success      200 {object} response.ApiResponse "更新成功"
+// @Failure      400 {object} response.ApiResponse "请求参数错误"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools/{uuid} [patch]
 func (h *Handler) UpdatePool(c *gin.Context) {
 	var req updatePoolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -87,6 +131,16 @@ func (h *Handler) UpdatePool(c *gin.Context) {
 }
 
 // EnablePool 启用存储池
+// @Summary      启用存储池
+// @Description  启用指定的存储池（需要认证）
+// @Tags         Storage
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "存储池 UUID"
+// @Success      200 {object} response.ApiResponse "启用成功"
+// @Failure      400 {object} response.ApiResponse "操作失败"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools/{uuid}/enable [post]
 func (h *Handler) EnablePool(c *gin.Context) {
 	if err := h.service.SetEnabled(c.Request.Context(), c.Param("uuid"), true); err != nil {
 		writeError(c, http.StatusBadRequest, err.Error())
@@ -96,6 +150,16 @@ func (h *Handler) EnablePool(c *gin.Context) {
 }
 
 // DisablePool 禁用存储池
+// @Summary      禁用存储池
+// @Description  禁用指定的存储池（需要认证）
+// @Tags         Storage
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "存储池 UUID"
+// @Success      200 {object} response.ApiResponse "禁用成功"
+// @Failure      400 {object} response.ApiResponse "操作失败"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools/{uuid}/disable [post]
 func (h *Handler) DisablePool(c *gin.Context) {
 	if err := h.service.SetEnabled(c.Request.Context(), c.Param("uuid"), false); err != nil {
 		writeError(c, http.StatusBadRequest, err.Error())
@@ -105,6 +169,15 @@ func (h *Handler) DisablePool(c *gin.Context) {
 }
 
 // RefreshPools 刷新缓存
+// @Summary      刷新存储池缓存
+// @Description  刷新所有存储池的缓存信息（需要认证）
+// @Tags         Storage
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.ApiResponse "刷新成功"
+// @Failure      400 {object} response.ApiResponse "操作失败"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools/refresh [post]
 func (h *Handler) RefreshPools(c *gin.Context) {
 	result, err := h.service.Refresh(c.Request.Context())
 	if err != nil {
@@ -115,6 +188,17 @@ func (h *Handler) RefreshPools(c *gin.Context) {
 }
 
 // ReconcilePools 触发对账
+// @Summary      触发存储池对账
+// @Description  触发存储池的对账操作，检查数据库记录与实际存储的一致性（需要认证）
+// @Tags         Storage
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body reconcileRequest false "对账参数"
+// @Success      200 {object} response.ApiResponse "对账触发成功"
+// @Failure      400 {object} response.ApiResponse "操作失败"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /storage/pools/reconcile [post]
 func (h *Handler) ReconcilePools(c *gin.Context) {
 	var req reconcileRequest
 	if err := c.ShouldBindJSON(&req); err != nil && err != io.EOF {
@@ -134,6 +218,16 @@ func (h *Handler) ReconcilePools(c *gin.Context) {
 }
 
 // GetUsage 容量对比
+// @Summary      获取存储池使用情况
+// @Description  获取存储池的使用情况，包括数据库记录大小和实际存储大小的对比（需要认证）
+// @Tags         Storage
+// @Produce      json
+// @Security     BearerAuth
+// @Param        pool_uuid query string false "存储池 UUID（可选，不指定则返回所有）"
+// @Success      200 {object} response.ApiResponse "获取成功"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Failure      500 {object} response.ApiResponse "服务器错误"
+// @Router       /storage/pools/usage [get]
 func (h *Handler) GetUsage(c *gin.Context) {
 	rows, err := h.service.Usage(c.Request.Context(), c.Query("pool_uuid"))
 	if err != nil {

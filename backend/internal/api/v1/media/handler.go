@@ -34,7 +34,24 @@ func NewHandler(mediaService mediaservice.Service, app *appctx.App) *Handler {
 	}
 }
 
-// UploadMedia 上传媒体文件（与旧架构接口一致）
+// UploadMedia 上传媒体文件
+// @Summary      上传媒体文件
+// @Description  上传图片或视频文件，支持秒传（通过 hash 检查）。如果文件已存在，直接返回已存在的媒体信息
+// @Tags         Media
+// @Accept       multipart/form-data
+// @Produce      json
+// @Security     BearerAuth
+// @Param        file formData file true "媒体文件"
+// @Param        hash formData string true "文件 SHA256 哈希值（64位十六进制字符串）"
+// @Param        item_type formData string true "媒体类型" Enums(image, video)
+// @Param        cloud_uuid formData string true "客户端生成的 UUID"
+// @Param        original_filename formData string false "原始文件名"
+// @Param        media_taken_at formData string false "媒体拍摄时间（RFC3339 格式）"
+// @Success      200 {object} response.ApiResponse{data=dto.MediaResponse} "文件已存在（秒传）"
+// @Success      201 {object} response.ApiResponse{data=dto.MediaResponse} "上传成功"
+// @Failure      400 {object} response.ApiResponse "请求参数错误或文件格式不支持"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/upload-stream [post]
 func (h *Handler) UploadMedia(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -212,6 +229,18 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 }
 
 // GetMedias 获取媒体列表
+// @Summary      获取媒体列表
+// @Description  分页获取当前用户的媒体列表，支持按类型筛选
+// @Tags         Media
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page query int false "页码（默认1）" default(1) minimum(1)
+// @Param        page_size query int false "每页数量（默认20，最大100）" default(20) minimum(1) maximum(100)
+// @Param        item_type query string false "媒体类型" Enums(image, video)
+// @Success      200 {object} response.ApiResponse{data=dto.GetMediasResponse} "获取成功"
+// @Failure      400 {object} response.ApiResponse "请求参数错误"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media [get]
 func (h *Handler) GetMedias(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -282,6 +311,17 @@ func (h *Handler) GetMedias(c *gin.Context) {
 }
 
 // CheckHashes 检查哈希
+// @Summary      检查文件哈希
+// @Description  批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）
+// @Tags         Media
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body dto.CheckHashesRequest true "哈希列表"
+// @Success      200 {object} response.ApiResponse{data=dto.CheckHashesResponse} "检查成功"
+// @Failure      400 {object} response.ApiResponse "请求参数错误"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/check_hashes [post]
 func (h *Handler) CheckHashes(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -323,6 +363,16 @@ func (h *Handler) CheckHashes(c *gin.Context) {
 }
 
 // GetChanges 获取媒体变更
+// @Summary      获取媒体变更
+// @Description  获取指定时间点之后的媒体变更记录（创建、更新、删除）
+// @Tags         Media
+// @Produce      json
+// @Security     BearerAuth
+// @Param        since query string false "起始时间（RFC3339 格式）"
+// @Success      200 {object} response.ApiResponse{data=dto.GetChangesResponse} "获取成功"
+// @Failure      400 {object} response.ApiResponse "请求参数错误"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/changes [get]
 func (h *Handler) GetChanges(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -382,6 +432,16 @@ func (h *Handler) GetChanges(c *gin.Context) {
 }
 
 // GetMediaDetail 获取媒体详情
+// @Summary      获取媒体详情
+// @Description  获取指定媒体的详细信息，包括下载链接（需要认证）
+// @Tags         Media
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 {object} response.ApiResponse{data=dto.MediaResponse} "获取成功"
+// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid} [get]
 func (h *Handler) GetMediaDetail(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -453,6 +513,16 @@ func (h *Handler) GetMediaDetail(c *gin.Context) {
 }
 
 // Delete 删除媒体（软删除，移到回收站）
+// @Summary      删除媒体
+// @Description  将媒体移到回收站（软删除），可以恢复
+// @Tags         Media
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 {object} response.ApiResponse "删除成功"
+// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid} [delete]
 func (h *Handler) Delete(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -485,6 +555,16 @@ func (h *Handler) Delete(c *gin.Context) {
 }
 
 // Restore 恢复媒体（从回收站恢复）
+// @Summary      恢复媒体
+// @Description  从回收站恢复已删除的媒体
+// @Tags         Media
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 {object} response.ApiResponse "恢复成功"
+// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid}/restore [post]
 func (h *Handler) Restore(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -517,6 +597,16 @@ func (h *Handler) Restore(c *gin.Context) {
 }
 
 // Purge 永久删除媒体（硬删除，删除数据库记录和存储文件）
+// @Summary      永久删除媒体
+// @Description  永久删除媒体（硬删除），无法恢复
+// @Tags         Media
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 {object} response.ApiResponse "删除成功"
+// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid}/purge [delete]
 func (h *Handler) Purge(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -549,6 +639,16 @@ func (h *Handler) Purge(c *gin.Context) {
 }
 
 // DownloadOriginal 下载原始文件
+// @Summary      下载原始文件
+// @Description  下载媒体的原始文件，支持认证或签名 URL 访问
+// @Tags         Media
+// @Produce      application/octet-stream
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 "文件内容"
+// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid}/download/original [get]
 func (h *Handler) DownloadOriginal(c *gin.Context) {
 	mediaUUID := c.Param("uuid")
 	if mediaUUID == "" {
@@ -593,6 +693,16 @@ func (h *Handler) DownloadOriginal(c *gin.Context) {
 }
 
 // DownloadPreview 下载预览文件
+// @Summary      下载预览文件
+// @Description  下载媒体的预览图（压缩后的图片），支持认证或签名 URL 访问
+// @Tags         Media
+// @Produce      image/jpeg
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 "预览图内容"
+// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid}/download/preview [get]
 func (h *Handler) DownloadPreview(c *gin.Context) {
 	mediaUUID := c.Param("uuid")
 	if mediaUUID == "" {
@@ -648,6 +758,16 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 }
 
 // DownloadThumbnail 下载缩略图
+// @Summary      下载缩略图
+// @Description  下载媒体的缩略图（小尺寸预览），支持认证或签名 URL 访问
+// @Tags         Media
+// @Produce      image/jpeg
+// @Security     BearerAuth
+// @Param        uuid path string true "媒体 UUID"
+// @Success      200 "缩略图内容"
+// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/{uuid}/download/thumbnail [get]
 func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	mediaUUID := c.Param("uuid")
 	if mediaUUID == "" {

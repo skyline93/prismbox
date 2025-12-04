@@ -25,6 +25,17 @@ func NewHandler(shareService shareservice.Service) *Handler {
 }
 
 // CreateShare 创建分享链接
+// @Summary      创建分享链接
+// @Description  创建媒体分享链接，可以指定目标用户或创建公开链接（需要认证）
+// @Tags         Shares
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        input body dto.CreateShareInput true "分享信息"
+// @Success      200 {object} response.ApiResponse "创建成功，返回分享URL"
+// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或目标用户不存在"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /shares [post]
 func (h *Handler) CreateShare(c *gin.Context) {
 	ownerID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -61,6 +72,14 @@ func (h *Handler) CreateShare(c *gin.Context) {
 }
 
 // ListSharedWithMe 查看分享给我的内容
+// @Summary      查看分享给我的内容
+// @Description  获取所有分享给当前用户的内容列表（需要认证）
+// @Tags         Shares
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.ApiResponse "获取成功"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /shares/with-me [get]
 func (h *Handler) ListSharedWithMe(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
 	if c.IsAborted() {
@@ -77,6 +96,14 @@ func (h *Handler) ListSharedWithMe(c *gin.Context) {
 }
 
 // GetShareMetadata 获取分享元数据
+// @Summary      获取分享元数据
+// @Description  通过分享令牌获取分享的元数据信息（公开访问，不需要认证）
+// @Tags         Shares
+// @Produce      json
+// @Param        share_token path string true "分享令牌"
+// @Success      200 {object} response.ApiResponse "获取成功"
+// @Failure      400 {object} response.ApiResponse "分享链接不存在、已撤销或已过期"
+// @Router       /shares/{share_token}/meta [get]
 func (h *Handler) GetShareMetadata(c *gin.Context) {
 	shareToken := c.Param("share_token")
 
@@ -102,6 +129,14 @@ func (h *Handler) GetShareMetadata(c *gin.Context) {
 }
 
 // GetSharedResource 访问分享的资源
+// @Summary      访问分享的资源
+// @Description  通过分享令牌访问分享的媒体资源，返回HTML页面（公开访问，不需要认证）
+// @Tags         Shares
+// @Produce      text/html
+// @Param        share_token path string true "分享令牌"
+// @Success      200 "HTML页面，包含媒体内容"
+// @Failure      400 {object} response.ApiResponse "分享链接不存在、已撤销或已过期"
+// @Router       /s/{share_token} [get]
 func (h *Handler) GetSharedResource(c *gin.Context) {
 	shareToken := c.Param("share_token")
 
