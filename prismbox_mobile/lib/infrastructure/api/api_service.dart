@@ -6,6 +6,7 @@ import 'package:dio/io.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:synchronized/synchronized.dart';
 import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
@@ -14,6 +15,7 @@ import 'package:prismbox/infrastructure/api/exceptions/api_exception.dart';
 import 'package:prismbox/infrastructure/api/exceptions/api_error_handler.dart';
 import 'package:prismbox/infrastructure/api/network/endpoint_discovery.dart';
 import 'package:prismbox/infrastructure/api/utils/url_helper.dart';
+import 'package:prismbox/infrastructure/api/utils/api_logging_utils.dart';
 
 /// 401错误回调函数类型
 typedef OnUnauthorizedCallback = void Function();
@@ -27,6 +29,8 @@ class ApiService {
   final Logger _log = Logger('ApiService');
   final Dio _dio = Dio();
   final Dio _fileDio = Dio(); // 文件上传专用Dio实例
+  late final Dio _refreshDio; // 刷新token专用Dio实例（不添加拦截器，避免循环）
+  final Lock _refreshTokenLock = Lock(); // 刷新token锁，防止并发刷新
   String? _accessToken;
   String? _endpoint;
   EndpointDiscovery? _endpointDiscovery;
@@ -54,6 +58,13 @@ class ApiService {
     _configureDio(_fileDio);
     _fileDio.options.receiveTimeout = const Duration(hours: 1);
     _fileDio.options.sendTimeout = const Duration(hours: 1);
+
+    // 初始化刷新token专用Dio（不添加拦截器，避免循环）
+    _refreshDio = Dio();
+    _refreshDio.options.connectTimeout = const Duration(seconds: 10);
+    _refreshDio.options.receiveTimeout = const Duration(seconds: 10);
+    _refreshDio.options.responseType = ResponseType.json;
+    _refreshDio.options.headers['User-Agent'] = 'PrismBox-Mobile/1.0';
 
     // 从 AppConfig 读取端点并设置
     final endpoint = ApiConfig.apiEndpoint;
@@ -110,6 +121,7 @@ class ApiService {
     _endpoint = UrlHelper.sanitizeUrl(endpoint);
     _dio.options.baseUrl = _endpoint!;
     _fileDio.options.baseUrl = _endpoint!;
+    _refreshDio.options.baseUrl = _endpoint!;
     _log.info('API endpoint set to: $_endpoint');
   }
 
@@ -264,6 +276,12 @@ class ApiService {
 
   /// 获取401错误回调（供拦截器使用）
   OnUnauthorizedCallback? get onUnauthorized => _onUnauthorized;
+
+  /// 获取刷新token锁（供拦截器使用）
+  Lock get refreshTokenLock => _refreshTokenLock;
+
+  /// 获取刷新token专用Dio实例（供拦截器使用）
+  Dio get refreshDio => _refreshDio;
 }
 
 /// 认证拦截器
@@ -411,19 +429,6 @@ class _RetryInterceptor extends Interceptor {
 /// 用于统一打印 API 请求和响应的详细信息（Debug 级别）
 class _LoggingInterceptor extends Interceptor {
   final Logger _log = Logger('ApiService');
-  
-  // 最大响应体长度（超过此长度会截断）
-  static const int _maxResponseBodyLength = 2000;
-  
-  // 需要隐藏的敏感字段
-  static const List<String> _sensitiveFields = [
-    'password',
-    'token',
-    'accessToken',
-    'refreshToken',
-    'authorization',
-    'x-prismbox-user-token',
-  ];
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -439,7 +444,7 @@ class _LoggingInterceptor extends Interceptor {
       
       // 打印请求头（隐藏敏感信息）
       if (options.headers.isNotEmpty) {
-        final safeHeaders = _sanitizeHeaders(options.headers);
+        final safeHeaders = ApiLoggingUtils.sanitizeHeaders(options.headers);
         _log.fine('  Headers: $safeHeaders');
       }
       
@@ -448,7 +453,7 @@ class _LoggingInterceptor extends Interceptor {
         if (options.data is FormData) {
           _log.fine('  Body: [FormData]');
         } else {
-          final bodyStr = _formatJson(options.data);
+          final bodyStr = ApiLoggingUtils.formatJson(options.data);
           _log.fine('  Body: $bodyStr');
         }
       }
@@ -471,11 +476,11 @@ class _LoggingInterceptor extends Interceptor {
       _log.fine('📥 API Response');
       _log.fine('  Method: $method');
       _log.fine('  URL: $uri');
-      _log.fine('  Status: $statusCode ${_getStatusMessage(statusCode)}');
+      _log.fine('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
       
       // 打印响应头（隐藏敏感信息）
       if (response.headers.map.isNotEmpty) {
-        final safeHeaders = _sanitizeHeaders(
+        final safeHeaders = ApiLoggingUtils.sanitizeHeaders(
           response.headers.map.map((k, v) => MapEntry(k, v.join(', '))),
         );
         _log.fine('  Headers: $safeHeaders');
@@ -483,15 +488,8 @@ class _LoggingInterceptor extends Interceptor {
       
       // 打印响应体
       if (response.data != null) {
-        final responseBody = _formatResponseBody(response.data);
-        if (responseBody.length > _maxResponseBodyLength) {
-          // 响应体过长，截断并提示
-          final truncated = responseBody.substring(0, _maxResponseBodyLength);
-          _log.fine('  Body: $truncated...');
-          _log.fine('  [响应体过长，已截断。完整长度: ${responseBody.length} 字符]');
-        } else {
-          _log.fine('  Body: $responseBody');
-        }
+        final responseBody = ApiLoggingUtils.formatResponseBody(response.data);
+        _log.fine('  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}');
       } else {
         _log.fine('  Body: [空]');
       }
@@ -516,18 +514,12 @@ class _LoggingInterceptor extends Interceptor {
     
     if (err.response != null) {
       final statusCode = err.response!.statusCode;
-      _log.warning('  Status: $statusCode ${_getStatusMessage(statusCode)}');
+      _log.warning('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
       
       // 在调试模式下打印错误响应体
       if (kDebugMode && err.response!.data != null) {
-        final errorBody = _formatResponseBody(err.response!.data);
-        if (errorBody.length > _maxResponseBodyLength) {
-          final truncated = errorBody.substring(0, _maxResponseBodyLength);
-          _log.warning('  Error Body: $truncated...');
-          _log.warning('  [错误响应体过长，已截断。完整长度: ${errorBody.length} 字符]');
-        } else {
-          _log.warning('  Error Body: $errorBody');
-        }
+        final errorBody = ApiLoggingUtils.formatResponseBody(err.response!.data);
+        _log.warning('  Error Body: ${ApiLoggingUtils.truncateResponseBody(errorBody)}');
       }
     } else {
       _log.warning('  Message: ${err.message}');
@@ -550,125 +542,62 @@ class _LoggingInterceptor extends Interceptor {
     
     handler.next(err);
   }
-
-  /// 格式化 JSON 数据
-  String _formatJson(dynamic data) {
-    try {
-      if (data is String) {
-        // 尝试解析为 JSON
-        final decoded = jsonDecode(data);
-        return _formatJson(decoded);
-      } else if (data is Map || data is List) {
-        // 隐藏敏感信息
-        final sanitized = _sanitizeData(data);
-        const encoder = JsonEncoder.withIndent('  ');
-        return encoder.convert(sanitized);
-      } else {
-        return data.toString();
-      }
-    } catch (e) {
-      // 如果不是 JSON，直接返回字符串
-      return data.toString();
-    }
-  }
-
-  /// 格式化响应体
-  String _formatResponseBody(dynamic data) {
-    if (data is String) {
-      // 尝试解析为 JSON
-      try {
-        final decoded = jsonDecode(data);
-        return _formatJson(decoded);
-      } catch (e) {
-        return data;
-      }
-    } else {
-      return _formatJson(data);
-    }
-  }
-
-  /// 隐藏敏感信息
-  dynamic _sanitizeData(dynamic data) {
-    if (data is Map) {
-      final sanitized = <String, dynamic>{};
-      data.forEach((key, value) {
-        final keyStr = key.toString().toLowerCase();
-        if (_sensitiveFields.any((field) => keyStr.contains(field.toLowerCase()))) {
-          sanitized[key.toString()] = '***HIDDEN***';
-        } else if (value is Map || value is List) {
-          sanitized[key.toString()] = _sanitizeData(value);
-        } else {
-          sanitized[key.toString()] = value;
-        }
-      });
-      return sanitized;
-    } else if (data is List) {
-      return data.map((item) => _sanitizeData(item)).toList();
-    } else {
-      return data;
-    }
-  }
-
-  /// 隐藏请求头中的敏感信息
-  Map<String, dynamic> _sanitizeHeaders(Map<String, dynamic> headers) {
-    final sanitized = <String, dynamic>{};
-    headers.forEach((key, value) {
-      final keyStr = key.toLowerCase();
-      if (_sensitiveFields.any((field) => keyStr.contains(field.toLowerCase()))) {
-        sanitized[key] = '***HIDDEN***';
-      } else {
-        sanitized[key] = value;
-      }
-    });
-    return sanitized;
-  }
-
-  /// 获取 HTTP 状态码描述
-  String _getStatusMessage(int? statusCode) {
-    if (statusCode == null) return '';
-    
-    switch (statusCode) {
-      case 200:
-        return 'OK';
-      case 201:
-        return 'Created';
-      case 400:
-        return 'Bad Request';
-      case 401:
-        return 'Unauthorized';
-      case 403:
-        return 'Forbidden';
-      case 404:
-        return 'Not Found';
-      case 500:
-        return 'Internal Server Error';
-      case 502:
-        return 'Bad Gateway';
-      case 503:
-        return 'Service Unavailable';
-      default:
-        return '';
-    }
-  }
 }
 
 /// 错误拦截器
 class _ErrorInterceptor extends Interceptor {
   final ApiService _apiService;
+  final SecureStorageService _secureStorage = SecureStorageService();
 
   _ErrorInterceptor(this._apiService);
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
-    // 401错误：清除Token并触发登录跳转
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // 401错误：尝试自动刷新token
     if (err.response?.statusCode == 401) {
-      _apiService.clearAccessToken();
-
-      // 触发401回调
-      final callback = _apiService.onUnauthorized;
-      if (callback != null) {
-        callback();
+      // 排除刷新接口本身，避免循环
+      final path = err.requestOptions.path;
+      if (path.contains('/auth/refresh')) {
+        // 刷新token也返回401，说明refresh token失效
+        await _handleRefreshTokenExpired();
+        final apiException = ApiErrorHandler.handleError(err);
+        handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            response: err.response,
+            type: err.type,
+            error: apiException,
+          ),
+        );
+        return;
       }
+
+      // 尝试自动刷新token
+      final refreshed = await _tryRefreshToken(err);
+      if (refreshed) {
+        // 刷新成功，重试原请求
+        try {
+          final newToken = await _secureStorage.getAccessToken();
+          if (newToken != null) {
+            // 更新请求头中的token
+            err.requestOptions.headers['x-prismbox-user-token'] = newToken;
+            
+            // 根据请求类型选择对应的Dio实例重试
+            final dioInstance = err.requestOptions.extra['dio_instance'] as String?;
+            final dio = dioInstance == 'file' ? _apiService.fileDio : _apiService.dio;
+            
+            final response = await dio.fetch(err.requestOptions);
+            handler.resolve(response);
+            return;
+          }
+        } catch (e) {
+          _apiService._log.warning('Failed to retry request after token refresh: $e');
+          // 重试失败，继续错误处理流程
+        }
+      }
+
+      // 刷新失败或重试失败，清除token并触发登录
+      await _handleRefreshTokenExpired();
     }
 
     // 转换为统一的ApiException
@@ -681,6 +610,136 @@ class _ErrorInterceptor extends Interceptor {
         error: apiException,
       ),
     );
+  }
+
+  /// 尝试刷新token
+  Future<bool> _tryRefreshToken(DioException err) async {
+    return await _apiService.refreshTokenLock.synchronized(() async {
+      try {
+        // 检查token是否已被其他请求刷新
+        final currentToken = await _secureStorage.getAccessToken();
+        final requestToken = err.requestOptions.headers['x-prismbox-user-token'] as String?;
+        
+        // 如果当前存储的token与请求中的token不同，说明已被其他请求刷新
+        if (currentToken != null && 
+            requestToken != null && 
+            currentToken != requestToken) {
+          _apiService._log.fine('Token already refreshed by another request');
+          return true; // token已被刷新
+        }
+
+        // 获取refresh token
+        final refreshToken = await _secureStorage.getRefreshToken();
+        if (refreshToken == null) {
+          _apiService._log.warning('No refresh token found');
+          return false;
+        }
+
+        // 记录刷新请求日志
+        final refreshUrl = '${_apiService.endpoint}/api/v1/auth/refresh';
+        _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        _apiService._log.info('🔄 Token Refresh Request');
+        _apiService._log.info('  Method: POST');
+        _apiService._log.info('  URL: $refreshUrl');
+        _apiService._log.info('  Body: {"refresh_token": "***HIDDEN***"}');
+        _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        // 调用刷新接口
+        final response = await _apiService.refreshDio.post(
+          '/api/v1/auth/refresh',
+          data: {'refresh_token': refreshToken},
+        );
+
+        // 记录刷新响应日志
+        final statusCode = response.statusCode;
+        _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        _apiService._log.info('✅ Token Refresh Response');
+        _apiService._log.info('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
+        
+        // 解析响应（后端返回统一格式 ApiResponse{code, message, data}）
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final code = data['code'] as int?;
+          final message = data['message'] as String?;
+          final responseData = data['data'];
+          
+          // 记录响应体（隐藏敏感信息）
+          if (kDebugMode) {
+            final sanitizedData = ApiLoggingUtils.sanitizeRefreshResponse(data);
+            final responseBody = ApiLoggingUtils.formatJson(sanitizedData, sanitize: false);
+            _apiService._log.info('  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}');
+          } else {
+            _apiService._log.info('  Code: $code');
+            _apiService._log.info('  Message: $message');
+          }
+          
+          if (code == 0 && responseData is Map<String, dynamic>) {
+            final accessToken = responseData['access_token'] as String?;
+            
+            if (accessToken != null) {
+              // 保存新token
+              await _apiService.setAccessToken(accessToken);
+              
+              _apiService._log.info('  ✅ Access token refreshed successfully');
+              _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              return true;
+            }
+          }
+          
+          _apiService._log.warning('  ❌ Invalid refresh token response format');
+          _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        } else {
+          _apiService._log.warning('  ❌ Unexpected response format: ${data.runtimeType}');
+          _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }
+
+        return false;
+      } on DioException catch (e) {
+        // 记录刷新错误日志
+        _apiService._log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        _apiService._log.warning('❌ Token Refresh Error');
+        _apiService._log.warning('  Type: ${e.type}');
+        
+        if (e.response != null) {
+          final statusCode = e.response!.statusCode;
+          _apiService._log.warning('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
+          
+          if (kDebugMode && e.response!.data != null) {
+            final errorBody = ApiLoggingUtils.formatResponseBody(e.response!.data);
+            _apiService._log.warning('  Error Body: ${ApiLoggingUtils.truncateResponseBody(errorBody)}');
+          }
+        } else {
+          _apiService._log.warning('  Message: ${e.message}');
+        }
+        
+        if (e.error != null) {
+          _apiService._log.warning('  Error: ${e.error}');
+        }
+        
+        _apiService._log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return false;
+      } catch (e, stackTrace) {
+        _apiService._log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        _apiService._log.warning('❌ Token Refresh Error');
+        _apiService._log.warning('  Error: $e');
+        if (kDebugMode) {
+          _apiService._log.warning('  StackTrace: $stackTrace');
+        }
+        _apiService._log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return false;
+      }
+    });
+  }
+
+  /// 处理refresh token过期
+  Future<void> _handleRefreshTokenExpired() async {
+    await _apiService.clearAccessToken();
+    
+    // 触发401回调
+    final callback = _apiService.onUnauthorized;
+    if (callback != null) {
+      callback();
+    }
   }
 }
 

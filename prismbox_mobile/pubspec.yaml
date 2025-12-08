@@ -49,6 +49,9 @@ dependencies:
   device_info_plus: ^9.1.0
   platform: ^3.1.0
 
+  # 并发控制
+  synchronized: ^3.1.0
+
   # JSON序列化
   json_annotation: ^4.8.1
 
