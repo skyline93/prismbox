@@ -9,31 +9,51 @@ import 'package:prismbox/infrastructure/api/ssl/http_ssl_cert_override.dart' as 
 
 /// SSL/TLS配置管理
 class HttpSSLOptions {
-  /// 从设置应用SSL配置
-  static void apply({bool applyNative = true}) {
-    final store = StoreService();
-    if (!store.isInitialized) {
-      debugPrint('StoreService not initialized, skipping SSL config');
-      return;
-    }
-
-    final allowSelfSigned = store.tryGet(StoreKey.allowSelfSignedSSLCert) ?? false;
-    _apply(allowSelfSigned: allowSelfSigned, applyNative: applyNative);
+  /// 从 AppConfig 应用 SSL 配置
+  /// 
+  /// 从编译时配置（AppConfig）读取 SSL 设置并应用
+  /// 这是主要的配置方式，适用于开发/生产环境的区分
+  static Future<void> apply({bool applyNative = true}) async {
+    // 从 AppConfig 读取配置
+    final allowSelfSigned = SslConfig.allowSelfSignedCert;
+    
+    await _apply(
+      allowSelfSigned: allowSelfSigned,
+      applyNative: applyNative,
+    );
   }
 
-  /// 响应设置变更
-  static void applyFromSettings(bool newValue) {
+  /// 运行时动态应用 SSL 配置（可选）
+  /// 
+  /// 用于在运行时动态切换 SSL 配置
+  /// 注意：主要配置应通过 AppConfig 设置，此方法仅用于特殊场景
+  /// 
+  /// [allowSelfSigned] 是否允许自签名证书
+  /// [applyNative] 是否应用 Android 原生配置
+  static Future<void> applyWithConfig({
+    required bool allowSelfSigned,
+    bool applyNative = true,
+  }) async {
+    await _apply(
+      allowSelfSigned: allowSelfSigned,
+      applyNative: applyNative,
+    );
+  }
+
+  /// 响应设置变更（保留用于兼容性，但推荐使用 AppConfig）
+  /// 
+  /// 注意：此方法会更新 StoreService 中的设置，但实际配置仍以 AppConfig 为准
+  /// 建议直接修改 AppConfig 并重新编译应用
+  @Deprecated('推荐使用 AppConfig.ssl.allowSelfSignedCert 配置，修改后重新编译应用')
+  static Future<void> applyFromSettings(bool newValue) async {
     final store = StoreService();
-    if (!store.isInitialized) {
-      debugPrint('StoreService not initialized, skipping SSL config');
-      return;
+    if (store.isInitialized) {
+      // 更新 Store 中的设置（用于兼容性）
+      store.put(StoreKey.allowSelfSignedSSLCert, newValue);
     }
 
-    // 更新设置
-    store.put(StoreKey.allowSelfSignedSSLCert, newValue);
-
-    // 立即应用
-    _apply(allowSelfSigned: newValue, applyNative: true);
+    // 应用配置（但实际应该使用 AppConfig 的配置）
+    await applyWithConfig(allowSelfSigned: newValue, applyNative: true);
   }
 
   /// 内部配置逻辑

@@ -1,10 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/infrastructure/api/ssl/http_ssl_options.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 
 void main() {
+  // 确保 Flutter 绑定已初始化
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 应用 SSL 配置（必须在应用启动时调用）
+  // 配置从 AppConfig.ssl 读取，包括是否允许自签名证书等设置
+  // 使用 unawaited 因为这是启动时的初始化，不需要等待完成
+  unawaited(HttpSSLOptions.apply());
+  
   // 配置日志系统
   _setupLogging();
 

@@ -6,6 +6,7 @@ class AppConfig {
   AppConfig._();
 
   static const ApiConfig api = ApiConfig();
+  static const SslConfig ssl = SslConfig();
 }
 
 /// API 配置
@@ -44,3 +45,35 @@ class ApiConfig {
   static String get serverUrl => serverBaseUrl;
 }
 
+/// SSL/TLS 配置
+class SslConfig {
+  const SslConfig();
+
+  /// 是否允许自签名证书
+  /// 
+  /// - `true`: 允许自签名证书（用于开发/测试环境）
+  /// - `false`: 仅允许受信任的证书（生产环境推荐）
+  /// 
+  /// 注意：修改此值后需要重新编译应用
+  static const bool allowSelfSignedCert = false;
+
+  /// 允许自签名证书的主机列表（可选）
+  /// 
+  /// 仅当 [allowSelfSignedCert] 为 `true` 时生效
+  /// 如果列表为空，则允许所有主机的自签名证书
+  /// 如果列表不为空，则仅允许列表中主机的自签名证书
+  /// 
+  /// 示例：
+  /// ```dart
+  /// static const List<String> allowedSelfSignedHosts = [
+  ///   '127.0.0.1',
+  ///   'localhost',
+  ///   '47.107.63.140',
+  /// ];
+  /// ```
+  static const List<String> allowedSelfSignedHosts = [
+    '127.0.0.1',
+    'localhost',
+    '10.0.2.2',
+  ];
+}

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/core/storage/secure_storage_service.dart';
 
 /// SSL客户端证书存储值
@@ -62,20 +63,33 @@ class HttpSSLCertOverride extends HttpOverrides {
     // 使用预创建的SecurityContext或传入的context
     final securityContext = _securityContext ?? context;
 
-    final client = securityContext != null
-        ? HttpClient(context: securityContext)
-        : HttpClient();
+    // 关键修复：使用 super.createHttpClient 而不是直接创建 HttpClient
+    // 这样可以避免递归调用 HttpOverrides.global
+    // super.createHttpClient 会创建基础的 HttpClient，不会再次触发 HttpOverrides
+    final client = super.createHttpClient(securityContext);
 
     // 设置证书验证回调
     client.badCertificateCallback = (X509Certificate cert, String host, int port) {
       // 如果启用自签名证书
       if (allowSelfSignedSSLCert) {
-        // 登录前：允许任意自签名证书
-        if (serverHost == null) {
+        // 检查允许的主机列表
+        final allowedHosts = SslConfig.allowedSelfSignedHosts;
+        
+        // 如果列表为空，允许所有主机的自签名证书
+        if (allowedHosts.isEmpty) {
           return true;
         }
-
-        // 登录后：仅接受服务器主机的自签名证书
+        
+        // 如果列表不为空，检查当前主机是否在允许列表中
+        for (final allowedHost in allowedHosts) {
+          if (host == allowedHost || 
+              host.contains(allowedHost) || 
+              allowedHost.contains(host)) {
+            return true;
+          }
+        }
+        
+        // 如果 serverHost 已设置，也检查是否匹配
         if (serverHost != null) {
           final hostPattern = serverHost!;
           if (host.contains(hostPattern) || hostPattern.contains(host)) {
@@ -91,4 +105,5 @@ class HttpSSLCertOverride extends HttpOverrides {
     return client;
   }
 }
+
 
