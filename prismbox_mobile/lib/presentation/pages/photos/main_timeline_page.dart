@@ -28,17 +28,6 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   @override
   void initState() {
     super.initState();
-
-    // 监听滚动到顶部事件
-    ref.listen(timelineScrollToTopProvider, (_, shouldScroll) {
-      if (shouldScroll && _scrollController.hasClients) {
-        _scrollController.animateTo(
-          0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
   @override
@@ -49,6 +38,17 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
   @override
   Widget build(BuildContext context) {
+    // 在 build 方法中使用 ref.listen
+    ref.listen<bool>(timelineScrollToTopProvider, (previous, next) {
+      if (next && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,

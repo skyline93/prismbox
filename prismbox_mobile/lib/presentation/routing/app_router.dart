@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/presentation/pages/albums/albums_page.dart';
 import 'package:prismbox/presentation/pages/library/library_page.dart';
 import 'package:prismbox/presentation/pages/login/login_page.dart';
+import 'package:prismbox/presentation/pages/register/register_page.dart';
 import 'package:prismbox/presentation/pages/permission/permission_page.dart';
 import 'package:prismbox/presentation/pages/photos/main_timeline_page.dart';
 import 'package:prismbox/presentation/pages/search/search_page.dart';
@@ -14,6 +15,7 @@ import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
 import 'package:prismbox/presentation/routing/guards/duplicate_guard.dart';
 import 'package:prismbox/presentation/routing/guards/permission_guard.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
+import 'package:prismbox/providers/services/auth_service_provider.dart';
 
 part 'app_router.gr.dart';
 
@@ -32,8 +34,7 @@ class AppRouter extends _$AppRouter {
   late final PermissionGuard _permissionGuard;
 
   AppRouter(this.ref) {
-    final apiService = ref.read(apiServiceProvider);
-    _authGuard = AuthGuard(apiService);
+    _authGuard = AuthGuard(ref);
     _duplicateGuard = const DuplicateGuard();
     _permissionGuard = PermissionGuard(ref);
   }
@@ -54,6 +55,12 @@ class AppRouter extends _$AppRouter {
         AutoRoute(
           page: LoginRoute.page,
           path: '/login',
+        ),
+
+        // 注册页面（无守卫）
+        AutoRoute(
+          page: RegisterRoute.page,
+          path: '/register',
         ),
 
         // 权限引导页面（需要认证但不强制）

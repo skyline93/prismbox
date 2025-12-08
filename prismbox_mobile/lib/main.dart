@@ -1,13 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 
 void main() {
+  // 配置日志系统
+  _setupLogging();
+
   runApp(
     const ProviderScope(
       child: MyApp(),
     ),
   );
+}
+
+/// 配置日志系统
+void _setupLogging() {
+  // 在调试模式下，设置日志级别为 ALL，显示所有日志
+  // 在发布模式下，可以设置为 INFO 或更高级别
+  Logger.root.level = kDebugMode ? Level.ALL : Level.INFO;
+
+  // 配置日志输出处理器
+  Logger.root.onRecord.listen((record) {
+    // 格式化日志输出
+    final level = record.level.name.padRight(7);
+    final time = record.time.toString().substring(11, 23); // 只显示时分秒
+    final logger = record.loggerName;
+    final message = record.message;
+
+    // 输出基本日志信息
+    debugPrint('[$level] $time [$logger] $message');
+
+    // 如果有错误信息，输出错误详情
+    if (record.error != null) {
+      debugPrint('  ERROR: ${record.error}');
+    }
+
+    // 如果有堆栈跟踪，输出堆栈信息
+    if (record.stackTrace != null) {
+      debugPrint('  STACK: ${record.stackTrace}');
+    }
+  });
+
+  // 输出日志配置信息
+  if (kDebugMode) {
+    debugPrint('日志系统已初始化 - 级别: ${Logger.root.level.name}');
+  }
 }
 
 class MyApp extends ConsumerWidget {

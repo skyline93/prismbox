@@ -78,10 +78,27 @@ void main() async {
 
 ### 2. 设置服务器端点
 
+**服务器地址配置**：
+
+服务器地址在 `lib/config/app_config.dart` 中配置：
+
+```dart
+// lib/config/app_config.dart
+class ApiConfig {
+  static const String serverBaseUrl = 'https://your-server.com';
+}
+```
+
+修改后需要重新编译应用。`ApiService.initialize()` 会自动从 `AppConfig` 读取端点。
+
+**端点发现**（可选）：
+
+如果需要临时使用端点发现功能：
+
 ```dart
 final apiService = ApiService();
 
-// 解析并设置端点（支持well-known发现）
+// 解析并设置端点（支持well-known发现，但不持久化）
 final endpoint = await apiService.resolveAndSetEndpoint('https://example.com');
 ```
 
@@ -166,7 +183,7 @@ final result = await RetryHelper.retry(
 
 1. **Store服务初始化**：在使用Store服务之前，必须先调用`StoreService().init(repository)`
 2. **SSL配置**：在应用启动时调用`HttpSSLOptions.apply()`应用SSL配置
-3. **端点设置**：在调用API之前，必须先设置端点（通过`setEndpoint`或`resolveAndSetEndpoint`）
+3. **服务器地址配置**：服务器地址在 `lib/config/app_config.dart` 中配置，`ApiService.initialize()` 会自动读取
 4. **Token管理**：Token会自动注入到所有API请求中，无需手动设置请求头
 
 ## 核心特性

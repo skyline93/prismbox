@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/core/storage/secure_storage_service.dart';
@@ -29,6 +31,7 @@ class ApiService {
   String? _endpoint;
   EndpointDiscovery? _endpointDiscovery;
   OnUnauthorizedCallback? _onUnauthorized;
+  bool _isInitialized = false; // 初始化标志，避免重复初始化
 
   /// 设置401错误回调
   void setOnUnauthorizedCallback(OnUnauthorizedCallback? callback) {
@@ -37,6 +40,11 @@ class ApiService {
 
   /// 初始化ApiService
   void initialize() {
+    // 如果已经初始化，直接返回，避免重复初始化
+    if (_isInitialized) {
+      return;
+    }
+
     _endpointDiscovery = EndpointDiscovery(this);
 
     // 配置标准API Dio
@@ -47,26 +55,29 @@ class ApiService {
     _fileDio.options.receiveTimeout = const Duration(hours: 1);
     _fileDio.options.sendTimeout = const Duration(hours: 1);
 
-    // 如果已有保存的端点，恢复它
+    // 从 AppConfig 读取端点并设置
+    final endpoint = ApiConfig.apiEndpoint;
+    setEndpoint(endpoint);
+    _log.info('API endpoint initialized from AppConfig: $endpoint');
+
+    // 恢复Token（从 Store）
     final store = StoreService();
     if (store.isInitialized) {
-      final endpoint = store.tryGet<String>(StoreKey.serverEndpoint);
-      if (endpoint != null && endpoint.isNotEmpty) {
-        setEndpoint(endpoint);
-      }
-
-      // 恢复Token
       final token = store.tryGet<String>(StoreKey.accessToken);
       if (token != null) {
         _accessToken = token;
       }
     }
 
+    _isInitialized = true; // 标记为已初始化
     _log.info('ApiService initialized');
   }
 
   /// 配置Dio实例
   void _configureDio(Dio dio) {
+    // 清除已有拦截器，避免重复添加
+    dio.interceptors.clear();
+    
     dio.options.connectTimeout = const Duration(seconds: 60);
     dio.options.receiveTimeout = const Duration(minutes: 30);
     dio.options.responseType = ResponseType.json;
@@ -82,10 +93,15 @@ class ApiService {
     };
 
     // 添加拦截器（注意顺序很重要）
-    dio.interceptors.add(_LoggingInterceptor());
+    // 1. 认证拦截器（最先，添加认证头）
     dio.interceptors.add(_AuthInterceptor(this));
+    // 2. 响应格式拦截器（处理统一响应格式，提取 data 字段）
     dio.interceptors.add(_ResponseInterceptor());
+    // 3. 日志拦截器（记录处理后的数据，放在 ResponseInterceptor 之后）
+    dio.interceptors.add(_LoggingInterceptor());
+    // 4. 重试拦截器（处理网络错误重试）
     dio.interceptors.add(_RetryInterceptor());
+    // 5. 错误拦截器（最后，统一错误处理）
     dio.interceptors.add(_ErrorInterceptor(this));
   }
 
@@ -101,6 +117,9 @@ class ApiService {
   String? get endpoint => _endpoint;
 
   /// 解析并设置端点
+  /// 
+  /// 注意：此方法仅用于端点发现和临时设置，不会持久化到 Store
+  /// 服务器地址应在 app_config.dart 中配置
   Future<String> resolveAndSetEndpoint(String serverUrl) async {
     if (_endpointDiscovery == null) {
       _endpointDiscovery = EndpointDiscovery(this);
@@ -109,14 +128,11 @@ class ApiService {
     // 解析端点（包括well-known发现）
     final endpoint = await _endpointDiscovery!.discoverAndValidate(serverUrl);
 
-    // 设置端点
+    // 设置端点（仅设置到内存，不持久化）
     setEndpoint(endpoint);
 
-    // 持久化端点
-    final store = StoreService();
-    if (store.isInitialized) {
-      await store.put(StoreKey.serverEndpoint, endpoint);
-    }
+    // 注意：不再保存到 Store，因为服务器地址应该在 app_config.dart 中配置
+    _log.info('API endpoint resolved and set: $endpoint (not persisted)');
 
     return endpoint;
   }
@@ -172,7 +188,7 @@ class ApiService {
     if (store.isInitialized) {
       final token = store.tryGet<String>(StoreKey.accessToken);
       if (token != null) {
-        headers['x-immich-user-token'] = token;
+        headers['x-prismbox-user-token'] = token;
       }
 
       // 添加自定义头
@@ -228,7 +244,7 @@ class ApiService {
     }
 
     try {
-      final response = await _dio.get('/server/ping');
+      final response = await _dio.get('/api/v1/server/ping');
       if (response.statusCode != 200) {
         throw ApiException(
           response.statusCode ?? 500,
@@ -261,7 +277,7 @@ class _AuthInterceptor extends Interceptor {
     // 注入认证头
     final token = _apiService.getAccessToken();
     if (token != null) {
-      options.headers['x-immich-user-token'] = token;
+      options.headers['x-prismbox-user-token'] = token;
     }
 
     // 注入自定义头
@@ -326,7 +342,14 @@ class _ResponseInterceptor extends Interceptor {
       }
 
       // 成功时，将data字段提取出来，直接返回业务数据
-      response.data = responseData;
+      // 如果 data 字段为 null，保持原响应不变（可能是某些接口的特殊情况，如 logout）
+      if (responseData != null) {
+        response.data = responseData;
+      } else {
+        // 如果 data 为 null，保持完整的 ApiResponse 格式
+        // 这样调用方可以自己处理（某些接口可能确实返回 null data）
+        response.data = data;
+      }
     }
 
     handler.next(response);
@@ -385,34 +408,247 @@ class _RetryInterceptor extends Interceptor {
 }
 
 /// 日志拦截器
+/// 用于统一打印 API 请求和响应的详细信息（Debug 级别）
 class _LoggingInterceptor extends Interceptor {
   final Logger _log = Logger('ApiService');
+  
+  // 最大响应体长度（超过此长度会截断）
+  static const int _maxResponseBodyLength = 2000;
+  
+  // 需要隐藏的敏感字段
+  static const List<String> _sensitiveFields = [
+    'password',
+    'token',
+    'accessToken',
+    'refreshToken',
+    'authorization',
+    'x-prismbox-user-token',
+  ];
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    _log.fine('Request: ${options.method} ${options.uri}');
-    if (options.data != null && options.data is! FormData) {
-      _log.fine('Request Body: ${options.data}');
+    // 只在调试模式下输出详细的请求日志
+    if (kDebugMode) {
+      final uri = options.uri.toString();
+      final method = options.method;
+      
+      _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      _log.fine('📤 API Request');
+      _log.fine('  Method: $method');
+      _log.fine('  URL: $uri');
+      
+      // 打印请求头（隐藏敏感信息）
+      if (options.headers.isNotEmpty) {
+        final safeHeaders = _sanitizeHeaders(options.headers);
+        _log.fine('  Headers: $safeHeaders');
+      }
+      
+      // 打印请求体
+      if (options.data != null) {
+        if (options.data is FormData) {
+          _log.fine('  Body: [FormData]');
+        } else {
+          final bodyStr = _formatJson(options.data);
+          _log.fine('  Body: $bodyStr');
+        }
+      }
+      
+      _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
+    
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    _log.fine(
-      'Response: ${response.statusCode} ${response.requestOptions.uri}',
-    );
+    // 只在调试模式下输出详细的响应日志
+    if (kDebugMode) {
+      final uri = response.requestOptions.uri.toString();
+      final statusCode = response.statusCode;
+      final method = response.requestOptions.method;
+      
+      _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      _log.fine('📥 API Response');
+      _log.fine('  Method: $method');
+      _log.fine('  URL: $uri');
+      _log.fine('  Status: $statusCode ${_getStatusMessage(statusCode)}');
+      
+      // 打印响应头（隐藏敏感信息）
+      if (response.headers.map.isNotEmpty) {
+        final safeHeaders = _sanitizeHeaders(
+          response.headers.map.map((k, v) => MapEntry(k, v.join(', '))),
+        );
+        _log.fine('  Headers: $safeHeaders');
+      }
+      
+      // 打印响应体
+      if (response.data != null) {
+        final responseBody = _formatResponseBody(response.data);
+        if (responseBody.length > _maxResponseBodyLength) {
+          // 响应体过长，截断并提示
+          final truncated = responseBody.substring(0, _maxResponseBodyLength);
+          _log.fine('  Body: $truncated...');
+          _log.fine('  [响应体过长，已截断。完整长度: ${responseBody.length} 字符]');
+        } else {
+          _log.fine('  Body: $responseBody');
+        }
+      } else {
+        _log.fine('  Body: [空]');
+      }
+      
+      _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
+    
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    _log.warning(
-      'Error: ${err.type} ${err.requestOptions.uri}',
-      err,
-      err.stackTrace,
-    );
+    // 错误日志使用 warning 级别，但详细信息只在调试模式下输出
+    final uri = err.requestOptions.uri.toString();
+    final method = err.requestOptions.method;
+    
+    _log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    _log.warning('❌ API Error');
+    _log.warning('  Method: $method');
+    _log.warning('  URL: $uri');
+    _log.warning('  Type: ${err.type}');
+    
+    if (err.response != null) {
+      final statusCode = err.response!.statusCode;
+      _log.warning('  Status: $statusCode ${_getStatusMessage(statusCode)}');
+      
+      // 在调试模式下打印错误响应体
+      if (kDebugMode && err.response!.data != null) {
+        final errorBody = _formatResponseBody(err.response!.data);
+        if (errorBody.length > _maxResponseBodyLength) {
+          final truncated = errorBody.substring(0, _maxResponseBodyLength);
+          _log.warning('  Error Body: $truncated...');
+          _log.warning('  [错误响应体过长，已截断。完整长度: ${errorBody.length} 字符]');
+        } else {
+          _log.warning('  Error Body: $errorBody');
+        }
+      }
+    } else {
+      _log.warning('  Message: ${err.message}');
+    }
+    
+    if (err.error != null) {
+      _log.warning('  Error: ${err.error}');
+    }
+    
+    // 在调试模式下输出堆栈跟踪
+    if (kDebugMode) {
+      try {
+        _log.warning('  StackTrace: ${err.stackTrace}');
+      } catch (e) {
+        // 忽略堆栈跟踪输出错误
+      }
+    }
+    
+    _log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     handler.next(err);
+  }
+
+  /// 格式化 JSON 数据
+  String _formatJson(dynamic data) {
+    try {
+      if (data is String) {
+        // 尝试解析为 JSON
+        final decoded = jsonDecode(data);
+        return _formatJson(decoded);
+      } else if (data is Map || data is List) {
+        // 隐藏敏感信息
+        final sanitized = _sanitizeData(data);
+        const encoder = JsonEncoder.withIndent('  ');
+        return encoder.convert(sanitized);
+      } else {
+        return data.toString();
+      }
+    } catch (e) {
+      // 如果不是 JSON，直接返回字符串
+      return data.toString();
+    }
+  }
+
+  /// 格式化响应体
+  String _formatResponseBody(dynamic data) {
+    if (data is String) {
+      // 尝试解析为 JSON
+      try {
+        final decoded = jsonDecode(data);
+        return _formatJson(decoded);
+      } catch (e) {
+        return data;
+      }
+    } else {
+      return _formatJson(data);
+    }
+  }
+
+  /// 隐藏敏感信息
+  dynamic _sanitizeData(dynamic data) {
+    if (data is Map) {
+      final sanitized = <String, dynamic>{};
+      data.forEach((key, value) {
+        final keyStr = key.toString().toLowerCase();
+        if (_sensitiveFields.any((field) => keyStr.contains(field.toLowerCase()))) {
+          sanitized[key.toString()] = '***HIDDEN***';
+        } else if (value is Map || value is List) {
+          sanitized[key.toString()] = _sanitizeData(value);
+        } else {
+          sanitized[key.toString()] = value;
+        }
+      });
+      return sanitized;
+    } else if (data is List) {
+      return data.map((item) => _sanitizeData(item)).toList();
+    } else {
+      return data;
+    }
+  }
+
+  /// 隐藏请求头中的敏感信息
+  Map<String, dynamic> _sanitizeHeaders(Map<String, dynamic> headers) {
+    final sanitized = <String, dynamic>{};
+    headers.forEach((key, value) {
+      final keyStr = key.toLowerCase();
+      if (_sensitiveFields.any((field) => keyStr.contains(field.toLowerCase()))) {
+        sanitized[key] = '***HIDDEN***';
+      } else {
+        sanitized[key] = value;
+      }
+    });
+    return sanitized;
+  }
+
+  /// 获取 HTTP 状态码描述
+  String _getStatusMessage(int? statusCode) {
+    if (statusCode == null) return '';
+    
+    switch (statusCode) {
+      case 200:
+        return 'OK';
+      case 201:
+        return 'Created';
+      case 400:
+        return 'Bad Request';
+      case 401:
+        return 'Unauthorized';
+      case 403:
+        return 'Forbidden';
+      case 404:
+        return 'Not Found';
+      case 500:
+        return 'Internal Server Error';
+      case 502:
+        return 'Bad Gateway';
+      case 503:
+        return 'Service Unavailable';
+      default:
+        return '';
+    }
   }
 }
 

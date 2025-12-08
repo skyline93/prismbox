@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/infrastructure/api/ssl/http_ssl_cert_override.dart';
@@ -40,19 +41,14 @@ class HttpSSLOptions {
     required bool allowSelfSigned,
     required bool applyNative,
   }) async {
-    // 获取服务器主机（如果已登录）
+    // 获取服务器主机（从 AppConfig 读取）
     String? serverHost;
-    final store = StoreService();
-    if (store.isInitialized) {
-      final endpoint = store.tryGet<String>(StoreKey.serverEndpoint);
-      if (endpoint != null) {
-        try {
-          final uri = Uri.parse(endpoint);
-          serverHost = uri.host;
-        } catch (e) {
-          debugPrint('Failed to parse server endpoint: $e');
-        }
-      }
+    try {
+      final endpoint = ApiConfig.apiEndpoint;
+      final uri = Uri.parse(endpoint);
+      serverHost = uri.host;
+    } catch (e) {
+      debugPrint('Failed to parse server endpoint from AppConfig: $e');
     }
 
     // 加载客户端证书

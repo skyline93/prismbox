@@ -1,11 +1,11 @@
+// lib/presentation/pages/splash/splash_page.dart
+
 import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:prismbox/core/storage/secure_storage_service.dart';
-import 'package:prismbox/infrastructure/api/exceptions/api_exception.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
-import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
+import 'package:prismbox/providers/auth/auth_state_provider.dart';
 import 'package:logging/logging.dart';
 
 /// 启动页面
@@ -35,52 +35,20 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     if (_hasNavigated) return;
     
     try {
-      final secureStorage = SecureStorageService();
-      final accessToken = await secureStorage.getAccessToken();
+      // 直接读取认证状态，不重复调用 initialize
+      // AuthNotifier 的 build() 方法已经会初始化
+      final authState = await ref.read(authNotifierProvider.future);
 
-      if (accessToken == null || accessToken.isEmpty) {
-        // 没有 token，跳转到登录页
-        _log.info('No access token found. Navigating to login.');
-        if (mounted && !_hasNavigated) {
-          _hasNavigated = true;
-          context.router.replaceAll([const LoginRoute()]);
-        }
-        return;
-      }
-
-      // 有 token，验证有效性
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.setAccessToken(accessToken);
-
-      try {
-        // 尝试 ping 服务器验证 token
-        await apiService.pingServer();
-        // token 有效，跳转到主页面
-        _log.info('Access token valid. Navigating to home.');
+      if (authState is AuthStateAuthenticated) {
+        // 已认证，跳转到主页
+        _log.info('User authenticated. Navigating to home.');
         if (mounted && !_hasNavigated) {
           _hasNavigated = true;
           context.router.replaceAll([const TabShellRoute()]);
         }
-      } on ApiException catch (e) {
-        if (e.statusCode == 401) {
-          // token 无效，清除并跳转到登录页
-          _log.warning('Access token invalid (401). Navigating to login.');
-          await apiService.clearAccessToken();
-          if (mounted && !_hasNavigated) {
-            _hasNavigated = true;
-            context.router.replaceAll([const LoginRoute()]);
-          }
-        } else {
-          // 其他错误，也跳转到登录页
-          _log.warning('Server ping failed. Navigating to login.');
-          if (mounted && !_hasNavigated) {
-            _hasNavigated = true;
-            context.router.replaceAll([const LoginRoute()]);
-          }
-        }
-      } catch (e) {
-        // 网络错误等，跳转到登录页
-        _log.warning('Error checking auth: $e. Navigating to login.');
+      } else {
+        // 未认证，跳转到登录页
+        _log.info('User not authenticated. Navigating to login.');
         if (mounted && !_hasNavigated) {
           _hasNavigated = true;
           context.router.replaceAll([const LoginRoute()]);
@@ -124,4 +92,3 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     );
   }
 }
-

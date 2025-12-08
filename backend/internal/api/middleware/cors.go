@@ -35,6 +35,7 @@ func CORSMiddleware() gin.HandlerFunc {
 			"X-File-SHA256",
 			"X-Chunk-Hash",
 			"X-Album-ID",
+			"X-Prismbox-User-Token",
 		},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type", "Content-Disposition"},
 		AllowCredentials: true,

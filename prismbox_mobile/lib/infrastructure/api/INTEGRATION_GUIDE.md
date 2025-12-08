@@ -45,16 +45,18 @@ void main() async {
 final store = StoreService();
 
 // 存储值
-await store.put(StoreKey.serverEndpoint, 'https://example.com/api');
+await store.put(StoreKey.accessToken, 'your_token');
 
 // 获取值
-final endpoint = store.tryGet<String>(StoreKey.serverEndpoint);
+final token = store.tryGet<String>(StoreKey.accessToken);
 
 // 监听值变化
-store.watch(StoreKey.serverEndpoint).listen((value) {
-  print('Endpoint changed: $value');
+store.watch(StoreKey.accessToken).listen((value) {
+  print('Token changed: $value');
 });
 ```
+
+**注意**：服务器端点配置已迁移到 `app_config.dart`，不再使用 Store 存储。
 
 ## 2. ApiService 集成（Dio 方式）
 
@@ -86,17 +88,23 @@ void main() async {
 }
 ```
 
-### 2.2 设置服务器端点
+### 2.2 配置服务器地址
+
+服务器地址在 `lib/config/app_config.dart` 中配置：
 
 ```dart
-final apiService = ApiService();
-
-// 方式1：直接设置端点
-apiService.setEndpoint('https://api.example.com/api/v1');
-
-// 方式2：自动发现并设置端点（推荐）
-final endpoint = await apiService.resolveAndSetEndpoint('https://example.com');
+// lib/config/app_config.dart
+class ApiConfig {
+  static const String serverBaseUrl = 'https://your-server.com';
+}
 ```
+
+修改后需要重新编译应用。`ApiService.initialize()` 会自动从 `AppConfig` 读取端点。
+
+**注意**：
+- 服务器地址是编译时配置，修改后需要重新编译
+- `resolveAndSetEndpoint()` 方法仍可用于端点发现，但结果不会持久化
+- 如需临时设置端点，可以使用 `apiService.setEndpoint('https://api.example.com/api/v1')`
 
 ### 2.3 使用 Dio 调用 API
 
@@ -235,7 +243,7 @@ void main() async {
   // 5. 应用SSL配置
   HttpSSLOptions.apply();
   
-  // 6. 如果已有保存的端点，恢复它（ApiService.initialize() 已自动处理）
+  // 注意：服务器端点已从 AppConfig 自动读取，无需手动设置
   
   runApp(MyApp());
 }
@@ -251,9 +259,11 @@ void main() async {
 
 4. **SSL 配置**：必须在应用启动时调用 `HttpSSLOptions.apply()`。
 
-5. **重试机制**：自动重试网络错误和 5xx 错误，无需手动处理。如需手动控制，可以使用 `RetryHelper`。
+5. **服务器地址配置**：服务器地址在 `lib/config/app_config.dart` 中配置，修改后需要重新编译应用。
 
-6. **Android插件**：确保`MainActivity`正确注册了`HttpSSLOptionsPlugin`。
+6. **重试机制**：自动重试网络错误和 5xx 错误，无需手动处理。如需手动控制，可以使用 `RetryHelper`。
+
+7. **Android插件**：确保`MainActivity`正确注册了`HttpSSLOptionsPlugin`。
 
 ## 7. 故障排查
 

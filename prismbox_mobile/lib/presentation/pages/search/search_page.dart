@@ -19,13 +19,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
-
-    // 监听搜索输入框聚焦事件
-    ref.listen(searchInputFocusProvider, (_, shouldFocus) {
-      if (shouldFocus && _searchFocusNode.canRequestFocus) {
-        _searchFocusNode.requestFocus();
-      }
-    });
   }
 
   @override
@@ -37,6 +30,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 在 build 方法中使用 ref.listen
+    ref.listen<bool>(searchInputFocusProvider, (previous, next) {
+      if (next && _searchFocusNode.canRequestFocus) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: TextField(
