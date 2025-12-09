@@ -2,9 +2,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
-import 'package:prismbox/presentation/widgets/media/media_grid_view.dart';
+import 'package:prismbox/presentation/widgets/timeline/timeline_sliver_list.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
 
@@ -49,17 +50,24 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     // 监听权限状态
     final permissionAsync = ref.watch(photoPermissionNotifierProvider);
 
-    // 只有在权限已授予时才加载时间线数据
-    final timelineAsync = permissionAsync.when(
+    // 只有在权限已授予时才加载时间线分组数据
+    final timelineSectionsAsync = permissionAsync.when(
       data: (permissionState) {
         if (permissionState is PhotoPermissionGranted) {
-          return ref.watch(timelineAssetsProvider());
+          return ref.watch(timelineSectionsProvider);
         }
-        return const AsyncValue<List<LocalAsset>>.data([]);
+        return const AsyncValue<List<TimelineSection>>.data([]);
       },
-      loading: () => const AsyncValue<List<LocalAsset>>.loading(),
+      loading: () => const AsyncValue<List<TimelineSection>>.loading(),
       error: (error, stackTrace) =>
-          AsyncValue<List<LocalAsset>>.error(error, stackTrace),
+          AsyncValue<List<TimelineSection>>.error(error, stackTrace),
+    );
+
+    // 构建内容 Sliver 列表
+    final contentSlivers = _buildContentSlivers(
+      context,
+      permissionAsync,
+      timelineSectionsAsync,
     );
 
     return Scaffold(
@@ -81,127 +89,152 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                 icon: const Icon(Icons.refresh),
                 onPressed: () {
                   // 刷新时间线数据
-                  ref.invalidate(timelineAssetsProvider);
+                  ref.invalidate(timelineSectionsProvider);
                 },
               ),
             ],
           ),
-          // 根据权限状态显示不同内容
-          permissionAsync.when(
-            data: (permissionState) {
-              // 如果权限未授予，显示权限提示
-              if (permissionState is! PhotoPermissionGranted) {
-                return SliverFillRemaining(
-                  child: _buildPermissionDeniedUI(context, permissionState),
-                );
-              }
+          // 展开内容 Sliver 列表
+          ...contentSlivers,
+        ],
+      ),
+    );
+  }
 
-              // 权限已授予，显示时间线数据
-              return timelineAsync.when(
-                data: (assets) {
-                  if (assets.isEmpty) {
-                    return SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.photo_library_outlined,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '暂无照片',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
+  /// 构建内容 Sliver 列表
+  List<Widget> _buildContentSlivers(
+    BuildContext context,
+    AsyncValue<PhotoPermissionState> permissionAsync,
+    AsyncValue<List<TimelineSection>> timelineSectionsAsync,
+  ) {
+    return permissionAsync.when(
+      data: (permissionState) {
+        // 如果权限未授予，显示权限提示
+        if (permissionState is! PhotoPermissionGranted) {
+          return [
+            SliverFillRemaining(
+              child: _buildPermissionDeniedUI(context, permissionState),
+            ),
+          ];
+        }
 
-                  // 显示媒体网格
-                  return SliverPadding(
-                    padding: const EdgeInsets.all(2),
-                    sliver: MediaGridSliver(
-                      assets: assets,
-                      crossAxisCount: 5,
-                      crossAxisSpacing: 2,
-                      mainAxisSpacing: 2,
-                      childAspectRatio: 1.0,
-                      onTap: (asset, index) {
-                        // 导航到媒体查看器
-                        final assetIds = assets.map((a) => a.id).toList();
-                        context.router.push(
-                          MediaViewerRoute(
-                            initialAssetId: asset.id,
-                            assetIds: assetIds,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-                loading: () => const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, stackTrace) => SliverFillRemaining(
+        // 权限已授予，显示时间线分组数据
+        return timelineSectionsAsync.when(
+          data: (sections) {
+            if (sections.isEmpty) {
+              return [
+                SliverFillRemaining(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.error_outline,
+                          Icons.photo_library_outlined,
                           size: 64,
-                          color: Colors.red,
+                          color: Colors.grey,
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          '加载失败',
+                          '暂无照片',
                           style: Theme.of(
                             context,
-                          ).textTheme.titleLarge?.copyWith(color: Colors.red),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          error.toString(),
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            ref.invalidate(timelineAssetsProvider);
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('重试'),
+                          ).textTheme.titleLarge?.copyWith(color: Colors.grey),
                         ),
                       ],
                     ),
                   ),
                 ),
-              );
-            },
-            loading: () => const SliverFillRemaining(
+              ];
+            }
+
+            // 收集所有资产 ID（用于导航到媒体查看器）
+            final allAssets = <LocalAsset>[];
+            for (final section in sections) {
+              allAssets.addAll(section.assets);
+            }
+
+            // 构建时间线分组列表的 Sliver
+            return TimelineSliverListBuilder(
+              sections: sections,
+              crossAxisCount: 5,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
+              childAspectRatio: 1.0,
+              onTap: (asset, index) {
+                // 导航到媒体查看器
+                final assetIds = allAssets.map((a) => a.id).toList();
+                context.router.push(
+                  MediaViewerRoute(
+                    initialAssetId: asset.id,
+                    assetIds: assetIds,
+                  ),
+                );
+              },
+            ).build();
+          },
+          loading: () => [
+            const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (error, stackTrace) => SliverFillRemaining(
+          ],
+          error: (error, stackTrace) => [
+            SliverFillRemaining(
               child: Center(
-                child: Text(
-                  '权限检查失败: ${error.toString()}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.red),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '加载失败',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(color: Colors.red),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error.toString(),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        ref.invalidate(timelineSectionsProvider);
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重试'),
+                    ),
+                  ],
                 ),
               ),
             ),
+          ],
+        );
+      },
+      loading: () => [
+        const SliverFillRemaining(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ],
+      error: (error, stackTrace) => [
+        SliverFillRemaining(
+          child: Center(
+            child: Text(
+              '权限检查失败: ${error.toString()}',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.red),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

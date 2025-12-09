@@ -177,6 +177,28 @@ class _TimelineAssetsProviderElement
       (origin as TimelineAssetsProvider).forcePhotoManager;
 }
 
+String _$timelineSectionsHash() => r'7cad26538b58a289be081b454113fb1507b796ab';
+
+/// 时间线分组数据 Provider
+///
+/// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
+/// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+///
+/// Copied from [timelineSections].
+@ProviderFor(timelineSections)
+final timelineSectionsProvider =
+    AutoDisposeFutureProvider<List<TimelineSection>>.internal(
+  timelineSections,
+  name: r'timelineSectionsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$timelineSectionsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef TimelineSectionsRef
+    = AutoDisposeFutureProviderRef<List<TimelineSection>>;
 String _$syncStatusHash() => r'bb068acf9f97f8b63ded82b67827d085cd2b0e56';
 
 /// 同步状态 Provider
