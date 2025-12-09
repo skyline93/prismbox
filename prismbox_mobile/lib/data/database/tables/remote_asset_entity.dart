@@ -9,24 +9,8 @@ import 'package:prismbox/data/database/enums/asset_visibility.dart';
 /// 远程资产实体表
 /// 存储从服务器同步的资产信息
 @DataClassName('RemoteAssetEntityData')
-@TableIndex.sql(
-  'CREATE INDEX IF NOT EXISTS idx_remote_asset_owner_checksum '
-  'ON remote_asset_entity (owner_id, checksum)',
-)
-@TableIndex.sql('''
-CREATE UNIQUE INDEX IF NOT EXISTS UQ_remote_assets_owner_checksum
-ON remote_asset_entity (owner_id, checksum)
-WHERE (library_id IS NULL);
-''')
-@TableIndex.sql('''
-CREATE UNIQUE INDEX IF NOT EXISTS UQ_remote_assets_owner_library_checksum
-ON remote_asset_entity (owner_id, library_id, checksum)
-WHERE (library_id IS NOT NULL);
-''')
-@TableIndex.sql(
-  'CREATE INDEX IF NOT EXISTS idx_remote_asset_checksum '
-  'ON remote_asset_entity (checksum)',
-)
+@TableIndex(name: 'idx_remote_asset_owner_checksum', columns: {#ownerId, #checksum})
+@TableIndex(name: 'idx_remote_asset_checksum', columns: {#checksum})
 class RemoteAssetEntity extends Table 
     with DriftDefaultsMixin, AssetEntityMixin {
   const RemoteAssetEntity();

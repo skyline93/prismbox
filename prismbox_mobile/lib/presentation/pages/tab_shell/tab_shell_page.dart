@@ -5,6 +5,7 @@ import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
+import 'package:prismbox/providers/permission/photo_permission_provider.dart';
 
 /// TabShell 容器页面
 /// 管理四个核心标签页的导航
@@ -17,6 +18,34 @@ class TabShellPage extends ConsumerStatefulWidget {
 }
 
 class _TabShellPageState extends ConsumerState<TabShellPage> {
+  bool _hasRequestedPermission = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 页面渲染完成后请求权限
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestPhotoPermission();
+    });
+  }
+
+  /// 请求相册权限
+  Future<void> _requestPhotoPermission() async {
+    if (_hasRequestedPermission) return;
+    _hasRequestedPermission = true;
+
+    // 延迟一下，确保页面完全加载
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    // 请求权限
+    final permissionNotifier = ref.read(
+      photoPermissionNotifierProvider.notifier,
+    );
+    await permissionNotifier.requestPermission();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isScreenLandscape =
@@ -213,4 +242,3 @@ class _TabShellPageState extends ConsumerState<TabShellPage> {
     }
   }
 }
-

@@ -1,4 +1,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 相册访问权限 - 完整配置 -->
+    
+    <!-- Android 12 及以下 (API 19-32) - 读取权限 -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    
+    <!-- Android 12 及以下 (API 19-32) - 写入权限（用于修改/删除照片） -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    
+    <!-- Android 13 及以上 (API 33+) - 读取权限 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    
+    <!-- Android 13 及以上 (API 33+) - 写入权限（用于修改/删除照片） -->
+    <uses-permission android:name="android.permission.WRITE_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.WRITE_MEDIA_VIDEO" />
+    
+    <!-- Android 14 及以上 (API 34+) - 部分媒体访问权限（如果需要访问部分照片） -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+
     <application
         android:label="prismbox"
         android:name="${applicationName}"

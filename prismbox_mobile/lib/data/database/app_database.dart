@@ -33,12 +33,7 @@ part 'app_database.g.dart';
     AlbumAssetEntity,
     StoreEntity,
   ],
-  daos: [
-    UserDao,
-    LocalAssetDao,
-    RemoteAssetDao,
-    AlbumDao,
-  ],
+  daos: [UserDao, LocalAssetDao, RemoteAssetDao, AlbumDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
@@ -51,6 +46,17 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+        // 创建部分唯一索引（新语法不支持 WHERE 子句，需要手动创建）
+        await m.database.customStatement('''
+          CREATE UNIQUE INDEX IF NOT EXISTS UQ_remote_assets_owner_checksum
+          ON remote_asset_entity (owner_id, checksum)
+          WHERE (library_id IS NULL);
+        ''');
+        await m.database.customStatement('''
+          CREATE UNIQUE INDEX IF NOT EXISTS UQ_remote_assets_owner_library_checksum
+          ON remote_asset_entity (owner_id, library_id, checksum)
+          WHERE (library_id IS NOT NULL);
+        ''');
       },
       onUpgrade: (Migrator m, int from, int to) async {
         // 逐步升级
@@ -62,7 +68,8 @@ class AppDatabase extends _$AppDatabase {
           // 迁移失败时抛出 DatabaseException
           throw DatabaseException(
             type: DatabaseErrorType.migrationFailed,
-            message: '数据库迁移失败: 从版本 $from 升级到版本 $to 时出错\n错误信息: $e\n堆栈跟踪: $stackTrace',
+            message:
+                '数据库迁移失败: 从版本 $from 升级到版本 $to 时出错\n错误信息: $e\n堆栈跟踪: $stackTrace',
             originalError: e,
           );
         }
@@ -91,4 +98,3 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 }
-

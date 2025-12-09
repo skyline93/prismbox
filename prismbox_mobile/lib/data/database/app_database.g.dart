@@ -3159,18 +3159,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AlbumAssetEntityTable(this);
   late final $StoreEntityTable storeEntity = $StoreEntityTable(this);
   late final Index idxLocalAssetChecksum = Index('idx_local_asset_checksum',
-      'CREATE INDEX IF NOT EXISTS idx_local_asset_checksum ON local_asset_entity (checksum)');
+      'CREATE INDEX idx_local_asset_checksum ON local_asset_entity (checksum)');
   late final Index idxRemoteAssetOwnerChecksum = Index(
       'idx_remote_asset_owner_checksum',
-      'CREATE INDEX IF NOT EXISTS idx_remote_asset_owner_checksum ON remote_asset_entity (owner_id, checksum)');
-  late final Index uQRemoteAssetsOwnerChecksum = Index(
-      'UQ_remote_assets_owner_checksum',
-      'CREATE UNIQUE INDEX IF NOT EXISTS UQ_remote_assets_owner_checksum ON remote_asset_entity (owner_id, checksum) WHERE(library_id IS NULL)');
-  late final Index uQRemoteAssetsOwnerLibraryChecksum = Index(
-      'UQ_remote_assets_owner_library_checksum',
-      'CREATE UNIQUE INDEX IF NOT EXISTS UQ_remote_assets_owner_library_checksum ON remote_asset_entity (owner_id, library_id, checksum) WHERE(library_id IS NOT NULL)');
+      'CREATE INDEX idx_remote_asset_owner_checksum ON remote_asset_entity (owner_id, checksum)');
   late final Index idxRemoteAssetChecksum = Index('idx_remote_asset_checksum',
-      'CREATE INDEX IF NOT EXISTS idx_remote_asset_checksum ON remote_asset_entity (checksum)');
+      'CREATE INDEX idx_remote_asset_checksum ON remote_asset_entity (checksum)');
   late final UserDao userDao = UserDao(this as AppDatabase);
   late final LocalAssetDao localAssetDao = LocalAssetDao(this as AppDatabase);
   late final RemoteAssetDao remoteAssetDao =
@@ -3190,8 +3184,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         storeEntity,
         idxLocalAssetChecksum,
         idxRemoteAssetOwnerChecksum,
-        uQRemoteAssetsOwnerChecksum,
-        uQRemoteAssetsOwnerLibraryChecksum,
         idxRemoteAssetChecksum
       ];
   @override
@@ -3260,240 +3252,22 @@ typedef $$UserEntityTableUpdateCompanionBuilder = UserEntityCompanion Function({
   Value<DateTime> updatedAt,
 });
 
-final class $$UserEntityTableReferences
-    extends BaseReferences<_$AppDatabase, $UserEntityTable, UserEntityData> {
-  $$UserEntityTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$RemoteAssetEntityTable,
-      List<RemoteAssetEntityData>> _remoteAssetEntityRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.remoteAssetEntity,
-          aliasName: $_aliasNameGenerator(
-              db.userEntity.id, db.remoteAssetEntity.ownerId));
-
-  $$RemoteAssetEntityTableProcessedTableManager get remoteAssetEntityRefs {
-    final manager =
-        $$RemoteAssetEntityTableTableManager($_db, $_db.remoteAssetEntity)
-            .filter((f) => f.ownerId.id($_item.id));
-
-    final cache =
-        $_typedResult.readTableOrNull(_remoteAssetEntityRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
-  static MultiTypedResultKey<$RemoteAlbumEntityTable,
-      List<RemoteAlbumEntityData>> _remoteAlbumEntityRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.remoteAlbumEntity,
-          aliasName: $_aliasNameGenerator(
-              db.userEntity.id, db.remoteAlbumEntity.ownerId));
-
-  $$RemoteAlbumEntityTableProcessedTableManager get remoteAlbumEntityRefs {
-    final manager =
-        $$RemoteAlbumEntityTableTableManager($_db, $_db.remoteAlbumEntity)
-            .filter((f) => f.ownerId.id($_item.id));
-
-    final cache =
-        $_typedResult.readTableOrNull(_remoteAlbumEntityRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
-
-class $$UserEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $UserEntityTable> {
-  $$UserEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get email => $composableBuilder(
-      column: $table.email, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get avatarUrl => $composableBuilder(
-      column: $table.avatarUrl, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  Expression<bool> remoteAssetEntityRefs(
-      Expression<bool> Function($$RemoteAssetEntityTableFilterComposer f) f) {
-    final $$RemoteAssetEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.remoteAssetEntity,
-        getReferencedColumn: (t) => t.ownerId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAssetEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<bool> remoteAlbumEntityRefs(
-      Expression<bool> Function($$RemoteAlbumEntityTableFilterComposer f) f) {
-    final $$RemoteAlbumEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.remoteAlbumEntity,
-        getReferencedColumn: (t) => t.ownerId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAlbumEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
-class $$UserEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $UserEntityTable> {
-  $$UserEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get email => $composableBuilder(
-      column: $table.email, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get avatarUrl => $composableBuilder(
-      column: $table.avatarUrl, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-}
-
-class $$UserEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $UserEntityTable> {
-  $$UserEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<String> get email =>
-      $composableBuilder(column: $table.email, builder: (column) => column);
-
-  GeneratedColumn<String> get avatarUrl =>
-      $composableBuilder(column: $table.avatarUrl, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  Expression<T> remoteAssetEntityRefs<T extends Object>(
-      Expression<T> Function($$RemoteAssetEntityTableAnnotationComposer a) f) {
-    final $$RemoteAssetEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.remoteAssetEntity,
-            getReferencedColumn: (t) => t.ownerId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAssetEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAssetEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
-  }
-
-  Expression<T> remoteAlbumEntityRefs<T extends Object>(
-      Expression<T> Function($$RemoteAlbumEntityTableAnnotationComposer a) f) {
-    final $$RemoteAlbumEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.remoteAlbumEntity,
-            getReferencedColumn: (t) => t.ownerId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAlbumEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAlbumEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
-  }
-}
-
 class $$UserEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $UserEntityTable,
     UserEntityData,
     $$UserEntityTableFilterComposer,
     $$UserEntityTableOrderingComposer,
-    $$UserEntityTableAnnotationComposer,
     $$UserEntityTableCreateCompanionBuilder,
-    $$UserEntityTableUpdateCompanionBuilder,
-    (UserEntityData, $$UserEntityTableReferences),
-    UserEntityData,
-    PrefetchHooks Function(
-        {bool remoteAssetEntityRefs, bool remoteAlbumEntityRefs})> {
+    $$UserEntityTableUpdateCompanionBuilder> {
   $$UserEntityTableTableManager(_$AppDatabase db, $UserEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$UserEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$UserEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$UserEntityTableAnnotationComposer($db: db, $table: table),
+          filteringComposer:
+              $$UserEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$UserEntityTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -3526,67 +3300,111 @@ class $$UserEntityTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$UserEntityTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: (
-              {remoteAssetEntityRefs = false, remoteAlbumEntityRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (remoteAssetEntityRefs) db.remoteAssetEntity,
-                if (remoteAlbumEntityRefs) db.remoteAlbumEntity
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (remoteAssetEntityRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$UserEntityTableReferences
-                            ._remoteAssetEntityRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$UserEntityTableReferences(db, table, p0)
-                                .remoteAssetEntityRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.ownerId == item.id),
-                        typedResults: items),
-                  if (remoteAlbumEntityRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$UserEntityTableReferences
-                            ._remoteAlbumEntityRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$UserEntityTableReferences(db, table, p0)
-                                .remoteAlbumEntityRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.ownerId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
         ));
 }
 
-typedef $$UserEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $UserEntityTable,
-    UserEntityData,
-    $$UserEntityTableFilterComposer,
-    $$UserEntityTableOrderingComposer,
-    $$UserEntityTableAnnotationComposer,
-    $$UserEntityTableCreateCompanionBuilder,
-    $$UserEntityTableUpdateCompanionBuilder,
-    (UserEntityData, $$UserEntityTableReferences),
-    UserEntityData,
-    PrefetchHooks Function(
-        {bool remoteAssetEntityRefs, bool remoteAlbumEntityRefs})>;
+class $$UserEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $UserEntityTable> {
+  $$UserEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get email => $state.composableBuilder(
+      column: $state.table.email,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get avatarUrl => $state.composableBuilder(
+      column: $state.table.avatarUrl,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ComposableFilter remoteAssetEntityRefs(
+      ComposableFilter Function($$RemoteAssetEntityTableFilterComposer f) f) {
+    final $$RemoteAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.remoteAssetEntity,
+            getReferencedColumn: (t) => t.ownerId,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAssetEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter remoteAlbumEntityRefs(
+      ComposableFilter Function($$RemoteAlbumEntityTableFilterComposer f) f) {
+    final $$RemoteAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.ownerId,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
+}
+
+class $$UserEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $UserEntityTable> {
+  $$UserEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get email => $state.composableBuilder(
+      column: $state.table.email,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get avatarUrl => $state.composableBuilder(
+      column: $state.table.avatarUrl,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
 typedef $$LocalAssetEntityTableCreateCompanionBuilder
     = LocalAssetEntityCompanion Function({
   required String name,
@@ -3618,175 +3436,23 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<int> orientation,
 });
 
-class $$LocalAssetEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $LocalAssetEntityTable> {
-  $$LocalAssetEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
-
-  ColumnWithTypeConverterFilters<AssetType, AssetType, int> get type =>
-      $composableBuilder(
-          column: $table.type,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get width => $composableBuilder(
-      column: $table.width, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get height => $composableBuilder(
-      column: $table.height, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get durationInSeconds => $composableBuilder(
-      column: $table.durationInSeconds,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get checksum => $composableBuilder(
-      column: $table.checksum, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get path => $composableBuilder(
-      column: $table.path, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get orientation => $composableBuilder(
-      column: $table.orientation, builder: (column) => ColumnFilters(column));
-}
-
-class $$LocalAssetEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $LocalAssetEntityTable> {
-  $$LocalAssetEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get type => $composableBuilder(
-      column: $table.type, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get width => $composableBuilder(
-      column: $table.width, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get height => $composableBuilder(
-      column: $table.height, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get durationInSeconds => $composableBuilder(
-      column: $table.durationInSeconds,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get checksum => $composableBuilder(
-      column: $table.checksum, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get path => $composableBuilder(
-      column: $table.path, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get orientation => $composableBuilder(
-      column: $table.orientation, builder: (column) => ColumnOrderings(column));
-}
-
-class $$LocalAssetEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LocalAssetEntityTable> {
-  $$LocalAssetEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<AssetType, int> get type =>
-      $composableBuilder(column: $table.type, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  GeneratedColumn<int> get width =>
-      $composableBuilder(column: $table.width, builder: (column) => column);
-
-  GeneratedColumn<int> get height =>
-      $composableBuilder(column: $table.height, builder: (column) => column);
-
-  GeneratedColumn<int> get durationInSeconds => $composableBuilder(
-      column: $table.durationInSeconds, builder: (column) => column);
-
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get checksum =>
-      $composableBuilder(column: $table.checksum, builder: (column) => column);
-
-  GeneratedColumn<String> get path =>
-      $composableBuilder(column: $table.path, builder: (column) => column);
-
-  GeneratedColumn<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => column);
-
-  GeneratedColumn<int> get orientation => $composableBuilder(
-      column: $table.orientation, builder: (column) => column);
-}
-
 class $$LocalAssetEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $LocalAssetEntityTable,
     LocalAssetEntityData,
     $$LocalAssetEntityTableFilterComposer,
     $$LocalAssetEntityTableOrderingComposer,
-    $$LocalAssetEntityTableAnnotationComposer,
     $$LocalAssetEntityTableCreateCompanionBuilder,
-    $$LocalAssetEntityTableUpdateCompanionBuilder,
-    (
-      LocalAssetEntityData,
-      BaseReferences<_$AppDatabase, $LocalAssetEntityTable,
-          LocalAssetEntityData>
-    ),
-    LocalAssetEntityData,
-    PrefetchHooks Function()> {
+    $$LocalAssetEntityTableUpdateCompanionBuilder> {
   $$LocalAssetEntityTableTableManager(
       _$AppDatabase db, $LocalAssetEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$LocalAssetEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$LocalAssetEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$LocalAssetEntityTableAnnotationComposer($db: db, $table: table),
+          filteringComposer:
+              $$LocalAssetEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$LocalAssetEntityTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> name = const Value.absent(),
             Value<AssetType> type = const Value.absent(),
@@ -3843,29 +3509,139 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             isFavorite: isFavorite,
             orientation: orientation,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
         ));
 }
 
-typedef $$LocalAssetEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $LocalAssetEntityTable,
-    LocalAssetEntityData,
-    $$LocalAssetEntityTableFilterComposer,
-    $$LocalAssetEntityTableOrderingComposer,
-    $$LocalAssetEntityTableAnnotationComposer,
-    $$LocalAssetEntityTableCreateCompanionBuilder,
-    $$LocalAssetEntityTableUpdateCompanionBuilder,
-    (
-      LocalAssetEntityData,
-      BaseReferences<_$AppDatabase, $LocalAssetEntityTable,
-          LocalAssetEntityData>
-    ),
-    LocalAssetEntityData,
-    PrefetchHooks Function()>;
+class $$LocalAssetEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $LocalAssetEntityTable> {
+  $$LocalAssetEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AssetType, AssetType, int> get type =>
+      $state.composableBuilder(
+          column: $state.table.type,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get width => $state.composableBuilder(
+      column: $state.table.width,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get height => $state.composableBuilder(
+      column: $state.table.height,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get durationInSeconds => $state.composableBuilder(
+      column: $state.table.durationInSeconds,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get checksum => $state.composableBuilder(
+      column: $state.table.checksum,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get path => $state.composableBuilder(
+      column: $state.table.path,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isFavorite => $state.composableBuilder(
+      column: $state.table.isFavorite,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get orientation => $state.composableBuilder(
+      column: $state.table.orientation,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$LocalAssetEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $LocalAssetEntityTable> {
+  $$LocalAssetEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get type => $state.composableBuilder(
+      column: $state.table.type,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get width => $state.composableBuilder(
+      column: $state.table.width,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get height => $state.composableBuilder(
+      column: $state.table.height,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get durationInSeconds => $state.composableBuilder(
+      column: $state.table.durationInSeconds,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get checksum => $state.composableBuilder(
+      column: $state.table.checksum,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get path => $state.composableBuilder(
+      column: $state.table.path,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isFavorite => $state.composableBuilder(
+      column: $state.table.isFavorite,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get orientation => $state.composableBuilder(
+      column: $state.table.orientation,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
 typedef $$RemoteAssetEntityTableCreateCompanionBuilder
     = RemoteAssetEntityCompanion Function({
   required String name,
@@ -3909,426 +3685,23 @@ typedef $$RemoteAssetEntityTableUpdateCompanionBuilder
   Value<String?> libraryId,
 });
 
-final class $$RemoteAssetEntityTableReferences extends BaseReferences<
-    _$AppDatabase, $RemoteAssetEntityTable, RemoteAssetEntityData> {
-  $$RemoteAssetEntityTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $UserEntityTable _ownerIdTable(_$AppDatabase db) =>
-      db.userEntity.createAlias(
-          $_aliasNameGenerator(db.remoteAssetEntity.ownerId, db.userEntity.id));
-
-  $$UserEntityTableProcessedTableManager? get ownerId {
-    if ($_item.ownerId == null) return null;
-    final manager = $$UserEntityTableTableManager($_db, $_db.userEntity)
-        .filter((f) => f.id($_item.ownerId!));
-    final item = $_typedResult.readTableOrNull(_ownerIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static MultiTypedResultKey<$RemoteAlbumEntityTable,
-      List<RemoteAlbumEntityData>> _remoteAlbumEntityRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.remoteAlbumEntity,
-          aliasName: $_aliasNameGenerator(
-              db.remoteAssetEntity.id, db.remoteAlbumEntity.thumbnailAssetId));
-
-  $$RemoteAlbumEntityTableProcessedTableManager get remoteAlbumEntityRefs {
-    final manager =
-        $$RemoteAlbumEntityTableTableManager($_db, $_db.remoteAlbumEntity)
-            .filter((f) => f.thumbnailAssetId.id($_item.id));
-
-    final cache =
-        $_typedResult.readTableOrNull(_remoteAlbumEntityRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
-  static MultiTypedResultKey<$AlbumAssetEntityTable, List<AlbumAssetEntityData>>
-      _albumAssetEntityRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.albumAssetEntity,
-              aliasName: $_aliasNameGenerator(
-                  db.remoteAssetEntity.id, db.albumAssetEntity.assetId));
-
-  $$AlbumAssetEntityTableProcessedTableManager get albumAssetEntityRefs {
-    final manager =
-        $$AlbumAssetEntityTableTableManager($_db, $_db.albumAssetEntity)
-            .filter((f) => f.assetId.id($_item.id));
-
-    final cache =
-        $_typedResult.readTableOrNull(_albumAssetEntityRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
-
-class $$RemoteAssetEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $RemoteAssetEntityTable> {
-  $$RemoteAssetEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
-
-  ColumnWithTypeConverterFilters<AssetType, AssetType, int> get type =>
-      $composableBuilder(
-          column: $table.type,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get width => $composableBuilder(
-      column: $table.width, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get height => $composableBuilder(
-      column: $table.height, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get durationInSeconds => $composableBuilder(
-      column: $table.durationInSeconds,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get checksum => $composableBuilder(
-      column: $table.checksum, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get localDateTime => $composableBuilder(
-      column: $table.localDateTime, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get thumbHash => $composableBuilder(
-      column: $table.thumbHash, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
-      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get livePhotoVideoId => $composableBuilder(
-      column: $table.livePhotoVideoId,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnWithTypeConverterFilters<AssetVisibility, AssetVisibility, int>
-      get visibility => $composableBuilder(
-          column: $table.visibility,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
-
-  ColumnFilters<String> get stackId => $composableBuilder(
-      column: $table.stackId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get libraryId => $composableBuilder(
-      column: $table.libraryId, builder: (column) => ColumnFilters(column));
-
-  $$UserEntityTableFilterComposer get ownerId {
-    final $$UserEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.ownerId,
-        referencedTable: $db.userEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UserEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.userEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<bool> remoteAlbumEntityRefs(
-      Expression<bool> Function($$RemoteAlbumEntityTableFilterComposer f) f) {
-    final $$RemoteAlbumEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.remoteAlbumEntity,
-        getReferencedColumn: (t) => t.thumbnailAssetId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAlbumEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<bool> albumAssetEntityRefs(
-      Expression<bool> Function($$AlbumAssetEntityTableFilterComposer f) f) {
-    final $$AlbumAssetEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.albumAssetEntity,
-        getReferencedColumn: (t) => t.assetId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AlbumAssetEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.albumAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
-class $$RemoteAssetEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $RemoteAssetEntityTable> {
-  $$RemoteAssetEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get type => $composableBuilder(
-      column: $table.type, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get width => $composableBuilder(
-      column: $table.width, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get height => $composableBuilder(
-      column: $table.height, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get durationInSeconds => $composableBuilder(
-      column: $table.durationInSeconds,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get checksum => $composableBuilder(
-      column: $table.checksum, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get localDateTime => $composableBuilder(
-      column: $table.localDateTime,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get thumbHash => $composableBuilder(
-      column: $table.thumbHash, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
-      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get livePhotoVideoId => $composableBuilder(
-      column: $table.livePhotoVideoId,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get visibility => $composableBuilder(
-      column: $table.visibility, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get stackId => $composableBuilder(
-      column: $table.stackId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get libraryId => $composableBuilder(
-      column: $table.libraryId, builder: (column) => ColumnOrderings(column));
-
-  $$UserEntityTableOrderingComposer get ownerId {
-    final $$UserEntityTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.ownerId,
-        referencedTable: $db.userEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UserEntityTableOrderingComposer(
-              $db: $db,
-              $table: $db.userEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$RemoteAssetEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $RemoteAssetEntityTable> {
-  $$RemoteAssetEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<AssetType, int> get type =>
-      $composableBuilder(column: $table.type, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  GeneratedColumn<int> get width =>
-      $composableBuilder(column: $table.width, builder: (column) => column);
-
-  GeneratedColumn<int> get height =>
-      $composableBuilder(column: $table.height, builder: (column) => column);
-
-  GeneratedColumn<int> get durationInSeconds => $composableBuilder(
-      column: $table.durationInSeconds, builder: (column) => column);
-
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get checksum =>
-      $composableBuilder(column: $table.checksum, builder: (column) => column);
-
-  GeneratedColumn<bool> get isFavorite => $composableBuilder(
-      column: $table.isFavorite, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get localDateTime => $composableBuilder(
-      column: $table.localDateTime, builder: (column) => column);
-
-  GeneratedColumn<String> get thumbHash =>
-      $composableBuilder(column: $table.thumbHash, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get deletedAt =>
-      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
-
-  GeneratedColumn<String> get livePhotoVideoId => $composableBuilder(
-      column: $table.livePhotoVideoId, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<AssetVisibility, int> get visibility =>
-      $composableBuilder(
-          column: $table.visibility, builder: (column) => column);
-
-  GeneratedColumn<String> get stackId =>
-      $composableBuilder(column: $table.stackId, builder: (column) => column);
-
-  GeneratedColumn<String> get libraryId =>
-      $composableBuilder(column: $table.libraryId, builder: (column) => column);
-
-  $$UserEntityTableAnnotationComposer get ownerId {
-    final $$UserEntityTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.ownerId,
-        referencedTable: $db.userEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UserEntityTableAnnotationComposer(
-              $db: $db,
-              $table: $db.userEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<T> remoteAlbumEntityRefs<T extends Object>(
-      Expression<T> Function($$RemoteAlbumEntityTableAnnotationComposer a) f) {
-    final $$RemoteAlbumEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.remoteAlbumEntity,
-            getReferencedColumn: (t) => t.thumbnailAssetId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAlbumEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAlbumEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
-  }
-
-  Expression<T> albumAssetEntityRefs<T extends Object>(
-      Expression<T> Function($$AlbumAssetEntityTableAnnotationComposer a) f) {
-    final $$AlbumAssetEntityTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.albumAssetEntity,
-        getReferencedColumn: (t) => t.assetId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AlbumAssetEntityTableAnnotationComposer(
-              $db: $db,
-              $table: $db.albumAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
 class $$RemoteAssetEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $RemoteAssetEntityTable,
     RemoteAssetEntityData,
     $$RemoteAssetEntityTableFilterComposer,
     $$RemoteAssetEntityTableOrderingComposer,
-    $$RemoteAssetEntityTableAnnotationComposer,
     $$RemoteAssetEntityTableCreateCompanionBuilder,
-    $$RemoteAssetEntityTableUpdateCompanionBuilder,
-    (RemoteAssetEntityData, $$RemoteAssetEntityTableReferences),
-    RemoteAssetEntityData,
-    PrefetchHooks Function(
-        {bool ownerId,
-        bool remoteAlbumEntityRefs,
-        bool albumAssetEntityRefs})> {
+    $$RemoteAssetEntityTableUpdateCompanionBuilder> {
   $$RemoteAssetEntityTableTableManager(
       _$AppDatabase db, $RemoteAssetEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$RemoteAssetEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$RemoteAssetEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$RemoteAssetEntityTableAnnotationComposer(
-                  $db: db, $table: table),
+          filteringComposer:
+              $$RemoteAssetEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer: $$RemoteAssetEntityTableOrderingComposer(
+              ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> name = const Value.absent(),
             Value<AssetType> type = const Value.absent(),
@@ -4409,94 +3782,246 @@ class $$RemoteAssetEntityTableTableManager extends RootTableManager<
             stackId: stackId,
             libraryId: libraryId,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$RemoteAssetEntityTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: (
-              {ownerId = false,
-              remoteAlbumEntityRefs = false,
-              albumAssetEntityRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (remoteAlbumEntityRefs) db.remoteAlbumEntity,
-                if (albumAssetEntityRefs) db.albumAssetEntity
-              ],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (ownerId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.ownerId,
-                    referencedTable:
-                        $$RemoteAssetEntityTableReferences._ownerIdTable(db),
-                    referencedColumn:
-                        $$RemoteAssetEntityTableReferences._ownerIdTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (remoteAlbumEntityRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$RemoteAssetEntityTableReferences
-                            ._remoteAlbumEntityRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RemoteAssetEntityTableReferences(db, table, p0)
-                                .remoteAlbumEntityRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.thumbnailAssetId == item.id),
-                        typedResults: items),
-                  if (albumAssetEntityRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$RemoteAssetEntityTableReferences
-                            ._albumAssetEntityRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RemoteAssetEntityTableReferences(db, table, p0)
-                                .albumAssetEntityRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.assetId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
         ));
 }
 
-typedef $$RemoteAssetEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $RemoteAssetEntityTable,
-    RemoteAssetEntityData,
-    $$RemoteAssetEntityTableFilterComposer,
-    $$RemoteAssetEntityTableOrderingComposer,
-    $$RemoteAssetEntityTableAnnotationComposer,
-    $$RemoteAssetEntityTableCreateCompanionBuilder,
-    $$RemoteAssetEntityTableUpdateCompanionBuilder,
-    (RemoteAssetEntityData, $$RemoteAssetEntityTableReferences),
-    RemoteAssetEntityData,
-    PrefetchHooks Function(
-        {bool ownerId, bool remoteAlbumEntityRefs, bool albumAssetEntityRefs})>;
+class $$RemoteAssetEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $RemoteAssetEntityTable> {
+  $$RemoteAssetEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AssetType, AssetType, int> get type =>
+      $state.composableBuilder(
+          column: $state.table.type,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get width => $state.composableBuilder(
+      column: $state.table.width,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get height => $state.composableBuilder(
+      column: $state.table.height,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get durationInSeconds => $state.composableBuilder(
+      column: $state.table.durationInSeconds,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get checksum => $state.composableBuilder(
+      column: $state.table.checksum,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isFavorite => $state.composableBuilder(
+      column: $state.table.isFavorite,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get localDateTime => $state.composableBuilder(
+      column: $state.table.localDateTime,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get thumbHash => $state.composableBuilder(
+      column: $state.table.thumbHash,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get deletedAt => $state.composableBuilder(
+      column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get livePhotoVideoId => $state.composableBuilder(
+      column: $state.table.livePhotoVideoId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AssetVisibility, AssetVisibility, int>
+      get visibility => $state.composableBuilder(
+          column: $state.table.visibility,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get stackId => $state.composableBuilder(
+      column: $state.table.stackId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get libraryId => $state.composableBuilder(
+      column: $state.table.libraryId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get ownerId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.ownerId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  ComposableFilter remoteAlbumEntityRefs(
+      ComposableFilter Function($$RemoteAlbumEntityTableFilterComposer f) f) {
+    final $$RemoteAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.thumbnailAssetId,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter albumAssetEntityRefs(
+      ComposableFilter Function($$AlbumAssetEntityTableFilterComposer f) f) {
+    final $$AlbumAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.albumAssetEntity,
+            getReferencedColumn: (t) => t.assetId,
+            builder: (joinBuilder, parentComposers) =>
+                $$AlbumAssetEntityTableFilterComposer(ComposerState($state.db,
+                    $state.db.albumAssetEntity, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+}
+
+class $$RemoteAssetEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $RemoteAssetEntityTable> {
+  $$RemoteAssetEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get type => $state.composableBuilder(
+      column: $state.table.type,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get width => $state.composableBuilder(
+      column: $state.table.width,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get height => $state.composableBuilder(
+      column: $state.table.height,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get durationInSeconds => $state.composableBuilder(
+      column: $state.table.durationInSeconds,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get checksum => $state.composableBuilder(
+      column: $state.table.checksum,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isFavorite => $state.composableBuilder(
+      column: $state.table.isFavorite,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get localDateTime => $state.composableBuilder(
+      column: $state.table.localDateTime,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get thumbHash => $state.composableBuilder(
+      column: $state.table.thumbHash,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get deletedAt => $state.composableBuilder(
+      column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get livePhotoVideoId => $state.composableBuilder(
+      column: $state.table.livePhotoVideoId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get visibility => $state.composableBuilder(
+      column: $state.table.visibility,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get stackId => $state.composableBuilder(
+      column: $state.table.stackId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get libraryId => $state.composableBuilder(
+      column: $state.table.libraryId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get ownerId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.ownerId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 typedef $$RemoteAlbumEntityTableCreateCompanionBuilder
     = RemoteAlbumEntityCompanion Function({
   required String id,
@@ -4522,405 +4047,23 @@ typedef $$RemoteAlbumEntityTableUpdateCompanionBuilder
   Value<AlbumOrder> order,
 });
 
-final class $$RemoteAlbumEntityTableReferences extends BaseReferences<
-    _$AppDatabase, $RemoteAlbumEntityTable, RemoteAlbumEntityData> {
-  $$RemoteAlbumEntityTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $UserEntityTable _ownerIdTable(_$AppDatabase db) =>
-      db.userEntity.createAlias(
-          $_aliasNameGenerator(db.remoteAlbumEntity.ownerId, db.userEntity.id));
-
-  $$UserEntityTableProcessedTableManager? get ownerId {
-    if ($_item.ownerId == null) return null;
-    final manager = $$UserEntityTableTableManager($_db, $_db.userEntity)
-        .filter((f) => f.id($_item.ownerId!));
-    final item = $_typedResult.readTableOrNull(_ownerIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $RemoteAssetEntityTable _thumbnailAssetIdTable(_$AppDatabase db) =>
-      db.remoteAssetEntity.createAlias($_aliasNameGenerator(
-          db.remoteAlbumEntity.thumbnailAssetId, db.remoteAssetEntity.id));
-
-  $$RemoteAssetEntityTableProcessedTableManager? get thumbnailAssetId {
-    if ($_item.thumbnailAssetId == null) return null;
-    final manager =
-        $$RemoteAssetEntityTableTableManager($_db, $_db.remoteAssetEntity)
-            .filter((f) => f.id($_item.thumbnailAssetId!));
-    final item = $_typedResult.readTableOrNull(_thumbnailAssetIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static MultiTypedResultKey<$LocalAlbumEntityTable, List<LocalAlbumEntityData>>
-      _localAlbumEntityRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.localAlbumEntity,
-              aliasName: $_aliasNameGenerator(db.remoteAlbumEntity.id,
-                  db.localAlbumEntity.linkedRemoteAlbumId));
-
-  $$LocalAlbumEntityTableProcessedTableManager get localAlbumEntityRefs {
-    final manager =
-        $$LocalAlbumEntityTableTableManager($_db, $_db.localAlbumEntity)
-            .filter((f) => f.linkedRemoteAlbumId.id($_item.id));
-
-    final cache =
-        $_typedResult.readTableOrNull(_localAlbumEntityRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
-  static MultiTypedResultKey<$AlbumAssetEntityTable, List<AlbumAssetEntityData>>
-      _albumAssetEntityRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.albumAssetEntity,
-              aliasName: $_aliasNameGenerator(
-                  db.remoteAlbumEntity.id, db.albumAssetEntity.albumId));
-
-  $$AlbumAssetEntityTableProcessedTableManager get albumAssetEntityRefs {
-    final manager =
-        $$AlbumAssetEntityTableTableManager($_db, $_db.albumAssetEntity)
-            .filter((f) => f.albumId.id($_item.id));
-
-    final cache =
-        $_typedResult.readTableOrNull(_albumAssetEntityRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
-
-class $$RemoteAlbumEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $RemoteAlbumEntityTable> {
-  $$RemoteAlbumEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get description => $composableBuilder(
-      column: $table.description, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get isActivityEnabled => $composableBuilder(
-      column: $table.isActivityEnabled,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnWithTypeConverterFilters<AlbumOrder, AlbumOrder, int> get order =>
-      $composableBuilder(
-          column: $table.order,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
-
-  $$UserEntityTableFilterComposer get ownerId {
-    final $$UserEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.ownerId,
-        referencedTable: $db.userEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UserEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.userEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$RemoteAssetEntityTableFilterComposer get thumbnailAssetId {
-    final $$RemoteAssetEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.thumbnailAssetId,
-        referencedTable: $db.remoteAssetEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAssetEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<bool> localAlbumEntityRefs(
-      Expression<bool> Function($$LocalAlbumEntityTableFilterComposer f) f) {
-    final $$LocalAlbumEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.localAlbumEntity,
-        getReferencedColumn: (t) => t.linkedRemoteAlbumId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$LocalAlbumEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.localAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<bool> albumAssetEntityRefs(
-      Expression<bool> Function($$AlbumAssetEntityTableFilterComposer f) f) {
-    final $$AlbumAssetEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.albumAssetEntity,
-        getReferencedColumn: (t) => t.albumId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AlbumAssetEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.albumAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
-class $$RemoteAlbumEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $RemoteAlbumEntityTable> {
-  $$RemoteAlbumEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get description => $composableBuilder(
-      column: $table.description, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isActivityEnabled => $composableBuilder(
-      column: $table.isActivityEnabled,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get order => $composableBuilder(
-      column: $table.order, builder: (column) => ColumnOrderings(column));
-
-  $$UserEntityTableOrderingComposer get ownerId {
-    final $$UserEntityTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.ownerId,
-        referencedTable: $db.userEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UserEntityTableOrderingComposer(
-              $db: $db,
-              $table: $db.userEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$RemoteAssetEntityTableOrderingComposer get thumbnailAssetId {
-    final $$RemoteAssetEntityTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.thumbnailAssetId,
-        referencedTable: $db.remoteAssetEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAssetEntityTableOrderingComposer(
-              $db: $db,
-              $table: $db.remoteAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$RemoteAlbumEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $RemoteAlbumEntityTable> {
-  $$RemoteAlbumEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<String> get description => $composableBuilder(
-      column: $table.description, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  GeneratedColumn<bool> get isActivityEnabled => $composableBuilder(
-      column: $table.isActivityEnabled, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<AlbumOrder, int> get order =>
-      $composableBuilder(column: $table.order, builder: (column) => column);
-
-  $$UserEntityTableAnnotationComposer get ownerId {
-    final $$UserEntityTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.ownerId,
-        referencedTable: $db.userEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UserEntityTableAnnotationComposer(
-              $db: $db,
-              $table: $db.userEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$RemoteAssetEntityTableAnnotationComposer get thumbnailAssetId {
-    final $$RemoteAssetEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.thumbnailAssetId,
-            referencedTable: $db.remoteAssetEntity,
-            getReferencedColumn: (t) => t.id,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAssetEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAssetEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return composer;
-  }
-
-  Expression<T> localAlbumEntityRefs<T extends Object>(
-      Expression<T> Function($$LocalAlbumEntityTableAnnotationComposer a) f) {
-    final $$LocalAlbumEntityTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.localAlbumEntity,
-        getReferencedColumn: (t) => t.linkedRemoteAlbumId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$LocalAlbumEntityTableAnnotationComposer(
-              $db: $db,
-              $table: $db.localAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<T> albumAssetEntityRefs<T extends Object>(
-      Expression<T> Function($$AlbumAssetEntityTableAnnotationComposer a) f) {
-    final $$AlbumAssetEntityTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.albumAssetEntity,
-        getReferencedColumn: (t) => t.albumId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AlbumAssetEntityTableAnnotationComposer(
-              $db: $db,
-              $table: $db.albumAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
 class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $RemoteAlbumEntityTable,
     RemoteAlbumEntityData,
     $$RemoteAlbumEntityTableFilterComposer,
     $$RemoteAlbumEntityTableOrderingComposer,
-    $$RemoteAlbumEntityTableAnnotationComposer,
     $$RemoteAlbumEntityTableCreateCompanionBuilder,
-    $$RemoteAlbumEntityTableUpdateCompanionBuilder,
-    (RemoteAlbumEntityData, $$RemoteAlbumEntityTableReferences),
-    RemoteAlbumEntityData,
-    PrefetchHooks Function(
-        {bool ownerId,
-        bool thumbnailAssetId,
-        bool localAlbumEntityRefs,
-        bool albumAssetEntityRefs})> {
+    $$RemoteAlbumEntityTableUpdateCompanionBuilder> {
   $$RemoteAlbumEntityTableTableManager(
       _$AppDatabase db, $RemoteAlbumEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$RemoteAlbumEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$RemoteAlbumEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$RemoteAlbumEntityTableAnnotationComposer(
-                  $db: db, $table: table),
+          filteringComposer:
+              $$RemoteAlbumEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer: $$RemoteAlbumEntityTableOrderingComposer(
+              ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -4965,109 +4108,173 @@ class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
             isActivityEnabled: isActivityEnabled,
             order: order,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$RemoteAlbumEntityTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: (
-              {ownerId = false,
-              thumbnailAssetId = false,
-              localAlbumEntityRefs = false,
-              albumAssetEntityRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (localAlbumEntityRefs) db.localAlbumEntity,
-                if (albumAssetEntityRefs) db.albumAssetEntity
-              ],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (ownerId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.ownerId,
-                    referencedTable:
-                        $$RemoteAlbumEntityTableReferences._ownerIdTable(db),
-                    referencedColumn:
-                        $$RemoteAlbumEntityTableReferences._ownerIdTable(db).id,
-                  ) as T;
-                }
-                if (thumbnailAssetId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.thumbnailAssetId,
-                    referencedTable: $$RemoteAlbumEntityTableReferences
-                        ._thumbnailAssetIdTable(db),
-                    referencedColumn: $$RemoteAlbumEntityTableReferences
-                        ._thumbnailAssetIdTable(db)
-                        .id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (localAlbumEntityRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$RemoteAlbumEntityTableReferences
-                            ._localAlbumEntityRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RemoteAlbumEntityTableReferences(db, table, p0)
-                                .localAlbumEntityRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.linkedRemoteAlbumId == item.id),
-                        typedResults: items),
-                  if (albumAssetEntityRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$RemoteAlbumEntityTableReferences
-                            ._albumAssetEntityRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RemoteAlbumEntityTableReferences(db, table, p0)
-                                .albumAssetEntityRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.albumId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
         ));
 }
 
-typedef $$RemoteAlbumEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $RemoteAlbumEntityTable,
-    RemoteAlbumEntityData,
-    $$RemoteAlbumEntityTableFilterComposer,
-    $$RemoteAlbumEntityTableOrderingComposer,
-    $$RemoteAlbumEntityTableAnnotationComposer,
-    $$RemoteAlbumEntityTableCreateCompanionBuilder,
-    $$RemoteAlbumEntityTableUpdateCompanionBuilder,
-    (RemoteAlbumEntityData, $$RemoteAlbumEntityTableReferences),
-    RemoteAlbumEntityData,
-    PrefetchHooks Function(
-        {bool ownerId,
-        bool thumbnailAssetId,
-        bool localAlbumEntityRefs,
-        bool albumAssetEntityRefs})>;
+class $$RemoteAlbumEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $RemoteAlbumEntityTable> {
+  $$RemoteAlbumEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get description => $state.composableBuilder(
+      column: $state.table.description,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isActivityEnabled => $state.composableBuilder(
+      column: $state.table.isActivityEnabled,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AlbumOrder, AlbumOrder, int> get order =>
+      $state.composableBuilder(
+          column: $state.table.order,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get ownerId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.ownerId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  $$RemoteAssetEntityTableFilterComposer get thumbnailAssetId {
+    final $$RemoteAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.thumbnailAssetId,
+            referencedTable: $state.db.remoteAssetEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAssetEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+
+  ComposableFilter localAlbumEntityRefs(
+      ComposableFilter Function($$LocalAlbumEntityTableFilterComposer f) f) {
+    final $$LocalAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.localAlbumEntity,
+            getReferencedColumn: (t) => t.linkedRemoteAlbumId,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAlbumEntityTableFilterComposer(ComposerState($state.db,
+                    $state.db.localAlbumEntity, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter albumAssetEntityRefs(
+      ComposableFilter Function($$AlbumAssetEntityTableFilterComposer f) f) {
+    final $$AlbumAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.albumAssetEntity,
+            getReferencedColumn: (t) => t.albumId,
+            builder: (joinBuilder, parentComposers) =>
+                $$AlbumAssetEntityTableFilterComposer(ComposerState($state.db,
+                    $state.db.albumAssetEntity, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+}
+
+class $$RemoteAlbumEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $RemoteAlbumEntityTable> {
+  $$RemoteAlbumEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get description => $state.composableBuilder(
+      column: $state.table.description,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isActivityEnabled => $state.composableBuilder(
+      column: $state.table.isActivityEnabled,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get order => $state.composableBuilder(
+      column: $state.table.order,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get ownerId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.ownerId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  $$RemoteAssetEntityTableOrderingComposer get thumbnailAssetId {
+    final $$RemoteAssetEntityTableOrderingComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.thumbnailAssetId,
+            referencedTable: $state.db.remoteAssetEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAssetEntityTableOrderingComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
 typedef $$LocalAlbumEntityTableCreateCompanionBuilder
     = LocalAlbumEntityCompanion Function({
   required String id,
@@ -5087,192 +4294,23 @@ typedef $$LocalAlbumEntityTableUpdateCompanionBuilder
   Value<String?> linkedRemoteAlbumId,
 });
 
-final class $$LocalAlbumEntityTableReferences extends BaseReferences<
-    _$AppDatabase, $LocalAlbumEntityTable, LocalAlbumEntityData> {
-  $$LocalAlbumEntityTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $RemoteAlbumEntityTable _linkedRemoteAlbumIdTable(_$AppDatabase db) =>
-      db.remoteAlbumEntity.createAlias($_aliasNameGenerator(
-          db.localAlbumEntity.linkedRemoteAlbumId, db.remoteAlbumEntity.id));
-
-  $$RemoteAlbumEntityTableProcessedTableManager? get linkedRemoteAlbumId {
-    if ($_item.linkedRemoteAlbumId == null) return null;
-    final manager =
-        $$RemoteAlbumEntityTableTableManager($_db, $_db.remoteAlbumEntity)
-            .filter((f) => f.id($_item.linkedRemoteAlbumId!));
-    final item = $_typedResult.readTableOrNull(_linkedRemoteAlbumIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$LocalAlbumEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $LocalAlbumEntityTable> {
-  $$LocalAlbumEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnWithTypeConverterFilters<BackupSelection, BackupSelection, int>
-      get backupSelection => $composableBuilder(
-          column: $table.backupSelection,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
-
-  ColumnFilters<bool> get isIosSharedAlbum => $composableBuilder(
-      column: $table.isIosSharedAlbum,
-      builder: (column) => ColumnFilters(column));
-
-  $$RemoteAlbumEntityTableFilterComposer get linkedRemoteAlbumId {
-    final $$RemoteAlbumEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.linkedRemoteAlbumId,
-        referencedTable: $db.remoteAlbumEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAlbumEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$LocalAlbumEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $LocalAlbumEntityTable> {
-  $$LocalAlbumEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get backupSelection => $composableBuilder(
-      column: $table.backupSelection,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isIosSharedAlbum => $composableBuilder(
-      column: $table.isIosSharedAlbum,
-      builder: (column) => ColumnOrderings(column));
-
-  $$RemoteAlbumEntityTableOrderingComposer get linkedRemoteAlbumId {
-    final $$RemoteAlbumEntityTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.linkedRemoteAlbumId,
-        referencedTable: $db.remoteAlbumEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAlbumEntityTableOrderingComposer(
-              $db: $db,
-              $table: $db.remoteAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$LocalAlbumEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LocalAlbumEntityTable> {
-  $$LocalAlbumEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<BackupSelection, int> get backupSelection =>
-      $composableBuilder(
-          column: $table.backupSelection, builder: (column) => column);
-
-  GeneratedColumn<bool> get isIosSharedAlbum => $composableBuilder(
-      column: $table.isIosSharedAlbum, builder: (column) => column);
-
-  $$RemoteAlbumEntityTableAnnotationComposer get linkedRemoteAlbumId {
-    final $$RemoteAlbumEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.linkedRemoteAlbumId,
-            referencedTable: $db.remoteAlbumEntity,
-            getReferencedColumn: (t) => t.id,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAlbumEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAlbumEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return composer;
-  }
-}
-
 class $$LocalAlbumEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $LocalAlbumEntityTable,
     LocalAlbumEntityData,
     $$LocalAlbumEntityTableFilterComposer,
     $$LocalAlbumEntityTableOrderingComposer,
-    $$LocalAlbumEntityTableAnnotationComposer,
     $$LocalAlbumEntityTableCreateCompanionBuilder,
-    $$LocalAlbumEntityTableUpdateCompanionBuilder,
-    (LocalAlbumEntityData, $$LocalAlbumEntityTableReferences),
-    LocalAlbumEntityData,
-    PrefetchHooks Function({bool linkedRemoteAlbumId})> {
+    $$LocalAlbumEntityTableUpdateCompanionBuilder> {
   $$LocalAlbumEntityTableTableManager(
       _$AppDatabase db, $LocalAlbumEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$LocalAlbumEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$LocalAlbumEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$LocalAlbumEntityTableAnnotationComposer($db: db, $table: table),
+          filteringComposer:
+              $$LocalAlbumEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$LocalAlbumEntityTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -5305,63 +4343,101 @@ class $$LocalAlbumEntityTableTableManager extends RootTableManager<
             isIosSharedAlbum: isIosSharedAlbum,
             linkedRemoteAlbumId: linkedRemoteAlbumId,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$LocalAlbumEntityTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({linkedRemoteAlbumId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (linkedRemoteAlbumId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.linkedRemoteAlbumId,
-                    referencedTable: $$LocalAlbumEntityTableReferences
-                        ._linkedRemoteAlbumIdTable(db),
-                    referencedColumn: $$LocalAlbumEntityTableReferences
-                        ._linkedRemoteAlbumIdTable(db)
-                        .id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
         ));
 }
 
-typedef $$LocalAlbumEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $LocalAlbumEntityTable,
-    LocalAlbumEntityData,
-    $$LocalAlbumEntityTableFilterComposer,
-    $$LocalAlbumEntityTableOrderingComposer,
-    $$LocalAlbumEntityTableAnnotationComposer,
-    $$LocalAlbumEntityTableCreateCompanionBuilder,
-    $$LocalAlbumEntityTableUpdateCompanionBuilder,
-    (LocalAlbumEntityData, $$LocalAlbumEntityTableReferences),
-    LocalAlbumEntityData,
-    PrefetchHooks Function({bool linkedRemoteAlbumId})>;
+class $$LocalAlbumEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $LocalAlbumEntityTable> {
+  $$LocalAlbumEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<BackupSelection, BackupSelection, int>
+      get backupSelection => $state.composableBuilder(
+          column: $state.table.backupSelection,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isIosSharedAlbum => $state.composableBuilder(
+      column: $state.table.isIosSharedAlbum,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$RemoteAlbumEntityTableFilterComposer get linkedRemoteAlbumId {
+    final $$RemoteAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.linkedRemoteAlbumId,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
+class $$LocalAlbumEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $LocalAlbumEntityTable> {
+  $$LocalAlbumEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get backupSelection => $state.composableBuilder(
+      column: $state.table.backupSelection,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isIosSharedAlbum => $state.composableBuilder(
+      column: $state.table.isIosSharedAlbum,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$RemoteAlbumEntityTableOrderingComposer get linkedRemoteAlbumId {
+    final $$RemoteAlbumEntityTableOrderingComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.linkedRemoteAlbumId,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableOrderingComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
 typedef $$AlbumAssetEntityTableCreateCompanionBuilder
     = AlbumAssetEntityCompanion Function({
   required String assetId,
@@ -5373,217 +4449,23 @@ typedef $$AlbumAssetEntityTableUpdateCompanionBuilder
   Value<String> albumId,
 });
 
-final class $$AlbumAssetEntityTableReferences extends BaseReferences<
-    _$AppDatabase, $AlbumAssetEntityTable, AlbumAssetEntityData> {
-  $$AlbumAssetEntityTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $RemoteAssetEntityTable _assetIdTable(_$AppDatabase db) =>
-      db.remoteAssetEntity.createAlias($_aliasNameGenerator(
-          db.albumAssetEntity.assetId, db.remoteAssetEntity.id));
-
-  $$RemoteAssetEntityTableProcessedTableManager? get assetId {
-    if ($_item.assetId == null) return null;
-    final manager =
-        $$RemoteAssetEntityTableTableManager($_db, $_db.remoteAssetEntity)
-            .filter((f) => f.id($_item.assetId!));
-    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $RemoteAlbumEntityTable _albumIdTable(_$AppDatabase db) =>
-      db.remoteAlbumEntity.createAlias($_aliasNameGenerator(
-          db.albumAssetEntity.albumId, db.remoteAlbumEntity.id));
-
-  $$RemoteAlbumEntityTableProcessedTableManager? get albumId {
-    if ($_item.albumId == null) return null;
-    final manager =
-        $$RemoteAlbumEntityTableTableManager($_db, $_db.remoteAlbumEntity)
-            .filter((f) => f.id($_item.albumId!));
-    final item = $_typedResult.readTableOrNull(_albumIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$AlbumAssetEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $AlbumAssetEntityTable> {
-  $$AlbumAssetEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  $$RemoteAssetEntityTableFilterComposer get assetId {
-    final $$RemoteAssetEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.assetId,
-        referencedTable: $db.remoteAssetEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAssetEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$RemoteAlbumEntityTableFilterComposer get albumId {
-    final $$RemoteAlbumEntityTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.albumId,
-        referencedTable: $db.remoteAlbumEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAlbumEntityTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$AlbumAssetEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $AlbumAssetEntityTable> {
-  $$AlbumAssetEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  $$RemoteAssetEntityTableOrderingComposer get assetId {
-    final $$RemoteAssetEntityTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.assetId,
-        referencedTable: $db.remoteAssetEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAssetEntityTableOrderingComposer(
-              $db: $db,
-              $table: $db.remoteAssetEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$RemoteAlbumEntityTableOrderingComposer get albumId {
-    final $$RemoteAlbumEntityTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.albumId,
-        referencedTable: $db.remoteAlbumEntity,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteAlbumEntityTableOrderingComposer(
-              $db: $db,
-              $table: $db.remoteAlbumEntity,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$AlbumAssetEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $AlbumAssetEntityTable> {
-  $$AlbumAssetEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  $$RemoteAssetEntityTableAnnotationComposer get assetId {
-    final $$RemoteAssetEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.assetId,
-            referencedTable: $db.remoteAssetEntity,
-            getReferencedColumn: (t) => t.id,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAssetEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAssetEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return composer;
-  }
-
-  $$RemoteAlbumEntityTableAnnotationComposer get albumId {
-    final $$RemoteAlbumEntityTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.albumId,
-            referencedTable: $db.remoteAlbumEntity,
-            getReferencedColumn: (t) => t.id,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$RemoteAlbumEntityTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.remoteAlbumEntity,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return composer;
-  }
-}
-
 class $$AlbumAssetEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $AlbumAssetEntityTable,
     AlbumAssetEntityData,
     $$AlbumAssetEntityTableFilterComposer,
     $$AlbumAssetEntityTableOrderingComposer,
-    $$AlbumAssetEntityTableAnnotationComposer,
     $$AlbumAssetEntityTableCreateCompanionBuilder,
-    $$AlbumAssetEntityTableUpdateCompanionBuilder,
-    (AlbumAssetEntityData, $$AlbumAssetEntityTableReferences),
-    AlbumAssetEntityData,
-    PrefetchHooks Function({bool assetId, bool albumId})> {
+    $$AlbumAssetEntityTableUpdateCompanionBuilder> {
   $$AlbumAssetEntityTableTableManager(
       _$AppDatabase db, $AlbumAssetEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$AlbumAssetEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$AlbumAssetEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$AlbumAssetEntityTableAnnotationComposer($db: db, $table: table),
+          filteringComposer:
+              $$AlbumAssetEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$AlbumAssetEntityTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> assetId = const Value.absent(),
             Value<String> albumId = const Value.absent(),
@@ -5600,72 +4482,81 @@ class $$AlbumAssetEntityTableTableManager extends RootTableManager<
             assetId: assetId,
             albumId: albumId,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$AlbumAssetEntityTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({assetId = false, albumId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (assetId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.assetId,
-                    referencedTable:
-                        $$AlbumAssetEntityTableReferences._assetIdTable(db),
-                    referencedColumn:
-                        $$AlbumAssetEntityTableReferences._assetIdTable(db).id,
-                  ) as T;
-                }
-                if (albumId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.albumId,
-                    referencedTable:
-                        $$AlbumAssetEntityTableReferences._albumIdTable(db),
-                    referencedColumn:
-                        $$AlbumAssetEntityTableReferences._albumIdTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
         ));
 }
 
-typedef $$AlbumAssetEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $AlbumAssetEntityTable,
-    AlbumAssetEntityData,
-    $$AlbumAssetEntityTableFilterComposer,
-    $$AlbumAssetEntityTableOrderingComposer,
-    $$AlbumAssetEntityTableAnnotationComposer,
-    $$AlbumAssetEntityTableCreateCompanionBuilder,
-    $$AlbumAssetEntityTableUpdateCompanionBuilder,
-    (AlbumAssetEntityData, $$AlbumAssetEntityTableReferences),
-    AlbumAssetEntityData,
-    PrefetchHooks Function({bool assetId, bool albumId})>;
+class $$AlbumAssetEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $AlbumAssetEntityTable> {
+  $$AlbumAssetEntityTableFilterComposer(super.$state);
+  $$RemoteAssetEntityTableFilterComposer get assetId {
+    final $$RemoteAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.assetId,
+            referencedTable: $state.db.remoteAssetEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAssetEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+
+  $$RemoteAlbumEntityTableFilterComposer get albumId {
+    final $$RemoteAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.albumId,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
+class $$AlbumAssetEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $AlbumAssetEntityTable> {
+  $$AlbumAssetEntityTableOrderingComposer(super.$state);
+  $$RemoteAssetEntityTableOrderingComposer get assetId {
+    final $$RemoteAssetEntityTableOrderingComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.assetId,
+            referencedTable: $state.db.remoteAssetEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAssetEntityTableOrderingComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+
+  $$RemoteAlbumEntityTableOrderingComposer get albumId {
+    final $$RemoteAlbumEntityTableOrderingComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.albumId,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableOrderingComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
 typedef $$StoreEntityTableCreateCompanionBuilder = StoreEntityCompanion
     Function({
   Value<int> key,
@@ -5677,79 +4568,22 @@ typedef $$StoreEntityTableUpdateCompanionBuilder = StoreEntityCompanion
   Value<String?> value,
 });
 
-class $$StoreEntityTableFilterComposer
-    extends Composer<_$AppDatabase, $StoreEntityTable> {
-  $$StoreEntityTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get key => $composableBuilder(
-      column: $table.key, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get value => $composableBuilder(
-      column: $table.value, builder: (column) => ColumnFilters(column));
-}
-
-class $$StoreEntityTableOrderingComposer
-    extends Composer<_$AppDatabase, $StoreEntityTable> {
-  $$StoreEntityTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get key => $composableBuilder(
-      column: $table.key, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get value => $composableBuilder(
-      column: $table.value, builder: (column) => ColumnOrderings(column));
-}
-
-class $$StoreEntityTableAnnotationComposer
-    extends Composer<_$AppDatabase, $StoreEntityTable> {
-  $$StoreEntityTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get key =>
-      $composableBuilder(column: $table.key, builder: (column) => column);
-
-  GeneratedColumn<String> get value =>
-      $composableBuilder(column: $table.value, builder: (column) => column);
-}
-
 class $$StoreEntityTableTableManager extends RootTableManager<
     _$AppDatabase,
     $StoreEntityTable,
     StoreEntityData,
     $$StoreEntityTableFilterComposer,
     $$StoreEntityTableOrderingComposer,
-    $$StoreEntityTableAnnotationComposer,
     $$StoreEntityTableCreateCompanionBuilder,
-    $$StoreEntityTableUpdateCompanionBuilder,
-    (
-      StoreEntityData,
-      BaseReferences<_$AppDatabase, $StoreEntityTable, StoreEntityData>
-    ),
-    StoreEntityData,
-    PrefetchHooks Function()> {
+    $$StoreEntityTableUpdateCompanionBuilder> {
   $$StoreEntityTableTableManager(_$AppDatabase db, $StoreEntityTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$StoreEntityTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$StoreEntityTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$StoreEntityTableAnnotationComposer($db: db, $table: table),
+          filteringComposer:
+              $$StoreEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$StoreEntityTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<int> key = const Value.absent(),
             Value<String?> value = const Value.absent(),
@@ -5766,28 +4600,36 @@ class $$StoreEntityTableTableManager extends RootTableManager<
             key: key,
             value: value,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
         ));
 }
 
-typedef $$StoreEntityTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $StoreEntityTable,
-    StoreEntityData,
-    $$StoreEntityTableFilterComposer,
-    $$StoreEntityTableOrderingComposer,
-    $$StoreEntityTableAnnotationComposer,
-    $$StoreEntityTableCreateCompanionBuilder,
-    $$StoreEntityTableUpdateCompanionBuilder,
-    (
-      StoreEntityData,
-      BaseReferences<_$AppDatabase, $StoreEntityTable, StoreEntityData>
-    ),
-    StoreEntityData,
-    PrefetchHooks Function()>;
+class $$StoreEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $StoreEntityTable> {
+  $$StoreEntityTableFilterComposer(super.$state);
+  ColumnFilters<int> get key => $state.composableBuilder(
+      column: $state.table.key,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get value => $state.composableBuilder(
+      column: $state.table.value,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$StoreEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $StoreEntityTable> {
+  $$StoreEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<int> get key => $state.composableBuilder(
+      column: $state.table.key,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get value => $state.composableBuilder(
+      column: $state.table.value,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;

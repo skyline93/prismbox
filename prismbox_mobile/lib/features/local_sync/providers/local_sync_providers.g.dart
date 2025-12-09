@@ -64,7 +64,7 @@ final timelineProviderServiceProvider =
 
 typedef TimelineProviderServiceRef
     = AutoDisposeFutureProviderRef<TimelineProviderService>;
-String _$syncCoordinatorHash() => r'1288dcce76dea3906dce0696f051dd2bb3434c64';
+String _$syncCoordinatorHash() => r'8b48300c4e1f2b897e965c82dcf4acc10f71c9b6';
 
 /// SyncCoordinator Provider
 ///
