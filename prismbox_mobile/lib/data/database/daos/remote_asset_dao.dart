@@ -42,6 +42,17 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// 根据 checksum 获取资产（不限制用户，用于关联本地资产）
+  /// 返回第一个匹配的资产（通常 checksum 应该是唯一的）
+  Future<RemoteAssetEntityData?> getAssetByChecksum(String checksum) {
+    return (select(remoteAssetEntity)
+          ..where((t) => 
+              t.checksum.equals(checksum) & 
+              t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   /// 插入资产
   Future<void> insertAsset(RemoteAssetEntityData asset) {
     return into(remoteAssetEntity).insert(asset);
