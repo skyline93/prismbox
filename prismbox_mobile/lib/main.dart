@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/infrastructure/api/ssl/http_ssl_options.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
+import 'package:prismbox/data/database/connection.dart';
+import 'package:prismbox/services/debug/storage_inspector_service.dart';
 
-void main() {
+void main() async {
   // 确保 Flutter 绑定已初始化
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -17,6 +19,15 @@ void main() {
   
   // 配置日志系统
   _setupLogging();
+
+  // 初始化数据库
+  await DatabaseConnection.initializeDatabaseIsolate();
+  
+  // 在调试模式下启动 Storage Inspector
+  if (kDebugMode) {
+    final database = await DatabaseConnection.getInstance();
+    unawaited(StorageInspectorService.initialize(database));
+  }
 
   runApp(
     const ProviderScope(
