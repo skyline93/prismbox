@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
+import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
@@ -19,13 +21,16 @@ class TabShellPage extends ConsumerStatefulWidget {
 
 class _TabShellPageState extends ConsumerState<TabShellPage> {
   bool _hasRequestedPermission = false;
+  bool _hasStartedSync = false;
+  final _log = Logger('TabShellPage');
 
   @override
   void initState() {
     super.initState();
-    // 页面渲染完成后请求权限
+    // 页面渲染完成后请求权限并启动自动同步
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestPhotoPermission();
+      _startAutoSync();
     });
   }
 
@@ -44,6 +49,28 @@ class _TabShellPageState extends ConsumerState<TabShellPage> {
       photoPermissionNotifierProvider.notifier,
     );
     await permissionNotifier.requestPermission();
+  }
+
+  /// 启动自动同步
+  /// 根据设计文档，应用启动后延迟 2 秒启动后台同步任务
+  Future<void> _startAutoSync() async {
+    if (_hasStartedSync) return;
+    _hasStartedSync = true;
+
+    // 延迟一下，确保权限已请求和页面完全加载
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    try {
+      _log.info('启动本地媒体同步服务');
+      final coordinator = await ref.read(syncCoordinatorProvider.future);
+      coordinator.startAutoSyncOnLaunch();
+      _log.info('本地媒体同步服务已启动');
+    } catch (e, stackTrace) {
+      // 记录错误但不阻塞 UI
+      _log.warning('启动自动同步失败', e, stackTrace);
+    }
   }
 
   @override

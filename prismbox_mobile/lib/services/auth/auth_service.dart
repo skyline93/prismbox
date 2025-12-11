@@ -1,7 +1,10 @@
 // lib/services/auth/auth_service.dart
 
+import 'dart:convert';
 import 'package:logging/logging.dart';
 import 'package:prismbox/core/storage/secure_storage_service.dart';
+import 'package:prismbox/core/storage/store_key.dart';
+import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/domain/entities/auth_result.dart';
 import 'package:prismbox/domain/entities/user_profile.dart';
@@ -65,7 +68,10 @@ class AuthService {
       // 4. 保存用户信息到本地数据库
       await _saveUserToDatabase(profile);
 
-      // 5. 清除认证检查缓存，确保后续检查使用新的认证状态
+      // 5. 保存用户信息到 Store
+      await _saveUserToStore(profile);
+
+      // 6. 清除认证检查缓存，确保后续检查使用新的认证状态
       _clearAuthCache();
 
       return AuthSuccess(profile);
@@ -203,7 +209,12 @@ class AuthService {
         // 返回最近登录的用户（假设只有一个活跃用户）
         // 如果支持多用户，可以根据 token 或其他标识符筛选
         final localUser = users.first;
-        return UserProfile.fromEntity(localUser);
+        final profile = UserProfile.fromEntity(localUser);
+        
+        // 确保用户信息也在 Store 中（应用重启后可能不在内存缓存中）
+        await _saveUserToStore(profile);
+        
+        return profile;
       }
     }
 
@@ -213,6 +224,9 @@ class AuthService {
 
     // 3. 更新本地缓存
     await _saveUserToDatabase(profile);
+
+    // 4. 保存用户信息到 Store
+    await _saveUserToStore(profile);
 
     return profile;
   }
@@ -274,6 +288,17 @@ class AuthService {
     // 清除认证检查缓存
     _clearAuthCache();
 
+    // 清除用户信息从 Store
+    try {
+      final store = StoreService();
+      if (store.isInitialized) {
+        await store.delete(StoreKey.currentUser);
+        _log.fine('User profile cleared from Store');
+      }
+    } catch (e) {
+      _log.warning('Failed to clear user from Store: $e');
+    }
+
     // 注意：不清除本地用户数据，因为：
     // 1. 支持多用户场景
     // 2. 用户数据可能被其他数据引用（资产、相册等）
@@ -307,6 +332,34 @@ class AuthService {
   void _clearAuthCache() {
     _lastAuthCheck = null;
     _lastAuthResult = null;
+  }
+
+  /// 保存用户信息到 Store
+  /// 
+  /// 将用户信息序列化为 JSON 字符串并保存到 StoreService
+  Future<void> _saveUserToStore(UserProfile profile) async {
+    try {
+      final store = StoreService();
+      if (!store.isInitialized) {
+        _log.warning('StoreService not initialized, cannot save user to Store');
+        return;
+      }
+
+      // 将 UserProfile 转换为 JSON 字符串
+      final userMap = {
+        'id': profile.id,
+        'username': profile.username,
+        'email': profile.email,
+        'avatarUrl': profile.avatarUrl,
+        'createdAt': profile.createdAt?.toIso8601String(),
+      };
+
+      final userJson = jsonEncode(userMap);
+      await store.put(StoreKey.currentUser, userJson);
+      _log.fine('User profile saved to Store');
+    } catch (e) {
+      _log.warning('Failed to save user to Store: $e');
+    }
   }
 
 }

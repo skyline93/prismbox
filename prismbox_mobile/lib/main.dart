@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/storage/store_repository.dart';
+import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/infrastructure/api/ssl/http_ssl_options.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/data/database/connection.dart';
@@ -22,10 +24,15 @@ void main() async {
 
   // 初始化数据库
   await DatabaseConnection.initializeDatabaseIsolate();
+  final database = await DatabaseConnection.getInstance();
+  
+  // 初始化 StoreService（早期初始化，确保全局可用）
+  // 这是基础设施服务，需要在应用启动时初始化
+  final storeRepository = DriftStoreRepository(database);
+  await StoreService().init(storeRepository);
   
   // 在调试模式下启动 Storage Inspector
   if (kDebugMode) {
-    final database = await DatabaseConnection.getInstance();
     unawaited(StorageInspectorService.initialize(database));
   }
 
