@@ -14,8 +14,6 @@ import 'package:prismbox/presentation/pages/viewer/media_viewer_page.dart';
 import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
 import 'package:prismbox/presentation/routing/guards/duplicate_guard.dart';
 import 'package:prismbox/presentation/routing/guards/permission_guard.dart';
-import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
-import 'package:prismbox/providers/services/auth_service_provider.dart';
 
 part 'app_router.gr.dart';
 
