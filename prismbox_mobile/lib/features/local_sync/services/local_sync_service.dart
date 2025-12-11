@@ -149,20 +149,32 @@ class LocalSyncService {
             await dao.insertAssets(entities);
             added += entities.length;
           } catch (e) {
-            // 如果批量插入失败，尝试逐个插入
-            _logger.warning('批量插入失败，尝试逐个插入', e);
+            // 如果批量插入失败，使用 upsert 逐个处理
+            _logger.warning('批量插入失败，使用 upsert 逐个处理', e);
             for (final entity in entities) {
               try {
+                // 先检查是否存在，用于统计
                 final existing = await dao.getAssetById(entity.id);
-                if (existing != null) {
-                  await dao.updateAsset(entity);
-                  updated++;
-                } else {
-                  await dao.insertAsset(entity);
+                await dao.insertOrUpdateAsset(entity);
+                if (existing == null) {
                   added++;
+                } else {
+                  updated++;
                 }
               } catch (e2) {
-                _logger.warning('插入资产失败: ${entity.id}', e2);
+                // 检查是否是 UNIQUE constraint 错误
+                if (e2.toString().contains('UNIQUE constraint') || 
+                    e2.toString().contains('1555')) {
+                  // 如果是唯一约束错误，说明记录已存在，尝试更新
+                  try {
+                    await dao.updateAsset(entity);
+                    updated++;
+                  } catch (e3) {
+                    _logger.warning('更新资产失败: ${entity.id}', e3);
+                  }
+                } else {
+                  _logger.warning('插入/更新资产失败: ${entity.id}', e2);
+                }
               }
             }
           }
@@ -303,14 +315,26 @@ class LocalSyncService {
             await dao.insertAssets(toInsert);
             added += toInsert.length;
           } catch (e) {
-            _logger.warning('批量插入失败', e);
-            // 逐个插入
+            _logger.warning('批量插入失败，使用 upsert 逐个处理', e);
+            // 使用 upsert 逐个处理
             for (final entity in toInsert) {
               try {
-                await dao.insertAsset(entity);
+                await dao.insertOrUpdateAsset(entity);
                 added++;
               } catch (e2) {
-                _logger.warning('插入资产失败: ${entity.id}', e2);
+                // 检查是否是 UNIQUE constraint 错误
+                if (e2.toString().contains('UNIQUE constraint') || 
+                    e2.toString().contains('1555')) {
+                  // 如果是唯一约束错误，说明记录已存在，尝试更新
+                  try {
+                    await dao.updateAsset(entity);
+                    updated++;
+                  } catch (e3) {
+                    _logger.warning('更新资产失败: ${entity.id}', e3);
+                  }
+                } else {
+                  _logger.warning('插入/更新资产失败: ${entity.id}', e2);
+                }
               }
             }
           }

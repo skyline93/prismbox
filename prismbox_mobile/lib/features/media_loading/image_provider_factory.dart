@@ -12,6 +12,7 @@ import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
+import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/strategies/resource_selection_strategy.dart';
 import 'package:prismbox/features/media_loading/thumbhash/gradient_placeholder_provider.dart';
 import 'package:prismbox/features/media_loading/thumbhash/thumbhash_provider.dart';
@@ -58,6 +59,36 @@ ImageProvider? getThumbnailImageProvider(
     asset,
     size: size,
     serverUrl: serverUrl,
+  );
+}
+
+/// 获取缩略图提供者（异步版本，支持延迟获取 AssetEntity）
+/// 
+/// 当 LocalAsset 的 assetEntity 为 null 时，会自动异步获取
+/// 
+/// 使用策略模式进行资源选择
+Future<ImageProvider?> getThumbnailImageProviderAsync(
+  BaseAsset asset, {
+  Size size = kThumbnailResolution,
+  String? serverUrl,
+  ApiService? apiService,
+  ThumbnailImageCacheManager? thumbnailCacheManager,
+  ResourceSelectionStrategy? strategy,
+  AssetEntityLoader? assetEntityLoader,
+}) async {
+  // 使用提供的策略或默认策略
+  final selectedStrategy = strategy ?? _getDefaultStrategy();
+  
+  // 如果是默认策略，设置缓存管理器
+  if (selectedStrategy is DefaultResourceSelectionStrategy) {
+    selectedStrategy.thumbnailCacheManager = thumbnailCacheManager;
+  }
+  
+  return await selectedStrategy.selectThumbnailProviderAsync(
+    asset,
+    size: size,
+    serverUrl: serverUrl,
+    assetEntityLoader: assetEntityLoader,
   );
 }
 

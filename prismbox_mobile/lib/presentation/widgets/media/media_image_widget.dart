@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
+import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';
 import 'package:prismbox/features/media_loading/mixins/cancellable_image_provider_mixin.dart';
 import 'package:prismbox/presentation/widgets/media/gradient_placeholder_widget.dart';
@@ -33,6 +35,9 @@ class MediaImageWidget extends StatefulWidget {
   /// 错误组件
   final Widget? errorWidget;
 
+  /// AssetEntity 加载器（可选，用于延迟获取）
+  final AssetEntityLoader? assetEntityLoader;
+
   const MediaImageWidget({
     super.key,
     required this.asset,
@@ -43,6 +48,7 @@ class MediaImageWidget extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.placeholder,
     this.errorWidget,
+    this.assetEntityLoader,
   });
 
   @override
@@ -51,6 +57,7 @@ class MediaImageWidget extends StatefulWidget {
 
 class _MediaImageWidgetState extends State<MediaImageWidget> {
   ImageProvider? _imageProvider;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -65,7 +72,8 @@ class _MediaImageWidgetState extends State<MediaImageWidget> {
     if (oldWidget.asset.id != widget.asset.id ||
         oldWidget.isThumbnail != widget.isThumbnail ||
         oldWidget.loadOriginal != widget.loadOriginal ||
-        oldWidget.serverUrl != widget.serverUrl) {
+        oldWidget.serverUrl != widget.serverUrl ||
+        oldWidget.assetEntityLoader != widget.assetEntityLoader) {
       _cancelCurrentLoading();
       _loadImageProvider();
     }
@@ -84,18 +92,67 @@ class _MediaImageWidgetState extends State<MediaImageWidget> {
     }
   }
 
-  /// 加载图片提供者
-  void _loadImageProvider() {
-    final targetSize = widget.size ?? (widget.isThumbnail ? kThumbnailResolution : const Size(1080, 1920));
+  /// 加载图片提供者（支持异步获取 AssetEntity）
+  Future<void> _loadImageProvider() async {
+    final targetSize = widget.size ?? 
+        (widget.isThumbnail ? kThumbnailResolution : const Size(1080, 1920));
     
-    _imageProvider = widget.isThumbnail
-        ? getThumbnailImageProvider(widget.asset, size: targetSize, serverUrl: widget.serverUrl)
-        : getFullImageProvider(
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // 获取 AssetEntityLoader
+      final assetEntityLoader = widget.assetEntityLoader;
+      
+      // 尝试异步获取
+      if (assetEntityLoader != null && widget.asset is LocalAsset) {
+        final localAsset = widget.asset as LocalAsset;
+        if (localAsset.assetEntity == null && widget.isThumbnail) {
+          // 使用异步版本
+          _imageProvider = await getThumbnailImageProviderAsync(
             widget.asset,
             size: targetSize,
-            loadOriginal: widget.loadOriginal,
             serverUrl: widget.serverUrl,
+            assetEntityLoader: assetEntityLoader,
           );
+        } else {
+          // 已有 assetEntity 或不是缩略图，使用同步版本
+          _imageProvider = widget.isThumbnail
+              ? getThumbnailImageProvider(
+                  widget.asset,
+                  size: targetSize,
+                  serverUrl: widget.serverUrl,
+                )
+              : getFullImageProvider(
+                  widget.asset,
+                  size: targetSize,
+                  loadOriginal: widget.loadOriginal,
+                  serverUrl: widget.serverUrl,
+                );
+        }
+      } else {
+        // 非 LocalAsset 或没有 loader，使用同步版本
+        _imageProvider = widget.isThumbnail
+            ? getThumbnailImageProvider(
+                widget.asset,
+                size: targetSize,
+                serverUrl: widget.serverUrl,
+              )
+            : getFullImageProvider(
+                widget.asset,
+                size: targetSize,
+                loadOriginal: widget.loadOriginal,
+                serverUrl: widget.serverUrl,
+              );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -112,7 +169,8 @@ class _MediaImageWidgetState extends State<MediaImageWidget> {
             ? Image(image: placeholderProvider, fit: widget.fit)
             : GradientPlaceholderWidget(colorScheme: colorScheme));
 
-    if (_imageProvider == null) {
+    // 如果正在加载或没有 provider，显示占位符
+    if (_isLoading || _imageProvider == null) {
       return placeholderWidget;
     }
 

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
+import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/presentation/widgets/media/media_grid_view.dart';
 import 'package:prismbox/presentation/widgets/timeline/timeline_section_header.dart';
 
@@ -61,6 +62,9 @@ class TimelineSliverListBuilder {
   /// 是否显示照片数量
   final bool showAssetCount;
 
+  /// AssetEntity 加载器（可选，用于延迟获取）
+  final AssetEntityLoader? assetEntityLoader;
+
   const TimelineSliverListBuilder({
     required this.sections,
     this.crossAxisCount = 5,
@@ -73,6 +77,7 @@ class TimelineSliverListBuilder {
     this.headerPadding,
     this.headerBackgroundColor,
     this.showAssetCount = true,
+    this.assetEntityLoader,
   });
 
   /// 构建所有分组的 Sliver 列表
@@ -139,6 +144,7 @@ class TimelineSliverListBuilder {
         serverUrl: serverUrl,
         onTap: wrappedOnTap,
         preloadRange: preloadRange,
+        assetEntityLoader: assetEntityLoader,
       ),
     );
   }

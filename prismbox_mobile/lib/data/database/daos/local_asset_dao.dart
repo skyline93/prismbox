@@ -50,6 +50,25 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
     return update(localAssetEntity).replace(asset);
   }
 
+  /// 插入或更新资产（Upsert）
+  /// 如果记录已存在则更新，不存在则插入
+  Future<void> insertOrUpdateAsset(LocalAssetEntityData asset) {
+    return into(localAssetEntity).insertOnConflictUpdate(asset.toCompanion(false));
+  }
+
+  /// 批量插入或更新资产（Upsert）
+  Future<void> insertOrUpdateAssets(List<LocalAssetEntityData> assets) {
+    return batch((batch) {
+      for (final asset in assets) {
+        batch.insert(
+          localAssetEntity,
+          asset.toCompanion(false),
+          onConflict: DoUpdate((_) => asset.toCompanion(false)),
+        );
+      }
+    });
+  }
+
   /// 删除资产
   Future<bool> deleteAsset(String id) async {
     final count = await (delete(localAssetEntity)

@@ -6,6 +6,7 @@ import 'package:prismbox/core/cache/thumbnail_cache_manager.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
+import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/providers/local_full_provider.dart';
 import 'package:prismbox/features/media_loading/providers/local_thumb_provider.dart';
 import 'package:prismbox/features/media_loading/providers/remote_full_provider.dart';
@@ -30,6 +31,17 @@ abstract class ResourceSelectionStrategy {
     required Size size,
     bool loadOriginal = false,
     String? serverUrl,
+  });
+  
+  /// 异步选择缩略图提供者（新增）
+  /// 
+  /// 用于处理 assetEntity 为 null 的情况
+  /// 返回 Future，支持异步获取 AssetEntity
+  Future<ImageProvider?> selectThumbnailProviderAsync(
+    BaseAsset asset, {
+    required Size size,
+    String? serverUrl,
+    AssetEntityLoader? assetEntityLoader,
   });
 }
 
@@ -143,6 +155,57 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
     
     // 如果既没有本地也没有远程，抛出异常（由调用方处理占位符）
     throw UnimplementedError('No provider available for asset: ${asset.id}');
+  }
+
+  @override
+  Future<ImageProvider?> selectThumbnailProviderAsync(
+    BaseAsset asset, {
+    required Size size,
+    String? serverUrl,
+    AssetEntityLoader? assetEntityLoader,
+  }) async {
+    if (shouldUseLocalAsset(asset)) {
+      if (asset is LocalAsset) {
+        // 如果 assetEntity 为 null，尝试异步获取
+        if (asset.assetEntity == null) {
+          if (assetEntityLoader != null) {
+            final entity = await assetEntityLoader.loadAsync(asset);
+            if (entity != null) {
+              return LocalThumbProvider(
+                asset: entity,
+                size: size,
+                cacheManager: thumbnailCacheManager,
+                userId: userIdGetter?.call(asset),
+                checksum: asset.checksum,
+              );
+            }
+          }
+          // 获取失败，返回 null
+          return null;
+        } else {
+          // 已有 assetEntity，直接使用
+          return LocalThumbProvider(
+            asset: asset.assetEntity!,
+            size: size,
+            cacheManager: thumbnailCacheManager,
+            userId: userIdGetter?.call(asset),
+            checksum: asset.checksum,
+          );
+        }
+      }
+      return null;
+    } else {
+      // 使用远程资源（同步）
+      if (asset is RemoteAsset) {
+        return RemoteThumbProvider(
+          assetId: asset.id,
+          size: size,
+          serverUrl: serverUrl,
+          cacheManager: thumbnailCacheManager,
+        );
+      }
+    }
+    return null;
   }
 }
 

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
+import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';
 import 'package:prismbox/presentation/widgets/media/media_image_widget.dart';
 
@@ -33,6 +34,9 @@ class MediaGridSliver extends StatefulWidget {
   /// 预加载范围（前后各预加载多少张图片）
   final int preloadRange;
 
+  /// AssetEntity 加载器（可选，用于延迟获取）
+  final AssetEntityLoader? assetEntityLoader;
+
   const MediaGridSliver({
     super.key,
     required this.assets,
@@ -43,6 +47,7 @@ class MediaGridSliver extends StatefulWidget {
     this.serverUrl,
     this.onTap,
     this.preloadRange = 2,
+    this.assetEntityLoader,
   });
 
   @override
@@ -148,6 +153,7 @@ class _MediaGridSliverState extends State<MediaGridSliver> {
           asset: asset,
           isThumbnail: true,
           serverUrl: widget.serverUrl,
+          assetEntityLoader: widget.assetEntityLoader,
         ),
       ),
     );
@@ -197,6 +203,9 @@ class MediaGridView extends StatefulWidget {
   /// 预加载范围（前后各预加载多少张图片）
   final int preloadRange;
 
+  /// AssetEntity 加载器（可选，用于延迟获取）
+  final AssetEntityLoader? assetEntityLoader;
+
   const MediaGridView({
     super.key,
     required this.assets,
@@ -207,6 +216,7 @@ class MediaGridView extends StatefulWidget {
     this.serverUrl,
     this.onTap,
     this.preloadRange = 2,
+    this.assetEntityLoader,
   });
 
   @override
@@ -312,6 +322,7 @@ class _MediaGridViewState extends State<MediaGridView> {
           asset: asset,
           isThumbnail: true,
           serverUrl: widget.serverUrl,
+          assetEntityLoader: widget.assetEntityLoader,
         ),
       ),
     );

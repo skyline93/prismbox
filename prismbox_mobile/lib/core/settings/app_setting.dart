@@ -13,7 +13,12 @@ enum Setting<T> {
   loadPreview<bool>(StoreKey.loadPreview, true),
   
   /// 是否加载原图
-  loadOriginal<bool>(StoreKey.loadOriginal, false);
+  loadOriginal<bool>(StoreKey.loadOriginal, false),
+  
+  /// 数据源切换阈值（数据库资产数量）
+  /// 当数据库资产数量大于此值时，使用数据库数据源
+  /// 默认值：100
+  dataSourceThreshold<int>(StoreKey.dataSourceThreshold, 100);
 
   const Setting(this.storeKey, this.defaultValue);
 

@@ -19,7 +19,8 @@ class TabShellPage extends ConsumerStatefulWidget {
   ConsumerState<TabShellPage> createState() => _TabShellPageState();
 }
 
-class _TabShellPageState extends ConsumerState<TabShellPage> {
+class _TabShellPageState extends ConsumerState<TabShellPage> 
+    with WidgetsBindingObserver {
   bool _hasRequestedPermission = false;
   bool _hasStartedSync = false;
   final _log = Logger('TabShellPage');
@@ -27,11 +28,45 @@ class _TabShellPageState extends ConsumerState<TabShellPage> {
   @override
   void initState() {
     super.initState();
+    // 添加生命周期监听器
+    WidgetsBinding.instance.addObserver(this);
+    
     // 页面渲染完成后请求权限并启动自动同步
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestPhotoPermission();
       _startAutoSync();
     });
+  }
+
+  @override
+  void dispose() {
+    // 移除生命周期监听器
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 应用恢复时检查并同步
+      _log.info('✅ 应用恢复，检查数据新鲜度');
+      _checkAndSyncOnResume();
+    } else if (state == AppLifecycleState.paused) {
+      _log.info('应用进入后台');
+    }
+  }
+
+  /// 应用恢复时检查并同步
+  Future<void> _checkAndSyncOnResume() async {
+    if (!mounted) return;
+
+    try {
+      _log.info('✅ 触发应用恢复时的同步检查');
+      final coordinator = await ref.read(syncCoordinatorProvider.future);
+      coordinator.checkAndSyncOnResume();
+    } catch (e, stackTrace) {
+      _log.warning('应用恢复时同步检查失败', e, stackTrace);
+    }
   }
 
   /// 请求相册权限

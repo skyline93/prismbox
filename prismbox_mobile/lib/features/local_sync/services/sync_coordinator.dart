@@ -7,6 +7,7 @@ import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
+import 'package:prismbox/utils/async_mutex.dart';
 
 /// 同步协调器
 /// 协调后台同步任务，不阻塞 UI
@@ -21,17 +22,23 @@ class SyncCoordinator {
   /// 数据源切换通知流控制器
   final _dataSourceSwitchController = StreamController<bool>.broadcast();
   
-  /// 当前同步任务
-  Future<SyncResult>? _currentSyncTask;
+  /// 同步互斥锁（确保顺序执行）
+  final AsyncMutex _syncMutex = AsyncMutex();
   
   /// 最后同步时间
   DateTime? _lastSyncedAt;
+  
+  /// 最后触发时间（用于去重）
+  DateTime? _lastTriggerTime;
   
   /// 数据新鲜度阈值（1小时）
   static const Duration _freshnessThreshold = Duration(hours: 1);
   
   /// 启动延迟（2秒）
   static const Duration _startDelay = Duration(seconds: 2);
+  
+  /// 触发防抖时间（3秒）
+  static const Duration _triggerDebounce = Duration(seconds: 3);
 
   SyncCoordinator({
     required LocalSyncService syncService,
@@ -68,17 +75,30 @@ class SyncCoordinator {
   /// 
   /// [full] 是否全量同步
   Future<SyncResult> syncManually({bool full = false}) async {
-    if (_currentSyncTask != null) {
+    // 如果有任务正在运行，取消它
+    if (_syncMutex.enqueued > 0) {
       _logger.warning('同步任务正在进行中，取消当前任务');
-      _syncService.cancel();
-      await _currentSyncTask;
+      cancel();
+      // 注意：AsyncMutex 会自动处理等待，新任务会等待当前任务完成后再执行
+      // 即使当前任务被取消，AsyncMutex 也会等待它完成（或失败）后再执行新任务
     }
 
     return await _sync(full: full);
   }
 
-  /// 检查并同步
-  Future<void> _checkAndSync() async {
+  /// 统一的同步触发入口（带去重）
+  Future<void> _checkAndSync({bool force = false}) async {
+    // 去重：如果最近3秒内已触发，跳过
+    if (!force && _lastTriggerTime != null) {
+      final timeSinceLastTrigger = DateTime.now().difference(_lastTriggerTime!);
+      if (timeSinceLastTrigger < _triggerDebounce) {
+        _logger.info('最近已触发同步，跳过（去重）');
+        return;
+      }
+    }
+    
+    _lastTriggerTime = DateTime.now();
+    
     try {
       // 检查数据新鲜度
       final isFresh = _lastSyncedAt != null &&
@@ -96,17 +116,16 @@ class SyncCoordinator {
     }
   }
 
-  /// 执行同步
+  /// 执行同步（使用 AsyncMutex 保证顺序执行）
   Future<SyncResult> _sync({bool full = false}) async {
-    if (_currentSyncTask != null) {
-      _logger.warning('同步任务正在进行中');
-      return await _currentSyncTask!;
-    }
-
-    _currentSyncTask = _doSync(full: full);
-    final result = await _currentSyncTask!;
-    _currentSyncTask = null;
-    return result;
+    return await _syncMutex.run(() async {
+      try {
+        return await _doSync(full: full);
+      } catch (e, stackTrace) {
+        _logger.severe('同步执行异常', e, stackTrace);
+        return SyncResult.failure(e.toString());
+      }
+    });
   }
 
   /// 执行同步任务
@@ -193,11 +212,17 @@ class SyncCoordinator {
   Future<void> _checkAndSwitchDataSource() async {
     try {
       final selector = DataSourceSelector(database: _database);
+      final assetCount = await selector.getDatabaseAssetCount();
+      final threshold = selector.threshold;
       final isDatabaseAvailable = await selector.isDatabaseAvailable();
       
+      _logger.info('检查数据源切换：数据库资产数量=$assetCount, 阈值=$threshold, 可用=$isDatabaseAvailable');
+      
       if (isDatabaseAvailable) {
-        _logger.info('数据库数据可用，通知切换到数据库数据源');
+        _logger.info('✅ 数据库数据可用（资产数量=$assetCount > 阈值=$threshold），通知切换到数据库数据源');
         _dataSourceSwitchController.add(true);
+      } else {
+        _logger.info('数据库数据不足（资产数量=$assetCount ≤ 阈值=$threshold），保持使用 photo_manager 数据源');
       }
     } catch (e) {
       _logger.warning('检查数据源切换失败', e);

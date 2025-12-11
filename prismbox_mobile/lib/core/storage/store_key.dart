@@ -29,7 +29,10 @@ enum StoreKey<T> {
   // 用户设置
   preferRemoteImage<bool>._(100),
   loadPreview<bool>._(101),
-  loadOriginal<bool>._(102);
+  loadOriginal<bool>._(102),
+  
+  // 本地同步设置
+  dataSourceThreshold<int>._(110); // 数据源切换阈值（数据库资产数量）
 
   final int id;
   const StoreKey._(this.id);

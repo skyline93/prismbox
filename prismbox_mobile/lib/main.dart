@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/cache/widgets_binding.dart';
 import 'package:prismbox/core/storage/store_repository.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/infrastructure/api/ssl/http_ssl_options.dart';
@@ -11,8 +12,9 @@ import 'package:prismbox/data/database/connection.dart';
 import 'package:prismbox/services/debug/storage_inspector_service.dart';
 
 void main() async {
-  // 确保 Flutter 绑定已初始化
-  WidgetsFlutterBinding.ensureInitialized();
+  // 使用自定义 WidgetsFlutterBinding 以启用 CustomImageCache
+  // 实现三级缓存分离（ThumbHash/小图/大图），防止大图驱逐小图
+  PrismBoxWidgetsBinding();
   
   // 应用 SSL 配置（必须在应用启动时调用）
   // 配置从 AppConfig.ssl 读取，包括是否允许自签名证书等设置

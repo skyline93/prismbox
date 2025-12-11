@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
+import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/timeline/timeline_sliver_list.dart';
@@ -22,16 +25,50 @@ class MainTimelinePage extends ConsumerStatefulWidget {
 
 class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   final ScrollController _scrollController = ScrollController();
+  StreamSubscription<bool>? _dataSourceSwitchSubscription;
 
   @override
   void initState() {
     super.initState();
+    // 监听数据源切换
+    _listenDataSourceSwitch();
   }
 
   @override
   void dispose() {
+    _dataSourceSwitchSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// 监听数据源切换通知
+  /// 当同步完成后，如果数据库数据可用，会自动切换到数据库数据源
+  void _listenDataSourceSwitch() {
+    ref.read(syncCoordinatorProvider.future).then((coordinator) {
+      debugPrint('✅ 数据源切换监听已启动');
+      _dataSourceSwitchSubscription = coordinator.dataSourceSwitchStream.listen(
+        (shouldSwitch) {
+          if (shouldSwitch && mounted) {
+            debugPrint('✅ 收到数据源切换通知，刷新时间线数据');
+            // 刷新时间线数据，触发数据源切换
+            ref.invalidate(timelineSectionsProvider);
+            // 可选：显示提示信息（静默切换，不打扰用户）
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   const SnackBar(
+            //     content: Text('数据已同步完成'),
+            //     duration: Duration(seconds: 2),
+            //   ),
+            // );
+          }
+        },
+        onError: (error) {
+          // 记录错误但不影响功能
+          debugPrint('❌ 数据源切换监听错误: $error');
+        },
+      );
+    }).catchError((error) {
+      debugPrint('❌ 启动数据源切换监听失败: $error');
+    });
   }
 
   @override
@@ -153,24 +190,49 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               allAssets.addAll(section.assets);
             }
 
+            // 获取 AssetEntityLoader
+            final assetEntityLoaderAsync = ref.watch(assetEntityLoaderProvider);
+            
             // 构建时间线分组列表的 Sliver
-            return TimelineSliverListBuilder(
-              sections: sections,
-              crossAxisCount: 5,
-              crossAxisSpacing: 2,
-              mainAxisSpacing: 2,
-              childAspectRatio: 1.0,
-              onTap: (asset, index) {
-                // 导航到媒体查看器
-                final assetIds = allAssets.map((a) => a.id).toList();
-                context.router.push(
-                  MediaViewerRoute(
-                    initialAssetId: asset.id,
-                    assetIds: assetIds,
-                  ),
-                );
+            return assetEntityLoaderAsync.when(
+              data: (assetEntityLoader) {
+                return TimelineSliverListBuilder(
+                  sections: sections,
+                  crossAxisCount: 5,
+                  crossAxisSpacing: 2,
+                  mainAxisSpacing: 2,
+                  childAspectRatio: 1.0,
+                  assetEntityLoader: assetEntityLoader,
+                  onTap: (asset, index) {
+                    // 导航到媒体查看器
+                    final assetIds = allAssets.map((a) => a.id).toList();
+                    context.router.push(
+                      MediaViewerRoute(
+                        initialAssetId: asset.id,
+                        assetIds: assetIds,
+                      ),
+                    );
+                  },
+                ).build();
               },
-            ).build();
+              loading: () => [
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+              error: (error, stackTrace) => [
+                SliverFillRemaining(
+                  child: Center(
+                    child: Text(
+                      '加载 AssetEntityLoader 失败: ${error.toString()}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
           },
           loading: () => [
             const SliverFillRemaining(

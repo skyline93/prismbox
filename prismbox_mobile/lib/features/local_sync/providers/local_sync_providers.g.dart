@@ -64,14 +64,15 @@ final timelineProviderServiceProvider =
 
 typedef TimelineProviderServiceRef
     = AutoDisposeFutureProviderRef<TimelineProviderService>;
-String _$syncCoordinatorHash() => r'8b48300c4e1f2b897e965c82dcf4acc10f71c9b6';
+String _$syncCoordinatorHash() => r'4ade885654e27bea051c9756debaca52a6338da3';
 
 /// SyncCoordinator Provider
 ///
+/// 使用 keepAlive: true 确保全局单例
+///
 /// Copied from [syncCoordinator].
 @ProviderFor(syncCoordinator)
-final syncCoordinatorProvider =
-    AutoDisposeFutureProvider<SyncCoordinator>.internal(
+final syncCoordinatorProvider = FutureProvider<SyncCoordinator>.internal(
   syncCoordinator,
   name: r'syncCoordinatorProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -81,6 +82,27 @@ final syncCoordinatorProvider =
   allTransitiveDependencies: null,
 );
 
-typedef SyncCoordinatorRef = AutoDisposeFutureProviderRef<SyncCoordinator>;
+typedef SyncCoordinatorRef = FutureProviderRef<SyncCoordinator>;
+String _$assetEntityLoaderHash() => r'8ea3efab8aaa98ea240a5e7fe2af244352ad0d76';
+
+/// AssetEntityLoader Provider
+///
+/// 提供 AssetEntity 的延迟获取和缓存功能
+/// 单例模式，在整个应用生命周期中共享缓存
+///
+/// Copied from [assetEntityLoader].
+@ProviderFor(assetEntityLoader)
+final assetEntityLoaderProvider =
+    AutoDisposeFutureProvider<AssetEntityLoader>.internal(
+  assetEntityLoader,
+  name: r'assetEntityLoaderProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$assetEntityLoaderHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef AssetEntityLoaderRef = AutoDisposeFutureProviderRef<AssetEntityLoader>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
