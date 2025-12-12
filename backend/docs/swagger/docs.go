@@ -1316,7 +1316,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）",
+                "description": "批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）。每批最多 100 个哈希，超时时间 30 秒。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1329,7 +1329,7 @@ const docTemplate = `{
                 "summary": "检查文件哈希",
                 "parameters": [
                     {
-                        "description": "哈希列表",
+                        "description": "哈希列表（最多 100 个）",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -1358,13 +1358,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "请求参数错误（批量大小超限、哈希格式无效）",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
                         "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "408": {
+                        "description": "请求超时",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2666,17 +2672,31 @@ const docTemplate = `{
             "description": "检查哈希的响应数据",
             "type": "object",
             "properties": {
+                "existing_count": {
+                    "description": "已存在数量",
+                    "type": "integer"
+                },
                 "existing_hashes": {
+                    "description": "已存在的哈希列表",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
+                "missing_count": {
+                    "description": "缺失数量",
+                    "type": "integer"
+                },
                 "missing_hashes": {
+                    "description": "缺失的哈希列表",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                },
+                "total_count": {
+                    "description": "总数量",
+                    "type": "integer"
                 }
             }
         },

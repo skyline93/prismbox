@@ -188,10 +188,22 @@ class MediaViewer extends StatelessWidget {
 #### 2.2.2 核心服务
 
 **BackupService（备份服务）**：
-- 自动备份调度和管理
-- 上传队列管理
-- 任务状态跟踪
-- 错误处理和重试
+- 备份业务编排（手动/自动触发、配置管理）
+- 协调备份流程的启动和状态管理
+- 与本地媒体同步模块协调获取资产数据
+- **职责边界**：不负责上传队列管理（由 UploadService 负责）、不负责候选资源筛选（由 BackupCandidateSelector 负责）
+
+**BackupCandidateSelector（候选资源筛选器）**：
+- 负责候选资源筛选（三种自动备份模式的筛选逻辑）
+- **职责边界**：不负责去重检查（由 UploadOrchestrator 负责）
+
+**UploadService（上传服务）**：
+- 上传队列管理（任务 CRUD、状态管理、队列调度）
+- **职责边界**：不负责候选资源筛选、不负责上传流程编排
+
+**UploadOrchestrator（上传编排器）**：
+- 上传流程编排（去重、优先级、执行协调）
+- **职责边界**：不负责候选资源筛选（由 BackupCandidateSelector 负责）
 
 **MediaLoadService（媒体加载服务）**：
 - 资源选择策略
@@ -336,17 +348,22 @@ abstract class MediaRepository {
 │                     主应用 (Main App)                         │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │          UI Flutter Engine (主引擎)                   │   │
+│  │  - 用户界面                                           │   │
+│  │  - 前台交互                                           │   │
+│  │  - 备份设置和状态显示                                 │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            │ Pigeon API
+                            │ Pigeon API (类型安全通信)
                             │
 ┌─────────────────────────────────────────────────────────────┐
 │              原生平台层 (Native Platform Layer)              │
 │                                                               │
 │  Android: WorkManager          iOS: BGTaskScheduler          │
 │  ├─ MediaObserver              ├─ BGAppRefreshTask           │
-│  └─ BackgroundWorker            └─ BGProcessingTask           │
+│  │  (监听媒体库变化)            │  (快速同步，~20秒)          │
+│  └─ BackgroundWorker            └─ BGProcessingTask         │
+│     (执行备份任务)                (长时间上传)                │
 └─────────────────────────────────────────────────────────────┘
                             │
                             │ 启动独立 Engine
@@ -355,10 +372,25 @@ abstract class MediaRepository {
 │         后台任务 Engine (Background Worker Engine)            │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  BackgroundWorkerBgService                           │   │
-│  │  ├─ 数据库初始化 (Drift)                             │   │
+│  │  ├─ 数据库初始化 (Drift)                            │   │
 │  │  ├─ 同步服务 (BackgroundSyncManager)                 │   │
-│  │  ├─ 上传服务 (UploadService)                          │   │
-│  │  └─ 资源清理 (Cleanup)                                │   │
+│  │  │  └─ 三阶段同步：本地同步、远程同步、哈希计算      │   │
+│  │  ├─ 备份服务 (BackupService)                         │   │
+│  │  │  ├─ 备份业务编排                                   │   │
+│  │  │  └─ 配置管理                                       │   │
+│  │  ├─ 候选筛选器 (BackupCandidateSelector)             │   │
+│  │  │  └─ 三种自动备份模式筛选                           │   │
+│  │  ├─ 上传服务 (UploadService)                         │   │
+│  │  │  └─ 队列管理、状态管理                             │   │
+│  │  ├─ 上传编排器 (UploadOrchestrator)                  │   │
+│  │  │  └─ 去重、优先级、执行协调                          │   │
+│  │  ├─ 数据访问层 (BackupQueryBuilder)                  │   │
+│  │  │  └─ 强制 userId 过滤，确保多用户隔离              │   │
+│  │  ├─ 冲突解决器 (TaskConflictResolver)                │   │
+│  │  │  └─ 检测和解决任务冲突                             │   │
+│  │  ├─ 状态验证器 (TaskStatusValidator)                 │   │
+│  │  │  └─ 验证状态转换合法性                             │   │
+│  │  └─ 资源清理 (Cleanup)                               │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -371,9 +403,11 @@ abstract class MediaRepository {
 - 每个组最大并发：3
 
 **任务优先级**：
-- 图片优先于视频
-- 小文件优先（可选）
-- 按创建时间排序
+- **任务类型优先**：手动备份（manual）优先于自动备份（auto）
+- **优先级字段**：数字越小优先级越高（manual: 1, auto: 5）
+- **文件类型**：图片优先于视频
+- **文件大小**：小文件优先（可选）
+- **创建时间**：按创建时间排序（早创建的优先）
 
 **断点续传**：
 - 使用 background_downloader 管理上传任务
@@ -396,24 +430,50 @@ abstract class MediaRepository {
 - 支持自定义请求头（适配企业环境）
 - 自动注入认证头
 
-#### 3.1.4 数据同步机制
+#### 3.1.4 备份模式
+
+**手动备份**：
+- 用户主动选择资源，立即执行
+- 不检查网络条件，高优先级（priority=1）
+- 不更新 lastBackupTime
+- 支持可选去重检查（默认启用）
+
+**自动备份**：
+- 系统根据配置自动触发
+- 检查网络条件（WiFi 要求等）
+- 正常优先级（priority=5）
+- 更新 lastBackupTime（根据成功比例）
+- 三种筛选模式：all_unbacked、selected_albums、time_range
+
+#### 3.1.5 数据同步机制
+
+**三阶段同步设计**：
+1. **阶段一：本地同步（syncLocal）**
+   - 扫描设备媒体库，更新本地数据库
+   - 识别新增、修改、删除的资产
+   - 使用 photo_manager 访问本地资源
+
+2. **阶段二：远程同步（syncRemote）**
+   - 从服务器获取已上传资产列表
+   - 更新本地数据库中的远程资产信息
+   - 用于后续去重判断
+
+3. **阶段三：哈希计算（hashAssets，可选）**
+   - 计算待上传资产的哈希值（checksum）
+   - 支持超时机制，避免阻塞备份流程
+   - 使用后台 Isolate 进行计算
 
 **增量同步**：
 - 只同步上次备份后的新资产
 - 使用文件哈希（checksum）进行去重
 - 批量检查已存在资产，减少 API 调用
 
-**本地同步**：
-- 扫描设备媒体库，更新本地数据库
-- 识别新增、修改、删除的资产
-- 使用 photo_manager 访问本地资源
+**多用户支持**：
+- 所有接口方法必须包含 `userId` 参数
+- 使用 `BackupQueryBuilder` 强制 userId 过滤，确保多用户数据隔离
+- 每个用户拥有独立的备份配置和状态（backup_status 表）
 
-**远程同步**：
-- 从服务器获取已上传资产列表
-- 更新本地数据库中的远程资产信息
-- 支持多用户场景
-
-#### 3.1.5 错误处理与恢复
+#### 3.1.6 错误处理与恢复
 
 **统一错误类型**：
 - 网络错误
@@ -1276,9 +1336,12 @@ PrismBox 移动端架构遵循以下核心设计理念：
 
 ---
 
-**文档版本**：v1.0  
+**文档版本**：v1.1  
 **最后更新**：2024年  
 **维护者**：PrismBox 开发团队
+
+**更新说明**：
+- v1.1：更新备份上传下载模块设计，补充核心组件（BackupService、BackupCandidateSelector、UploadOrchestrator、BackupQueryBuilder、TaskConflictResolver、TaskStatusValidator），明确多用户支持、手动备份与自动备份区分、同步流程三阶段设计、服务层职责划分
 
 ---
 
@@ -1389,8 +1452,12 @@ lib/
 ├── services/                    # 服务层（Service Layer）
 │   ├── backup/                  # 备份服务
 │   │   ├── backup_service.dart
+│   │   ├── backup_candidate_selector.dart
 │   │   ├── upload_service.dart
-│   │   └── upload_orchestrator.dart
+│   │   ├── upload_orchestrator.dart
+│   │   ├── backup_query_builder.dart
+│   │   ├── task_conflict_resolver.dart
+│   │   └── task_status_validator.dart
 │   ├── sync/                    # 同步服务
 │   │   ├── sync_service.dart
 │   │   ├── local_sync_service.dart      # 本地同步

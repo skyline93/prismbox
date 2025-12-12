@@ -50,8 +50,11 @@ type CheckHashesRequest struct {
 // CheckHashesResponse 检查哈希响应
 // @Description 检查哈希的响应数据
 type CheckHashesResponse struct {
-	ExistingHashes []string `json:"existing_hashes"`
-	MissingHashes  []string `json:"missing_hashes"`
+	ExistingHashes []string `json:"existing_hashes"` // 已存在的哈希列表
+	MissingHashes  []string `json:"missing_hashes"`  // 缺失的哈希列表
+	TotalCount     int      `json:"total_count"`     // 总数量
+	ExistingCount  int      `json:"existing_count"`  // 已存在数量
+	MissingCount   int      `json:"missing_count"`    // 缺失数量
 }
 
 // GetChangesRequest 获取媒体变更请求

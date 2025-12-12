@@ -1,6 +1,8 @@
 package media
 
 import (
+	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -312,15 +314,16 @@ func (h *Handler) GetMedias(c *gin.Context) {
 
 // CheckHashes 检查哈希
 // @Summary      检查文件哈希
-// @Description  批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）
+// @Description  批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）。每批最多 100 个哈希，超时时间 30 秒。
 // @Tags         Media
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        input body dto.CheckHashesRequest true "哈希列表"
+// @Param        input body dto.CheckHashesRequest true "哈希列表（最多 100 个）"
 // @Success      200 {object} response.ApiResponse{data=dto.CheckHashesResponse} "检查成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
+// @Failure      400 {object} response.ApiResponse "请求参数错误（批量大小超限、哈希格式无效）"
 // @Failure      401 {object} response.ApiResponse "未认证"
+// @Failure      408 {object} response.ApiResponse "请求超时"
 // @Router       /media/check_hashes [post]
 func (h *Handler) CheckHashes(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -341,9 +344,61 @@ func (h *Handler) CheckHashes(c *gin.Context) {
 		return
 	}
 
-	// 3. 调用Service层
-	result, err := h.mediaService.CheckHashes(c.Request.Context(), userID, req.Hashes)
+	// 3. 批量大小限制：最多 100 个
+	const maxBatchSize = 100
+	if len(req.Hashes) > maxBatchSize {
+		h.log.Warn("hash batch size exceeds limit",
+			logger.Uint("user_id", userID),
+			logger.Int("requested_count", len(req.Hashes)),
+			logger.Int("max_allowed", maxBatchSize),
+		)
+		apiresponse.Error(c, fmt.Sprintf("Hashes list cannot exceed %d items. Got %d items", maxBatchSize, len(req.Hashes)))
+		return
+	}
+
+	// 4. 哈希格式验证：SHA256 应该是 64 位十六进制字符串
+	for i, hash := range req.Hashes {
+		if len(hash) != 64 {
+			h.log.Warn("invalid hash format",
+				logger.Uint("user_id", userID),
+				logger.Int("index", i),
+				logger.Int("hash_length", len(hash)),
+			)
+			apiresponse.Error(c, fmt.Sprintf("Invalid hash format at index %d. Hash must be a 64-character hexadecimal string (SHA256)", i))
+			return
+		}
+		// 验证是否为有效的十六进制字符串
+		if _, err := hex.DecodeString(hash); err != nil {
+			h.log.Warn("invalid hash format (not hexadecimal)",
+				logger.Uint("user_id", userID),
+				logger.Int("index", i),
+				logger.Error(err),
+			)
+			apiresponse.Error(c, fmt.Sprintf("Invalid hash format at index %d. Hash must be a valid hexadecimal string", i))
+			return
+		}
+	}
+
+	// 5. 调用Service层（带超时控制：30 秒）
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	result, err := h.mediaService.CheckHashes(ctx, userID, req.Hashes)
 	if err != nil {
+		// 区分超时错误和其他错误
+		if ctx.Err() == context.DeadlineExceeded {
+			h.log.Error("check hashes timeout",
+				logger.Error(err),
+				logger.Uint("user_id", userID),
+				logger.Int("hash_count", len(req.Hashes)),
+			)
+			c.JSON(http.StatusRequestTimeout, apiresponse.ApiResponse{
+				Code:    1,
+				Message: "Request timeout. Please try again with a smaller batch size",
+				Data:    nil,
+			})
+			return
+		}
 		h.log.Error("failed to check hashes",
 			logger.Error(err),
 			logger.Uint("user_id", userID),
@@ -353,10 +408,13 @@ func (h *Handler) CheckHashes(c *gin.Context) {
 		return
 	}
 
-	// 4. 转换为响应格式
+	// 6. 转换为响应格式
 	response := &dto.CheckHashesResponse{
 		ExistingHashes: result.ExistingHashes,
 		MissingHashes:  result.MissingHashes,
+		TotalCount:     len(req.Hashes),
+		ExistingCount:  len(result.ExistingHashes),
+		MissingCount:   len(result.MissingHashes),
 	}
 
 	apiresponse.Success(c, "Success", response)
