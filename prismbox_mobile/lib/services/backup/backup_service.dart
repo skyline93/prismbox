@@ -1,5 +1,6 @@
 // lib/services/backup/backup_service.dart
 
+import 'dart:async';
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
@@ -34,12 +35,12 @@ class BackupStatus {
 }
 
 /// 备份服务：业务编排层
-/// 
+///
 /// **职责**：
 /// - 备份业务编排（手动/自动触发、配置管理）
 /// - 协调备份流程的启动和状态管理
 /// - 与本地媒体同步模块协调获取资产数据
-/// 
+///
 /// **职责边界**：
 /// - ✅ **负责**：备份业务编排、配置管理、触发备份流程
 /// - ❌ **不负责**：上传队列管理（由 UploadService 负责）
@@ -63,20 +64,20 @@ class BackupService {
     required BackupCandidateSelector candidateSelector,
     required LocalSyncService localSyncService,
     ApiService? apiService,
-  })  : _database = database,
-        _uploadService = uploadService,
-        _candidateSelector = candidateSelector,
-        _localSyncService = localSyncService,
-        _configValidator = BackupConfigValidator(),
-        _apiService = apiService ?? ApiService();
+  }) : _database = database,
+       _uploadService = uploadService,
+       _candidateSelector = candidateSelector,
+       _localSyncService = localSyncService,
+       _configValidator = BackupConfigValidator(),
+       _apiService = apiService ?? ApiService();
 
   /// 启动手动备份
-  /// 
+  ///
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
   /// - [assetIds] - 要备份的资产 ID 列表
   /// - [skipDeduplication] - 是否跳过去重（默认 false）
-  /// 
+  ///
   /// **执行流程**：
   /// 1. 验证用户和资产
   /// 2. 创建上传任务（高优先级）
@@ -123,14 +124,16 @@ class BackupService {
       // 获取文件路径和大小
       String? actualPath = asset.path;
       int fileSize = 0;
-      
+
       try {
         final file = File(asset.path);
         if (await file.exists()) {
           fileSize = await file.length();
         } else {
           // 文件不存在，尝试通过 photo_manager 重新获取
-          _logger.warning('File not found: ${asset.path}, trying to get from photo_manager');
+          _logger.warning(
+            'File not found: ${asset.path}, trying to get from photo_manager',
+          );
           try {
             final assetEntity = await pm.AssetEntity.fromId(asset.id);
             if (assetEntity != null) {
@@ -149,7 +152,9 @@ class BackupService {
               continue; // 跳过找不到的资产
             }
           } catch (e) {
-            _logger.warning('Failed to get file from photo_manager for ${asset.id}: $e');
+            _logger.warning(
+              'Failed to get file from photo_manager for ${asset.id}: $e',
+            );
             continue; // 跳过无法获取的文件
           }
         }
@@ -190,59 +195,51 @@ class BackupService {
 
     _logger.info('Created ${tasks.length} manual backup tasks');
 
-    // 4. 混合模式处理：小批量立即上传，大批量加入队列
-    // 参考 immich 的实现方式
+    // 4. 对于手动备份，无论批量大小，都应该立即开始上传编排（异步）
+    // 因为这是用户主动触发的操作，需要立即反馈
+    // 任务入队后由 background_downloader 的原生层自动处理，不阻塞UI
     if (tasks.isNotEmpty) {
-      // 小批量（<= 10个）：立即开始上传，提供实时反馈
-      // 大批量（> 10个）：加入队列，由后台任务处理
-      const int immediateUploadThreshold = 10;
-      
-      if (tasks.length <= immediateUploadThreshold) {
-        // 立即开始上传
-        try {
-          _logger.info(
-            'Small batch (${tasks.length} tasks), starting upload immediately',
-          );
-          
-          final result = await _uploadService.startUpload(
-            userId: userId,
-            cancellationToken: CancellationToken(),
-            onProgress: (current, total) {
-              _logger.fine(
-                'Manual backup progress: $current/$total '
-                '(${(current / total * 100).toStringAsFixed(1)}%)',
+      _logger.info(
+        'Starting manual backup upload orchestration: ${tasks.length} tasks',
+      );
+
+      // 异步执行上传编排，不阻塞UI
+      // 任务入队后立即返回，实际执行由 background_downloader 的原生层处理
+      unawaited(
+        _uploadService
+            .startUpload(
+              userId: userId,
+              cancellationToken: CancellationToken(),
+              onProgress: (current, total) {
+                _logger.fine(
+                  'Manual backup progress: $current/$total '
+                  '(${(current / total * 100).toStringAsFixed(1)}%)',
+                );
+              },
+            )
+            .then((result) {
+              _logger.info(
+                'Manual backup upload orchestration completed: '
+                'success=${result.successCount}, failed=${result.failedCount}',
               );
-            },
-          );
-          
-          _logger.info(
-            'Manual backup upload completed: '
-            'success=${result.successCount}, failed=${result.failedCount}',
-          );
-        } catch (e, stackTrace) {
-          _logger.warning(
-            'Failed to start manual backup upload immediately: $e',
-            e,
-            stackTrace,
-          );
-          // 即使立即上传失败，任务已在队列中，后台任务会处理
-        }
-      } else {
-        // 大批量：加入队列，由后台任务处理
-        _logger.info(
-          'Large batch (${tasks.length} tasks), queued for background processing',
-        );
-        // 任务已加入队列，后台任务会自动处理
-        // 可以在这里添加通知，告知用户任务已加入队列
-      }
+            })
+            .catchError((e, stackTrace) {
+              _logger.warning(
+                'Failed to start manual backup upload orchestration: $e',
+                e,
+                stackTrace,
+              );
+              // 即使编排失败，任务已在队列中，background_downloader 会处理
+            }),
+      );
     }
   }
 
   /// 启动自动备份
-  /// 
+  ///
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
-  /// 
+  ///
   /// **执行流程**：
   /// 1. 检查全局开关和用户开关
   /// 2. 检查网络条件（WiFi 要求等）
@@ -253,9 +250,9 @@ class BackupService {
     _logger.info('Starting auto backup: userId=$userId');
 
     // 1. 获取备份配置
-    final backupStatus = await BackupQueryBuilder(_database)
-        .withUserId(userId)
-        .getBackupStatus();
+    final backupStatus = await BackupQueryBuilder(
+      _database,
+    ).withUserId(userId).getBackupStatus();
 
     if (backupStatus == null || !backupStatus.enabled) {
       _logger.info('Auto backup is disabled for userId=$userId');
@@ -322,14 +319,16 @@ class BackupService {
       // 获取文件路径和大小
       String? actualPath = asset.path;
       int fileSize = 0;
-      
+
       try {
         final file = File(asset.path);
         if (await file.exists()) {
           fileSize = await file.length();
         } else {
           // 文件不存在，尝试通过 photo_manager 重新获取
-          _logger.warning('File not found: ${asset.path}, trying to get from photo_manager');
+          _logger.warning(
+            'File not found: ${asset.path}, trying to get from photo_manager',
+          );
           try {
             final assetEntity = await pm.AssetEntity.fromId(asset.id);
             if (assetEntity != null) {
@@ -339,7 +338,7 @@ class BackupService {
                 actualPath = fileFromAsset.path;
                 fileSize = await fileFromAsset.length();
                 _logger.info('Got file path from photo_manager: $actualPath');
-                
+
                 // 更新本地资产数据库中的路径（如果路径已改变）
                 if (actualPath != asset.path) {
                   final updatedAsset = asset.copyWith(
@@ -350,7 +349,10 @@ class BackupService {
                     await _database.localAssetDao.updateAsset(updatedAsset);
                     _logger.info('Updated asset path in database: ${asset.id}');
                   } catch (e) {
-                    _logger.warning('Failed to update asset path in database: ${asset.id}', e);
+                    _logger.warning(
+                      'Failed to update asset path in database: ${asset.id}',
+                      e,
+                    );
                     // 继续创建任务，即使更新数据库失败
                   }
                 }
@@ -363,7 +365,9 @@ class BackupService {
               continue; // 跳过找不到的资产
             }
           } catch (e) {
-            _logger.warning('Failed to get file from photo_manager for ${asset.id}: $e');
+            _logger.warning(
+              'Failed to get file from photo_manager for ${asset.id}: $e',
+            );
             continue; // 跳过无法获取的文件
           }
         }
@@ -412,15 +416,15 @@ class BackupService {
   }
 
   /// 获取备份状态
-  /// 
+  ///
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
-  /// 
+  ///
   /// **返回**：BackupStatus（备份状态）
   Future<BackupStatus?> getBackupStatus(String userId) async {
-    final entity = await BackupQueryBuilder(_database)
-        .withUserId(userId)
-        .getBackupStatus();
+    final entity = await BackupQueryBuilder(
+      _database,
+    ).withUserId(userId).getBackupStatus();
 
     if (entity == null) {
       return null;
@@ -436,11 +440,11 @@ class BackupService {
   }
 
   /// 更新备份配置
-  /// 
+  ///
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
   /// - [config] - 备份配置
-  /// 
+  ///
   /// **职责**：
   /// - 验证配置
   /// - 保存配置到数据库
@@ -451,9 +455,9 @@ class BackupService {
     _logger.info('Updating backup config: userId=$userId');
 
     // 1. 验证配置
-    final existing = await BackupQueryBuilder(_database)
-        .withUserId(userId)
-        .getBackupStatus();
+    final existing = await BackupQueryBuilder(
+      _database,
+    ).withUserId(userId).getBackupStatus();
 
     if (existing != null) {
       final validation = await _configValidator.validate(_database, userId);
@@ -471,4 +475,3 @@ class BackupService {
     _logger.info('Backup config updated successfully');
   }
 }
-

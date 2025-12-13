@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+        允许明文 HTTP 流量（用于开发环境和内网部署）
+        
+        注意：此配置允许所有明文 HTTP 流量，包括内网 IP 地址。
+        这对于开发环境和内网部署是必要的，因为：
+        1. Android 9+ 默认禁止明文 HTTP 流量
+        2. 内网 IP 地址（如 10.168.1.161）无法通过域名配置允许
+        3. 生产环境应使用 HTTPS
+        
+        如果只需要允许特定域名，可以修改为：
+        <base-config cleartextTrafficPermitted="false">
+            <trust-anchors>
+                <certificates src="system" />
+            </trust-anchors>
+        </base-config>
+        <domain-config cleartextTrafficPermitted="true">
+            <domain includeSubdomains="true">your-domain.com</domain>
+        </domain-config>
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+

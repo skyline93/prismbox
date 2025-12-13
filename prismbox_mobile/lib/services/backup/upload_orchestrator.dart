@@ -7,7 +7,9 @@ import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
+import 'package:uuid/uuid.dart';
 import 'package:prismbox/data/database/app_database.dart';
+import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
@@ -611,16 +613,21 @@ class UploadOrchestrator {
         fileSize = await file.length();
       }
 
-      // 3. 获取 checksum（从本地资产或计算）
-      String? checksum;
+      // 3. 获取本地资产信息（必需，用于构建上传表单字段）
       final localAsset = await _database.localAssetDao.getAssetById(task.assetId);
-      if (localAsset?.checksum != null && localAsset!.checksum!.isNotEmpty) {
+      if (localAsset == null) {
+        throw Exception('Local asset not found: ${task.assetId}');
+      }
+
+      // 4. 获取 checksum（从本地资产或计算）
+      String? checksum;
+      if (localAsset.checksum != null && localAsset.checksum!.isNotEmpty) {
         checksum = localAsset.checksum;
       } else {
         // 计算 checksum（使用实际路径）
         checksum = await _calculateFileChecksum(actualPath);
         // 更新本地资产的 checksum
-        if (localAsset != null && localAsset.checksum != checksum) {
+        if (localAsset.checksum != checksum) {
           final updatedAsset = localAsset.copyWith(
             checksum: Value(checksum),
             updatedAt: DateTime.now(),
@@ -629,7 +636,7 @@ class UploadOrchestrator {
         }
       }
 
-      // 4. 验证上传端点（可选，用于提前发现问题）
+      // 5. 验证上传端点（可选，用于提前发现问题）
       final endpointValidation = await _endpointValidator.validateUploadEndpoint();
       if (!endpointValidation.isValid) {
         _logger.warning(
@@ -638,25 +645,51 @@ class UploadOrchestrator {
         // 继续尝试上传，因为验证可能失败但实际上传可能成功
       }
 
-      // 5. 获取上传端点
+      // 6. 获取上传端点
       final endpoint = _apiService.endpoint ?? '';
       final uploadUrl = '$endpoint$_uploadEndpoint';
 
-      // 6. 获取请求头（包含认证信息）
+      // 7. 获取请求头（包含认证信息）
       final headers = ApiService.getRequestHeaders();
 
-      // 7. 构建表单字段
+      // 8. 构建表单字段（后端 API 要求的格式）
+      // 转换 AssetType 为后端期望的 item_type
+      String itemType;
+      switch (localAsset.type) {
+        case AssetType.image:
+          itemType = 'image';
+          break;
+        case AssetType.video:
+          itemType = 'video';
+          break;
+        default:
+          itemType = 'image'; // 默认处理为图片
+          _logger.warning(
+            'Unknown asset type: ${localAsset.type}, defaulting to image',
+          );
+      }
+
+      // 生成 cloud_uuid（客户端生成的 UUID）
+      const uuid = Uuid();
+      final cloudUuid = uuid.v4();
+
+      // 格式化 media_taken_at（RFC3339 格式，UTC 时间）
+      final mediaTakenAt = localAsset.createdAt.toUtc().toIso8601String();
+
       final fields = <String, String>{
         'hash': checksum ?? '',
-        'deviceAssetId': task.assetId,
+        'item_type': itemType,
+        'cloud_uuid': cloudUuid,
+        'original_filename': localAsset.name,
+        'media_taken_at': mediaTakenAt,
       };
 
-      // 8. 确定任务组
+      // 9. 确定任务组
       final group = task.taskType == UploadTaskType.manual
           ? UploadTaskGroup.manual
           : UploadTaskGroup.auto;
 
-      // 9. 创建上传任务（使用实际路径）
+      // 10. 创建上传任务（使用实际路径）
       final uploadTask = _uploadTaskManager.createUploadTask(
         taskId: task.id,
         filePath: actualPath, // 使用实际获取到的路径
@@ -666,18 +699,17 @@ class UploadOrchestrator {
         group: group,
       );
 
-      // 10. 入队任务
+      // 11. 入队任务
       final enqueued = await _uploadTaskManager.enqueueTask(uploadTask);
       if (!enqueued) {
         throw Exception('Failed to enqueue upload task');
       }
 
-      // 11. 等待任务完成（通过监听状态更新）
+      // 12. 任务已入队，立即返回
       // 注意：background_downloader 会在后台执行任务，状态更新通过回调处理
-      // 这里我们等待一段时间让任务开始，然后通过状态检查确认完成
-      await _waitForTaskCompletion(task.id);
-
-      _logger.info('Upload task enqueued and completed: taskId=${task.id}');
+      // 不需要等待任务完成，遵循"入队即返回"的架构设计原则
+      // 任务状态会通过 UploadTaskManager 注册的回调自动更新到数据库
+      _logger.info('Upload task enqueued: taskId=${task.id}');
     } catch (e, stackTrace) {
       _logger.warning(
         'Upload failed: taskId=${task.id}, error=$e',
@@ -688,72 +720,6 @@ class UploadOrchestrator {
     }
   }
 
-  /// 等待任务完成
-  /// 
-  /// **实现说明**：
-  /// - 通过轮询检查任务状态（background_downloader 会通过回调更新数据库）
-  /// - 使用智能轮询策略：初始间隔短，逐渐增加间隔
-  /// - 超时时间：1 小时（大文件上传可能需要较长时间）
-  /// 
-  /// **参数**：
-  /// - [taskId] - 任务 ID
-  /// 
-  /// **轮询策略**：
-  /// - 前 30 秒：每 1 秒检查一次（快速响应）
-  /// - 30 秒到 5 分钟：每 2 秒检查一次
-  /// - 5 分钟到 30 分钟：每 5 秒检查一次
-  /// - 30 分钟以上：每 10 秒检查一次（减少数据库查询）
-  Future<void> _waitForTaskCompletion(String taskId) async {
-    const timeout = Duration(hours: 1);
-    final startTime = DateTime.now();
-    int checkCount = 0;
-
-    while (DateTime.now().difference(startTime) < timeout) {
-      // 从数据库检查任务状态
-      final task = await _database.uploadTaskDao.getTaskById(taskId);
-      if (task == null) {
-        throw Exception('Task not found: $taskId');
-      }
-
-      if (task.status == UploadTaskStatus.completed) {
-        _logger.info(
-          'Task completed: taskId=$taskId, '
-          'checks=$checkCount, elapsed=${DateTime.now().difference(startTime).inSeconds}s',
-        );
-        return;
-      }
-
-      if (task.status == UploadTaskStatus.permanentlyFailed ||
-          task.status == UploadTaskStatus.cancelled) {
-        throw Exception(
-          'Task failed or cancelled: taskId=$taskId, status=${task.status}',
-        );
-      }
-
-      // 智能轮询间隔：根据已等待时间调整检查间隔
-      final elapsed = DateTime.now().difference(startTime);
-      Duration checkInterval;
-      
-      if (elapsed < const Duration(seconds: 30)) {
-        checkInterval = const Duration(seconds: 1); // 前 30 秒：快速检查
-      } else if (elapsed < const Duration(minutes: 5)) {
-        checkInterval = const Duration(seconds: 2); // 30 秒到 5 分钟：每 2 秒
-      } else if (elapsed < const Duration(minutes: 30)) {
-        checkInterval = const Duration(seconds: 5); // 5 分钟到 30 分钟：每 5 秒
-      } else {
-        checkInterval = const Duration(seconds: 10); // 30 分钟以上：每 10 秒
-      }
-
-      checkCount++;
-      await Future.delayed(checkInterval);
-    }
-
-    throw TimeoutException(
-      'Task completion timeout: taskId=$taskId, '
-      'checks=$checkCount, elapsed=${DateTime.now().difference(startTime).inSeconds}s',
-      timeout,
-    );
-  }
 
   /// 批量检查服务器上已存在的资产
   /// 

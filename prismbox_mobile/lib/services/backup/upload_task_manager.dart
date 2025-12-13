@@ -14,7 +14,7 @@ class UploadTaskGroup {
 }
 
 /// 上传任务管理器
-/// 
+///
 /// **职责**：
 /// - 配置 background_downloader
 /// - 注册状态和进度回调
@@ -28,14 +28,12 @@ class UploadTaskManager {
   void Function(String taskId, TaskStatus status)? onStatusChange;
   void Function(String taskId, double progress)? onProgress;
 
-  UploadTaskManager({
-    required AppDatabase database,
-    ApiService? apiService,
-  })  : _database = database,
-        _apiService = apiService ?? ApiService();
+  UploadTaskManager({required AppDatabase database, ApiService? apiService})
+    : _database = database,
+      _apiService = apiService ?? ApiService();
 
   /// 初始化 FileDownloader 配置
-  /// 
+  ///
   /// **配置项**：
   /// - 最大并发数：6
   /// - 每个主机最大并发数：6
@@ -82,7 +80,7 @@ class UploadTaskManager {
     final taskId = update.task.taskId;
     final status = update.status;
     final group = update.task.group;
-    
+
     _logger.fine(
       'Task status update: taskId=$taskId, '
       'status=$status, group=$group',
@@ -102,7 +100,7 @@ class UploadTaskManager {
   void _handleProgressUpdate(TaskProgressUpdate update) {
     final taskId = update.task.taskId;
     final progress = update.progress;
-    
+
     _logger.fine(
       'Task progress update: taskId=$taskId, '
       'progress=$progress',
@@ -128,7 +126,7 @@ class UploadTaskManager {
 
     UploadTaskStatus newStatus;
     DateTime? uploadedAt;
-    
+
     switch (status) {
       case TaskStatus.enqueued:
       case TaskStatus.running:
@@ -174,7 +172,7 @@ class UploadTaskManager {
   }
 
   /// 创建上传任务
-  /// 
+  ///
   /// **参数**：
   /// - [taskId] - 任务 ID（对应数据库中的 UploadTaskEntityData.id）
   /// - [filePath] - 本地文件路径
@@ -182,7 +180,7 @@ class UploadTaskManager {
   /// - [headers] - 请求头
   /// - [fields] - 表单字段（如 hash, deviceAssetId 等）
   /// - [group] - 任务组（manual 或 auto）
-  /// 
+  ///
   /// **返回**：UploadTask
   UploadTask createUploadTask({
     required String taskId,
@@ -193,22 +191,19 @@ class UploadTaskManager {
     required String group,
   }) {
     final file = File(filePath);
-    final filename = file.path.split('/').last;
 
     // 构建请求头
-    final requestHeaders = <String, String>{
-      ...?headers,
-    };
+    final requestHeaders = <String, String>{...?headers};
 
     // 构建表单字段
-    final formFields = <String, String>{
-      ...?fields,
-    };
+    final formFields = <String, String>{...?fields};
 
     // 创建上传任务
-    final task = UploadTask(
+    // 注意：使用 UploadTask.fromFile() 指定实际文件路径，而不是只传文件名
+    // 否则 background_downloader 会尝试在应用内部存储中查找文件，导致文件不存在错误
+    final task = UploadTask.fromFile(
+      file: file, // 指定实际文件路径
       url: url,
-      filename: filename,
       fileField: 'file',
       fields: formFields.isNotEmpty ? formFields : null,
       headers: requestHeaders.isNotEmpty ? requestHeaders : null,
@@ -223,10 +218,10 @@ class UploadTaskManager {
   }
 
   /// 入队上传任务
-  /// 
+  ///
   /// **参数**：
   /// - [task] - 上传任务
-  /// 
+  ///
   /// **返回**：是否成功入队
   Future<bool> enqueueTask(UploadTask task) async {
     try {
@@ -244,10 +239,10 @@ class UploadTaskManager {
   }
 
   /// 批量入队上传任务
-  /// 
+  ///
   /// **参数**：
   /// - [tasks] - 上传任务列表
-  /// 
+  ///
   /// **返回**：每个任务的入队结果（true 表示成功）
   Future<List<bool>> enqueueTasks(List<UploadTask> tasks) async {
     try {
@@ -258,22 +253,18 @@ class UploadTaskManager {
       );
       return results;
     } catch (e, stackTrace) {
-      _logger.warning(
-        'Failed to enqueue tasks: error=$e',
-        e,
-        stackTrace,
-      );
+      _logger.warning('Failed to enqueue tasks: error=$e', e, stackTrace);
       return List.filled(tasks.length, false);
     }
   }
 
   /// 取消任务
-  /// 
+  ///
   /// **参数**：
   /// - [taskId] - 任务 ID
-  /// 
+  ///
   /// **返回**：是否成功取消
-  /// 
+  ///
   /// **注意**：需要先获取任务对象，然后取消
   Future<bool> cancelTask(String taskId) async {
     try {
@@ -293,10 +284,10 @@ class UploadTaskManager {
   }
 
   /// 取消组内所有任务
-  /// 
+  ///
   /// **参数**：
   /// - [group] - 任务组
-  /// 
+  ///
   /// **返回**：是否成功取消
   Future<bool> cancelGroup(String group) async {
     try {
@@ -314,12 +305,12 @@ class UploadTaskManager {
   }
 
   /// 暂停任务
-  /// 
+  ///
   /// **参数**：
   /// - [taskId] - 任务 ID
-  /// 
+  ///
   /// **返回**：是否成功暂停
-  /// 
+  ///
   /// **注意**：需要先获取任务对象，然后调用 pause
   Future<bool> pauseTask(String taskId) async {
     try {
@@ -339,12 +330,12 @@ class UploadTaskManager {
   }
 
   /// 恢复任务
-  /// 
+  ///
   /// **参数**：
   /// - [taskId] - 任务 ID
-  /// 
+  ///
   /// **返回**：是否成功恢复
-  /// 
+  ///
   /// **注意**：需要先获取任务对象，然后调用 resume
   Future<bool> resumeTask(String taskId) async {
     try {
@@ -363,4 +354,3 @@ class UploadTaskManager {
     }
   }
 }
-
