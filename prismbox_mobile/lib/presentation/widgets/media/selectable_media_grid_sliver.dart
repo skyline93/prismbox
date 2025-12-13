@@ -96,7 +96,7 @@ class _SelectableMediaGridSliverState
           final isSelected = widget.selectedIds.contains(asset.id);
 
           return VisibilityDetector(
-            key: Key('selectable_media_$index'),
+            key: Key('selectable_media_${asset.id}'),  // 使用 asset.id 而不是 index，确保每个资产都有唯一且稳定的 key
             onVisibilityChanged: (info) {
               final isVisible = info.visibleFraction > 0;
               setState(() {

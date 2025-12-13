@@ -40,6 +40,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   AssetIndex? _dragAnchorIndex;
   bool _isDragging = false;
   final Set<String> _draggedAssetIds = {};
+  
+  /// 保存长按进入选择模式时的滚动位置
+  double? _savedScrollOffset;
 
   @override
   void initState() {
@@ -95,6 +98,39 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
+      }
+    });
+
+    // 监听选择状态变化，当进入选择模式时恢复滚动位置
+    // 由于 Sliver 列表重新构建需要多个布局周期，使用多个 postFrameCallback 确保布局完全稳定
+    ref.listen<AssetSelectionState>(assetSelectionProvider, (previous, next) {
+      // 当从非激活状态变为激活状态时，恢复之前保存的滚动位置
+      if (previous != null && 
+          !previous.isActive && 
+          next.isActive && 
+          _savedScrollOffset != null &&
+          _scrollController.hasClients) {
+        // 使用多个 postFrameCallback 确保布局完全稳定
+        // Sliver 列表重新构建需要多个布局周期才能完全稳定
+        Future.microtask(() {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            // 等待第二个 frame 确保 Sliver 布局完全稳定
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              // 再等待一个 frame 确保所有布局计算完成
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && 
+                    _scrollController.hasClients && 
+                    _savedScrollOffset != null) {
+                  // 确保滚动位置在有效范围内
+                  final maxScrollExtent = _scrollController.position.maxScrollExtent;
+                  final targetOffset = _savedScrollOffset!.clamp(0.0, maxScrollExtent);
+                  _scrollController.jumpTo(targetOffset);
+                  _savedScrollOffset = null; // 清除保存的位置
+                }
+              });
+            });
+          });
+        });
       }
     });
 
@@ -224,7 +260,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               else
                 SliverAppBar(
                   floating: true,
-                  pinned: false,
+                  pinned: true,  // 与选择模式保持一致，避免布局变化导致滚动位置变动
+                  snap: false,
                   title: const Text('照片'),
                   actions: [
                     IconButton(
@@ -358,6 +395,10 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                   onLongPress: (asset) {
                     // 长按进入多选模式（如果还未激活）
                     if (!selectionActive) {
+                      // 保存当前滚动位置（作为保险措施，因为两个 AppBar 配置已一致）
+                      if (_scrollController.hasClients) {
+                        _savedScrollOffset = _scrollController.offset;
+                      }
                       HapticFeedback.mediumImpact();
                       ref.read(assetSelectionProvider.notifier).activate();
                       ref.read(assetSelectionProvider.notifier).toggle(asset.id);

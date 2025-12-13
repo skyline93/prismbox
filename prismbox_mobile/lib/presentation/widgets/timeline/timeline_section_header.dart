@@ -50,7 +50,12 @@ class TimelineSectionHeader extends StatelessWidget {
           vertical: 8,
         );
 
+    // 计算固定高度：padding (8*2) + 文本行高 (约24) + 额外空间 = 48
+    // 确保选择模式下高度不变，避免布局变化导致滚动位置变动
+    const double fixedHeight = 48.0;
+
     return Container(
+      height: fixedHeight,  // 固定高度，确保选择模式下高度不变
       padding: effectivePadding,
       color: backgroundColor ?? theme.scaffoldBackgroundColor,
       child: Row(
@@ -70,7 +75,7 @@ class TimelineSectionHeader extends StatelessWidget {
               ),
             ),
           ],
-          // 选择模式下的复选框
+          // 选择模式下的复选框 - 使用固定宽度的占位符确保布局一致
           if (selectionActive && onSectionToggle != null) ...[
             const SizedBox(width: 8),
             IconButton(
@@ -91,7 +96,10 @@ class TimelineSectionHeader extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
-          ],
+          ]
+          else if (!selectionActive && onSectionToggle != null)
+            // 非选择模式下使用占位符保持布局一致（如果将来可能显示复选框）
+            const SizedBox(width: 0),  // 当前非选择模式不显示，所以宽度为0
         ],
       ),
     );

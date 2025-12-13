@@ -126,6 +126,7 @@ class SelectableTimelineSliverListBuilder {
 
       slivers.add(
         SliverToBoxAdapter(
+          key: ValueKey('section_header_${section.index}'),  // 添加稳定的 key，确保 Flutter 能正确识别同一个 Sliver
           child: TimelineSectionHeader(
             section: section,
             showAssetCount: showAssetCount,
@@ -165,6 +166,7 @@ class SelectableTimelineSliverListBuilder {
     }
 
     return SliverPadding(
+      key: ValueKey('section_grid_${sectionIndex}'),  // 添加稳定的 key，确保 Flutter 能正确识别同一个 Sliver
       padding: const EdgeInsets.symmetric(horizontal: 2),
       sliver: SelectableMediaGridSliver(
         assets: section.assets,
