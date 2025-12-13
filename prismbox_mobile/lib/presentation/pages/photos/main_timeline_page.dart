@@ -10,8 +10,6 @@ import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_sliver_list.dart';
-import 'package:prismbox/presentation/widgets/backup/backup_asset_selection_dialog.dart';
-import 'package:prismbox/presentation/widgets/backup/backup_action_sheet.dart';
 import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
 import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart'
     show DragSelectionRegion, AssetIndex, ScrollDirection;
@@ -264,11 +262,6 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                   snap: false,
                   title: const Text('照片'),
                   actions: [
-                    IconButton(
-                      icon: const Icon(Icons.cloud_upload),
-                      tooltip: '备份照片',
-                      onPressed: () => _showBackupDialog(context, ref),
-                    ),
                     IconButton(
                       icon: const Icon(Icons.filter_list),
                       onPressed: () {
@@ -555,51 +548,6 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         ),
       ),
     );
-  }
-
-  /// 显示备份对话框
-  Future<void> _showBackupDialog(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    // 获取所有资产
-    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
-    final sections = await timelineSectionsAsync.when(
-      data: (sections) => sections,
-      loading: () => <TimelineSection>[],
-      error: (_, __) => <TimelineSection>[],
-    );
-
-    if (sections.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('暂无照片可备份')),
-      );
-      return;
-    }
-
-    // 收集所有资产
-    final allAssets = <LocalAsset>[];
-    for (final section in sections) {
-      allAssets.addAll(section.assets);
-    }
-
-    // 显示资产选择对话框
-    final selectedIds = await BackupAssetSelectionDialog.show(
-      context,
-      assets: allAssets,
-    );
-
-    if (selectedIds != null && selectedIds.isNotEmpty) {
-      // 显示备份操作底部表单
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (context) => BackupActionSheet(
-          assetIds: selectedIds,
-          onDismiss: () => Navigator.of(context).pop(),
-        ),
-      );
-    }
   }
 
   /// 处理上传
