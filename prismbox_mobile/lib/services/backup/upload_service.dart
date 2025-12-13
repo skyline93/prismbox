@@ -267,21 +267,10 @@ class UploadService {
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
   /// 
-  /// **返回**：UploadQueueStatus（队列状态）
-  UploadQueueStatus getQueueStatus(String userId) {
-    // 注意：这是一个同步方法，但需要异步查询数据库
-    // 这里返回一个占位状态，实际应该使用 Stream 或 Future
-    // TODO: 改为异步方法或使用 Stream
-    return UploadQueueStatus.empty();
-  }
-
-  /// 获取上传队列状态（异步版本）
-  /// 
-  /// **参数**：
-  /// - [userId] - 用户 ID（必须）
-  /// 
   /// **返回**：Future<UploadQueueStatus>（队列状态）
-  Future<UploadQueueStatus> getQueueStatusAsync(String userId) async {
+  /// 
+  /// **注意**：此方法需要异步查询数据库，因此返回 Future
+  Future<UploadQueueStatus> getQueueStatus(String userId) async {
     final dao = _database.uploadTaskDao;
     final statusCounts = await dao.getQueueStatusByUserId(userId);
 

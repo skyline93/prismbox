@@ -58,7 +58,7 @@ class _BackupStatusContent extends ConsumerWidget {
             }
 
             return FutureBuilder<UploadQueueStatus>(
-              future: uploadSnapshot.data!.getQueueStatusAsync(userId),
+              future: uploadSnapshot.data!.getQueueStatus(userId),
               builder: (context, queueSnapshot) {
                 return _BackupStatusInfo(
                   userId: userId,
