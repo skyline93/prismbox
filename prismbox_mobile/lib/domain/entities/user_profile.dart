@@ -30,6 +30,19 @@ class UserProfile {
     );
   }
 
+  /// 从 JSON 创建
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id'] as int,
+      username: json['username'] as String,
+      email: json['email'] as String,
+      avatarUrl: json['avatarUrl'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+    );
+  }
+
   /// 从数据库实体创建
   factory UserProfile.fromEntity(UserEntityData entity) {
     return UserProfile(

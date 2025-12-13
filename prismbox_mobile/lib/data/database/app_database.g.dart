@@ -3143,6 +3143,1283 @@ class StoreEntityCompanion extends UpdateCompanion<StoreEntityData> {
   }
 }
 
+class $BackupStatusEntityTable extends BackupStatusEntity
+    with TableInfo<$BackupStatusEntityTable, BackupStatusEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BackupStatusEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES user_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _lastBackupTimeMeta =
+      const VerificationMeta('lastBackupTime');
+  @override
+  late final GeneratedColumn<DateTime> lastBackupTime =
+      GeneratedColumn<DateTime>('last_backup_time', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _enabledMeta =
+      const VerificationMeta('enabled');
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+      'enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("enabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _autoBackupModeMeta =
+      const VerificationMeta('autoBackupMode');
+  @override
+  late final GeneratedColumnWithTypeConverter<AutoBackupMode, int>
+      autoBackupMode = GeneratedColumn<int>(
+              'auto_backup_mode', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<AutoBackupMode>(
+              $BackupStatusEntityTable.$converterautoBackupMode);
+  static const VerificationMeta _timeRangeStartMeta =
+      const VerificationMeta('timeRangeStart');
+  @override
+  late final GeneratedColumn<DateTime> timeRangeStart =
+      GeneratedColumn<DateTime>('time_range_start', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _timeRangeEndMeta =
+      const VerificationMeta('timeRangeEnd');
+  @override
+  late final GeneratedColumn<DateTime> timeRangeEnd = GeneratedColumn<DateTime>(
+      'time_range_end', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        userId,
+        lastBackupTime,
+        enabled,
+        autoBackupMode,
+        timeRangeStart,
+        timeRangeEnd,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'backup_status_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<BackupStatusEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('last_backup_time')) {
+      context.handle(
+          _lastBackupTimeMeta,
+          lastBackupTime.isAcceptableOrUnknown(
+              data['last_backup_time']!, _lastBackupTimeMeta));
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(_enabledMeta,
+          enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta));
+    }
+    context.handle(_autoBackupModeMeta, const VerificationResult.success());
+    if (data.containsKey('time_range_start')) {
+      context.handle(
+          _timeRangeStartMeta,
+          timeRangeStart.isAcceptableOrUnknown(
+              data['time_range_start']!, _timeRangeStartMeta));
+    }
+    if (data.containsKey('time_range_end')) {
+      context.handle(
+          _timeRangeEndMeta,
+          timeRangeEnd.isAcceptableOrUnknown(
+              data['time_range_end']!, _timeRangeEndMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {userId};
+  @override
+  BackupStatusEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BackupStatusEntityData(
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      lastBackupTime: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_backup_time']),
+      enabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}enabled'])!,
+      autoBackupMode: $BackupStatusEntityTable.$converterautoBackupMode.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.int, data['${effectivePrefix}auto_backup_mode'])!),
+      timeRangeStart: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}time_range_start']),
+      timeRangeEnd: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}time_range_end']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $BackupStatusEntityTable createAlias(String alias) {
+    return $BackupStatusEntityTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<AutoBackupMode, int, int> $converterautoBackupMode =
+      const EnumIndexConverter<AutoBackupMode>(AutoBackupMode.values);
+  @override
+  bool get withoutRowId => true;
+}
+
+class BackupStatusEntityData extends DataClass
+    implements Insertable<BackupStatusEntityData> {
+  /// 用户 ID（主键，外键关联 UserEntity）
+  final String userId;
+
+  /// 最后自动备份时间（用于增量同步）
+  final DateTime? lastBackupTime;
+
+  /// 该用户的自动备份是否启用
+  final bool enabled;
+
+  /// 自动备份模式枚举
+  final AutoBackupMode autoBackupMode;
+
+  /// 时间段起始（time_range 模式）
+  final DateTime? timeRangeStart;
+
+  /// 时间段结束（time_range 模式）
+  final DateTime? timeRangeEnd;
+
+  /// 创建时间
+  final DateTime createdAt;
+
+  /// 更新时间
+  final DateTime updatedAt;
+  const BackupStatusEntityData(
+      {required this.userId,
+      this.lastBackupTime,
+      required this.enabled,
+      required this.autoBackupMode,
+      this.timeRangeStart,
+      this.timeRangeEnd,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['user_id'] = Variable<String>(userId);
+    if (!nullToAbsent || lastBackupTime != null) {
+      map['last_backup_time'] = Variable<DateTime>(lastBackupTime);
+    }
+    map['enabled'] = Variable<bool>(enabled);
+    {
+      map['auto_backup_mode'] = Variable<int>($BackupStatusEntityTable
+          .$converterautoBackupMode
+          .toSql(autoBackupMode));
+    }
+    if (!nullToAbsent || timeRangeStart != null) {
+      map['time_range_start'] = Variable<DateTime>(timeRangeStart);
+    }
+    if (!nullToAbsent || timeRangeEnd != null) {
+      map['time_range_end'] = Variable<DateTime>(timeRangeEnd);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BackupStatusEntityCompanion toCompanion(bool nullToAbsent) {
+    return BackupStatusEntityCompanion(
+      userId: Value(userId),
+      lastBackupTime: lastBackupTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastBackupTime),
+      enabled: Value(enabled),
+      autoBackupMode: Value(autoBackupMode),
+      timeRangeStart: timeRangeStart == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timeRangeStart),
+      timeRangeEnd: timeRangeEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timeRangeEnd),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BackupStatusEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BackupStatusEntityData(
+      userId: serializer.fromJson<String>(json['userId']),
+      lastBackupTime: serializer.fromJson<DateTime?>(json['lastBackupTime']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      autoBackupMode: $BackupStatusEntityTable.$converterautoBackupMode
+          .fromJson(serializer.fromJson<int>(json['autoBackupMode'])),
+      timeRangeStart: serializer.fromJson<DateTime?>(json['timeRangeStart']),
+      timeRangeEnd: serializer.fromJson<DateTime?>(json['timeRangeEnd']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'userId': serializer.toJson<String>(userId),
+      'lastBackupTime': serializer.toJson<DateTime?>(lastBackupTime),
+      'enabled': serializer.toJson<bool>(enabled),
+      'autoBackupMode': serializer.toJson<int>($BackupStatusEntityTable
+          .$converterautoBackupMode
+          .toJson(autoBackupMode)),
+      'timeRangeStart': serializer.toJson<DateTime?>(timeRangeStart),
+      'timeRangeEnd': serializer.toJson<DateTime?>(timeRangeEnd),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BackupStatusEntityData copyWith(
+          {String? userId,
+          Value<DateTime?> lastBackupTime = const Value.absent(),
+          bool? enabled,
+          AutoBackupMode? autoBackupMode,
+          Value<DateTime?> timeRangeStart = const Value.absent(),
+          Value<DateTime?> timeRangeEnd = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      BackupStatusEntityData(
+        userId: userId ?? this.userId,
+        lastBackupTime:
+            lastBackupTime.present ? lastBackupTime.value : this.lastBackupTime,
+        enabled: enabled ?? this.enabled,
+        autoBackupMode: autoBackupMode ?? this.autoBackupMode,
+        timeRangeStart:
+            timeRangeStart.present ? timeRangeStart.value : this.timeRangeStart,
+        timeRangeEnd:
+            timeRangeEnd.present ? timeRangeEnd.value : this.timeRangeEnd,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  BackupStatusEntityData copyWithCompanion(BackupStatusEntityCompanion data) {
+    return BackupStatusEntityData(
+      userId: data.userId.present ? data.userId.value : this.userId,
+      lastBackupTime: data.lastBackupTime.present
+          ? data.lastBackupTime.value
+          : this.lastBackupTime,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      autoBackupMode: data.autoBackupMode.present
+          ? data.autoBackupMode.value
+          : this.autoBackupMode,
+      timeRangeStart: data.timeRangeStart.present
+          ? data.timeRangeStart.value
+          : this.timeRangeStart,
+      timeRangeEnd: data.timeRangeEnd.present
+          ? data.timeRangeEnd.value
+          : this.timeRangeEnd,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BackupStatusEntityData(')
+          ..write('userId: $userId, ')
+          ..write('lastBackupTime: $lastBackupTime, ')
+          ..write('enabled: $enabled, ')
+          ..write('autoBackupMode: $autoBackupMode, ')
+          ..write('timeRangeStart: $timeRangeStart, ')
+          ..write('timeRangeEnd: $timeRangeEnd, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(userId, lastBackupTime, enabled,
+      autoBackupMode, timeRangeStart, timeRangeEnd, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BackupStatusEntityData &&
+          other.userId == this.userId &&
+          other.lastBackupTime == this.lastBackupTime &&
+          other.enabled == this.enabled &&
+          other.autoBackupMode == this.autoBackupMode &&
+          other.timeRangeStart == this.timeRangeStart &&
+          other.timeRangeEnd == this.timeRangeEnd &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BackupStatusEntityCompanion
+    extends UpdateCompanion<BackupStatusEntityData> {
+  final Value<String> userId;
+  final Value<DateTime?> lastBackupTime;
+  final Value<bool> enabled;
+  final Value<AutoBackupMode> autoBackupMode;
+  final Value<DateTime?> timeRangeStart;
+  final Value<DateTime?> timeRangeEnd;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const BackupStatusEntityCompanion({
+    this.userId = const Value.absent(),
+    this.lastBackupTime = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.autoBackupMode = const Value.absent(),
+    this.timeRangeStart = const Value.absent(),
+    this.timeRangeEnd = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  BackupStatusEntityCompanion.insert({
+    required String userId,
+    this.lastBackupTime = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.autoBackupMode = const Value.absent(),
+    this.timeRangeStart = const Value.absent(),
+    this.timeRangeEnd = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  })  : userId = Value(userId),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<BackupStatusEntityData> custom({
+    Expression<String>? userId,
+    Expression<DateTime>? lastBackupTime,
+    Expression<bool>? enabled,
+    Expression<int>? autoBackupMode,
+    Expression<DateTime>? timeRangeStart,
+    Expression<DateTime>? timeRangeEnd,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (lastBackupTime != null) 'last_backup_time': lastBackupTime,
+      if (enabled != null) 'enabled': enabled,
+      if (autoBackupMode != null) 'auto_backup_mode': autoBackupMode,
+      if (timeRangeStart != null) 'time_range_start': timeRangeStart,
+      if (timeRangeEnd != null) 'time_range_end': timeRangeEnd,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  BackupStatusEntityCompanion copyWith(
+      {Value<String>? userId,
+      Value<DateTime?>? lastBackupTime,
+      Value<bool>? enabled,
+      Value<AutoBackupMode>? autoBackupMode,
+      Value<DateTime?>? timeRangeStart,
+      Value<DateTime?>? timeRangeEnd,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return BackupStatusEntityCompanion(
+      userId: userId ?? this.userId,
+      lastBackupTime: lastBackupTime ?? this.lastBackupTime,
+      enabled: enabled ?? this.enabled,
+      autoBackupMode: autoBackupMode ?? this.autoBackupMode,
+      timeRangeStart: timeRangeStart ?? this.timeRangeStart,
+      timeRangeEnd: timeRangeEnd ?? this.timeRangeEnd,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (lastBackupTime.present) {
+      map['last_backup_time'] = Variable<DateTime>(lastBackupTime.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (autoBackupMode.present) {
+      map['auto_backup_mode'] = Variable<int>($BackupStatusEntityTable
+          .$converterautoBackupMode
+          .toSql(autoBackupMode.value));
+    }
+    if (timeRangeStart.present) {
+      map['time_range_start'] = Variable<DateTime>(timeRangeStart.value);
+    }
+    if (timeRangeEnd.present) {
+      map['time_range_end'] = Variable<DateTime>(timeRangeEnd.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BackupStatusEntityCompanion(')
+          ..write('userId: $userId, ')
+          ..write('lastBackupTime: $lastBackupTime, ')
+          ..write('enabled: $enabled, ')
+          ..write('autoBackupMode: $autoBackupMode, ')
+          ..write('timeRangeStart: $timeRangeStart, ')
+          ..write('timeRangeEnd: $timeRangeEnd, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $UploadTaskEntityTable extends UploadTaskEntity
+    with TableInfo<$UploadTaskEntityTable, UploadTaskEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UploadTaskEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES user_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
+  @override
+  late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _localPathMeta =
+      const VerificationMeta('localPath');
+  @override
+  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
+      'local_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _remotePathMeta =
+      const VerificationMeta('remotePath');
+  @override
+  late final GeneratedColumn<String> remotePath = GeneratedColumn<String>(
+      'remote_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fileSizeMeta =
+      const VerificationMeta('fileSize');
+  @override
+  late final GeneratedColumn<int> fileSize = GeneratedColumn<int>(
+      'file_size', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _taskTypeMeta =
+      const VerificationMeta('taskType');
+  @override
+  late final GeneratedColumnWithTypeConverter<UploadTaskType, int> taskType =
+      GeneratedColumn<int>('task_type', aliasedName, false,
+              type: DriftSqlType.int, requiredDuringInsert: true)
+          .withConverter<UploadTaskType>(
+              $UploadTaskEntityTable.$convertertaskType);
+  static const VerificationMeta _priorityMeta =
+      const VerificationMeta('priority');
+  @override
+  late final GeneratedColumn<int> priority = GeneratedColumn<int>(
+      'priority', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(5));
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumnWithTypeConverter<UploadTaskStatus, int> status =
+      GeneratedColumn<int>('status', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<UploadTaskStatus>(
+              $UploadTaskEntityTable.$converterstatus);
+  static const VerificationMeta _retryCountMeta =
+      const VerificationMeta('retryCount');
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+      'retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _maxRetriesMeta =
+      const VerificationMeta('maxRetries');
+  @override
+  late final GeneratedColumn<int> maxRetries = GeneratedColumn<int>(
+      'max_retries', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(3));
+  static const VerificationMeta _errorMessageMeta =
+      const VerificationMeta('errorMessage');
+  @override
+  late final GeneratedColumn<String> errorMessage = GeneratedColumn<String>(
+      'error_message', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _uploadedAtMeta =
+      const VerificationMeta('uploadedAt');
+  @override
+  late final GeneratedColumn<DateTime> uploadedAt = GeneratedColumn<DateTime>(
+      'uploaded_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _progressMeta =
+      const VerificationMeta('progress');
+  @override
+  late final GeneratedColumn<int> progress = GeneratedColumn<int>(
+      'progress', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        userId,
+        assetId,
+        localPath,
+        remotePath,
+        fileSize,
+        taskType,
+        priority,
+        status,
+        retryCount,
+        maxRetries,
+        errorMessage,
+        uploadedAt,
+        createdAt,
+        updatedAt,
+        progress
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'upload_task_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<UploadTaskEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+    } else if (isInserting) {
+      context.missing(_assetIdMeta);
+    }
+    if (data.containsKey('local_path')) {
+      context.handle(_localPathMeta,
+          localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta));
+    } else if (isInserting) {
+      context.missing(_localPathMeta);
+    }
+    if (data.containsKey('remote_path')) {
+      context.handle(
+          _remotePathMeta,
+          remotePath.isAcceptableOrUnknown(
+              data['remote_path']!, _remotePathMeta));
+    } else if (isInserting) {
+      context.missing(_remotePathMeta);
+    }
+    if (data.containsKey('file_size')) {
+      context.handle(_fileSizeMeta,
+          fileSize.isAcceptableOrUnknown(data['file_size']!, _fileSizeMeta));
+    } else if (isInserting) {
+      context.missing(_fileSizeMeta);
+    }
+    context.handle(_taskTypeMeta, const VerificationResult.success());
+    if (data.containsKey('priority')) {
+      context.handle(_priorityMeta,
+          priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
+    }
+    context.handle(_statusMeta, const VerificationResult.success());
+    if (data.containsKey('retry_count')) {
+      context.handle(
+          _retryCountMeta,
+          retryCount.isAcceptableOrUnknown(
+              data['retry_count']!, _retryCountMeta));
+    }
+    if (data.containsKey('max_retries')) {
+      context.handle(
+          _maxRetriesMeta,
+          maxRetries.isAcceptableOrUnknown(
+              data['max_retries']!, _maxRetriesMeta));
+    }
+    if (data.containsKey('error_message')) {
+      context.handle(
+          _errorMessageMeta,
+          errorMessage.isAcceptableOrUnknown(
+              data['error_message']!, _errorMessageMeta));
+    }
+    if (data.containsKey('uploaded_at')) {
+      context.handle(
+          _uploadedAtMeta,
+          uploadedAt.isAcceptableOrUnknown(
+              data['uploaded_at']!, _uploadedAtMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('progress')) {
+      context.handle(_progressMeta,
+          progress.isAcceptableOrUnknown(data['progress']!, _progressMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UploadTaskEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UploadTaskEntityData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_id'])!,
+      localPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}local_path'])!,
+      remotePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}remote_path'])!,
+      fileSize: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}file_size'])!,
+      taskType: $UploadTaskEntityTable.$convertertaskType.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.int, data['${effectivePrefix}task_type'])!),
+      priority: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}priority'])!,
+      status: $UploadTaskEntityTable.$converterstatus.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}status'])!),
+      retryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
+      maxRetries: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}max_retries'])!,
+      errorMessage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error_message']),
+      uploadedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}uploaded_at']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      progress: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}progress'])!,
+    );
+  }
+
+  @override
+  $UploadTaskEntityTable createAlias(String alias) {
+    return $UploadTaskEntityTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<UploadTaskType, int, int> $convertertaskType =
+      const EnumIndexConverter<UploadTaskType>(UploadTaskType.values);
+  static JsonTypeConverter2<UploadTaskStatus, int, int> $converterstatus =
+      const EnumIndexConverter<UploadTaskStatus>(UploadTaskStatus.values);
+  @override
+  bool get withoutRowId => true;
+}
+
+class UploadTaskEntityData extends DataClass
+    implements Insertable<UploadTaskEntityData> {
+  /// 任务 ID（主键）
+  final String id;
+
+  /// 用户 ID（外键，用于多用户隔离）
+  final String userId;
+
+  /// 资产 ID（本地资产ID，关联LocalAssetEntity）
+  final String assetId;
+
+  /// 本地文件路径
+  final String localPath;
+
+  /// 远程路径（上传目标路径）
+  final String remotePath;
+
+  /// 文件大小（字节）
+  final int fileSize;
+
+  /// 任务类型（manual/auto）
+  final UploadTaskType taskType;
+
+  /// 优先级（数字越小优先级越高，manual: 1, auto: 5）
+  final int priority;
+
+  /// 任务状态
+  final UploadTaskStatus status;
+
+  /// 重试次数
+  final int retryCount;
+
+  /// 最大重试次数（默认 3）
+  final int maxRetries;
+
+  /// 错误信息
+  final String? errorMessage;
+
+  /// 上传完成时间
+  final DateTime? uploadedAt;
+
+  /// 创建时间
+  final DateTime createdAt;
+
+  /// 更新时间
+  final DateTime updatedAt;
+
+  /// 进度百分比（0-100）
+  final int progress;
+  const UploadTaskEntityData(
+      {required this.id,
+      required this.userId,
+      required this.assetId,
+      required this.localPath,
+      required this.remotePath,
+      required this.fileSize,
+      required this.taskType,
+      required this.priority,
+      required this.status,
+      required this.retryCount,
+      required this.maxRetries,
+      this.errorMessage,
+      this.uploadedAt,
+      required this.createdAt,
+      required this.updatedAt,
+      required this.progress});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['user_id'] = Variable<String>(userId);
+    map['asset_id'] = Variable<String>(assetId);
+    map['local_path'] = Variable<String>(localPath);
+    map['remote_path'] = Variable<String>(remotePath);
+    map['file_size'] = Variable<int>(fileSize);
+    {
+      map['task_type'] = Variable<int>(
+          $UploadTaskEntityTable.$convertertaskType.toSql(taskType));
+    }
+    map['priority'] = Variable<int>(priority);
+    {
+      map['status'] =
+          Variable<int>($UploadTaskEntityTable.$converterstatus.toSql(status));
+    }
+    map['retry_count'] = Variable<int>(retryCount);
+    map['max_retries'] = Variable<int>(maxRetries);
+    if (!nullToAbsent || errorMessage != null) {
+      map['error_message'] = Variable<String>(errorMessage);
+    }
+    if (!nullToAbsent || uploadedAt != null) {
+      map['uploaded_at'] = Variable<DateTime>(uploadedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['progress'] = Variable<int>(progress);
+    return map;
+  }
+
+  UploadTaskEntityCompanion toCompanion(bool nullToAbsent) {
+    return UploadTaskEntityCompanion(
+      id: Value(id),
+      userId: Value(userId),
+      assetId: Value(assetId),
+      localPath: Value(localPath),
+      remotePath: Value(remotePath),
+      fileSize: Value(fileSize),
+      taskType: Value(taskType),
+      priority: Value(priority),
+      status: Value(status),
+      retryCount: Value(retryCount),
+      maxRetries: Value(maxRetries),
+      errorMessage: errorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorMessage),
+      uploadedAt: uploadedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(uploadedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      progress: Value(progress),
+    );
+  }
+
+  factory UploadTaskEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UploadTaskEntityData(
+      id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
+      assetId: serializer.fromJson<String>(json['assetId']),
+      localPath: serializer.fromJson<String>(json['localPath']),
+      remotePath: serializer.fromJson<String>(json['remotePath']),
+      fileSize: serializer.fromJson<int>(json['fileSize']),
+      taskType: $UploadTaskEntityTable.$convertertaskType
+          .fromJson(serializer.fromJson<int>(json['taskType'])),
+      priority: serializer.fromJson<int>(json['priority']),
+      status: $UploadTaskEntityTable.$converterstatus
+          .fromJson(serializer.fromJson<int>(json['status'])),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
+      maxRetries: serializer.fromJson<int>(json['maxRetries']),
+      errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      uploadedAt: serializer.fromJson<DateTime?>(json['uploadedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      progress: serializer.fromJson<int>(json['progress']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<String>(userId),
+      'assetId': serializer.toJson<String>(assetId),
+      'localPath': serializer.toJson<String>(localPath),
+      'remotePath': serializer.toJson<String>(remotePath),
+      'fileSize': serializer.toJson<int>(fileSize),
+      'taskType': serializer.toJson<int>(
+          $UploadTaskEntityTable.$convertertaskType.toJson(taskType)),
+      'priority': serializer.toJson<int>(priority),
+      'status': serializer
+          .toJson<int>($UploadTaskEntityTable.$converterstatus.toJson(status)),
+      'retryCount': serializer.toJson<int>(retryCount),
+      'maxRetries': serializer.toJson<int>(maxRetries),
+      'errorMessage': serializer.toJson<String?>(errorMessage),
+      'uploadedAt': serializer.toJson<DateTime?>(uploadedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'progress': serializer.toJson<int>(progress),
+    };
+  }
+
+  UploadTaskEntityData copyWith(
+          {String? id,
+          String? userId,
+          String? assetId,
+          String? localPath,
+          String? remotePath,
+          int? fileSize,
+          UploadTaskType? taskType,
+          int? priority,
+          UploadTaskStatus? status,
+          int? retryCount,
+          int? maxRetries,
+          Value<String?> errorMessage = const Value.absent(),
+          Value<DateTime?> uploadedAt = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          int? progress}) =>
+      UploadTaskEntityData(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        assetId: assetId ?? this.assetId,
+        localPath: localPath ?? this.localPath,
+        remotePath: remotePath ?? this.remotePath,
+        fileSize: fileSize ?? this.fileSize,
+        taskType: taskType ?? this.taskType,
+        priority: priority ?? this.priority,
+        status: status ?? this.status,
+        retryCount: retryCount ?? this.retryCount,
+        maxRetries: maxRetries ?? this.maxRetries,
+        errorMessage:
+            errorMessage.present ? errorMessage.value : this.errorMessage,
+        uploadedAt: uploadedAt.present ? uploadedAt.value : this.uploadedAt,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        progress: progress ?? this.progress,
+      );
+  UploadTaskEntityData copyWithCompanion(UploadTaskEntityCompanion data) {
+    return UploadTaskEntityData(
+      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      localPath: data.localPath.present ? data.localPath.value : this.localPath,
+      remotePath:
+          data.remotePath.present ? data.remotePath.value : this.remotePath,
+      fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
+      taskType: data.taskType.present ? data.taskType.value : this.taskType,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      status: data.status.present ? data.status.value : this.status,
+      retryCount:
+          data.retryCount.present ? data.retryCount.value : this.retryCount,
+      maxRetries:
+          data.maxRetries.present ? data.maxRetries.value : this.maxRetries,
+      errorMessage: data.errorMessage.present
+          ? data.errorMessage.value
+          : this.errorMessage,
+      uploadedAt:
+          data.uploadedAt.present ? data.uploadedAt.value : this.uploadedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      progress: data.progress.present ? data.progress.value : this.progress,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UploadTaskEntityData(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('assetId: $assetId, ')
+          ..write('localPath: $localPath, ')
+          ..write('remotePath: $remotePath, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('taskType: $taskType, ')
+          ..write('priority: $priority, ')
+          ..write('status: $status, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('maxRetries: $maxRetries, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('progress: $progress')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      userId,
+      assetId,
+      localPath,
+      remotePath,
+      fileSize,
+      taskType,
+      priority,
+      status,
+      retryCount,
+      maxRetries,
+      errorMessage,
+      uploadedAt,
+      createdAt,
+      updatedAt,
+      progress);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UploadTaskEntityData &&
+          other.id == this.id &&
+          other.userId == this.userId &&
+          other.assetId == this.assetId &&
+          other.localPath == this.localPath &&
+          other.remotePath == this.remotePath &&
+          other.fileSize == this.fileSize &&
+          other.taskType == this.taskType &&
+          other.priority == this.priority &&
+          other.status == this.status &&
+          other.retryCount == this.retryCount &&
+          other.maxRetries == this.maxRetries &&
+          other.errorMessage == this.errorMessage &&
+          other.uploadedAt == this.uploadedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.progress == this.progress);
+}
+
+class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
+  final Value<String> id;
+  final Value<String> userId;
+  final Value<String> assetId;
+  final Value<String> localPath;
+  final Value<String> remotePath;
+  final Value<int> fileSize;
+  final Value<UploadTaskType> taskType;
+  final Value<int> priority;
+  final Value<UploadTaskStatus> status;
+  final Value<int> retryCount;
+  final Value<int> maxRetries;
+  final Value<String?> errorMessage;
+  final Value<DateTime?> uploadedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> progress;
+  const UploadTaskEntityCompanion({
+    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.assetId = const Value.absent(),
+    this.localPath = const Value.absent(),
+    this.remotePath = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.taskType = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.status = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.maxRetries = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.uploadedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.progress = const Value.absent(),
+  });
+  UploadTaskEntityCompanion.insert({
+    required String id,
+    required String userId,
+    required String assetId,
+    required String localPath,
+    required String remotePath,
+    required int fileSize,
+    required UploadTaskType taskType,
+    this.priority = const Value.absent(),
+    this.status = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.maxRetries = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.uploadedAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.progress = const Value.absent(),
+  })  : id = Value(id),
+        userId = Value(userId),
+        assetId = Value(assetId),
+        localPath = Value(localPath),
+        remotePath = Value(remotePath),
+        fileSize = Value(fileSize),
+        taskType = Value(taskType),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<UploadTaskEntityData> custom({
+    Expression<String>? id,
+    Expression<String>? userId,
+    Expression<String>? assetId,
+    Expression<String>? localPath,
+    Expression<String>? remotePath,
+    Expression<int>? fileSize,
+    Expression<int>? taskType,
+    Expression<int>? priority,
+    Expression<int>? status,
+    Expression<int>? retryCount,
+    Expression<int>? maxRetries,
+    Expression<String>? errorMessage,
+    Expression<DateTime>? uploadedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? progress,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
+      if (assetId != null) 'asset_id': assetId,
+      if (localPath != null) 'local_path': localPath,
+      if (remotePath != null) 'remote_path': remotePath,
+      if (fileSize != null) 'file_size': fileSize,
+      if (taskType != null) 'task_type': taskType,
+      if (priority != null) 'priority': priority,
+      if (status != null) 'status': status,
+      if (retryCount != null) 'retry_count': retryCount,
+      if (maxRetries != null) 'max_retries': maxRetries,
+      if (errorMessage != null) 'error_message': errorMessage,
+      if (uploadedAt != null) 'uploaded_at': uploadedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (progress != null) 'progress': progress,
+    });
+  }
+
+  UploadTaskEntityCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? userId,
+      Value<String>? assetId,
+      Value<String>? localPath,
+      Value<String>? remotePath,
+      Value<int>? fileSize,
+      Value<UploadTaskType>? taskType,
+      Value<int>? priority,
+      Value<UploadTaskStatus>? status,
+      Value<int>? retryCount,
+      Value<int>? maxRetries,
+      Value<String?>? errorMessage,
+      Value<DateTime?>? uploadedAt,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? progress}) {
+    return UploadTaskEntityCompanion(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      assetId: assetId ?? this.assetId,
+      localPath: localPath ?? this.localPath,
+      remotePath: remotePath ?? this.remotePath,
+      fileSize: fileSize ?? this.fileSize,
+      taskType: taskType ?? this.taskType,
+      priority: priority ?? this.priority,
+      status: status ?? this.status,
+      retryCount: retryCount ?? this.retryCount,
+      maxRetries: maxRetries ?? this.maxRetries,
+      errorMessage: errorMessage ?? this.errorMessage,
+      uploadedAt: uploadedAt ?? this.uploadedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      progress: progress ?? this.progress,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<String>(assetId.value);
+    }
+    if (localPath.present) {
+      map['local_path'] = Variable<String>(localPath.value);
+    }
+    if (remotePath.present) {
+      map['remote_path'] = Variable<String>(remotePath.value);
+    }
+    if (fileSize.present) {
+      map['file_size'] = Variable<int>(fileSize.value);
+    }
+    if (taskType.present) {
+      map['task_type'] = Variable<int>(
+          $UploadTaskEntityTable.$convertertaskType.toSql(taskType.value));
+    }
+    if (priority.present) {
+      map['priority'] = Variable<int>(priority.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<int>(
+          $UploadTaskEntityTable.$converterstatus.toSql(status.value));
+    }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
+    if (maxRetries.present) {
+      map['max_retries'] = Variable<int>(maxRetries.value);
+    }
+    if (errorMessage.present) {
+      map['error_message'] = Variable<String>(errorMessage.value);
+    }
+    if (uploadedAt.present) {
+      map['uploaded_at'] = Variable<DateTime>(uploadedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (progress.present) {
+      map['progress'] = Variable<int>(progress.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UploadTaskEntityCompanion(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('assetId: $assetId, ')
+          ..write('localPath: $localPath, ')
+          ..write('remotePath: $remotePath, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('taskType: $taskType, ')
+          ..write('priority: $priority, ')
+          ..write('status: $status, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('maxRetries: $maxRetries, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('progress: $progress')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3158,6 +4435,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AlbumAssetEntityTable albumAssetEntity =
       $AlbumAssetEntityTable(this);
   late final $StoreEntityTable storeEntity = $StoreEntityTable(this);
+  late final $BackupStatusEntityTable backupStatusEntity =
+      $BackupStatusEntityTable(this);
+  late final $UploadTaskEntityTable uploadTaskEntity =
+      $UploadTaskEntityTable(this);
   late final Index idxLocalAssetChecksum = Index('idx_local_asset_checksum',
       'CREATE INDEX idx_local_asset_checksum ON local_asset_entity (checksum)');
   late final Index idxRemoteAssetOwnerChecksum = Index(
@@ -3165,11 +4446,26 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX idx_remote_asset_owner_checksum ON remote_asset_entity (owner_id, checksum)');
   late final Index idxRemoteAssetChecksum = Index('idx_remote_asset_checksum',
       'CREATE INDEX idx_remote_asset_checksum ON remote_asset_entity (checksum)');
+  late final Index idxBackupStatusUserId = Index('idx_backup_status_user_id',
+      'CREATE INDEX idx_backup_status_user_id ON backup_status_entity (user_id)');
+  late final Index idxUploadTaskUserId = Index('idx_upload_task_user_id',
+      'CREATE INDEX idx_upload_task_user_id ON upload_task_entity (user_id)');
+  late final Index idxUploadTaskStatus = Index('idx_upload_task_status',
+      'CREATE INDEX idx_upload_task_status ON upload_task_entity (status)');
+  late final Index idxUploadTaskType = Index('idx_upload_task_type',
+      'CREATE INDEX idx_upload_task_type ON upload_task_entity (task_type)');
+  late final Index idxUploadTaskPriority = Index('idx_upload_task_priority',
+      'CREATE INDEX idx_upload_task_priority ON upload_task_entity (priority)');
+  late final Index idxUploadTaskAssetId = Index('idx_upload_task_asset_id',
+      'CREATE INDEX idx_upload_task_asset_id ON upload_task_entity (asset_id)');
   late final UserDao userDao = UserDao(this as AppDatabase);
   late final LocalAssetDao localAssetDao = LocalAssetDao(this as AppDatabase);
   late final RemoteAssetDao remoteAssetDao =
       RemoteAssetDao(this as AppDatabase);
   late final AlbumDao albumDao = AlbumDao(this as AppDatabase);
+  late final BackupStatusDao backupStatusDao =
+      BackupStatusDao(this as AppDatabase);
+  late final UploadTaskDao uploadTaskDao = UploadTaskDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3182,9 +4478,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         localAlbumEntity,
         albumAssetEntity,
         storeEntity,
+        backupStatusEntity,
+        uploadTaskEntity,
         idxLocalAssetChecksum,
         idxRemoteAssetOwnerChecksum,
-        idxRemoteAssetChecksum
+        idxRemoteAssetChecksum,
+        idxBackupStatusUserId,
+        idxUploadTaskUserId,
+        idxUploadTaskStatus,
+        idxUploadTaskType,
+        idxUploadTaskPriority,
+        idxUploadTaskAssetId
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -3229,6 +4533,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('album_asset_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('user_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('backup_status_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('user_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('upload_task_entity', kind: UpdateKind.delete),
             ],
           ),
         ],
@@ -3367,6 +4685,37 @@ class $$UserEntityTableFilterComposer
                     $state.db.remoteAlbumEntity,
                     joinBuilder,
                     parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter backupStatusEntityRefs(
+      ComposableFilter Function($$BackupStatusEntityTableFilterComposer f) f) {
+    final $$BackupStatusEntityTableFilterComposer composer = $state
+        .composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.backupStatusEntity,
+            getReferencedColumn: (t) => t.userId,
+            builder: (joinBuilder, parentComposers) =>
+                $$BackupStatusEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.backupStatusEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter uploadTaskEntityRefs(
+      ComposableFilter Function($$UploadTaskEntityTableFilterComposer f) f) {
+    final $$UploadTaskEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.uploadTaskEntity,
+            getReferencedColumn: (t) => t.userId,
+            builder: (joinBuilder, parentComposers) =>
+                $$UploadTaskEntityTableFilterComposer(ComposerState($state.db,
+                    $state.db.uploadTaskEntity, joinBuilder, parentComposers)));
     return f(composer);
   }
 }
@@ -4631,6 +5980,510 @@ class $$StoreEntityTableOrderingComposer
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
+typedef $$BackupStatusEntityTableCreateCompanionBuilder
+    = BackupStatusEntityCompanion Function({
+  required String userId,
+  Value<DateTime?> lastBackupTime,
+  Value<bool> enabled,
+  Value<AutoBackupMode> autoBackupMode,
+  Value<DateTime?> timeRangeStart,
+  Value<DateTime?> timeRangeEnd,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+});
+typedef $$BackupStatusEntityTableUpdateCompanionBuilder
+    = BackupStatusEntityCompanion Function({
+  Value<String> userId,
+  Value<DateTime?> lastBackupTime,
+  Value<bool> enabled,
+  Value<AutoBackupMode> autoBackupMode,
+  Value<DateTime?> timeRangeStart,
+  Value<DateTime?> timeRangeEnd,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+});
+
+class $$BackupStatusEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $BackupStatusEntityTable,
+    BackupStatusEntityData,
+    $$BackupStatusEntityTableFilterComposer,
+    $$BackupStatusEntityTableOrderingComposer,
+    $$BackupStatusEntityTableCreateCompanionBuilder,
+    $$BackupStatusEntityTableUpdateCompanionBuilder> {
+  $$BackupStatusEntityTableTableManager(
+      _$AppDatabase db, $BackupStatusEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$BackupStatusEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer: $$BackupStatusEntityTableOrderingComposer(
+              ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> userId = const Value.absent(),
+            Value<DateTime?> lastBackupTime = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<AutoBackupMode> autoBackupMode = const Value.absent(),
+            Value<DateTime?> timeRangeStart = const Value.absent(),
+            Value<DateTime?> timeRangeEnd = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              BackupStatusEntityCompanion(
+            userId: userId,
+            lastBackupTime: lastBackupTime,
+            enabled: enabled,
+            autoBackupMode: autoBackupMode,
+            timeRangeStart: timeRangeStart,
+            timeRangeEnd: timeRangeEnd,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            required String userId,
+            Value<DateTime?> lastBackupTime = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<AutoBackupMode> autoBackupMode = const Value.absent(),
+            Value<DateTime?> timeRangeStart = const Value.absent(),
+            Value<DateTime?> timeRangeEnd = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+          }) =>
+              BackupStatusEntityCompanion.insert(
+            userId: userId,
+            lastBackupTime: lastBackupTime,
+            enabled: enabled,
+            autoBackupMode: autoBackupMode,
+            timeRangeStart: timeRangeStart,
+            timeRangeEnd: timeRangeEnd,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+        ));
+}
+
+class $$BackupStatusEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $BackupStatusEntityTable> {
+  $$BackupStatusEntityTableFilterComposer(super.$state);
+  ColumnFilters<DateTime> get lastBackupTime => $state.composableBuilder(
+      column: $state.table.lastBackupTime,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get enabled => $state.composableBuilder(
+      column: $state.table.enabled,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AutoBackupMode, AutoBackupMode, int>
+      get autoBackupMode => $state.composableBuilder(
+          column: $state.table.autoBackupMode,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get timeRangeStart => $state.composableBuilder(
+      column: $state.table.timeRangeStart,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get timeRangeEnd => $state.composableBuilder(
+      column: $state.table.timeRangeEnd,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get userId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$BackupStatusEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $BackupStatusEntityTable> {
+  $$BackupStatusEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<DateTime> get lastBackupTime => $state.composableBuilder(
+      column: $state.table.lastBackupTime,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get enabled => $state.composableBuilder(
+      column: $state.table.enabled,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get autoBackupMode => $state.composableBuilder(
+      column: $state.table.autoBackupMode,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get timeRangeStart => $state.composableBuilder(
+      column: $state.table.timeRangeStart,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get timeRangeEnd => $state.composableBuilder(
+      column: $state.table.timeRangeEnd,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get userId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+typedef $$UploadTaskEntityTableCreateCompanionBuilder
+    = UploadTaskEntityCompanion Function({
+  required String id,
+  required String userId,
+  required String assetId,
+  required String localPath,
+  required String remotePath,
+  required int fileSize,
+  required UploadTaskType taskType,
+  Value<int> priority,
+  Value<UploadTaskStatus> status,
+  Value<int> retryCount,
+  Value<int> maxRetries,
+  Value<String?> errorMessage,
+  Value<DateTime?> uploadedAt,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> progress,
+});
+typedef $$UploadTaskEntityTableUpdateCompanionBuilder
+    = UploadTaskEntityCompanion Function({
+  Value<String> id,
+  Value<String> userId,
+  Value<String> assetId,
+  Value<String> localPath,
+  Value<String> remotePath,
+  Value<int> fileSize,
+  Value<UploadTaskType> taskType,
+  Value<int> priority,
+  Value<UploadTaskStatus> status,
+  Value<int> retryCount,
+  Value<int> maxRetries,
+  Value<String?> errorMessage,
+  Value<DateTime?> uploadedAt,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> progress,
+});
+
+class $$UploadTaskEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $UploadTaskEntityTable,
+    UploadTaskEntityData,
+    $$UploadTaskEntityTableFilterComposer,
+    $$UploadTaskEntityTableOrderingComposer,
+    $$UploadTaskEntityTableCreateCompanionBuilder,
+    $$UploadTaskEntityTableUpdateCompanionBuilder> {
+  $$UploadTaskEntityTableTableManager(
+      _$AppDatabase db, $UploadTaskEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$UploadTaskEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$UploadTaskEntityTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> userId = const Value.absent(),
+            Value<String> assetId = const Value.absent(),
+            Value<String> localPath = const Value.absent(),
+            Value<String> remotePath = const Value.absent(),
+            Value<int> fileSize = const Value.absent(),
+            Value<UploadTaskType> taskType = const Value.absent(),
+            Value<int> priority = const Value.absent(),
+            Value<UploadTaskStatus> status = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
+            Value<int> maxRetries = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<DateTime?> uploadedAt = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> progress = const Value.absent(),
+          }) =>
+              UploadTaskEntityCompanion(
+            id: id,
+            userId: userId,
+            assetId: assetId,
+            localPath: localPath,
+            remotePath: remotePath,
+            fileSize: fileSize,
+            taskType: taskType,
+            priority: priority,
+            status: status,
+            retryCount: retryCount,
+            maxRetries: maxRetries,
+            errorMessage: errorMessage,
+            uploadedAt: uploadedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            progress: progress,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String userId,
+            required String assetId,
+            required String localPath,
+            required String remotePath,
+            required int fileSize,
+            required UploadTaskType taskType,
+            Value<int> priority = const Value.absent(),
+            Value<UploadTaskStatus> status = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
+            Value<int> maxRetries = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<DateTime?> uploadedAt = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<int> progress = const Value.absent(),
+          }) =>
+              UploadTaskEntityCompanion.insert(
+            id: id,
+            userId: userId,
+            assetId: assetId,
+            localPath: localPath,
+            remotePath: remotePath,
+            fileSize: fileSize,
+            taskType: taskType,
+            priority: priority,
+            status: status,
+            retryCount: retryCount,
+            maxRetries: maxRetries,
+            errorMessage: errorMessage,
+            uploadedAt: uploadedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            progress: progress,
+          ),
+        ));
+}
+
+class $$UploadTaskEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $UploadTaskEntityTable> {
+  $$UploadTaskEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get assetId => $state.composableBuilder(
+      column: $state.table.assetId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get localPath => $state.composableBuilder(
+      column: $state.table.localPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get remotePath => $state.composableBuilder(
+      column: $state.table.remotePath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get fileSize => $state.composableBuilder(
+      column: $state.table.fileSize,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<UploadTaskType, UploadTaskType, int>
+      get taskType => $state.composableBuilder(
+          column: $state.table.taskType,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get priority => $state.composableBuilder(
+      column: $state.table.priority,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<UploadTaskStatus, UploadTaskStatus, int>
+      get status => $state.composableBuilder(
+          column: $state.table.status,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get retryCount => $state.composableBuilder(
+      column: $state.table.retryCount,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get maxRetries => $state.composableBuilder(
+      column: $state.table.maxRetries,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get errorMessage => $state.composableBuilder(
+      column: $state.table.errorMessage,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get uploadedAt => $state.composableBuilder(
+      column: $state.table.uploadedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get userId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$UploadTaskEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $UploadTaskEntityTable> {
+  $$UploadTaskEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get assetId => $state.composableBuilder(
+      column: $state.table.assetId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get localPath => $state.composableBuilder(
+      column: $state.table.localPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get remotePath => $state.composableBuilder(
+      column: $state.table.remotePath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get fileSize => $state.composableBuilder(
+      column: $state.table.fileSize,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get taskType => $state.composableBuilder(
+      column: $state.table.taskType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get priority => $state.composableBuilder(
+      column: $state.table.priority,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get status => $state.composableBuilder(
+      column: $state.table.status,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get retryCount => $state.composableBuilder(
+      column: $state.table.retryCount,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get maxRetries => $state.composableBuilder(
+      column: $state.table.maxRetries,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get errorMessage => $state.composableBuilder(
+      column: $state.table.errorMessage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get uploadedAt => $state.composableBuilder(
+      column: $state.table.uploadedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get userId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
@@ -4648,4 +6501,8 @@ class $AppDatabaseManager {
       $$AlbumAssetEntityTableTableManager(_db, _db.albumAssetEntity);
   $$StoreEntityTableTableManager get storeEntity =>
       $$StoreEntityTableTableManager(_db, _db.storeEntity);
+  $$BackupStatusEntityTableTableManager get backupStatusEntity =>
+      $$BackupStatusEntityTableTableManager(_db, _db.backupStatusEntity);
+  $$UploadTaskEntityTableTableManager get uploadTaskEntity =>
+      $$UploadTaskEntityTableTableManager(_db, _db.uploadTaskEntity);
 }

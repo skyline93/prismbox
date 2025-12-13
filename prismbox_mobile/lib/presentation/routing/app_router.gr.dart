@@ -11,7 +11,7 @@ part of 'app_router.dart';
 
 abstract class _$AppRouter extends RootStackRouter {
   // ignore: unused_element
-  _$AppRouter();
+  _$AppRouter({super.navigatorKey});
 
   @override
   final Map<String, PageFactory> pagesMap = {
@@ -19,6 +19,18 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const AlbumsPage(),
+      );
+    },
+    BackupManagementRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const BackupManagementPage(),
+      );
+    },
+    BackupSettingsRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const BackupSettingsPage(),
       );
     },
     LibraryRoute.name: (routeData) {
@@ -93,6 +105,34 @@ class AlbumsRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'AlbumsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [BackupManagementPage]
+class BackupManagementRoute extends PageRouteInfo<void> {
+  const BackupManagementRoute({List<PageRouteInfo>? children})
+      : super(
+          BackupManagementRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'BackupManagementRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [BackupSettingsPage]
+class BackupSettingsRoute extends PageRouteInfo<void> {
+  const BackupSettingsRoute({List<PageRouteInfo>? children})
+      : super(
+          BackupSettingsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'BackupSettingsRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

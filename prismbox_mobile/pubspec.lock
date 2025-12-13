@@ -65,6 +65,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.1.0"
+  background_downloader:
+    dependency: "direct main"
+    description:
+      name: background_downloader
+      sha256: efe41340f6518449f6c5f116d9bcecc97bbff7708efe47d7a645478117ce15fd
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.4.1"
   boolean_selector:
     dependency: transitive
     description:
@@ -704,6 +712,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.14.0"
+  pigeon:
+    dependency: "direct main"
+    description:
+      name: pigeon
+      sha256: "694073e4677d631a5aa2c633c5944140c0e7f361cbf3e55b1709dd11688713bb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "22.7.2"
   platform:
     dependency: "direct main"
     description:

@@ -8,16 +8,23 @@ import 'package:prismbox/data/database/tables/local_album_entity.dart';
 import 'package:prismbox/data/database/tables/remote_album_entity.dart';
 import 'package:prismbox/data/database/tables/album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/store_entity.dart';
+import 'package:prismbox/data/database/tables/backup_status_entity.dart';
+import 'package:prismbox/data/database/tables/upload_task_entity.dart';
 import 'package:prismbox/data/database/daos/user_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/daos/album_dao.dart';
+import 'package:prismbox/data/database/daos/backup_status_dao.dart';
+import 'package:prismbox/data/database/daos/upload_task_dao.dart';
 import 'package:prismbox/data/database/exceptions/database_exception.dart';
 // 导入枚举类型，供生成的代码使用
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/data/database/enums/backup_selection.dart';
 import 'package:prismbox/data/database/enums/album_order.dart';
+import 'package:prismbox/data/database/enums/upload_task_type.dart';
+import 'package:prismbox/data/database/enums/upload_task_status.dart';
+import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
 
 part 'app_database.g.dart';
 
@@ -32,14 +39,23 @@ part 'app_database.g.dart';
     RemoteAlbumEntity,
     AlbumAssetEntity,
     StoreEntity,
+    BackupStatusEntity,
+    UploadTaskEntity,
   ],
-  daos: [UserDao, LocalAssetDao, RemoteAssetDao, AlbumDao],
+  daos: [
+    UserDao,
+    LocalAssetDao,
+    RemoteAssetDao,
+    AlbumDao,
+    BackupStatusDao,
+    UploadTaskDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -91,6 +107,11 @@ class AppDatabase extends _$AppDatabase {
       case 2:
         // 添加Store表
         await m.createTable(storeEntity);
+        break;
+      case 3:
+        // 添加备份相关表
+        await m.createTable(backupStatusEntity);
+        await m.createTable(uploadTaskEntity);
         break;
       // ... 其他版本迁移
       default:

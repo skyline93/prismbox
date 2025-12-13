@@ -1,0 +1,386 @@
+// lib/services/backup/upload_service.dart
+
+import 'package:logging/logging.dart';
+import 'package:prismbox/data/database/app_database.dart';
+import 'package:prismbox/data/database/enums/upload_task_status.dart';
+import 'package:prismbox/data/database/enums/upload_task_type.dart';
+import 'package:prismbox/services/backup/backup_query_builder.dart';
+import 'package:prismbox/services/backup/task_conflict_resolver.dart';
+import 'package:prismbox/services/backup/upload_orchestrator.dart';
+import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
+import 'package:prismbox/utils/cancellation_token.dart';
+
+/// 上传队列状态
+class UploadQueueStatus {
+  final int totalCount;
+  final int pendingCount;
+  final int uploadingCount;
+  final int completedCount;
+  final int failedCount;
+  final int permanentlyFailedCount;
+  final int cancelledCount;
+
+  UploadQueueStatus({
+    required this.totalCount,
+    required this.pendingCount,
+    required this.uploadingCount,
+    required this.completedCount,
+    required this.failedCount,
+    required this.permanentlyFailedCount,
+    required this.cancelledCount,
+  });
+
+  factory UploadQueueStatus.empty() {
+    return UploadQueueStatus(
+      totalCount: 0,
+      pendingCount: 0,
+      uploadingCount: 0,
+      completedCount: 0,
+      failedCount: 0,
+      permanentlyFailedCount: 0,
+      cancelledCount: 0,
+    );
+  }
+}
+
+/// 上传服务：队列管理层
+/// 
+/// **职责边界明确**：
+/// - ✅ **负责**：上传队列管理（任务 CRUD、状态管理、队列调度）
+/// - ✅ **负责**：队列状态查询和统计
+/// - ❌ **不负责**：候选资源筛选（由 BackupCandidateSelector 负责）
+/// - ❌ **不负责**：上传流程编排（由 UploadOrchestrator 负责）
+/// - ❌ **不负责**：备份业务编排（由 BackupService 负责）
+class UploadService {
+  final AppDatabase _database;
+  final UploadOrchestrator _orchestrator;
+  final TaskConflictResolver _conflictResolver;
+  final UploadConcurrencyController _concurrencyController;
+  final Logger _logger = Logger('UploadService');
+
+  UploadService({
+    required AppDatabase database,
+    required UploadOrchestrator orchestrator,
+    required TaskConflictResolver conflictResolver,
+  })  : _database = database,
+        _orchestrator = orchestrator,
+        _conflictResolver = conflictResolver,
+        _concurrencyController = UploadConcurrencyController();
+
+  /// 添加上传任务（自动进行冲突检测）
+  /// 
+  /// **参数**：
+  /// - [task] - 上传任务
+  /// 
+  /// **职责**：
+  /// 1. 冲突检测
+  /// 2. 解决冲突
+  /// 3. 创建任务（如果通过冲突检测）
+  Future<void> addTask(UploadTaskEntityData task) async {
+    _logger.info('Adding upload task: taskId=${task.id}, assetId=${task.assetId}');
+
+    // 1. 冲突检测
+    final resolution = await _conflictResolver.checkConflict(
+      userId: task.userId,
+      newTask: task,
+    );
+
+    // 2. 获取已存在的任务（用于替换或更新路径）
+    UploadTaskEntityData? existingTask;
+    if (resolution == ConflictResolution.replace || 
+        resolution == ConflictResolution.skip) {
+      final dao = _database.uploadTaskDao;
+      final allTasks = await dao.getTasksByAssetIdAndUserId(
+        task.userId,
+        task.assetId,
+      );
+      
+      // 过滤状态为 pending 或 uploading 的任务
+      final existingTasks = allTasks.where((task) =>
+          task.status == UploadTaskStatus.pending ||
+          task.status == UploadTaskStatus.uploading).toList();
+      existingTask = existingTasks.isNotEmpty ? existingTasks.first : null;
+    }
+
+    // 3. 解决冲突
+    await _conflictResolver.resolveConflict(
+      resolution: resolution,
+      newTask: task,
+      existingTask: existingTask,
+    );
+  }
+
+  /// 批量添加上传任务
+  /// 
+  /// **参数**：
+  /// - [tasks] - 上传任务列表
+  Future<void> addTasks(List<UploadTaskEntityData> tasks) async {
+    _logger.info('Adding ${tasks.length} upload tasks');
+
+    for (final task in tasks) {
+      await addTask(task);
+    }
+  }
+
+  /// 开始上传
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// - [cancellationToken] - 取消令牌
+  /// - [onProgress] - 进度回调（可选）
+  /// 
+  /// **返回**：UploadResult（上传结果）
+  /// 
+  /// **执行流程**：
+  /// 1. 获取待上传任务（按优先级排序）
+  /// 2. 过滤已上传资产（去重）
+  /// 3. 调用 UploadOrchestrator 执行上传编排
+  Future<UploadResult> startUpload({
+    required String userId,
+    required CancellationToken cancellationToken,
+    void Function(int current, int total)? onProgress,
+  }) async {
+    _logger.info('Starting upload for userId=$userId');
+
+    // 1. 获取待上传任务（按优先级排序）
+    final dao = _database.uploadTaskDao;
+    final pendingTasks = await dao.getPendingTasksByUserId(userId);
+
+    if (pendingTasks.isEmpty) {
+      _logger.info('No pending tasks for userId=$userId');
+      return UploadResult(successCount: 0, failedCount: 0, errors: []);
+    }
+
+    _logger.info('Found ${pendingTasks.length} pending tasks');
+
+    // 2. 过滤已上传资产（去重）
+    // 注意：这里需要确定任务类型，以便决定是否跳过去重
+    // 暂时假设都是自动备份（需要后续从任务中获取）
+    final filteredTasks = await _orchestrator.filterUploadedAssets(
+      userId: userId,
+      candidates: pendingTasks,
+      skipDeduplication: false, // 自动备份默认不去重
+    );
+
+    if (filteredTasks.isEmpty) {
+      _logger.info('All tasks are duplicates, skipping upload');
+      return UploadResult(successCount: 0, failedCount: 0, errors: []);
+    }
+
+    _logger.info('Filtered to ${filteredTasks.length} tasks after deduplication');
+
+    // 3. 调用 UploadOrchestrator 执行上传编排
+    // 注意：需要从任务中获取 taskType，这里暂时使用第一个任务的类型
+    final taskType = filteredTasks.isNotEmpty
+        ? filteredTasks.first.taskType
+        : UploadTaskType.auto;
+
+    return await _orchestrator.orchestrateUpload(
+      userId: userId,
+      tasks: filteredTasks,
+      cancellationToken: cancellationToken,
+      taskType: taskType,
+      onProgress: onProgress,
+    );
+  }
+
+  /// 暂停上传
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **职责**：
+  /// - 将所有 uploading 状态的任务改为 paused
+  Future<void> pauseUpload(String userId) async {
+    _logger.info('Pausing upload for userId=$userId');
+
+    final dao = _database.uploadTaskDao;
+    final uploadingTasks = await dao.getUploadingTasksByUserId(userId);
+
+    for (final task in uploadingTasks) {
+      await dao.updateTaskStatus(
+        task.id,
+        UploadTaskStatus.paused,
+      );
+    }
+
+    _logger.info('Paused ${uploadingTasks.length} tasks');
+  }
+
+  /// 恢复上传
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **职责**：
+  /// - 将所有 paused 状态的任务改为 pending
+  Future<void> resumeUpload(String userId) async {
+    _logger.info('Resuming upload for userId=$userId');
+
+    final dao = _database.uploadTaskDao;
+    final pausedTasks = await BackupQueryBuilder(_database)
+        .withUserId(userId)
+        .buildTaskQuery(status: UploadTaskStatus.paused)
+        .get();
+
+    for (final task in pausedTasks) {
+      await dao.updateTaskStatus(
+        task.id,
+        UploadTaskStatus.pending,
+      );
+    }
+
+    _logger.info('Resumed ${pausedTasks.length} tasks');
+  }
+
+  /// 取消上传
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **职责**：
+  /// - 将所有 pending 和 uploading 状态的任务改为 cancelled
+  Future<void> cancelUpload(String userId) async {
+    _logger.info('Cancelling upload for userId=$userId');
+
+    final dao = _database.uploadTaskDao;
+    
+    // 获取 pending 和 uploading 状态的任务
+    final pendingTasks = await dao.getPendingTasksByUserId(userId);
+    final uploadingTasks = await dao.getUploadingTasksByUserId(userId);
+
+    final allTasks = [...pendingTasks, ...uploadingTasks];
+
+    for (final task in allTasks) {
+      await dao.updateTaskStatus(
+        task.id,
+        UploadTaskStatus.cancelled,
+        errorMessage: 'Cancelled by user',
+      );
+    }
+
+    _logger.info('Cancelled ${allTasks.length} tasks');
+  }
+
+  /// 获取上传队列状态
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **返回**：UploadQueueStatus（队列状态）
+  UploadQueueStatus getQueueStatus(String userId) {
+    // 注意：这是一个同步方法，但需要异步查询数据库
+    // 这里返回一个占位状态，实际应该使用 Stream 或 Future
+    // TODO: 改为异步方法或使用 Stream
+    return UploadQueueStatus.empty();
+  }
+
+  /// 获取上传队列状态（异步版本）
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **返回**：Future<UploadQueueStatus>（队列状态）
+  Future<UploadQueueStatus> getQueueStatusAsync(String userId) async {
+    final dao = _database.uploadTaskDao;
+    final statusCounts = await dao.getQueueStatusByUserId(userId);
+
+    return UploadQueueStatus(
+      totalCount: statusCounts.values.fold(0, (sum, count) => sum + count),
+      pendingCount: statusCounts[UploadTaskStatus.pending] ?? 0,
+      uploadingCount: statusCounts[UploadTaskStatus.uploading] ?? 0,
+      completedCount: statusCounts[UploadTaskStatus.completed] ?? 0,
+      failedCount: statusCounts[UploadTaskStatus.failed] ?? 0,
+      permanentlyFailedCount:
+          statusCounts[UploadTaskStatus.permanentlyFailed] ?? 0,
+      cancelledCount: statusCounts[UploadTaskStatus.cancelled] ?? 0,
+    );
+  }
+
+  /// 获取任务详情
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// - [taskId] - 任务 ID
+  /// 
+  /// **返回**：UploadTaskEntityData?（任务详情，如果不存在返回 null）
+  Future<UploadTaskEntityData?> getTask({
+    required String userId,
+    required String taskId,
+  }) async {
+    final dao = _database.uploadTaskDao;
+    final task = await dao.getTaskById(taskId);
+
+    // 验证任务属于该用户
+    if (task != null && task.userId != userId) {
+      _logger.warning(
+        'Task $taskId does not belong to user $userId',
+      );
+      return null;
+    }
+
+    return task;
+  }
+
+  /// 删除任务
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// - [taskId] - 任务 ID
+  /// 
+  /// **职责**：
+  /// - 删除指定任务（仅限该用户的任务）
+  Future<void> removeTask({
+    required String userId,
+    required String taskId,
+  }) async {
+    final task = await getTask(userId: userId, taskId: taskId);
+    if (task == null) {
+      _logger.warning('Task $taskId not found or does not belong to user $userId');
+      return;
+    }
+
+    final dao = _database.uploadTaskDao;
+    await dao.deleteTask(taskId);
+
+    _logger.info('Deleted task: taskId=$taskId');
+  }
+
+  /// 手动重试失败任务
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// - [taskId] - 任务 ID
+  /// 
+  /// **职责**：
+  /// - 将失败任务的状态改为 pending，以便重新上传
+  Future<void> retryTask({
+    required String userId,
+    required String taskId,
+  }) async {
+    final task = await getTask(userId: userId, taskId: taskId);
+    if (task == null) {
+      _logger.warning('Task $taskId not found or does not belong to user $userId');
+      return;
+    }
+
+    // 只能重试 failed 或 permanentlyFailed 状态的任务
+    if (task.status != UploadTaskStatus.failed &&
+        task.status != UploadTaskStatus.permanentlyFailed) {
+      _logger.warning(
+        'Cannot retry task $taskId with status ${task.status}',
+      );
+      return;
+    }
+
+    final dao = _database.uploadTaskDao;
+    await dao.updateTaskStatus(
+      taskId,
+      UploadTaskStatus.pending,
+      errorMessage: null, // 清除错误信息
+    );
+
+    _logger.info('Retried task: taskId=$taskId');
+  }
+}
+

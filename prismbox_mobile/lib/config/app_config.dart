@@ -14,14 +14,14 @@ class ApiConfig {
   const ApiConfig();
 
   /// 服务器基础地址
-  /// 
+  ///
   /// 修改此值以配置后端服务器地址
   /// 格式：协议://主机[:端口]
   /// 示例：
   /// - https://api.example.com
   /// - http://localhost:8080
   /// - https://47.107.63.140
-  static const String serverBaseUrl = 'http://127.0.0.1:8080';
+  static const String serverBaseUrl = 'http://10.168.1.161:8080';
 
   /// 获取完整的 API 端点 URL
   /// 

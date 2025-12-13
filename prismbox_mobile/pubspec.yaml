@@ -87,6 +87,12 @@ dependencies:
   storage_inspector: ^0.4.0
   drift_local_storage_inspector: ^0.7.0
 
+  # Pigeon - 类型安全的跨平台通信
+  pigeon: ^22.7.2
+
+  # 后台下载器
+  background_downloader: ^9.4.1
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8

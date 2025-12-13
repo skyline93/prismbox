@@ -10,6 +10,7 @@ import 'package:prismbox/infrastructure/api/ssl/http_ssl_options.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/data/database/connection.dart';
 import 'package:prismbox/services/debug/storage_inspector_service.dart';
+import 'package:prismbox/services/backup/providers/backup_providers.dart' as backup;
 
 void main() async {
   // 使用自定义 WidgetsFlutterBinding 以启用 CustomImageCache
@@ -79,11 +80,56 @@ void _setupLogging() {
   }
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 在 Widget 构建完成后初始化 UploadTaskManager
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeUploadTaskManager();
+    });
+  }
+
+  /// 初始化 UploadTaskManager
+  /// 
+  /// **注意**：UploadTaskManager 的初始化已经在 Provider 中完成
+  /// 这里只需要确保 Provider 被读取，触发初始化
+  Future<void> _initializeUploadTaskManager() async {
+    if (_isInitialized) {
+      return;
+    }
+
+    try {
+      final logger = Logger('MyApp');
+      logger.info('Initializing UploadTaskManager...');
+
+      // 读取 Provider 会触发初始化（在 Provider 中已经完成）
+      await ref.read(backup.uploadTaskManagerProvider.future);
+
+      _isInitialized = true;
+      logger.info('UploadTaskManager initialized successfully');
+    } catch (e, stackTrace) {
+      final logger = Logger('MyApp');
+      logger.warning(
+        'Failed to initialize UploadTaskManager: $e',
+        e,
+        stackTrace,
+      );
+      // 即使初始化失败，也继续运行应用
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // 通过 Provider 获取 AppRouter 实例
     final router = ref.watch(appRouterProvider);
 

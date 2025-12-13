@@ -20,6 +20,7 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 	}
 	{
 		protected.POST("/upload-stream", handler.UploadMedia)
+		protected.HEAD("/upload-stream", handler.ValidateUploadEndpoint)
 		protected.GET("", handler.GetMedias)
 		protected.POST("/check_hashes", handler.CheckHashes)
 		protected.GET("/changes", handler.GetChanges)

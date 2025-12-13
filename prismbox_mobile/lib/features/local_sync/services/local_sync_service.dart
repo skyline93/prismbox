@@ -371,8 +371,10 @@ class LocalSyncService {
 
   /// 转换 AssetEntity 为 LocalAssetEntityData
   Future<LocalAssetEntityData> _convertToEntity(pm.AssetEntity asset) async {
-    // 获取文件路径
-    final file = await asset.file;
+    // 获取文件路径 - 使用 originFile 获取原始文件路径
+    // 注意：originFile 返回原始文件的永久路径，不会被系统清理
+    // file 可能返回处理后的临时文件（如应用 EXIF 旋转），路径可能包含 _exif.jpg 后缀
+    final file = await asset.originFile;
     final path = file?.path ?? '';
 
     // 转换资产类型

@@ -11,6 +11,8 @@ import 'package:prismbox/presentation/pages/search/search_page.dart';
 import 'package:prismbox/presentation/pages/splash/splash_page.dart';
 import 'package:prismbox/presentation/pages/tab_shell/tab_shell_page.dart';
 import 'package:prismbox/presentation/pages/viewer/media_viewer_page.dart';
+import 'package:prismbox/presentation/pages/backup/backup_settings_page.dart';
+import 'package:prismbox/presentation/pages/backup/backup_management_page.dart';
 import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
 import 'package:prismbox/presentation/routing/guards/duplicate_guard.dart';
 import 'package:prismbox/presentation/routing/guards/permission_guard.dart';
@@ -104,6 +106,20 @@ class AppRouter extends _$AppRouter {
           page: MediaViewerRoute.page,
           path: '/media/:assetId',
           guards: [_authGuard, _permissionGuard],
+        ),
+
+        // 备份设置页面（需要认证）
+        AutoRoute(
+          page: BackupSettingsRoute.page,
+          path: '/backup/settings',
+          guards: [_authGuard],
+        ),
+
+        // 备份管理页面（需要认证）
+        AutoRoute(
+          page: BackupManagementRoute.page,
+          path: '/backup/management',
+          guards: [_authGuard],
         ),
       ];
 }

@@ -49,5 +49,10 @@
 	<string>我们需要访问您的照片库以同步和管理您的照片和视频</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>我们需要保存照片和视频到您的照片库</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.u163.glf9832.prismbox.background.refreshUpload</string>
+		<string>com.u163.glf9832.prismbox.background.processingUpload</string>
+	</array>
 </dict>
 </plist>

@@ -230,6 +230,30 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	apiresponse.Created(c, "Media uploaded successfully", response)
 }
 
+// ValidateUploadEndpoint 验证上传端点（HEAD 方法）
+// 用于端点健康检查和可用性验证
+// @Summary      验证上传端点
+// @Description  用于客户端验证上传端点是否可用（HEAD 请求）
+// @Tags         Media
+// @Security     BearerAuth
+// @Success      200 "端点可用"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /media/upload-stream [head]
+func (h *Handler) ValidateUploadEndpoint(c *gin.Context) {
+	// 只需要验证认证，不需要实际处理文件上传
+	// 认证通过后返回 200 状态码表示端点可用
+	userID := middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	
+	// 端点可用，返回 200
+	c.Status(http.StatusOK)
+	h.log.Info("upload endpoint validated",
+		logger.Uint("user_id", userID),
+	)
+}
+
 // GetMedias 获取媒体列表
 // @Summary      获取媒体列表
 // @Description  分页获取当前用户的媒体列表，支持按类型筛选
