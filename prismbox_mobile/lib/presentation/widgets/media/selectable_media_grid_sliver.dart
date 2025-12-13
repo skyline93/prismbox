@@ -1,10 +1,12 @@
 // lib/presentation/widgets/media/selectable_media_grid_sliver.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/presentation/widgets/media/selectable_media_item.dart';
+import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart';
 
 /// 可选择的媒体网格 Sliver（用于 CustomScrollView）
 /// 支持多选模式和选中状态显示
@@ -48,6 +50,9 @@ class SelectableMediaGridSliver extends StatefulWidget {
   /// AssetEntity 加载器（可选，用于延迟获取）
   final AssetEntityLoader? assetEntityLoader;
 
+  /// 分组索引（用于拖动选择）
+  final int sectionIndex;
+
   const SelectableMediaGridSliver({
     super.key,
     required this.assets,
@@ -63,6 +68,7 @@ class SelectableMediaGridSliver extends StatefulWidget {
     this.serverUrl,
     this.preloadRange = 2,
     this.assetEntityLoader,
+    this.sectionIndex = 0,
   });
 
   @override
@@ -101,18 +107,25 @@ class _SelectableMediaGridSliverState
                 }
               });
             },
+            child: AssetIndexWrapper(
+              assetIndex: index,
+              sectionIndex: widget.sectionIndex,
             child: SelectableMediaItem(
               asset: asset,
               isSelected: isSelected,
               selectionActive: widget.selectionActive,
               onTap: widget.selectionActive
-                  ? () => widget.onSelectionToggle?.call(asset)
+                    ? () {
+                        HapticFeedback.lightImpact();
+                        widget.onSelectionToggle?.call(asset);
+                      }
                   : () => widget.onTap?.call(asset, index),
               onLongPress: widget.onLongPress != null
                   ? () => widget.onLongPress?.call(asset)
                   : null,
               serverUrl: widget.serverUrl,
               assetEntityLoader: widget.assetEntityLoader,
+              ),
             ),
           );
         },

@@ -142,7 +142,7 @@ class SelectableTimelineSliverListBuilder {
 
       // 添加可选择的媒体网格（使用 SelectableMediaGridSliver）
       slivers.add(
-        _buildSelectableMediaGridSliver(section, globalIndex),
+        _buildSelectableMediaGridSliver(section, globalIndex, section.index),
       );
     }
 
@@ -153,6 +153,7 @@ class SelectableTimelineSliverListBuilder {
   Widget _buildSelectableMediaGridSliver(
     TimelineSection section,
     int globalStartIndex,
+    int sectionIndex,
   ) {
     // 创建包装的 onTap 回调，将索引转换为全局索引
     void Function(BaseAsset asset, int index)? wrappedOnTap;
@@ -179,6 +180,7 @@ class SelectableTimelineSliverListBuilder {
         serverUrl: serverUrl,
         preloadRange: preloadRange,
         assetEntityLoader: assetEntityLoader,
+        sectionIndex: sectionIndex,
       ),
     );
   }

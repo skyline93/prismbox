@@ -8,7 +8,8 @@ import 'package:prismbox/utils/color_extensions.dart';
 
 /// 可选择的媒体项组件
 /// 支持显示选中状态（向内缩进效果 + 选中标记）
-class SelectableMediaItem extends StatelessWidget {
+/// 支持拖动选择（在选择模式下，拖动经过的项会被选中）
+class SelectableMediaItem extends StatefulWidget {
   final BaseAsset asset;
   final bool isSelected;
   final bool selectionActive;
@@ -16,6 +17,7 @@ class SelectableMediaItem extends StatelessWidget {
   final VoidCallback? onLongPress;
   final String? serverUrl;
   final AssetEntityLoader? assetEntityLoader;
+  
 
   const SelectableMediaItem({
     super.key,
@@ -29,6 +31,13 @@ class SelectableMediaItem extends StatelessWidget {
   });
 
   @override
+  State<SelectableMediaItem> createState() => _SelectableMediaItemState();
+}
+
+class _SelectableMediaItemState extends State<SelectableMediaItem> {
+  bool _isDragOver = false;
+
+  @override
   Widget build(BuildContext context) {
     // 计算选中时的容器颜色（与 Immich 保持一致）
     final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
@@ -38,8 +47,8 @@ class SelectableMediaItem extends StatelessWidget {
         : primaryColor.lighten(amount: 0.8);
 
     return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -48,8 +57,8 @@ class SelectableMediaItem extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             curve: Curves.decelerate,
             decoration: BoxDecoration(
-              color: selectionActive && isSelected ? assetContainerColor : Colors.transparent,
-              border: selectionActive && isSelected
+              color: widget.selectionActive && widget.isSelected ? assetContainerColor : Colors.transparent,
+              border: widget.selectionActive && widget.isSelected
                   ? Border.all(
                       color: assetContainerColor,
                       width: 8,
@@ -61,10 +70,10 @@ class SelectableMediaItem extends StatelessWidget {
               children: [
                 // 媒体图片（选中时添加圆角）
                 _ImageContent(
-                  asset: asset,
-                  isSelected: selectionActive && isSelected,
-                  serverUrl: serverUrl,
-                  assetEntityLoader: assetEntityLoader,
+                  asset: widget.asset,
+                  isSelected: widget.selectionActive && widget.isSelected,
+                  serverUrl: widget.serverUrl,
+                  assetEntityLoader: widget.assetEntityLoader,
                   assetContainerColor: assetContainerColor,
                 ),
               ],
@@ -72,8 +81,8 @@ class SelectableMediaItem extends StatelessWidget {
           ),
 
           // 选中标记（左上角）
-          if (selectionActive)
-            isSelected
+          if (widget.selectionActive)
+            widget.isSelected
                 ? const Padding(
                     padding: EdgeInsets.all(3.0),
                     child: Align(

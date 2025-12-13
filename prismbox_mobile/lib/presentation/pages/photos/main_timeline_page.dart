@@ -13,6 +13,8 @@ import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_slive
 import 'package:prismbox/presentation/widgets/backup/backup_asset_selection_dialog.dart';
 import 'package:prismbox/presentation/widgets/backup/backup_action_sheet.dart';
 import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
+import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart'
+    show DragSelectionRegion, AssetIndex, ScrollDirection;
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
@@ -33,6 +35,11 @@ class MainTimelinePage extends ConsumerStatefulWidget {
 class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<bool>? _dataSourceSwitchSubscription;
+  
+  /// 拖动选择相关状态
+  AssetIndex? _dragAnchorIndex;
+  bool _isDragging = false;
+  final Set<String> _draggedAssetIds = {};
 
   @override
   void initState() {
@@ -122,7 +129,13 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     return Scaffold(
       body: Stack(
         children: [
-          CustomScrollView(
+          DragSelectionRegion(
+            onStart: selectionState.isActive ? _handleDragStart : null,
+            onAssetEnter: selectionState.isActive ? _handleDragAssetEnter : null,
+            onEnd: selectionState.isActive ? _handleDragEnd : null,
+            onScrollStart: selectionState.isActive ? _handleDragScrollStart : null,
+            onScroll: selectionState.isActive ? _handleDragScroll : null,
+            child: CustomScrollView(
             controller: _scrollController,
             slivers: [
               // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
@@ -148,8 +161,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                           child: InkWell(
                             onTap: () {
                               HapticFeedback.lightImpact();
-                              ref.read(assetSelectionProvider.notifier).deactivate();
-                            },
+                      ref.read(assetSelectionProvider.notifier).deactivate();
+                    },
                             borderRadius: BorderRadius.circular(20),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
@@ -160,7 +173,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                               ),
                             ),
                           ),
-                        ),
+                  ),
                         const SizedBox(width: 4),
                         // 使用 Flexible 确保文本可以适应剩余空间
                         Flexible(
@@ -179,14 +192,14 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: TextButton.icon(
-                        onPressed: () {
+                      onPressed: () {
                           HapticFeedback.lightImpact();
-                          if (_isAllSelected(ref, timelineSectionsAsync)) {
-                            _handleDeselectAll(ref);
-                          } else {
-                            _handleSelectAll(ref);
-                          }
-                        },
+                        if (_isAllSelected(ref, timelineSectionsAsync)) {
+                          _handleDeselectAll(ref);
+                        } else {
+                          _handleSelectAll(ref);
+                        }
+                      },
                         icon: Icon(
                           _isAllSelected(ref, timelineSectionsAsync)
                               ? Icons.check_circle_rounded
@@ -238,6 +251,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               // 时间线内容
               ...contentSlivers,
             ],
+            ),
           ),
 
           // 选择底部抽屉（多选模式下显示）
@@ -655,6 +669,178 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           ref.read(assetSelectionProvider.notifier).toggle(assetId);
         }
       }
+    }
+  }
+
+  /// 处理拖动开始
+  void _handleDragStart(AssetIndex index) {
+    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
+    timelineSectionsAsync.whenData((sections) {
+      if (index.sectionIndex >= 0 && index.sectionIndex < sections.length) {
+        final section = sections[index.sectionIndex];
+        if (index.assetIndex >= 0 && index.assetIndex < section.assets.length) {
+          final asset = section.assets[index.assetIndex];
+          
+          setState(() {
+            _isDragging = true;
+            _dragAnchorIndex = index;
+            _draggedAssetIds.clear();
+          });
+
+          // 选中起始项
+          final selectionState = ref.read(assetSelectionProvider);
+          if (!selectionState.selectedIds.contains(asset.id)) {
+            ref.read(assetSelectionProvider.notifier).toggle(asset.id);
+          }
+          _draggedAssetIds.add(asset.id);
+        }
+      }
+    });
+  }
+
+  /// 处理拖动进入资产
+  void _handleDragAssetEnter(AssetIndex index) {
+    if (_dragAnchorIndex == null || !_isDragging) return;
+
+    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
+    timelineSectionsAsync.whenData((sections) {
+      if (index.sectionIndex >= 0 && index.sectionIndex < sections.length) {
+        final section = sections[index.sectionIndex];
+        if (index.assetIndex >= 0 && index.assetIndex < section.assets.length) {
+          // 计算选择范围（从起始索引到当前索引）
+          final startIndex = _dragAnchorIndex!;
+          final endIndex = index;
+
+          // 如果起始和结束在同一分组
+          if (startIndex.sectionIndex == endIndex.sectionIndex) {
+            final startSection = sections[startIndex.sectionIndex];
+            final startAssetIndex = startIndex.assetIndex;
+            final endAssetIndex = endIndex.assetIndex;
+
+            // 计算应该选中的资产
+            const crossAxisCount = 5; // 与 SelectableTimelineSliverListBuilder 中的 crossAxisCount 保持一致
+            final startRow = startAssetIndex ~/ crossAxisCount;
+            final endRow = endAssetIndex ~/ crossAxisCount;
+            final startCol = startAssetIndex % crossAxisCount;
+            final endCol = endAssetIndex % crossAxisCount;
+
+            // 计算行数和列数的变化
+            final rowDiff = (endRow - startRow).abs();
+            final colDiff = (endCol - startCol).abs();
+
+            final selectedAssets = <String>{};
+            
+            // 判断拖动方向：如果主要是向下拖动（行数变化大于列数变化），则选中整行
+            if (rowDiff > colDiff) {
+              // 向下拖动：选中整行，但起始行从起始列开始，结束行到结束列为止
+              final minRow = startRow < endRow ? startRow : endRow;
+              final maxRow = startRow > endRow ? startRow : endRow;
+              final isDownward = startRow < endRow;
+              
+              for (int row = minRow; row <= maxRow; row++) {
+                int startColForRow;
+                int endColForRow;
+                
+                if (row == minRow && row == maxRow) {
+                  // 只有一行：从起始列到结束列
+                  startColForRow = startCol < endCol ? startCol : endCol;
+                  endColForRow = startCol > endCol ? startCol : endCol;
+                } else if (row == minRow) {
+                  // 起始行：从起始列到行尾
+                  if (isDownward) {
+                    startColForRow = startCol;
+                    endColForRow = crossAxisCount - 1;
+                  } else {
+                    startColForRow = endCol;
+                    endColForRow = crossAxisCount - 1;
+                  }
+                } else if (row == maxRow) {
+                  // 结束行：从行首到结束列
+                  if (isDownward) {
+                    startColForRow = 0;
+                    endColForRow = endCol;
+                  } else {
+                    startColForRow = 0;
+                    endColForRow = startCol;
+                  }
+                } else {
+                  // 中间行：选中整行
+                  startColForRow = 0;
+                  endColForRow = crossAxisCount - 1;
+                }
+                
+                for (int col = startColForRow; col <= endColForRow; col++) {
+                  final assetIndex = row * crossAxisCount + col;
+                  if (assetIndex >= 0 && assetIndex < startSection.assets.length) {
+                    selectedAssets.add(startSection.assets[assetIndex].id);
+                  }
+                }
+              }
+            } else {
+              // 横向拖动：保持矩形选择
+              final minRow = startRow < endRow ? startRow : endRow;
+              final maxRow = startRow > endRow ? startRow : endRow;
+              final minCol = startCol < endCol ? startCol : endCol;
+              final maxCol = startCol > endCol ? startCol : endCol;
+
+              for (int row = minRow; row <= maxRow; row++) {
+                for (int col = minCol; col <= maxCol; col++) {
+                  final assetIndex = row * crossAxisCount + col;
+                  if (assetIndex >= 0 && assetIndex < startSection.assets.length) {
+                    selectedAssets.add(startSection.assets[assetIndex].id);
+                  }
+                }
+              }
+            }
+
+            // 清除之前的拖动选择
+            final selectionState = ref.read(assetSelectionProvider);
+            for (final assetId in _draggedAssetIds) {
+              if (!selectedAssets.contains(assetId) && selectionState.selectedIds.contains(assetId)) {
+                ref.read(assetSelectionProvider.notifier).toggle(assetId);
+              }
+            }
+
+            // 添加新的拖动选择
+            for (final assetId in selectedAssets) {
+              if (!_draggedAssetIds.contains(assetId) && !selectionState.selectedIds.contains(assetId)) {
+                ref.read(assetSelectionProvider.notifier).toggle(assetId);
+              }
+            }
+
+            setState(() {
+              _draggedAssetIds.clear();
+              _draggedAssetIds.addAll(selectedAssets);
+            });
+          }
+        }
+      }
+    });
+  }
+
+  /// 处理拖动结束
+  void _handleDragEnd() {
+    setState(() {
+      _isDragging = false;
+      _dragAnchorIndex = null;
+      _draggedAssetIds.clear();
+    });
+  }
+
+  /// 处理拖动滚动开始
+  void _handleDragScrollStart() {
+    // 可以在这里添加滚动开始的处理逻辑
+  }
+
+  /// 处理拖动滚动
+  void _handleDragScroll(ScrollDirection direction) {
+    if (_scrollController.hasClients) {
+      final offset = direction == ScrollDirection.forward ? 175.0 : -175.0;
+      _scrollController.animateTo(
+        _scrollController.offset + offset,
+        duration: const Duration(milliseconds: 125),
+        curve: Curves.easeOut,
+      );
     }
   }
 }
