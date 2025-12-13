@@ -92,6 +92,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const TabShellPage(),
       );
     },
+    UploadDetailRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const UploadDetailPage(),
+      );
+    },
   };
 }
 
@@ -288,6 +294,20 @@ class TabShellRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'TabShellRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [UploadDetailPage]
+class UploadDetailRoute extends PageRouteInfo<void> {
+  const UploadDetailRoute({List<PageRouteInfo>? children})
+      : super(
+          UploadDetailRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'UploadDetailRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

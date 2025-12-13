@@ -43,6 +43,29 @@ class UploadQueueStatus {
   }
 }
 
+/// 上传任务详情
+class UploadTaskDetail {
+  final String taskId;
+  final String assetId;
+  final String filename;
+  final double progress;  // 0.0 - 1.0
+  final int fileSize;
+  final String? networkSpeed;  // 如 "1.2 MB/s"
+  final UploadTaskStatus status;
+  final String? errorMessage;
+  
+  UploadTaskDetail({
+    required this.taskId,
+    required this.assetId,
+    required this.filename,
+    required this.progress,
+    required this.fileSize,
+    this.networkSpeed,
+    required this.status,
+    this.errorMessage,
+  });
+}
+
 /// 上传服务：队列管理层
 /// 
 /// **职责边界明确**：
@@ -370,6 +393,93 @@ class UploadService {
     );
 
     _logger.info('Retried task: taskId=$taskId');
+  }
+
+  /// 获取当前正在上传的任务列表
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **返回**：List<UploadTaskDetail>（上传任务详情列表）
+  /// 
+  /// **注意**：包含 uploading 和 pending 状态的任务
+  Future<List<UploadTaskDetail>> getActiveUploadTasks(String userId) async {
+    final dao = _database.uploadTaskDao;
+    
+    // 1. 查询状态为 uploading 和 pending 的任务
+    final uploadingTasks = await dao.getTasksByUserIdAndStatus(
+      userId,
+      UploadTaskStatus.uploading,
+    );
+    final pendingTasks = await dao.getTasksByUserIdAndStatus(
+      userId,
+      UploadTaskStatus.pending,
+    );
+    
+    // 合并任务列表，优先显示 uploading 的任务
+    final tasks = [...uploadingTasks, ...pendingTasks];
+    
+    // 2. 转换为 UploadTaskDetail
+    final details = <UploadTaskDetail>[];
+    for (final task in tasks) {
+      // 获取资产信息
+      final asset = await _database.localAssetDao.getAssetById(task.assetId);
+      if (asset == null) continue;
+      
+      // 获取文件名
+      final filename = asset.path.split('/').last;
+      
+      // 计算进度（0.0 - 1.0）
+      final progress = task.progress / 100.0;
+      
+      // 获取上传速度（暂时返回 null，后续可以从 background_downloader 获取）
+      final networkSpeed = _calculateNetworkSpeed(task);
+      
+      details.add(UploadTaskDetail(
+        taskId: task.id,
+        assetId: task.assetId,
+        filename: filename,
+        progress: progress,
+        fileSize: task.fileSize,
+        networkSpeed: networkSpeed,
+        status: task.status,
+        errorMessage: task.errorMessage,
+      ));
+    }
+    
+    return details;
+  }
+
+  /// 计算网络速度（简化实现）
+  /// 基于进度变化和时间差估算上传速度
+  /// 后续可以从 background_downloader 获取实际速度
+  String? _calculateNetworkSpeed(UploadTaskEntityData task) {
+    // 如果任务没有文件大小或进度为0，无法计算速度
+    if (task.fileSize <= 0 || task.progress <= 0) {
+      return null;
+    }
+
+    // 如果任务刚创建，还没有足够的时间差来计算速度
+    final now = DateTime.now();
+    final timeDiff = now.difference(task.updatedAt).inSeconds;
+    if (timeDiff <= 0) {
+      return null;
+    }
+
+    // 计算已上传的字节数
+    final uploadedBytes = (task.fileSize * task.progress / 100).round();
+    
+    // 计算速度（字节/秒）
+    final speedBytesPerSecond = uploadedBytes / timeDiff;
+
+    // 格式化速度显示
+    if (speedBytesPerSecond < 1024) {
+      return '${speedBytesPerSecond.toStringAsFixed(0)} B/s';
+    } else if (speedBytesPerSecond < 1024 * 1024) {
+      return '${(speedBytesPerSecond / 1024).toStringAsFixed(1)} KB/s';
+    } else {
+      return '${(speedBytesPerSecond / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+    }
   }
 }
 

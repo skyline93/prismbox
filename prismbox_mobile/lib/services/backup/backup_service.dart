@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/config/app_config.dart';
@@ -32,6 +33,37 @@ class BackupStatus {
     this.timeRangeStart,
     this.timeRangeEnd,
   });
+}
+
+/// 备份统计信息
+class BackupCounts {
+  /// 总数量（所有需要备份的照片）
+  final int total;
+  
+  /// 已备份数量（已上传到服务器）
+  final int backupCount;
+  
+  /// 剩余数量（还需要备份）
+  final int remainder;
+  
+  /// 处理中数量（正在准备/哈希计算中）
+  final int processing;
+  
+  BackupCounts({
+    required this.total,
+    required this.backupCount,
+    required this.remainder,
+    required this.processing,
+  });
+  
+  /// 进度百分比（0.0 - 1.0）
+  double get progress {
+    if (total == 0) return 0.0;
+    return backupCount / total;
+  }
+  
+  /// 是否已完成备份
+  bool get isCompleted => remainder == 0 && processing == 0;
 }
 
 /// 备份服务：业务编排层
@@ -436,6 +468,115 @@ class BackupService {
       mode: entity.autoBackupMode,
       timeRangeStart: entity.timeRangeStart,
       timeRangeEnd: entity.timeRangeEnd,
+    );
+  }
+
+  /// 获取备份统计信息
+  /// 
+  /// **参数**：
+  /// - [userId] - 用户 ID（必须）
+  /// 
+  /// **返回**：BackupCounts（备份统计信息）
+  /// 
+  /// **实现逻辑**：
+  /// 1. 获取备份配置
+  /// 2. 根据备份模式筛选需要备份的资产
+  /// 3. 通过 SQL 查询统计信息（总数、已备份数、剩余数、处理中数）
+  /// 4. 返回 BackupCounts
+  /// 
+  /// **注意**：当前实现简化版本，不依赖本地相册资产关联表
+  /// 后续可以根据实际数据结构优化查询
+  Future<BackupCounts> getBackupCounts(String userId) async {
+    // 1. 获取备份配置
+    final backupStatus = await BackupQueryBuilder(_database)
+        .withUserId(userId)
+        .getBackupStatus();
+    
+    if (backupStatus == null || !backupStatus.enabled) {
+      return BackupCounts(
+        total: 0,
+        backupCount: 0,
+        remainder: 0,
+        processing: 0,
+      );
+    }
+    
+    // 2. 根据备份模式获取候选资产
+    List<LocalAssetEntityData> candidates;
+    switch (backupStatus.autoBackupMode) {
+      case AutoBackupMode.allUnbacked:
+        candidates = await _candidateSelector.selectAllUnbacked(
+          userId: userId,
+          lastBackupTime: backupStatus.lastBackupTime,
+        );
+        break;
+      case AutoBackupMode.selectedAlbums:
+        candidates = await _candidateSelector.selectSelectedAlbums(
+          userId: userId,
+          timeRangeStart: backupStatus.timeRangeStart,
+          timeRangeEnd: backupStatus.timeRangeEnd,
+        );
+        break;
+      case AutoBackupMode.timeRange:
+        if (backupStatus.timeRangeStart == null ||
+            backupStatus.timeRangeEnd == null) {
+          return BackupCounts(
+            total: 0,
+            backupCount: 0,
+            remainder: 0,
+            processing: 0,
+          );
+        }
+        candidates = await _candidateSelector.selectTimeRange(
+          userId: userId,
+          timeRangeStart: backupStatus.timeRangeStart!,
+          timeRangeEnd: backupStatus.timeRangeEnd!,
+        );
+        break;
+    }
+    
+    if (candidates.isEmpty) {
+      return BackupCounts(
+        total: 0,
+        backupCount: 0,
+        remainder: 0,
+        processing: 0,
+      );
+    }
+    
+    // 3. 统计信息
+    int total = candidates.length;
+    int processing = 0;
+    int backupCount = 0;
+    
+    // 获取所有候选资产的 checksum
+    final candidateChecksums = candidates
+        .where((asset) => asset.checksum != null)
+        .map((asset) => asset.checksum!)
+        .toSet();
+    
+    // 查询已备份的资产（通过 checksum 匹配）
+    if (candidateChecksums.isNotEmpty) {
+      final remoteAssets = await (_database.select(_database.remoteAssetEntity)
+            ..where((t) =>
+                t.ownerId.equals(userId) &
+                t.checksum.isIn(candidateChecksums)))
+          .get();
+      
+      backupCount = remoteAssets.length;
+    }
+    
+    // 统计处理中的资产（checksum 为 null）
+    processing = candidates.where((asset) => asset.checksum == null).length;
+    
+    // 剩余数量 = 总数 - 已备份数
+    final remainder = total - backupCount;
+    
+    return BackupCounts(
+      total: total,
+      backupCount: backupCount,
+      remainder: remainder,
+      processing: processing,
     );
   }
 

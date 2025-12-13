@@ -13,6 +13,7 @@ import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_slive
 import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
 import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart'
     show DragSelectionRegion, AssetIndex, ScrollDirection;
+import 'package:prismbox/presentation/widgets/backup/backup_status_indicator.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
@@ -274,6 +275,10 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                         // 刷新时间线数据
                         ref.invalidate(timelineSectionsProvider);
                       },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8.0),
+                      child: BackupStatusIndicator(),
                     ),
                   ],
                 ),
