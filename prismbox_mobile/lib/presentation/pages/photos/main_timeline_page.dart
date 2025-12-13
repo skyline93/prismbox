@@ -2,17 +2,22 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
-import 'package:prismbox/presentation/widgets/timeline/timeline_sliver_list.dart';
+import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_sliver_list.dart';
 import 'package:prismbox/presentation/widgets/backup/backup_asset_selection_dialog.dart';
 import 'package:prismbox/presentation/widgets/backup/backup_action_sheet.dart';
+import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
+import 'package:prismbox/providers/selection/asset_selection_provider.dart';
+import 'package:prismbox/providers/services/auth_service_provider.dart';
+import 'package:prismbox/services/backup/providers/backup_providers.dart';
 
 /// 照片时间线页面
 ///
@@ -86,6 +91,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
       }
     });
 
+    // 监听选择状态
+    final selectionState = ref.watch(assetSelectionProvider);
+
     // 监听权限状态
     final permissionAsync = ref.watch(photoPermissionNotifierProvider);
 
@@ -107,39 +115,138 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
       context,
       permissionAsync,
       timelineSectionsAsync,
+      selectionState.isActive,
+      selectionState.selectedIds,
     );
 
     return Scaffold(
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          SliverAppBar(
-            floating: true,
-            pinned: false,
-            title: const Text('照片'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.cloud_upload),
-                tooltip: '备份照片',
-                onPressed: () => _showBackupDialog(context, ref),
-              ),
-              IconButton(
-                icon: const Icon(Icons.filter_list),
-                onPressed: () {
-                  // TODO: 显示筛选对话框
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: () {
-                  // 刷新时间线数据
-                  ref.invalidate(timelineSectionsProvider);
-                },
-              ),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
+              if (selectionState.isActive)
+                SliverAppBar(
+                  floating: true,
+                  pinned: true,
+                  snap: false,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(5)),
+                  ),
+                  automaticallyImplyLeading: false,
+                  leading: SizedBox(
+                    width: 120, // 限制 leading 区域的最大宽度
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        // 使用 InkWell + Icon 替代 IconButton，更紧凑
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              ref.read(assetSelectionProvider.notifier).deactivate();
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 24,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // 使用 Flexible 确保文本可以适应剩余空间
+                        Flexible(
+                          child: Text(
+                            '${selectionState.count}张',
+                            style: Theme.of(context).textTheme.titleMedium,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    // 全选按钮（带"全选"文字，风格与单选框一致）
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: TextButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          if (_isAllSelected(ref, timelineSectionsAsync)) {
+                            _handleDeselectAll(ref);
+                          } else {
+                            _handleSelectAll(ref);
+                          }
+                        },
+                        icon: Icon(
+                          _isAllSelected(ref, timelineSectionsAsync)
+                              ? Icons.check_circle_rounded
+                              : Icons.check_circle_outline_rounded,
+                          size: 24,
+                          color: _isAllSelected(ref, timelineSectionsAsync)
+                              ? const Color(0xFF4285F4) // 谷歌蓝
+                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        label: Text(
+                          _isAllSelected(ref, timelineSectionsAsync) ? '全选' : '全选',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                      ),
+                    ),
+                  ],
+                  elevation: 0,
+                )
+              else
+                SliverAppBar(
+                  floating: true,
+                  pinned: false,
+                  title: const Text('照片'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.cloud_upload),
+                      tooltip: '备份照片',
+                      onPressed: () => _showBackupDialog(context, ref),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.filter_list),
+                      onPressed: () {
+                        // TODO: 显示筛选对话框
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () {
+                        // 刷新时间线数据
+                        ref.invalidate(timelineSectionsProvider);
+                      },
+                    ),
+                  ],
+                ),
+
+              // 时间线内容
+              ...contentSlivers,
             ],
           ),
-          // 展开内容 Sliver 列表
-          ...contentSlivers,
+
+          // 选择底部抽屉（多选模式下显示）
+          if (selectionState.isActive)
+            SelectionBottomSheet(
+              selectedCount: selectionState.count,
+              onUpload: () => _handleUpload(context, ref),
+              isAllSelected: _isAllSelected(ref, timelineSectionsAsync),
+            ),
         ],
       ),
     );
@@ -150,6 +257,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     BuildContext context,
     AsyncValue<PhotoPermissionState> permissionAsync,
     AsyncValue<List<TimelineSection>> timelineSectionsAsync,
+    bool selectionActive,
+    Set<String> selectedIds,
   ) {
     return permissionAsync.when(
       data: (permissionState) {
@@ -201,25 +310,52 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             final assetEntityLoaderAsync = ref.watch(assetEntityLoaderProvider);
             
             // 构建时间线分组列表的 Sliver
+            // 统一使用 SelectableTimelineSliverListBuilder，支持长按进入多选模式
             return assetEntityLoaderAsync.when(
               data: (assetEntityLoader) {
-                return TimelineSliverListBuilder(
+                return SelectableTimelineSliverListBuilder(
                   sections: sections,
+                  selectionActive: selectionActive,
+                  selectedIds: selectedIds,
                   crossAxisCount: 5,
                   crossAxisSpacing: 2,
                   mainAxisSpacing: 2,
                   childAspectRatio: 1.0,
                   assetEntityLoader: assetEntityLoader,
-                  onTap: (asset, index) {
-                    // 导航到媒体查看器
-                    final assetIds = allAssets.map((a) => a.id).toList();
-                    context.router.push(
-                      MediaViewerRoute(
-                        initialAssetId: asset.id,
-                        assetIds: assetIds,
-                      ),
-                    );
+                  onTap: selectionActive
+                      ? null // 多选模式下不处理点击（由 onSelectionToggle 处理）
+                      : (asset, index) {
+                          // 正常模式下导航到媒体查看器
+                          final assetIds = allAssets.map((a) => a.id).toList();
+                          context.router.push(
+                            MediaViewerRoute(
+                              initialAssetId: asset.id,
+                              assetIds: assetIds,
+                            ),
+                          );
+                        },
+                  onSelectionToggle: selectionActive
+                      ? (asset) {
+                          // 多选模式下切换选中状态
+                          HapticFeedback.lightImpact();
+                          ref.read(assetSelectionProvider.notifier).toggle(asset.id);
+                        }
+                      : null,
+                  onLongPress: (asset) {
+                    // 长按进入多选模式（如果还未激活）
+                    if (!selectionActive) {
+                      HapticFeedback.mediumImpact();
+                      ref.read(assetSelectionProvider.notifier).activate();
+                      ref.read(assetSelectionProvider.notifier).toggle(asset.id);
+                    }
                   },
+                  onSectionToggle: selectionActive
+                      ? (section) {
+                          // 选择/取消选择整个分组
+                          HapticFeedback.lightImpact();
+                          _handleSectionToggle(ref, section);
+                        }
+                      : null,
                 ).build();
               },
               loading: () => [
@@ -408,6 +544,117 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           onDismiss: () => Navigator.of(context).pop(),
         ),
       );
+    }
+  }
+
+  /// 处理上传
+  Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
+    final selectionState = ref.read(assetSelectionProvider);
+    if (selectionState.selectedIds.isEmpty) return;
+
+    try {
+      // 获取用户ID
+      final authService = await ref.read(authServiceProvider.future);
+      final profile = await authService.getProfile();
+      final userId = profile.id.toString();
+
+      // 获取备份服务
+      final backupService = await ref.read(backupServiceProvider.future);
+
+      // 启动上传
+      await backupService.startManualBackup(
+        userId: userId,
+        assetIds: selectionState.selectedIds.toList(),
+        skipDeduplication: false,
+      );
+
+      // 显示成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已开始上传 ${selectionState.selectedIds.length} 张照片'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // 退出选择模式
+        ref.read(assetSelectionProvider.notifier).deactivate();
+      }
+    } catch (e) {
+      // 显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('上传失败: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 处理全选
+  void _handleSelectAll(WidgetRef ref) {
+    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
+    timelineSectionsAsync.whenData((sections) {
+      final allAssetIds = <String>[];
+      for (final section in sections) {
+        allAssetIds.addAll(section.assets.map((a) => a.id));
+      }
+      ref.read(assetSelectionProvider.notifier).selectAll(allAssetIds);
+    });
+  }
+
+  /// 处理取消全选
+  void _handleDeselectAll(WidgetRef ref) {
+    ref.read(assetSelectionProvider.notifier).clear();
+  }
+
+  /// 检查是否全选
+  bool _isAllSelected(
+    WidgetRef ref,
+    AsyncValue<List<TimelineSection>> timelineSectionsAsync,
+  ) {
+    final selectionState = ref.read(assetSelectionProvider);
+    
+    return timelineSectionsAsync.when(
+      data: (sections) {
+        final allAssetIds = <String>[];
+        for (final section in sections) {
+          allAssetIds.addAll(section.assets.map((a) => a.id));
+        }
+        return selectionState.selectedIds.length == allAssetIds.length &&
+            allAssetIds.every((id) => selectionState.selectedIds.contains(id));
+      },
+      loading: () => false,
+      error: (_, __) => false,
+    );
+  }
+
+  /// 处理分组切换（选择/取消选择整个分组）
+  void _handleSectionToggle(WidgetRef ref, TimelineSection section) {
+    final selectionState = ref.read(assetSelectionProvider);
+    final sectionAssetIds = section.assets.map((a) => a.id).toSet();
+    
+    // 检查该分组是否全部选中
+    final isAllSelected = sectionAssetIds.isNotEmpty &&
+        sectionAssetIds.every((id) => selectionState.selectedIds.contains(id));
+    
+    if (isAllSelected) {
+      // 取消选择该分组的所有照片
+      for (final assetId in sectionAssetIds) {
+        if (selectionState.selectedIds.contains(assetId)) {
+          ref.read(assetSelectionProvider.notifier).toggle(assetId);
+        }
+      }
+    } else {
+      // 选择该分组的所有照片
+      for (final assetId in sectionAssetIds) {
+        if (!selectionState.selectedIds.contains(assetId)) {
+          ref.read(assetSelectionProvider.notifier).toggle(assetId);
+        }
+      }
     }
   }
 }
