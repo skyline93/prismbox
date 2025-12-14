@@ -8,6 +8,7 @@ import 'package:prismbox/providers/app/read_only_mode_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
+import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 
 /// TabShell 容器页面
 /// 管理四个核心标签页的导航
@@ -113,6 +114,9 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
     final isScreenLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     final isReadOnlyMode = ref.watch(readOnlyModeProvider);
+    // 监听选择模式状态，选择模式下隐藏底部导航栏
+    final selectionState = ref.watch(assetSelectionProvider);
+    final isSelectionMode = selectionState.isActive;
 
     return AutoTabsRouter(
       routes: [
@@ -141,7 +145,7 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
                     ],
                   )
                 : child,
-            bottomNavigationBar: isScreenLandscape
+            bottomNavigationBar: isScreenLandscape || isSelectionMode
                 ? null
                 : _buildBottomNavigationBar(tabsRouter, isReadOnlyMode),
           ),

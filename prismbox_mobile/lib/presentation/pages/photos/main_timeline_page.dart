@@ -299,6 +299,15 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
               // 时间线内容
               ...contentSlivers,
+              
+              // 选择模式下添加底部 padding，避免内容被底部抽屉栏遮挡
+              if (selectionState.isActive)
+                SliverPadding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).size.height * 0.12 +
+                        MediaQuery.of(context).padding.bottom,
+                  ),
+                ),
             ],
             ),
           ),

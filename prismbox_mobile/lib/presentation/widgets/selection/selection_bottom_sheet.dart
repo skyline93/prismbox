@@ -39,9 +39,15 @@ class _SelectionBottomSheetState extends ConsumerState<SelectionBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // 调整高度使其更紧凑，与图标高度相匹配
+    // 图标24 + 文字约20 + padding 20 + 拖拽手柄和间距约28 = 约92像素
+    // 使用屏幕高度的12%，比原来的24%更紧凑
+    final minHeight = 0.12; // 最小高度约12%的屏幕高度
+    final initialHeight = 0.12; // 初始高度与最小高度一致
+
     return DraggableScrollableSheet(
-      initialChildSize: 0.24,
-      minChildSize: 0.24,
+      initialChildSize: initialHeight,
+      minChildSize: minHeight,
       maxChildSize: 0.5,
       snap: true,
       controller: _scrollController,
@@ -62,13 +68,14 @@ class _SelectionBottomSheetState extends ConsumerState<SelectionBottomSheet> {
             slivers: [
               SliverToBoxAdapter(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     _CustomDraggingHandle(),
-                    const SizedBox(height: 12),
-                    // 操作按钮
+                    const SizedBox(height: 8),
+                    // 操作按钮 - 减小高度使其更紧凑
                     SizedBox(
-                      height: 120,
+                      height: 80,
                       child: ListView(
                         shrinkWrap: true,
                         scrollDirection: Axis.horizontal,
@@ -83,6 +90,7 @@ class _SelectionBottomSheetState extends ConsumerState<SelectionBottomSheet> {
                         ],
                       ),
                     ),
+                    SizedBox(height: MediaQuery.of(context).padding.bottom),
                   ],
                 ),
               ),
