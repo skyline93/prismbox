@@ -21,17 +21,35 @@ class UploadConcurrencyController {
 
   /// 获取并发许可
   Future<void> acquire() async {
-    await _lock.synchronized(() async {
-      if (_activeCount < maxConcurrency) {
-        _activeCount++;
+    while (true) {
+      Completer<void>? completer;
+      bool acquired = false;
+      
+      await _lock.synchronized(() {
+        if (_activeCount < maxConcurrency) {
+          _activeCount++;
+          acquired = true;
+          return;
+        }
+
+        // 需要等待，创建 completer 并添加到等待队列
+        completer = Completer<void>();
+        _waitingQueue.add(completer!);
+      });
+      
+      // 如果已经获取到许可，直接返回
+      if (acquired) {
         return;
       }
-
-      // 等待可用位置
-      final completer = Completer<void>();
-      _waitingQueue.add(completer);
-      await completer.future;
-    });
+      
+      // 如果需要等待，在锁外部等待（避免死锁）
+      // 注意：被唤醒时，_activeCount 已经在 release() 中增加了，所以不需要再次增加
+      if (completer != null) {
+        await completer!.future;
+        // 被唤醒后，直接返回（_activeCount 已经在 release() 中增加了）
+        return;
+      }
+    }
   }
 
   /// 释放并发许可
@@ -46,6 +64,8 @@ class UploadConcurrencyController {
         final completer = _waitingQueue.removeAt(0);
         _activeCount++;
         completer.complete();
+        // 注意：completer.complete() 会立即唤醒等待的 Future
+        // 但是我们需要确保在锁释放后，等待的 Future 能够继续执行
       }
     });
   }

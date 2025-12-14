@@ -207,15 +207,23 @@ class UploadOrchestrator {
     final errors = <UploadError>[];
     final completedCount = <int>[0]; // 使用列表包装以便在闭包中修改
 
+    _logger.info(
+      'Starting upload orchestration: totalTasks=${sortedTasks.length}',
+    );
+
     // 使用并发控制器执行上传任务
     await Future.wait(
       sortedTasks.map((task) async {
         if (cancellationToken.isCancelled) {
+          _logger.warning('Upload cancelled, skipping task: taskId=${task.id}');
           return;
         }
 
+        _logger.fine('Waiting for concurrency slot: taskId=${task.id}');
+
         // 使用并发控制器控制并发数
         await _concurrencyController.execute(() async {
+          _logger.fine('Acquired concurrency slot: taskId=${task.id}');
           try {
             // 更新状态为 uploading
             await _statusValidator.validateAndUpdate(
@@ -226,19 +234,25 @@ class UploadOrchestrator {
             );
 
             // 执行上传（带自动重试）
+            // 注意：_executeUploadWithRetry 内部会等待任务完成
+            // UploadTaskManager 的回调会自动更新状态为 completed
             await _executeUploadWithRetry(task);
 
-            // 更新状态为 completed
-            await _statusValidator.validateAndUpdate(
-              database: _database,
-              taskId: task.id,
-              from: UploadTaskStatus.uploading,
-              to: UploadTaskStatus.completed,
-            );
+            // 验证任务状态（应该已经被 UploadTaskManager 更新为 completed）
+            final completedTask = await _database.uploadTaskDao.getTaskById(task.id);
+            if (completedTask?.status != UploadTaskStatus.completed) {
+              _logger.warning(
+                'Task status mismatch after completion: taskId=${task.id}, '
+                'expected=completed, actual=${completedTask?.status}',
+              );
+            }
 
             successCount++;
             _logger.fine('Upload completed: taskId=${task.id}');
           } catch (e, stackTrace) {
+            _logger.warning(
+              'Upload error in orchestration: taskId=${task.id}, error=$e',
+            );
             _logger.warning(
               'Upload failed: taskId=${task.id}, error=$e',
               e,
@@ -249,30 +263,47 @@ class UploadOrchestrator {
             final error = _handleUploadError(task, e);
             errors.add(error);
 
-            // 获取当前任务状态（可能已更新重试次数）
+            // 获取当前任务状态（UploadTaskManager 的回调可能已经更新了状态）
             final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
-            final currentRetryCount = currentTask?.retryCount ?? task.retryCount;
+            if (currentTask != null) {
+              // 如果状态已经是最终状态（failed、permanentlyFailed、cancelled），不需要再次更新
+              final isFinalStatus = currentTask.status == UploadTaskStatus.failed ||
+                  currentTask.status == UploadTaskStatus.permanentlyFailed ||
+                  currentTask.status == UploadTaskStatus.cancelled;
 
-            // 更新状态为 failed 或 permanentlyFailed
-            final newStatus = currentRetryCount >= task.maxRetries
-                ? UploadTaskStatus.permanentlyFailed
-                : UploadTaskStatus.failed;
+              if (!isFinalStatus) {
+                // 状态还未更新，手动更新
+                final currentRetryCount = currentTask.retryCount;
+                final newStatus = currentRetryCount >= task.maxRetries
+                    ? UploadTaskStatus.permanentlyFailed
+                    : UploadTaskStatus.failed;
 
-            await _statusValidator.validateAndUpdate(
-              database: _database,
-              taskId: task.id,
-              from: UploadTaskStatus.uploading,
-              to: newStatus,
-            );
+                await _statusValidator.validateAndUpdate(
+                  database: _database,
+                  taskId: task.id,
+                  from: currentTask.status,
+                  to: newStatus,
+                );
+              }
+            }
 
             failedCount++;
           } finally {
             // 更新进度
             completedCount[0]++;
             onProgress?.call(completedCount[0], sortedTasks.length);
+            _logger.fine(
+              'Task finished: taskId=${task.id}, '
+              'completed=${completedCount[0]}/${sortedTasks.length}',
+            );
           }
         });
       }),
+    );
+
+    _logger.info(
+      'Upload orchestration finished: totalTasks=${sortedTasks.length}, '
+      'success=$successCount, failed=$failedCount',
     );
 
     // 3. 根据成功比例更新 lastBackupTime（仅自动备份）
@@ -705,11 +736,12 @@ class UploadOrchestrator {
         throw Exception('Failed to enqueue upload task');
       }
 
-      // 12. 任务已入队，立即返回
-      // 注意：background_downloader 会在后台执行任务，状态更新通过回调处理
-      // 不需要等待任务完成，遵循"入队即返回"的架构设计原则
-      // 任务状态会通过 UploadTaskManager 注册的回调自动更新到数据库
       _logger.info('Upload task enqueued: taskId=${task.id}');
+
+      // 12. 等待任务完成（通过轮询数据库状态）
+      // 注意：background_downloader 会在后台执行任务，状态更新通过回调处理
+      // 我们需要等待任务真正完成，而不是只等待入队
+      await _waitForTaskCompletion(task.id);
     } catch (e, stackTrace) {
       _logger.warning(
         'Upload failed: taskId=${task.id}, error=$e',
@@ -720,6 +752,88 @@ class UploadOrchestrator {
     }
   }
 
+  /// 等待任务完成（通过轮询数据库状态）
+  /// 
+  /// **参数**：
+  /// - [taskId] - 任务 ID
+  /// 
+  /// **实现说明**：
+  /// - 轮询数据库中的任务状态
+  /// - 当状态变为 completed、failed 或 permanentlyFailed 时返回
+  /// - 设置超时机制（默认 10 分钟），避免无限等待
+  /// - 如果任务失败，抛出异常
+  Future<void> _waitForTaskCompletion(String taskId) async {
+    const pollInterval = Duration(seconds: 1); // 轮询间隔：1秒
+    const timeout = Duration(minutes: 10); // 超时时间：10分钟
+    final startTime = DateTime.now();
+    int pollCount = 0;
+
+    _logger.fine('Waiting for task completion: taskId=$taskId');
+
+    while (true) {
+      // 检查超时
+      final elapsed = DateTime.now().difference(startTime);
+      if (elapsed > timeout) {
+        _logger.warning(
+          'Task completion timeout: taskId=$taskId, '
+          'elapsed=${elapsed.inSeconds}s',
+        );
+        throw TimeoutException(
+          'Upload task timeout after ${timeout.inMinutes} minutes',
+          timeout,
+        );
+      }
+
+      // 查询任务状态
+      final task = await _database.uploadTaskDao.getTaskById(taskId);
+      if (task == null) {
+        _logger.warning('Task not found: taskId=$taskId');
+        throw Exception('Task not found: $taskId');
+      }
+
+      pollCount++;
+      if (pollCount % 10 == 0) {
+        // 每10次轮询记录一次日志
+        _logger.fine(
+          'Task still in progress: taskId=$taskId, '
+          'status=${task.status}, elapsed=${elapsed.inSeconds}s',
+        );
+      }
+
+      // 检查任务状态
+      switch (task.status) {
+        case UploadTaskStatus.completed:
+          _logger.fine(
+            'Task completed: taskId=$taskId, '
+            'elapsed=${elapsed.inSeconds}s, polls=$pollCount',
+          );
+          return; // 任务成功完成
+
+        case UploadTaskStatus.failed:
+        case UploadTaskStatus.permanentlyFailed:
+          _logger.warning(
+            'Task failed: taskId=$taskId, status=${task.status}, '
+            'error=${task.errorMessage}, elapsed=${elapsed.inSeconds}s',
+          );
+          throw Exception(
+            'Upload task failed: ${task.errorMessage ?? "Unknown error"}',
+          );
+
+        case UploadTaskStatus.cancelled:
+          _logger.warning(
+            'Task cancelled: taskId=$taskId, elapsed=${elapsed.inSeconds}s',
+          );
+          throw Exception('Upload task cancelled');
+
+        case UploadTaskStatus.pending:
+        case UploadTaskStatus.uploading:
+        case UploadTaskStatus.paused:
+          // 任务还在进行中，继续等待
+          await Future.delayed(pollInterval);
+          break;
+      }
+    }
+  }
 
   /// 批量检查服务器上已存在的资产
   /// 
