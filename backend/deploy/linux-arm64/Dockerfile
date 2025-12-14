@@ -18,6 +18,7 @@ ENV CGO_LDFLAGS="-L/usr/local/lib -lMagickWand-7.Q16HDRI -lMagickCore-7.Q16HDRI"
 COPY ./internal ./internal
 COPY ./pkg ./pkg
 COPY ./cmd ./cmd
+COPY ./docs ./docs
 COPY ./go.mod ./go.sum ./
 
 # 构建应用（server 和 cli）并注入版本信息
