@@ -41,7 +41,8 @@ class _BackupIndicatorContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final backupState = ref.watch(backupStateProvider);
+    // 使用 family provider，自动管理生命周期
+    final backupState = ref.watch(backupStateProvider(userId));
     final backupServiceAsync = ref.watch(backupServiceProvider);
 
     return backupServiceAsync.when(

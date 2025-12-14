@@ -34,36 +34,16 @@ class BackupStatusWidget extends ConsumerWidget {
   }
 }
 
-class _BackupStatusContent extends ConsumerStatefulWidget {
+class _BackupStatusContent extends ConsumerWidget {
   final String userId;
 
   const _BackupStatusContent({required this.userId});
 
   @override
-  ConsumerState<_BackupStatusContent> createState() => _BackupStatusContentState();
-}
-
-class _BackupStatusContentState extends ConsumerState<_BackupStatusContent> {
-  @override
-  void initState() {
-    super.initState();
-    // 开始监听备份状态
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 不等待异步操作完成，让它在后台执行
-      ref.read(backupStateProvider.notifier).startListening(widget.userId);
-    });
-  }
-
-  @override
-  void dispose() {
-    // 停止监听
-    ref.read(backupStateProvider.notifier).stopListening();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final backupState = ref.watch(backupStateProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 使用 family provider，自动管理生命周期
+    // 不需要手动调用 startListening/stopListening
+    final backupState = ref.watch(backupStateProvider(userId));
 
     if (backupState.isLoading && backupState.counts == null) {
       return const Card(
@@ -75,10 +55,7 @@ class _BackupStatusContentState extends ConsumerState<_BackupStatusContent> {
       );
     }
 
-    return _BackupStatusInfo(
-      userId: widget.userId,
-      backupState: backupState,
-    );
+    return _BackupStatusInfo(userId: userId, backupState: backupState);
   }
 }
 
@@ -86,10 +63,7 @@ class _BackupStatusInfo extends StatelessWidget {
   final String userId;
   final BackupState backupState;
 
-  const _BackupStatusInfo({
-    required this.userId,
-    required this.backupState,
-  });
+  const _BackupStatusInfo({required this.userId, required this.backupState});
 
   @override
   Widget build(BuildContext context) {
@@ -100,12 +74,9 @@ class _BackupStatusInfo extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '备份状态',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('备份状态', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
-            
+
             // 统计信息卡片
             if (backupState.counts != null) ...[
               _BackupCountsSection(counts: backupState.counts!),
@@ -113,7 +84,7 @@ class _BackupStatusInfo extends StatelessWidget {
               const Divider(),
               const SizedBox(height: 16),
             ],
-            
+
             // 当前上传信息（包括 pending 和 uploading 状态）
             if (backupState.activeTasks.isNotEmpty) ...[
               _CurrentUploadSection(
@@ -150,7 +121,7 @@ class _BackupStatusInfo extends StatelessWidget {
               const Divider(),
               const SizedBox(height: 16),
             ],
-            
+
             // 错误信息
             if (backupState.hasError) ...[
               Container(
@@ -191,10 +162,7 @@ class _BackupCountsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '统计信息',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('统计信息', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -237,10 +205,7 @@ class _BackupCountsSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         // 进度条
-        LinearProgressIndicator(
-          value: counts.progress,
-          minHeight: 8.0,
-        ),
+        LinearProgressIndicator(value: counts.progress, minHeight: 8.0),
         const SizedBox(height: 4),
         Text(
           '${(counts.progress * 100).toStringAsFixed(1)}%',
@@ -275,17 +240,14 @@ class _CountCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 4),
           Text(
             value.toString(),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -298,10 +260,7 @@ class _CurrentUploadSection extends StatelessWidget {
   final UploadTaskDetail task;
   final int totalTasks;
 
-  const _CurrentUploadSection({
-    required this.task,
-    this.totalTasks = 1,
-  });
+  const _CurrentUploadSection({required this.task, this.totalTasks = 1});
 
   @override
   Widget build(BuildContext context) {
@@ -311,10 +270,7 @@ class _CurrentUploadSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '当前上传',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('当前上传', style: Theme.of(context).textTheme.titleMedium),
             if (totalTasks > 1)
               TextButton(
                 onPressed: () {
@@ -352,8 +308,8 @@ class _CurrentUploadSection extends StatelessWidget {
                       child: Text(
                         task.filename,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -366,10 +322,7 @@ class _CurrentUploadSection extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: task.progress,
-                  minHeight: 6.0,
-                ),
+                LinearProgressIndicator(value: task.progress, minHeight: 6.0),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -393,5 +346,3 @@ class _CurrentUploadSection extends StatelessWidget {
     );
   }
 }
-
-

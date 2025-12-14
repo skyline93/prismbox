@@ -21,37 +21,7 @@ class UploadDetailPage extends ConsumerStatefulWidget {
 
 class _UploadDetailPageState extends ConsumerState<UploadDetailPage> {
   @override
-  void initState() {
-    super.initState();
-    // 开始监听备份状态
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startListening();
-    });
-  }
-
-  void _startListening() async {
-    final authServiceAsync = ref.read(authServiceProvider);
-    await authServiceAsync.when(
-      data: (authService) async {
-        final profile = await authService.getProfile();
-        final userId = profile.id.toString();
-        ref.read(backupStateProvider.notifier).startListening(userId);
-      },
-      loading: () {},
-      error: (_, __) {},
-    );
-  }
-
-  @override
-  void dispose() {
-    // 停止监听
-    ref.read(backupStateProvider.notifier).stopListening();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final backupState = ref.watch(backupStateProvider);
     final authServiceAsync = ref.watch(authServiceProvider);
 
     return Scaffold(
@@ -69,10 +39,8 @@ class _UploadDetailPageState extends ConsumerState<UploadDetailPage> {
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            return _UploadDetailContent(
-              userId: snapshot.data!,
-              backupState: backupState,
-            );
+            // 使用 family provider，自动管理生命周期
+            return _UploadDetailContent(userId: snapshot.data!);
           },
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -86,15 +54,15 @@ class _UploadDetailPageState extends ConsumerState<UploadDetailPage> {
 
 class _UploadDetailContent extends ConsumerWidget {
   final String userId;
-  final BackupState backupState;
 
   const _UploadDetailContent({
     required this.userId,
-    required this.backupState,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 使用 family provider，自动管理生命周期
+    final backupState = ref.watch(backupStateProvider(userId));
     final activeTasks = backupState.activeTasks;
 
     if (backupState.isLoading && activeTasks.isEmpty) {
@@ -132,7 +100,7 @@ class _UploadDetailContent extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.read(backupStateProvider.notifier).refresh(userId);
+        await ref.read(backupStateProvider(userId).notifier).refresh(userId);
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(16.0),
