@@ -41,18 +41,23 @@ class _BackupIndicatorContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 使用 family provider，自动管理生命周期
-    final backupState = ref.watch(backupStateProvider(userId));
-    final backupServiceAsync = ref.watch(backupServiceProvider);
+    // 先检查服务是否准备好
+    final servicesReadyAsync = ref.watch(backupServicesReadyProvider);
+    
+    return servicesReadyAsync.when(
+      data: (_) {
+        // 服务已准备好，可以安全使用 backupStateProvider
+        final backupState = ref.watch(backupStateProvider(userId));
+        final backupServiceAsync = ref.watch(backupServiceProvider);
 
-    return backupServiceAsync.when(
-      data: (backupService) => FutureBuilder<BackupStatus?>(
-        future: backupService.getBackupStatus(userId),
-        builder: (context, snapshot) {
-          final backupStatus = snapshot.data;
-          final isEnabled = backupStatus?.enabled ?? false;
-          final isBackingUp = backupState.isBackingUp;
-          final hasError = backupState.hasError;
+        return backupServiceAsync.when(
+          data: (backupService) => FutureBuilder<BackupStatus?>(
+            future: backupService.getBackupStatus(userId),
+            builder: (context, snapshot) {
+              final backupStatus = snapshot.data;
+              final isEnabled = backupStatus?.enabled ?? false;
+              final isBackingUp = backupState.isBackingUp;
+              final hasError = backupState.hasError;
 
           final indicatorIcon = _getBackupBadgeIcon(
             context,
@@ -65,27 +70,35 @@ class _BackupIndicatorContent extends ConsumerWidget {
             return const SizedBox.shrink();
           }
 
-          return InkWell(
-            onTap: () {
-              // 跳转到备份设置页面
-              context.router.push(const BackupSettingsRoute());
-            },
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
-            child: Badge(
-              label: indicatorIcon,
-              backgroundColor: Colors.transparent,
-              alignment: Alignment.bottomRight,
-              isLabelVisible: true,
-              offset: const Offset(-2, -12),
-              child: Icon(
-                Icons.backup_rounded,
-                size: 24,
-                color: Theme.of(context).colorScheme.primary,
+          return SizedBox(
+            width: 40,
+            height: 40,
+            child: InkWell(
+              onTap: () {
+                // 跳转到备份设置页面
+                context.router.push(const BackupSettingsRoute());
+              },
+              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              child: Badge(
+                label: indicatorIcon,
+                backgroundColor: Colors.transparent,
+                alignment: Alignment.bottomRight,
+                isLabelVisible: true,
+                offset: const Offset(-2, -12),
+                child: Icon(
+                  Icons.backup_rounded,
+                  size: 24,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
           );
-        },
-      ),
+            },
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        );
+      },
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );

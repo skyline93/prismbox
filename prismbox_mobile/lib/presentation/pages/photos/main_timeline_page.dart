@@ -187,7 +187,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                   leading: SizedBox(
                     width: 120, // 限制 leading 区域的最大宽度
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         // 使用 InkWell + Icon 替代 IconButton，更紧凑
@@ -210,8 +210,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                           ),
                   ),
                         const SizedBox(width: 4),
-                        // 使用 Flexible 确保文本可以适应剩余空间
-                        Flexible(
+                        // 使用 Expanded 确保文本可以适应剩余空间并防止溢出
+                        Expanded(
                           child: Text(
                             '${selectionState.count}张',
                             style: Theme.of(context).textTheme.titleMedium,
@@ -226,7 +226,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                     // 全选按钮（带"全选"文字，风格与单选框一致）
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: TextButton.icon(
+                      child: TextButton(
                       onPressed: () {
                           HapticFeedback.lightImpact();
                         if (_isAllSelected(ref, timelineSectionsAsync)) {
@@ -235,7 +235,13 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                           _handleSelectAll(ref);
                         }
                       },
-                        icon: Icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
                           _isAllSelected(ref, timelineSectionsAsync)
                               ? Icons.check_circle_rounded
                               : Icons.check_circle_outline_rounded,
@@ -244,12 +250,16 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                               ? const Color(0xFF4285F4) // 谷歌蓝
                               : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                         ),
-                        label: Text(
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
                           _isAllSelected(ref, timelineSectionsAsync) ? '全选' : '全选',
                           style: Theme.of(context).textTheme.bodyMedium,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
                         ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ],
                         ),
                       ),
                     ),
@@ -276,9 +286,13 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                         ref.invalidate(timelineSectionsProvider);
                       },
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8.0),
-                      child: BackupStatusIndicator(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: BackupStatusIndicator(),
+                      ),
                     ),
                   ],
                 ),

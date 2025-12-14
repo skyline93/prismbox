@@ -142,8 +142,10 @@ class UploadOrchestrator {
       checksums: checksums,
     );
 
-    // 3. 过滤掉已存在的资产
+    // 3. 过滤掉已存在的资产，并将被去重的任务标记为 completed
     final filtered = <UploadTaskEntityData>[];
+    final duplicateTasks = <UploadTaskEntityData>[];
+    
     for (int i = 0; i < candidates.length; i++) {
       final task = candidates[i];
       final checksum = checksums[i];
@@ -155,12 +157,38 @@ class UploadOrchestrator {
           'Skipping duplicate asset: assetId=${task.assetId}, '
           'checksum=$checksum',
         );
+        duplicateTasks.add(task);
+      }
+    }
+
+    // 4. 将被去重的任务标记为 completed（因为它们已经存在于服务器上）
+    if (duplicateTasks.isNotEmpty) {
+      _logger.info(
+        'Marking ${duplicateTasks.length} duplicate tasks as completed',
+      );
+      final dao = _database.uploadTaskDao;
+      for (final task in duplicateTasks) {
+        try {
+          await dao.updateTaskStatus(
+            task.id,
+            UploadTaskStatus.completed,
+            uploadedAt: DateTime.now(),
+          );
+          _logger.fine(
+            'Marked duplicate task as completed: taskId=${task.id}, '
+            'assetId=${task.assetId}',
+          );
+        } catch (e) {
+          _logger.warning(
+            'Failed to mark duplicate task as completed: taskId=${task.id}, error=$e',
+          );
+        }
       }
     }
 
     _logger.info(
       'Filtered ${filtered.length} assets '
-      '(from ${candidates.length} candidates)',
+      '(from ${candidates.length} candidates, ${duplicateTasks.length} duplicates)',
     );
 
     return filtered;
