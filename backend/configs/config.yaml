@@ -43,7 +43,7 @@ auth:
   url_signer_secret: change-me-too
   signed_url_load_ttl: 30m0s
 api:
-  max_file_size: 100.00MB
+  max_file_size: 10.00GB
 logger:
   level: debug
   format: console

@@ -1,5 +1,6 @@
 // lib/services/backup/upload_task_manager.dart
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:logging/logging.dart';
@@ -81,19 +82,116 @@ class UploadTaskManager {
     final status = update.status;
     final group = update.task.group;
 
-    _logger.fine(
-      'Task status update: taskId=$taskId, '
-      'status=$status, group=$group',
+    // 记录详细的状态更新信息
+    _logger.info(
+      'Task status update: taskId=$taskId, status=$status, group=$group',
     );
+
+    // 如果是失败状态，提取详细的错误信息
+    String? errorMessage;
+    if (status == TaskStatus.failed) {
+      errorMessage = _extractErrorMessage(update);
+      
+      _logger.warning(
+        'Upload task failed: taskId=$taskId, '
+        'errorMessage=$errorMessage, '
+        'exception=${update.exception}, '
+        'responseStatusCode=${update.responseStatusCode}, '
+        'responseBody=${update.responseBody}',
+      );
+    } else if (status == TaskStatus.complete) {
+      // 记录成功信息
+      _logger.info(
+        'Upload task completed: taskId=$taskId, '
+        'responseStatusCode=${update.responseStatusCode}, '
+        'responseBody=${update.responseBody?.substring(0, update.responseBody!.length.clamp(0, 200))}',
+      );
+    } else if (status == TaskStatus.waitingToRetry) {
+      // 记录重试信息
+      _logger.warning(
+        'Upload task waiting to retry: taskId=$taskId, '
+        'exception=${update.exception}',
+      );
+    }
 
     onStatusChange?.call(taskId, status);
 
-    // 更新数据库中的任务状态
-    _updateTaskStatus(taskId, status).catchError((error) {
+    // 更新数据库中的任务状态（包含错误信息）
+    _updateTaskStatus(taskId, status, errorMessage: errorMessage).catchError((error) {
       _logger.warning(
         'Failed to update task status: taskId=$taskId, error=$error',
       );
     });
+  }
+
+  /// 从 TaskStatusUpdate 中提取错误信息
+  String? _extractErrorMessage(TaskStatusUpdate update) {
+    if (update.exception == null) {
+      return 'Unknown error: No exception information available';
+    }
+
+    final exception = update.exception!;
+    String? errorMessage;
+
+    try {
+      // 如果是 HTTP 异常，提取详细信息
+      if (exception is TaskHttpException) {
+        final httpException = exception;
+        
+        // 尝试解析 JSON 错误响应
+        final description = httpException.description;
+        if (description.isNotEmpty) {
+          try {
+            final json = jsonDecode(description) as Map<String, dynamic>?;
+            errorMessage = json?['message'] as String? ?? 
+                          json?['error'] as String? ?? 
+                          description;
+          } catch (_) {
+            // 如果不是 JSON，直接使用描述
+            errorMessage = description;
+          }
+        }
+        
+        // 添加 HTTP 状态码和异常类型信息
+        final statusCode = httpException.httpResponseCode;
+        final exceptionType = httpException.exceptionType;
+        
+        // 构建错误消息
+        if (errorMessage == null || errorMessage.isEmpty) {
+          errorMessage = 'Unknown error';
+        }
+        
+        // 添加状态码和异常类型（statusCode 可能为 null）
+        if (statusCode != null) {
+          errorMessage = 'HTTP $statusCode ($exceptionType): $errorMessage';
+        } else {
+          errorMessage = '$exceptionType: $errorMessage';
+        }
+        
+        // 如果有响应体，也记录（responseBody 可能为 null）
+        final responseBody = update.responseBody;
+        if (responseBody != null && responseBody.isNotEmpty) {
+          try {
+            final responseJson = jsonDecode(responseBody) as Map<String, dynamic>?;
+            final responseMessage = responseJson?['message'] as String? ?? 
+                                   responseJson?['error'] as String?;
+            if (responseMessage != null) {
+              errorMessage = '$errorMessage (Response: $responseMessage)';
+            }
+          } catch (_) {
+            // 忽略 JSON 解析错误
+          }
+        }
+      } else {
+        // 其他类型的异常
+        errorMessage = exception.toString();
+      }
+    } catch (e) {
+      _logger.warning('Failed to extract error message: $e');
+      errorMessage = exception.toString();
+    }
+
+    return errorMessage;
   }
 
   /// 处理进度更新
@@ -101,10 +199,23 @@ class UploadTaskManager {
     final taskId = update.task.taskId;
     final progress = update.progress;
 
+    // 记录详细的进度信息
     _logger.fine(
       'Task progress update: taskId=$taskId, '
-      'progress=$progress',
+      'progress=$progress, '
+      'expectedFileSize=${update.expectedFileSize}, '
+      'networkSpeed=${update.networkSpeed}',
     );
+
+    // 特殊进度值处理（background_downloader 的特殊值）
+    // -1.0 表示完成，-2.0 表示失败，-4.0 表示等待重试
+    if (progress == -2.0) {
+      _logger.warning('Task progress indicates failure: taskId=$taskId');
+    } else if (progress == -1.0) {
+      _logger.info('Task progress indicates completion: taskId=$taskId');
+    } else if (progress == -4.0) {
+      _logger.warning('Task progress indicates waiting to retry: taskId=$taskId');
+    }
 
     onProgress?.call(taskId, progress);
 
@@ -117,7 +228,11 @@ class UploadTaskManager {
   }
 
   /// 更新数据库中的任务状态
-  Future<void> _updateTaskStatus(String taskId, TaskStatus status) async {
+  Future<void> _updateTaskStatus(
+    String taskId, 
+    TaskStatus status, {
+    String? errorMessage,
+  }) async {
     final task = await _database.uploadTaskDao.getTaskById(taskId);
     if (task == null) {
       _logger.warning('Task not found: taskId=$taskId');
@@ -149,11 +264,19 @@ class UploadTaskManager {
         return;
     }
 
-    if (task.status != newStatus) {
+    // 如果状态改变，或者有新的错误信息，更新数据库
+    if (task.status != newStatus || 
+        (errorMessage != null && task.errorMessage != errorMessage)) {
       await _database.uploadTaskDao.updateTaskStatus(
         taskId,
         newStatus,
         uploadedAt: uploadedAt,
+        errorMessage: errorMessage,
+      );
+      
+      _logger.fine(
+        'Task status updated in database: taskId=$taskId, '
+        'status=$newStatus, errorMessage=$errorMessage',
       );
     }
   }

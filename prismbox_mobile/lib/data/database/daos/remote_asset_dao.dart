@@ -70,6 +70,12 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
     return update(remoteAssetEntity).replace(asset);
   }
 
+  /// 插入或更新资产（Upsert）
+  /// 如果记录已存在则更新，不存在则插入
+  Future<void> insertOrUpdateAsset(RemoteAssetEntityData asset) {
+    return into(remoteAssetEntity).insertOnConflictUpdate(asset.toCompanion(false));
+  }
+
   /// 软删除资产
   Future<bool> softDeleteAsset(String id) async {
     final count = await (update(remoteAssetEntity)

@@ -61,7 +61,10 @@ Future<BackupCandidateSelector> backupCandidateSelector(
 }
 
 /// UploadOrchestrator Provider
-@riverpod
+/// 
+/// 使用 keepAlive: true 确保全局单例，这样所有组件共享同一个实例
+/// 确保上传完成通知流能够正确工作
+@Riverpod(keepAlive: true)
 Future<UploadOrchestrator> uploadOrchestrator(
   UploadOrchestratorRef ref,
 ) async {

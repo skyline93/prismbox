@@ -34,6 +34,7 @@ class MainTimelinePage extends ConsumerStatefulWidget {
 class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<bool>? _dataSourceSwitchSubscription;
+  StreamSubscription<String>? _uploadCompleteSubscription;
   
   /// 拖动选择相关状态
   AssetIndex? _dragAnchorIndex;
@@ -48,11 +49,14 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     super.initState();
     // 监听数据源切换
     _listenDataSourceSwitch();
+    // 监听上传完成通知
+    _listenUploadComplete();
   }
 
   @override
   void dispose() {
     _dataSourceSwitchSubscription?.cancel();
+    _uploadCompleteSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -84,6 +88,36 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
       );
     }).catchError((error) {
       debugPrint('❌ 启动数据源切换监听失败: $error');
+    });
+  }
+
+  /// 监听上传完成通知
+  /// 当资产上传成功并更新数据库后，刷新时间线数据以更新上传状态图标
+  void _listenUploadComplete() {
+    ref.read(uploadOrchestratorProvider.future).then((orchestrator) {
+      debugPrint('✅ 上传完成监听已启动');
+      _uploadCompleteSubscription = orchestrator.uploadCompleteStream.listen(
+        (assetId) async {
+          if (mounted) {
+            debugPrint('✅ 收到上传完成通知: assetId=$assetId，刷新时间线数据');
+            // 短暂延迟，确保数据库事务已提交
+            await Future.delayed(const Duration(milliseconds: 200));
+            if (mounted) {
+              // 同时 invalidate timelineAssetsProvider 和 timelineSectionsProvider
+              // 确保数据完全刷新
+              ref.invalidate(timelineAssetsProvider());
+              ref.invalidate(timelineSectionsProvider);
+              debugPrint('✅ 已刷新时间线数据');
+            }
+          }
+        },
+        onError: (error) {
+          // 记录错误但不影响功能
+          debugPrint('❌ 上传完成监听错误: $error');
+        },
+      );
+    }).catchError((error) {
+      debugPrint('❌ 启动上传完成监听失败: $error');
     });
   }
 

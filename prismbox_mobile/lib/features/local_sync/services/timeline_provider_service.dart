@@ -68,6 +68,7 @@ class TimelineProviderService {
       final remoteDao = RemoteAssetDao(_database);
       final localAssets = <LocalAsset>[];
       
+      int remoteAssetCount = 0;
       for (final data in assets) {
         // 如果 checksum 存在，尝试获取 remoteAssetId
         String? remoteAssetId;
@@ -75,6 +76,13 @@ class TimelineProviderService {
           try {
             final remoteAsset = await remoteDao.getAssetByChecksum(data.checksum!);
             remoteAssetId = remoteAsset?.id;
+            if (remoteAssetId != null) {
+              remoteAssetCount++;
+              _logger.fine(
+                '找到远程资产关联: assetId=${data.id}, '
+                'checksum=${data.checksum}, remoteAssetId=$remoteAssetId',
+              );
+            }
           } catch (e) {
             _logger.fine('获取远程资产 ID 失败: ${data.id}', e);
           }
@@ -96,6 +104,11 @@ class TimelineProviderService {
           assetEntity: null, // 延迟获取：在需要时通过 getAssetEntityById 获取
         ));
       }
+      
+      _logger.info(
+        '从数据库加载了 ${localAssets.length} 个资产，'
+        '其中 $remoteAssetCount 个已关联远程资产',
+      );
       
       return localAssets;
     } catch (e) {

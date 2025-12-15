@@ -99,6 +99,9 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
                       size: 16,
                     ),
                   ),
+          
+          // 上传状态图标（右上角）
+          _UploadStatusIcon(asset: widget.asset),
         ],
       ),
     );
@@ -166,6 +169,39 @@ class _SelectedIcon extends StatelessWidget {
         Icons.check_circle_rounded,
         color: googleBlue,
         size: 16,
+      ),
+    );
+  }
+}
+
+/// 上传状态图标组件
+/// 根据 BaseAsset.hasRemote 显示不同的上传状态图标
+class _UploadStatusIcon extends StatelessWidget {
+  final BaseAsset asset;
+  
+  const _UploadStatusIcon({required this.asset});
+  
+  @override
+  Widget build(BuildContext context) {
+    // 根据 hasRemote 判断状态
+    final isUploaded = asset.hasRemote;
+    
+    return Positioned(
+      top: 8,
+      right: 8,
+      child: Icon(
+        isUploaded 
+          ? Icons.cloud_done_outlined 
+          : Icons.cloud_off_outlined,
+        color: const Color.fromRGBO(255, 255, 255, 0.8),
+        size: 16,
+        shadows: const [
+          Shadow(
+            blurRadius: 5.0,
+            color: Color.fromRGBO(0, 0, 0, 0.6),
+            offset: Offset(0.0, 0.0),
+          ),
+        ],
       ),
     );
   }

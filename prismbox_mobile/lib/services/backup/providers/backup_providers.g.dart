@@ -86,14 +86,16 @@ final backupCandidateSelectorProvider =
 typedef BackupCandidateSelectorRef
     = AutoDisposeFutureProviderRef<BackupCandidateSelector>;
 String _$uploadOrchestratorHash() =>
-    r'140d00210e8d713e3015d0017d9c8bea23f4b5a9';
+    r'19b439f94b77e33eb117f4c427d8d81383579883';
 
 /// UploadOrchestrator Provider
 ///
+/// 使用 keepAlive: true 确保全局单例，这样所有组件共享同一个实例
+/// 确保上传完成通知流能够正确工作
+///
 /// Copied from [uploadOrchestrator].
 @ProviderFor(uploadOrchestrator)
-final uploadOrchestratorProvider =
-    AutoDisposeFutureProvider<UploadOrchestrator>.internal(
+final uploadOrchestratorProvider = FutureProvider<UploadOrchestrator>.internal(
   uploadOrchestrator,
   name: r'uploadOrchestratorProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -103,8 +105,7 @@ final uploadOrchestratorProvider =
   allTransitiveDependencies: null,
 );
 
-typedef UploadOrchestratorRef
-    = AutoDisposeFutureProviderRef<UploadOrchestrator>;
+typedef UploadOrchestratorRef = FutureProviderRef<UploadOrchestrator>;
 String _$uploadServiceHash() => r'd10b19d057cf51c6b6c263d7e880b68624b5607f';
 
 /// UploadService Provider

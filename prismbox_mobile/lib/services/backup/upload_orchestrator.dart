@@ -9,9 +9,12 @@ import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:uuid/uuid.dart';
 import 'package:prismbox/data/database/app_database.dart';
+import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
+import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 import 'package:prismbox/services/backup/task_status_validator.dart';
 import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
@@ -81,6 +84,14 @@ class UploadOrchestrator {
   // 上传端点配置
   static const String _uploadEndpoint = '/api/v1/media/upload-stream';
   static const String _checkAssetsEndpoint = '/api/v1/media/check_hashes';
+
+  /// 上传完成通知流控制器
+  final _uploadCompleteController = StreamController<String>.broadcast();
+
+  /// 上传完成通知流
+  /// 当资产上传成功并更新数据库后，发出 assetId 通知
+  /// 用于通知 UI 刷新上传状态图标
+  Stream<String> get uploadCompleteStream => _uploadCompleteController.stream;
 
   UploadOrchestrator({
     required AppDatabase database,
@@ -835,6 +846,13 @@ class UploadOrchestrator {
             'Task completed: taskId=$taskId, '
             'elapsed=${elapsed.inSeconds}s, polls=$pollCount',
           );
+          // 任务成功完成，更新数据库关联
+          _updateDatabaseAfterUpload(task).catchError((error) {
+            _logger.warning(
+              'Failed to update database after upload: taskId=$taskId, error=$error',
+            );
+            // 不阻塞上传流程，记录错误即可
+          });
           return; // 任务成功完成
 
         case UploadTaskStatus.failed:
@@ -974,6 +992,269 @@ class UploadOrchestrator {
       errorMessage: errorMessage,
       type: errorType,
     );
+  }
+
+  /// 上传成功后更新数据库关联
+  /// 
+  /// **实现说明**：
+  /// - 通过 API 查询资产信息（使用 checksum）
+  /// - 更新 remote_asset_entity 表
+  /// - 确保 local_asset_entity 的 checksum 已设置
+  Future<void> _updateDatabaseAfterUpload(UploadTaskEntityData task) async {
+    try {
+      // 1. 获取本地资产信息
+      final localAsset = await _database.localAssetDao.getAssetById(task.assetId);
+      if (localAsset == null) {
+        _logger.warning(
+          'Local asset not found: assetId=${task.assetId}',
+        );
+        return;
+      }
+
+      // 2. 获取 checksum（如果还没有，计算它）
+      String? checksum = localAsset.checksum;
+      if (checksum == null || checksum.isEmpty) {
+        // 计算 checksum
+        final file = File(task.localPath);
+        if (await file.exists()) {
+          checksum = await _calculateFileChecksum(task.localPath);
+          // 更新本地资产的 checksum
+          final updatedAsset = localAsset.copyWith(
+            checksum: Value(checksum),
+            updatedAt: DateTime.now(),
+          );
+          await _database.localAssetDao.updateAsset(updatedAsset);
+        } else {
+          _logger.warning(
+            'File not found for checksum calculation: ${task.localPath}',
+          );
+          return;
+        }
+      }
+
+      // 3. 获取用户 ID（从任务中获取）
+      final userId = task.userId;
+
+      // 4. 通过 API 查询资产信息（使用 checksum）
+      // 优先通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
+      // 如果失败，再通过 /api/v1/media/changes 获取最近的变化
+      final remoteAssetInfo = await _queryRemoteAssetByChecksum(checksum, userId);
+      if (remoteAssetInfo == null) {
+        _logger.warning(
+          'Remote asset not found for checksum: $checksum',
+        );
+        // 如果查询不到，可能是服务器延迟，不阻塞流程
+        return;
+      }
+
+      // 5. 更新 remote_asset_entity 表
+      final remoteDao = RemoteAssetDao(_database);
+      
+      // 处理 updated_at 可能为空字符串的情况
+      final updatedAtStr = remoteAssetInfo['updated_at'] as String?;
+      final updatedAt = updatedAtStr != null && updatedAtStr.isNotEmpty
+          ? DateTime.parse(updatedAtStr)
+          : DateTime.parse(remoteAssetInfo['created_at'] as String);
+      
+      final remoteAssetData = RemoteAssetEntityData(
+        id: remoteAssetInfo['uuid'] as String,
+        checksum: remoteAssetInfo['hash'] as String,
+        ownerId: userId,
+        name: remoteAssetInfo['original_filename'] as String? ?? 
+              remoteAssetInfo['filename'] as String? ?? '',
+        type: _convertItemTypeToAssetType(remoteAssetInfo['item_type'] as String),
+        createdAt: DateTime.parse(remoteAssetInfo['created_at'] as String),
+        updatedAt: updatedAt,
+        width: remoteAssetInfo['width'] as int?,
+        height: remoteAssetInfo['height'] as int?,
+        durationInSeconds: null, // API 响应中没有 duration 字段
+        isFavorite: false, // 默认值
+        localDateTime: remoteAssetInfo['media_taken_at'] != null
+            ? DateTime.parse(remoteAssetInfo['media_taken_at'] as String)
+            : null,
+        thumbHash: null,
+        deletedAt: null,
+        livePhotoVideoId: null,
+        visibility: AssetVisibility.private,
+        stackId: null,
+        libraryId: null,
+      );
+
+      await remoteDao.insertOrUpdateAsset(remoteAssetData);
+
+      _logger.info(
+        'Database updated after upload: assetId=${task.assetId}, '
+        'remoteAssetId=${remoteAssetInfo['uuid']}',
+      );
+
+      // 发出上传完成通知，通知 UI 刷新上传状态图标
+      _logger.info(
+        'Sending upload complete notification: assetId=${task.assetId}',
+      );
+      _uploadCompleteController.add(task.assetId);
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Failed to update database after upload: taskId=${task.id}, error=$e',
+        e,
+        stackTrace,
+      );
+      // 不抛出异常，避免阻塞上传流程
+    }
+  }
+
+  /// 通过 checksum 查询远程资产信息
+  /// 
+  /// **实现说明**：
+  /// - 优先通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
+  /// - 如果失败，再通过 /api/v1/media/changes 获取最近的变化
+  /// - 返回完整的资产信息
+  Future<Map<String, dynamic>?> _queryRemoteAssetByChecksum(
+    String checksum,
+    String userId,
+  ) async {
+    try {
+      final endpoint = _apiService.endpoint ?? '';
+      final headers = ApiService.getRequestHeaders();
+
+      // 方法1：通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
+      final mediaUrl = '$endpoint/api/v1/media';
+      try {
+        final mediaResponse = await _apiService.dio.get(
+          mediaUrl,
+          queryParameters: {
+            'page': 1,
+            'page_size': 50, // 查询最近50个资产
+          },
+          options: Options(headers: headers),
+        );
+
+        if (mediaResponse.statusCode != null &&
+            mediaResponse.statusCode! >= 200 &&
+            mediaResponse.statusCode! < 300) {
+          final mediaData = mediaResponse.data as Map<String, dynamic>?;
+          if (mediaData != null) {
+            // 修复：直接访问 medias，不需要 data['data']
+            final medias = mediaData['medias'] as List<dynamic>?;
+            if (medias != null) {
+              _logger.fine(
+                'Found ${medias.length} medias in response, searching for checksum: $checksum',
+              );
+              // 查找匹配 checksum 的资产
+              for (final media in medias) {
+                final mediaInfo = media as Map<String, dynamic>;
+                final mediaHash = mediaInfo['hash'] as String?;
+                if (mediaHash == checksum) {
+                  _logger.info(
+                    'Found remote asset by checksum: uuid=${mediaInfo['uuid']}, hash=$checksum',
+                  );
+                  return mediaInfo;
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        _logger.warning(
+          'Failed to query media list: $e',
+        );
+      }
+
+      // 方法2：如果方法1失败，通过 /api/v1/media/changes 获取最近的变化
+      final changesUrl = '$endpoint/api/v1/media/changes';
+      try {
+        final changesResponse = await _apiService.dio.get(
+          changesUrl,
+          options: Options(headers: headers),
+        );
+
+        if (changesResponse.statusCode != null &&
+            changesResponse.statusCode! >= 200 &&
+            changesResponse.statusCode! < 300) {
+          final changesData = changesResponse.data as Map<String, dynamic>?;
+          if (changesData != null) {
+            // 修复：直接访问 changes，不需要 data['data']
+            final changes = changesData['changes'] as List<dynamic>?;
+            if (changes != null && changes.isNotEmpty) {
+              _logger.fine(
+                'Found ${changes.length} changes in response, searching for checksum: $checksum',
+              );
+              // 查找匹配 checksum 的资产
+              for (final change in changes) {
+                final changeData = change as Map<String, dynamic>;
+                final changeHash = changeData['hash'] as String?;
+                if (changeHash == checksum &&
+                    changeData['action'] == 'created') {
+                  final uuid = changeData['uuid'] as String?;
+                  if (uuid != null) {
+                    _logger.info(
+                      'Found remote asset UUID from changes: uuid=$uuid, hash=$checksum',
+                    );
+                    // 通过 UUID 获取完整的资产信息
+                    return await _getRemoteAssetInfo(uuid);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        _logger.warning(
+          'Failed to query media changes: $e',
+        );
+      }
+
+      return null;
+    } catch (e) {
+      _logger.warning(
+        'Failed to query remote asset by checksum: checksum=$checksum, error=$e',
+      );
+      return null;
+    }
+  }
+
+  /// 获取远程资产详细信息
+  Future<Map<String, dynamic>?> _getRemoteAssetInfo(String remoteAssetId) async {
+    try {
+      final endpoint = _apiService.endpoint ?? '';
+      final url = '$endpoint/api/v1/media/$remoteAssetId';
+      final headers = ApiService.getRequestHeaders();
+
+      final response = await _apiService.dio.get(
+        url,
+        options: Options(headers: headers),
+      );
+
+      if (response.statusCode != null &&
+          response.statusCode! >= 200 &&
+          response.statusCode! < 300) {
+        final data = response.data as Map<String, dynamic>?;
+        if (data != null) {
+          // 修复：尝试访问 data['data']，如果不存在则直接使用 data
+          return data['data'] as Map<String, dynamic>? ?? data;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      _logger.warning(
+        'Failed to get remote asset info: remoteAssetId=$remoteAssetId, error=$e',
+      );
+      return null;
+    }
+  }
+
+  /// 转换 item_type 字符串为 AssetType 枚举
+  AssetType _convertItemTypeToAssetType(String itemType) {
+    switch (itemType.toLowerCase()) {
+      case 'image':
+        return AssetType.image;
+      case 'video':
+        return AssetType.video;
+      case 'audio':
+        return AssetType.audio;
+      default:
+        return AssetType.other;
+    }
   }
 
   /// 更新最后备份时间（根据成功比例决定是否更新）

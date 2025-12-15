@@ -296,7 +296,7 @@ func (l *Loader) defaultConfig() *Config {
 			SignedURLLoadTTL:      types.Duration(30 * time.Minute),
 		},
 		API: &APIConfig{
-			MaxFileSize: types.Size(100 * 1024 * 1024), // 100MB
+			MaxFileSize: types.Size(10 * 1024 * 1024 * 1024), // 10GB
 		},
 		Logger: &logger.Config{
 			Level:  "debug",
