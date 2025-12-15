@@ -77,6 +77,16 @@ class UploadTaskDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// 根据本地资产ID查询任务（获取最新的任务）
+  /// 用于查询资产的上传状态
+  Future<UploadTaskEntityData?> getTaskByLocalAssetId(String localAssetId) {
+    return (select(uploadTaskEntity)
+          ..where((t) => t.assetId.equals(localAssetId))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   /// 插入任务
   Future<void> insertTask(UploadTaskEntityData task) {
     return into(uploadTaskEntity).insert(task);

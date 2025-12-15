@@ -1,9 +1,12 @@
 // lib/presentation/widgets/media/selectable_media_item.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
+import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/presentation/widgets/media/media_image_widget.dart';
+import 'package:prismbox/services/backup/providers/asset_upload_status_provider.dart';
 import 'package:prismbox/utils/color_extensions.dart';
 
 /// 可选择的媒体项组件
@@ -35,8 +38,6 @@ class SelectableMediaItem extends StatefulWidget {
 }
 
 class _SelectableMediaItemState extends State<SelectableMediaItem> {
-  bool _isDragOver = false;
-
   @override
   Widget build(BuildContext context) {
     // 计算选中时的容器颜色（与 Immich 保持一致）
@@ -175,24 +176,145 @@ class _SelectedIcon extends StatelessWidget {
 }
 
 /// 上传状态图标组件
-/// 根据 BaseAsset.hasRemote 显示不同的上传状态图标
-class _UploadStatusIcon extends StatelessWidget {
+/// 根据资产上传状态显示不同的图标：
+/// - 未上传：云朵关闭图标（cloud_off_outlined）
+/// - 上传中：云朵上传图标（cloud_upload_outlined），带旋转动画
+/// - 已上传：云朵完成图标（cloud_done_outlined）
+/// - 上传失败：云朵队列图标（cloud_queue_outlined）
+class _UploadStatusIcon extends ConsumerWidget {
   final BaseAsset asset;
   
   const _UploadStatusIcon({required this.asset});
   
   @override
-  Widget build(BuildContext context) {
-    // 根据 hasRemote 判断状态
-    final isUploaded = asset.hasRemote;
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 使用 Provider 获取上传状态
+    final statusAsync = ref.watch(
+      assetUploadStatusProvider(asset),
+    );
+    
+    // 根据状态显示不同图标
+    Widget iconWidget;
+    
+    if (statusAsync.isLoading) {
+      // 加载中，显示默认图标（未上传）
+      iconWidget = _buildNotUploadedIcon();
+    } else if (statusAsync.hasError) {
+      // 错误，显示默认图标
+      iconWidget = _buildNotUploadedIcon();
+    } else {
+      final statusInfo = statusAsync.value!;
+      
+      switch (statusInfo.status) {
+        case AssetUploadStatus.notUploaded:
+          iconWidget = _buildNotUploadedIcon();
+          break;
+        case AssetUploadStatus.uploading:
+          iconWidget = _buildUploadingIcon(statusInfo.progress);
+          break;
+        case AssetUploadStatus.uploaded:
+          iconWidget = _buildUploadedIcon();
+          break;
+        case AssetUploadStatus.failed:
+          iconWidget = _buildFailedIcon();
+          break;
+      }
+    }
     
     return Positioned(
       top: 8,
       right: 8,
+      child: iconWidget,
+    );
+  }
+  
+  /// 未上传图标
+  Widget _buildNotUploadedIcon() {
+    return Icon(
+      Icons.cloud_off_outlined,
+      color: const Color.fromRGBO(255, 255, 255, 0.8),
+      size: 16,
+      shadows: const [
+        Shadow(
+          blurRadius: 5.0,
+          color: Color.fromRGBO(0, 0, 0, 0.6),
+          offset: Offset(0.0, 0.0),
+        ),
+      ],
+    );
+  }
+  
+  /// 上传中图标（带旋转动画）
+  Widget _buildUploadingIcon(double? progress) {
+    return _RotatingCloudIcon();
+  }
+  
+  /// 已上传图标
+  Widget _buildUploadedIcon() {
+    return Icon(
+      Icons.cloud_done_outlined,
+      color: const Color.fromRGBO(255, 255, 255, 0.8),
+      size: 16,
+      shadows: const [
+        Shadow(
+          blurRadius: 5.0,
+          color: Color.fromRGBO(0, 0, 0, 0.6),
+          offset: Offset(0.0, 0.0),
+        ),
+      ],
+    );
+  }
+  
+  /// 上传失败图标
+  Widget _buildFailedIcon() {
+    return Icon(
+      Icons.cloud_queue_outlined,
+      color: const Color.fromRGBO(255, 255, 255, 0.8),
+      size: 16,
+      shadows: const [
+        Shadow(
+          blurRadius: 5.0,
+          color: Color.fromRGBO(0, 0, 0, 0.6),
+          offset: Offset(0.0, 0.0),
+        ),
+      ],
+    );
+  }
+}
+
+/// 旋转的云朵图标（用于上传中状态）
+class _RotatingCloudIcon extends StatefulWidget {
+  const _RotatingCloudIcon();
+
+  @override
+  State<_RotatingCloudIcon> createState() => _RotatingCloudIconState();
+}
+
+class _RotatingCloudIconState extends State<_RotatingCloudIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(); // 持续循环
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _controller,
       child: Icon(
-        isUploaded 
-          ? Icons.cloud_done_outlined 
-          : Icons.cloud_off_outlined,
+        Icons.cloud_upload_outlined,
         color: const Color.fromRGBO(255, 255, 255, 0.8),
         size: 16,
         shadows: const [
