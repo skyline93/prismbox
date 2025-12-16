@@ -8,12 +8,12 @@ import 'package:prismbox/presentation/widgets/media/selectable_media_grid_sliver
 import 'package:prismbox/presentation/widgets/timeline/timeline_section_header.dart';
 
 /// 支持多选的时间线分组列表构建器
-/// 
+///
 /// 用于构建时间线分组的 Sliver 列表，支持多选模式
 /// 每个分组包含：
 /// - SliverToBoxAdapter（分组标题）
 /// - SelectableMediaGridSliver（可选择的媒体网格）
-/// 
+///
 /// 使用方式：
 /// ```dart
 /// CustomScrollView(
@@ -87,7 +87,7 @@ class SelectableTimelineSliverListBuilder {
     this.onSelectionToggle,
     this.onLongPress,
     this.onSectionToggle,
-    this.crossAxisCount = 5,
+    this.crossAxisCount = 4,
     this.crossAxisSpacing = 2.0,
     this.mainAxisSpacing = 2.0,
     this.childAspectRatio = 1.0,
@@ -100,7 +100,7 @@ class SelectableTimelineSliverListBuilder {
   });
 
   /// 构建所有分组的 Sliver 列表
-  /// 
+  ///
   /// 返回一个 List<Widget>，每个 Widget 是一个 Sliver
   /// 可以在 CustomScrollView 的 slivers 参数中使用展开操作符
   List<Widget> build() {
@@ -120,13 +120,16 @@ class SelectableTimelineSliverListBuilder {
       // 添加分组标题（使用 SliverToBoxAdapter）
       // 检查该分组是否全部选中
       final sectionAssetIds = section.assets.map((a) => a.id).toSet();
-      final isSectionAllSelected = selectionActive &&
+      final isSectionAllSelected =
+          selectionActive &&
           sectionAssetIds.isNotEmpty &&
           sectionAssetIds.every((id) => selectedIds.contains(id));
 
       slivers.add(
         SliverToBoxAdapter(
-          key: ValueKey('section_header_${section.index}'),  // 添加稳定的 key，确保 Flutter 能正确识别同一个 Sliver
+          key: ValueKey(
+            'section_header_${section.index}',
+          ), // 添加稳定的 key，确保 Flutter 能正确识别同一个 Sliver
           child: TimelineSectionHeader(
             section: section,
             showAssetCount: showAssetCount,
@@ -166,7 +169,9 @@ class SelectableTimelineSliverListBuilder {
     }
 
     return SliverPadding(
-      key: ValueKey('section_grid_${sectionIndex}'),  // 添加稳定的 key，确保 Flutter 能正确识别同一个 Sliver
+      key: ValueKey(
+        'section_grid_${sectionIndex}',
+      ), // 添加稳定的 key，确保 Flutter 能正确识别同一个 Sliver
       padding: const EdgeInsets.symmetric(horizontal: 2),
       sliver: SelectableMediaGridSliver(
         assets: section.assets,
@@ -187,4 +192,3 @@ class SelectableTimelineSliverListBuilder {
     );
   }
 }
-

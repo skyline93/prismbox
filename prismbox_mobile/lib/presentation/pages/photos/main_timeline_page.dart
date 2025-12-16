@@ -15,6 +15,7 @@ import 'package:prismbox/presentation/widgets/selection/drag_selection_region.da
     show DragSelectionRegion, AssetIndex, ScrollDirection;
 import 'package:prismbox/presentation/widgets/backup/backup_status_indicator.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
+import 'package:prismbox/providers/navigation/timeline_grid_columns_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 import 'package:prismbox/providers/services/auth_service_provider.dart';
@@ -35,14 +36,18 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<bool>? _dataSourceSwitchSubscription;
   StreamSubscription<String>? _uploadCompleteSubscription;
-  
+
   /// 拖动选择相关状态
   AssetIndex? _dragAnchorIndex;
   bool _isDragging = false;
   final Set<String> _draggedAssetIds = {};
-  
+
   /// 保存长按进入选择模式时的滚动位置
   double? _savedScrollOffset;
+
+  /// 捏合手势相关状态
+  int _lastColumnCount = 4;
+  DateTime? _lastUpdateTime;
 
   @override
   void initState() {
@@ -64,61 +69,68 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   /// 监听数据源切换通知
   /// 当同步完成后，如果数据库数据可用，会自动切换到数据库数据源
   void _listenDataSourceSwitch() {
-    ref.read(syncCoordinatorProvider.future).then((coordinator) {
-      debugPrint('✅ 数据源切换监听已启动');
-      _dataSourceSwitchSubscription = coordinator.dataSourceSwitchStream.listen(
-        (shouldSwitch) {
-          if (shouldSwitch && mounted) {
-            debugPrint('✅ 收到数据源切换通知，刷新时间线数据');
-            // 刷新时间线数据，触发数据源切换
-            ref.invalidate(timelineSectionsProvider);
-            // 可选：显示提示信息（静默切换，不打扰用户）
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   const SnackBar(
-            //     content: Text('数据已同步完成'),
-            //     duration: Duration(seconds: 2),
-            //   ),
-            // );
-          }
-        },
-        onError: (error) {
-          // 记录错误但不影响功能
-          debugPrint('❌ 数据源切换监听错误: $error');
-        },
-      );
-    }).catchError((error) {
-      debugPrint('❌ 启动数据源切换监听失败: $error');
-    });
+    ref
+        .read(syncCoordinatorProvider.future)
+        .then((coordinator) {
+          debugPrint('✅ 数据源切换监听已启动');
+          _dataSourceSwitchSubscription = coordinator.dataSourceSwitchStream
+              .listen(
+                (shouldSwitch) {
+                  if (shouldSwitch && mounted) {
+                    debugPrint('✅ 收到数据源切换通知，刷新时间线数据');
+                    // 刷新时间线数据，触发数据源切换
+                    ref.invalidate(timelineSectionsProvider);
+                    // 可选：显示提示信息（静默切换，不打扰用户）
+                    // ScaffoldMessenger.of(context).showSnackBar(
+                    //   const SnackBar(
+                    //     content: Text('数据已同步完成'),
+                    //     duration: Duration(seconds: 2),
+                    //   ),
+                    // );
+                  }
+                },
+                onError: (error) {
+                  // 记录错误但不影响功能
+                  debugPrint('❌ 数据源切换监听错误: $error');
+                },
+              );
+        })
+        .catchError((error) {
+          debugPrint('❌ 启动数据源切换监听失败: $error');
+        });
   }
 
   /// 监听上传完成通知
   /// 当资产上传成功并更新数据库后，刷新时间线数据以更新上传状态图标
   void _listenUploadComplete() {
-    ref.read(uploadOrchestratorProvider.future).then((orchestrator) {
-      debugPrint('✅ 上传完成监听已启动');
-      _uploadCompleteSubscription = orchestrator.uploadCompleteStream.listen(
-        (assetId) async {
-          if (mounted) {
-            debugPrint('✅ 收到上传完成通知: assetId=$assetId，刷新时间线数据');
-            // 短暂延迟，确保数据库事务已提交
-            await Future.delayed(const Duration(milliseconds: 200));
-            if (mounted) {
-              // 同时 invalidate timelineAssetsProvider 和 timelineSectionsProvider
-              // 确保数据完全刷新
-              ref.invalidate(timelineAssetsProvider());
-              ref.invalidate(timelineSectionsProvider);
-              debugPrint('✅ 已刷新时间线数据');
-            }
-          }
-        },
-        onError: (error) {
-          // 记录错误但不影响功能
-          debugPrint('❌ 上传完成监听错误: $error');
-        },
-      );
-    }).catchError((error) {
-      debugPrint('❌ 启动上传完成监听失败: $error');
-    });
+    ref
+        .read(uploadOrchestratorProvider.future)
+        .then((orchestrator) {
+          debugPrint('✅ 上传完成监听已启动');
+          _uploadCompleteSubscription = orchestrator.uploadCompleteStream.listen(
+            (assetId) async {
+              if (mounted) {
+                debugPrint('✅ 收到上传完成通知: assetId=$assetId，刷新时间线数据');
+                // 短暂延迟，确保数据库事务已提交
+                await Future.delayed(const Duration(milliseconds: 200));
+                if (mounted) {
+                  // 同时 invalidate timelineAssetsProvider 和 timelineSectionsProvider
+                  // 确保数据完全刷新
+                  ref.invalidate(timelineAssetsProvider());
+                  ref.invalidate(timelineSectionsProvider);
+                  debugPrint('✅ 已刷新时间线数据');
+                }
+              }
+            },
+            onError: (error) {
+              // 记录错误但不影响功能
+              debugPrint('❌ 上传完成监听错误: $error');
+            },
+          );
+        })
+        .catchError((error) {
+          debugPrint('❌ 启动上传完成监听失败: $error');
+        });
   }
 
   @override
@@ -138,9 +150,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     // 由于 Sliver 列表重新构建需要多个布局周期，使用多个 postFrameCallback 确保布局完全稳定
     ref.listen<AssetSelectionState>(assetSelectionProvider, (previous, next) {
       // 当从非激活状态变为激活状态时，恢复之前保存的滚动位置
-      if (previous != null && 
-          !previous.isActive && 
-          next.isActive && 
+      if (previous != null &&
+          !previous.isActive &&
+          next.isActive &&
           _savedScrollOffset != null &&
           _scrollController.hasClients) {
         // 使用多个 postFrameCallback 确保布局完全稳定
@@ -151,12 +163,16 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               // 再等待一个 frame 确保所有布局计算完成
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && 
-                    _scrollController.hasClients && 
+                if (mounted &&
+                    _scrollController.hasClients &&
                     _savedScrollOffset != null) {
                   // 确保滚动位置在有效范围内
-                  final maxScrollExtent = _scrollController.position.maxScrollExtent;
-                  final targetOffset = _savedScrollOffset!.clamp(0.0, maxScrollExtent);
+                  final maxScrollExtent =
+                      _scrollController.position.maxScrollExtent;
+                  final targetOffset = _savedScrollOffset!.clamp(
+                    0.0,
+                    maxScrollExtent,
+                  );
                   _scrollController.jumpTo(targetOffset);
                   _savedScrollOffset = null; // 清除保存的位置
                 }
@@ -169,6 +185,10 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
     // 监听选择状态
     final selectionState = ref.watch(assetSelectionProvider);
+
+    // 监听网格列数变化（用于触发重建，实际值在 _buildContentSlivers 中使用）
+    // ignore: unused_local_variable
+    final gridColumns = ref.watch(timelineGridColumnsProvider);
 
     // 监听权限状态
     final permissionAsync = ref.watch(photoPermissionNotifierProvider);
@@ -196,164 +216,229 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     );
 
     return Scaffold(
-      body: Stack(
-        children: [
-          DragSelectionRegion(
-            onStart: selectionState.isActive ? _handleDragStart : null,
-            onAssetEnter: selectionState.isActive ? _handleDragAssetEnter : null,
-            onEnd: selectionState.isActive ? _handleDragEnd : null,
-            onScrollStart: selectionState.isActive ? _handleDragScrollStart : null,
-            onScroll: selectionState.isActive ? _handleDragScroll : null,
-            child: CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
-              if (selectionState.isActive)
-                SliverAppBar(
-                  floating: true,
-                  pinned: true,
-                  snap: false,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(5)),
-                  ),
-                  automaticallyImplyLeading: false,
-                  leading: SizedBox(
-                    width: 120, // 限制 leading 区域的最大宽度
-                    child: Row(
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        // 使用 InkWell + Icon 替代 IconButton，更紧凑
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                      ref.read(assetSelectionProvider.notifier).deactivate();
-                    },
-                            borderRadius: BorderRadius.circular(20),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Icon(
-                                Icons.close_rounded,
-                                size: 24,
-                                color: Theme.of(context).colorScheme.onSurface,
+      body: GestureDetector(
+        // 使用捏合手势来调整列数
+        // 注意：只在非选择模式下启用，避免与拖动选择冲突
+        onScaleStart: selectionState.isActive
+            ? null
+            : (details) {
+                _lastColumnCount = gridColumns;
+                _lastUpdateTime = null;
+              },
+        onScaleUpdate: selectionState.isActive
+            ? null
+            : (details) {
+                final scale = details.scale;
+                final currentColumns = ref.read(timelineGridColumnsProvider);
+
+                // 使用累积的缩放值来计算目标列数
+                // scale > 1.0 表示放大（减少列数），scale < 1.0 表示缩小（增加列数）
+                final targetColumns = _calculateTargetColumns(
+                  scale,
+                  _lastColumnCount,
+                );
+
+                // 只有当目标列数与当前列数不同时才更新
+                if (targetColumns != currentColumns &&
+                    targetColumns >= 2 &&
+                    targetColumns <= 8) {
+                  // 添加防抖机制，避免过于频繁的更新（最小间隔 50ms）
+                  final now = DateTime.now();
+                  if (_lastUpdateTime == null ||
+                      now.difference(_lastUpdateTime!).inMilliseconds > 50) {
+                    ref
+                        .read(timelineGridColumnsProvider.notifier)
+                        .setColumns(targetColumns);
+                    HapticFeedback.selectionClick();
+                    _lastUpdateTime = now;
+                  }
+                }
+              },
+        onScaleEnd: selectionState.isActive
+            ? null
+            : (details) {
+                _lastColumnCount = ref.read(timelineGridColumnsProvider);
+                _lastUpdateTime = null;
+              },
+        child: Stack(
+          children: [
+            DragSelectionRegion(
+              onStart: selectionState.isActive ? _handleDragStart : null,
+              onAssetEnter: selectionState.isActive
+                  ? _handleDragAssetEnter
+                  : null,
+              onEnd: selectionState.isActive ? _handleDragEnd : null,
+              onScrollStart: selectionState.isActive
+                  ? _handleDragScrollStart
+                  : null,
+              onScroll: selectionState.isActive ? _handleDragScroll : null,
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
+                  if (selectionState.isActive)
+                    SliverAppBar(
+                      floating: true,
+                      pinned: true,
+                      snap: false,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainer,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(5)),
+                      ),
+                      automaticallyImplyLeading: false,
+                      leading: SizedBox(
+                        width: 120, // 限制 leading 区域的最大宽度
+                        child: Row(
+                          mainAxisSize: MainAxisSize.max,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            // 使用 InkWell + Icon 替代 IconButton，更紧凑
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  ref
+                                      .read(assetSelectionProvider.notifier)
+                                      .deactivate();
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 24,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 4),
+                            // 使用 Expanded 确保文本可以适应剩余空间并防止溢出
+                            Expanded(
+                              child: Text(
+                                '${selectionState.count}张',
+                                style: Theme.of(context).textTheme.titleMedium,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        // 全选按钮（带"全选"文字，风格与单选框一致）
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: TextButton(
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              if (_isAllSelected(ref, timelineSectionsAsync)) {
+                                _handleDeselectAll(ref);
+                              } else {
+                                _handleSelectAll(ref);
+                              }
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _isAllSelected(ref, timelineSectionsAsync)
+                                      ? Icons.check_circle_rounded
+                                      : Icons.check_circle_outline_rounded,
+                                  size: 24,
+                                  color:
+                                      _isAllSelected(ref, timelineSectionsAsync)
+                                      ? const Color(0xFF4285F4) // 谷歌蓝
+                                      : Theme.of(context).colorScheme.onSurface
+                                            .withOpacity(0.6),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    _isAllSelected(ref, timelineSectionsAsync)
+                                        ? '全选'
+                                        : '全选',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                  ),
-                        const SizedBox(width: 4),
-                        // 使用 Expanded 确保文本可以适应剩余空间并防止溢出
-                        Expanded(
-                          child: Text(
-                            '${selectionState.count}张',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                        ),
+                      ],
+                      elevation: 0,
+                    )
+                  else
+                    SliverAppBar(
+                      floating: true,
+                      pinned: true, // 与选择模式保持一致，避免布局变化导致滚动位置变动
+                      snap: false,
+                      title: const Text('照片'),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.filter_list),
+                          onPressed: () {
+                            // TODO: 显示筛选对话框
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          onPressed: () {
+                            // 刷新时间线数据
+                            ref.invalidate(timelineSectionsProvider);
+                          },
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: BackupStatusIndicator(),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  actions: [
-                    // 全选按钮（带"全选"文字，风格与单选框一致）
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: TextButton(
-                      onPressed: () {
-                          HapticFeedback.lightImpact();
-                        if (_isAllSelected(ref, timelineSectionsAsync)) {
-                          _handleDeselectAll(ref);
-                        } else {
-                          _handleSelectAll(ref);
-                        }
-                      },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                          _isAllSelected(ref, timelineSectionsAsync)
-                              ? Icons.check_circle_rounded
-                              : Icons.check_circle_outline_rounded,
-                          size: 24,
-                          color: _isAllSelected(ref, timelineSectionsAsync)
-                              ? const Color(0xFF4285F4) // 谷歌蓝
-                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                          _isAllSelected(ref, timelineSectionsAsync) ? '全选' : '全选',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                        ),
-                          ],
-                        ),
+
+                  // 时间线内容
+                  ...contentSlivers,
+
+                  // 选择模式下添加底部 padding，避免内容被底部抽屉栏遮挡
+                  if (selectionState.isActive)
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        bottom:
+                            MediaQuery.of(context).size.height * 0.12 +
+                            MediaQuery.of(context).padding.bottom,
                       ),
                     ),
-                  ],
-                  elevation: 0,
-                )
-              else
-                SliverAppBar(
-                  floating: true,
-                  pinned: true,  // 与选择模式保持一致，避免布局变化导致滚动位置变动
-                  snap: false,
-                  title: const Text('照片'),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.filter_list),
-                      onPressed: () {
-                        // TODO: 显示筛选对话框
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () {
-                        // 刷新时间线数据
-                        ref.invalidate(timelineSectionsProvider);
-                      },
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: BackupStatusIndicator(),
-                      ),
-                    ),
-                  ],
-                ),
-
-              // 时间线内容
-              ...contentSlivers,
-              
-              // 选择模式下添加底部 padding，避免内容被底部抽屉栏遮挡
-              if (selectionState.isActive)
-                SliverPadding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).size.height * 0.12 +
-                        MediaQuery.of(context).padding.bottom,
-                  ),
-                ),
-            ],
+                ],
+              ),
             ),
-          ),
 
-          // 选择底部抽屉（多选模式下显示）
-          if (selectionState.isActive)
-            SelectionBottomSheet(
-              selectedCount: selectionState.count,
-              onUpload: () => _handleUpload(context, ref),
-              isAllSelected: _isAllSelected(ref, timelineSectionsAsync),
-            ),
-        ],
+            // 选择底部抽屉（多选模式下显示）
+            if (selectionState.isActive)
+              SelectionBottomSheet(
+                selectedCount: selectionState.count,
+                onUpload: () => _handleUpload(context, ref),
+                isAllSelected: _isAllSelected(ref, timelineSectionsAsync),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -366,6 +451,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     bool selectionActive,
     Set<String> selectedIds,
   ) {
+    // 获取当前网格列数
+    final gridColumns = ref.watch(timelineGridColumnsProvider);
     return permissionAsync.when(
       data: (permissionState) {
         // 如果权限未授予，显示权限提示
@@ -414,7 +501,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
             // 获取 AssetEntityLoader
             final assetEntityLoaderAsync = ref.watch(assetEntityLoaderProvider);
-            
+
             // 构建时间线分组列表的 Sliver
             // 统一使用 SelectableTimelineSliverListBuilder，支持长按进入多选模式
             return assetEntityLoaderAsync.when(
@@ -423,7 +510,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                   sections: sections,
                   selectionActive: selectionActive,
                   selectedIds: selectedIds,
-                  crossAxisCount: 5,
+                  crossAxisCount: gridColumns, // 使用 provider 的值
                   crossAxisSpacing: 2,
                   mainAxisSpacing: 2,
                   childAspectRatio: 1.0,
@@ -444,7 +531,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                       ? (asset) {
                           // 多选模式下切换选中状态
                           HapticFeedback.lightImpact();
-                          ref.read(assetSelectionProvider.notifier).toggle(asset.id);
+                          ref
+                              .read(assetSelectionProvider.notifier)
+                              .toggle(asset.id);
                         }
                       : null,
                   onLongPress: (asset) {
@@ -456,7 +545,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                       }
                       HapticFeedback.mediumImpact();
                       ref.read(assetSelectionProvider.notifier).activate();
-                      ref.read(assetSelectionProvider.notifier).toggle(asset.id);
+                      ref
+                          .read(assetSelectionProvider.notifier)
+                          .toggle(asset.id);
                     }
                   },
                   onSectionToggle: selectionActive
@@ -478,9 +569,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                   child: Center(
                     child: Text(
                       '加载 AssetEntityLoader 失败: ${error.toString()}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.red,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.red),
                     ),
                   ),
                 ),
@@ -682,7 +773,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     AsyncValue<List<TimelineSection>> timelineSectionsAsync,
   ) {
     final selectionState = ref.read(assetSelectionProvider);
-    
+
     return timelineSectionsAsync.when(
       data: (sections) {
         final allAssetIds = <String>[];
@@ -701,11 +792,12 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   void _handleSectionToggle(WidgetRef ref, TimelineSection section) {
     final selectionState = ref.read(assetSelectionProvider);
     final sectionAssetIds = section.assets.map((a) => a.id).toSet();
-    
+
     // 检查该分组是否全部选中
-    final isAllSelected = sectionAssetIds.isNotEmpty &&
+    final isAllSelected =
+        sectionAssetIds.isNotEmpty &&
         sectionAssetIds.every((id) => selectionState.selectedIds.contains(id));
-    
+
     if (isAllSelected) {
       // 取消选择该分组的所有照片
       for (final assetId in sectionAssetIds) {
@@ -731,7 +823,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         final section = sections[index.sectionIndex];
         if (index.assetIndex >= 0 && index.assetIndex < section.assets.length) {
           final asset = section.assets[index.assetIndex];
-          
+
           setState(() {
             _isDragging = true;
             _dragAnchorIndex = index;
@@ -768,8 +860,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             final startAssetIndex = startIndex.assetIndex;
             final endAssetIndex = endIndex.assetIndex;
 
-            // 计算应该选中的资产
-            const crossAxisCount = 5; // 与 SelectableTimelineSliverListBuilder 中的 crossAxisCount 保持一致
+            // 使用当前的网格列数
+            final crossAxisCount = ref.read(timelineGridColumnsProvider);
             final startRow = startAssetIndex ~/ crossAxisCount;
             final endRow = endAssetIndex ~/ crossAxisCount;
             final startCol = startAssetIndex % crossAxisCount;
@@ -780,22 +872,24 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             final colDiff = (endCol - startCol).abs();
 
             final selectedAssets = <String>{};
-            
+
             // 判断拖动方向：如果主要是向下拖动（行数变化大于列数变化），则选中整行
             if (rowDiff > colDiff) {
               // 向下拖动：选中整行，但起始行从起始列开始，结束行到结束列为止
               final minRow = startRow < endRow ? startRow : endRow;
               final maxRow = startRow > endRow ? startRow : endRow;
               final isDownward = startRow < endRow;
-              
+
               for (int row = minRow; row <= maxRow; row++) {
                 int startColForRow;
                 int endColForRow;
-                
+
                 if (row == minRow && row == maxRow) {
                   // 只有一行：从起始列到结束列
-                  startColForRow = startCol < endCol ? startCol : endCol;
-                  endColForRow = startCol > endCol ? startCol : endCol;
+                  startColForRow = (startCol < endCol ? startCol : endCol)
+                      .toInt();
+                  endColForRow = (startCol > endCol ? startCol : endCol)
+                      .toInt();
                 } else if (row == minRow) {
                   // 起始行：从起始列到行尾
                   if (isDownward) {
@@ -819,11 +913,14 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                   startColForRow = 0;
                   endColForRow = crossAxisCount - 1;
                 }
-                
+
                 for (int col = startColForRow; col <= endColForRow; col++) {
                   final assetIndex = row * crossAxisCount + col;
-                  if (assetIndex >= 0 && assetIndex < startSection.assets.length) {
-                    selectedAssets.add(startSection.assets[assetIndex].id);
+                  if (assetIndex >= 0 &&
+                      assetIndex < startSection.assets.length) {
+                    selectedAssets.add(
+                      startSection.assets[assetIndex.toInt()].id,
+                    );
                   }
                 }
               }
@@ -837,8 +934,11 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               for (int row = minRow; row <= maxRow; row++) {
                 for (int col = minCol; col <= maxCol; col++) {
                   final assetIndex = row * crossAxisCount + col;
-                  if (assetIndex >= 0 && assetIndex < startSection.assets.length) {
-                    selectedAssets.add(startSection.assets[assetIndex].id);
+                  if (assetIndex >= 0 &&
+                      assetIndex < startSection.assets.length) {
+                    selectedAssets.add(
+                      startSection.assets[assetIndex.toInt()].id,
+                    );
                   }
                 }
               }
@@ -847,14 +947,16 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             // 清除之前的拖动选择
             final selectionState = ref.read(assetSelectionProvider);
             for (final assetId in _draggedAssetIds) {
-              if (!selectedAssets.contains(assetId) && selectionState.selectedIds.contains(assetId)) {
+              if (!selectedAssets.contains(assetId) &&
+                  selectionState.selectedIds.contains(assetId)) {
                 ref.read(assetSelectionProvider.notifier).toggle(assetId);
               }
             }
 
             // 添加新的拖动选择
             for (final assetId in selectedAssets) {
-              if (!_draggedAssetIds.contains(assetId) && !selectionState.selectedIds.contains(assetId)) {
+              if (!_draggedAssetIds.contains(assetId) &&
+                  !selectionState.selectedIds.contains(assetId)) {
                 ref.read(assetSelectionProvider.notifier).toggle(assetId);
               }
             }
@@ -893,5 +995,30 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  /// 根据缩放值计算目标列数
+  ///
+  /// 使用平滑的映射函数，让手势更丝滑
+  /// [scale]: 当前的缩放值（1.0 为基准）
+  /// [baseColumns]: 手势开始时的列数
+  int _calculateTargetColumns(double scale, int baseColumns) {
+    // 缩放阈值：每个列数变化对应约 0.2 的缩放变化
+    // 这样可以让手势更敏感，同时保持平滑
+    const scaleThreshold = 0.2;
+
+    // 计算相对于基准的缩放变化
+    final scaleChange = scale - 1.0;
+
+    // 计算应该变化的列数（使用四舍五入）
+    final columnDelta = (scaleChange / scaleThreshold).round();
+
+    // 计算目标列数
+    var targetColumns = baseColumns - columnDelta; // 放大时减少列数
+
+    // 限制在有效范围内
+    targetColumns = targetColumns.clamp(2, 8);
+
+    return targetColumns;
   }
 }
