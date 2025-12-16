@@ -2,15 +2,11 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
 import 'package:prismbox/data/database/app_database.dart';
-import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
-import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
@@ -20,6 +16,9 @@ import 'package:prismbox/services/backup/upload_task_manager.dart';
 import 'package:prismbox/services/backup/api_endpoint_validator.dart';
 import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
+import 'package:prismbox/services/backup/asset_sync_service.dart';
+import 'package:prismbox/services/backup/task_update_service.dart';
+import 'package:prismbox/services/backup/error_handler.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 上传结果
@@ -77,6 +76,9 @@ class UploadOrchestrator {
   final ApiEndpointValidator _endpointValidator;
   final AssetPathResolver _pathResolver;
   final FileMetadataExtractor _metadataExtractor;
+  final AssetSyncService _assetSyncService;
+  final TaskUpdateService? _taskUpdateService; // 可选，用于更新任务信息
+  final BackupErrorHandler _errorHandler; // 必需，用于统一错误处理
   final Logger _logger = Logger('UploadOrchestrator');
 
   // 去重检查配置
@@ -104,6 +106,9 @@ class UploadOrchestrator {
     ApiEndpointValidator? endpointValidator,
     required AssetPathResolver pathResolver,
     required FileMetadataExtractor metadataExtractor,
+    required AssetSyncService assetSyncService,
+    required BackupErrorHandler errorHandler, // 必需，用于统一错误处理
+    TaskUpdateService? taskUpdateService, // 可选，用于更新任务信息
   })  : _database = database,
         _stateMachine = stateMachine,
         _apiService = apiService ?? ApiService(),
@@ -113,11 +118,15 @@ class UploadOrchestrator {
             UploadTaskManager(
               database: database,
               stateMachine: stateMachine,
+              errorHandler: errorHandler, // 传递错误处理器
             ),
         _endpointValidator = endpointValidator ??
             ApiEndpointValidator(apiService: apiService ?? ApiService()),
         _pathResolver = pathResolver,
-        _metadataExtractor = metadataExtractor;
+        _metadataExtractor = metadataExtractor,
+        _assetSyncService = assetSyncService,
+        _errorHandler = errorHandler,
+        _taskUpdateService = taskUpdateService;
 
   /// 过滤已上传资产（支持分批检查和降级策略）
   /// 
@@ -332,35 +341,58 @@ class UploadOrchestrator {
               stackTrace,
             );
 
-            // 处理错误
-            final error = _handleUploadError(task, e);
-            errors.add(error);
+            // 使用统一的错误处理器
+            final backupError = _errorHandler.handleError(
+              e,
+              context: 'upload_orchestration',
+            );
+            
+            // 处理上传错误
+            await _errorHandler.handleUploadError(backupError, task);
 
             // 获取当前任务状态（UploadTaskManager 的回调可能已经更新了状态）
             // 注意：正常情况下，background_downloader 会通过回调更新状态
             // 但如果异常发生在入队之前，或者回调未触发，需要手动更新状态
-            final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
-            if (currentTask != null) {
-              // 如果状态已经是最终状态（failed、permanentlyFailed、cancelled），不需要再次更新
-              final isFinalStatus = currentTask.status == UploadTaskStatus.failed ||
-                  currentTask.status == UploadTaskStatus.permanentlyFailed ||
-                  currentTask.status == UploadTaskStatus.cancelled;
+            try {
+              final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
+              if (currentTask != null) {
+                // 如果状态已经是最终状态（failed、permanentlyFailed、cancelled），不需要再次更新
+                final isFinalStatus = currentTask.status == UploadTaskStatus.failed ||
+                    currentTask.status == UploadTaskStatus.permanentlyFailed ||
+                    currentTask.status == UploadTaskStatus.cancelled;
 
-              if (!isFinalStatus) {
-                // 状态还未更新，手动更新（异常情况下的兜底处理）
-                final currentRetryCount = currentTask.retryCount;
-                final newStatus = currentRetryCount >= task.maxRetries
-                    ? UploadTaskStatus.permanentlyFailed
-                    : UploadTaskStatus.failed;
+                if (!isFinalStatus) {
+                  // 状态还未更新，手动更新（异常情况下的兜底处理）
+                  final newStatus = backupError.isRetryable
+                      ? (currentTask.retryCount >= task.maxRetries
+                          ? UploadTaskStatus.permanentlyFailed
+                          : UploadTaskStatus.failed)
+                      : UploadTaskStatus.permanentlyFailed;
 
-                // 通过状态机更新状态
-                await _stateMachine.transition(
-                  currentTask,
-                  newStatus,
-                  errorMessage: error.errorMessage,
-                );
+                  // 通过状态机更新状态
+                  await _stateMachine.transition(
+                    currentTask,
+                    newStatus,
+                    errorMessage: backupError.message,
+                  );
+                }
               }
+            } catch (stateError, stateStackTrace) {
+              // 状态更新失败，记录错误但不抛出异常，避免影响其他任务
+              _logger.warning(
+                'Failed to update task status after error: '
+                'taskId=${task.id}, error=$stateError',
+                stateError,
+                stateStackTrace,
+              );
             }
+
+            // 添加错误到错误列表（用于返回）
+            errors.add(UploadError(
+              assetId: task.assetId,
+              errorMessage: backupError.message,
+              type: _mapBackupErrorTypeToErrorType(backupError.type),
+            ));
 
             failedCount++;
           } finally {
@@ -412,23 +444,12 @@ class UploadOrchestrator {
 
     for (final task in tasks) {
       try {
-        // 从本地资产获取 checksum（如果已计算）
-        final localAsset = await _database.localAssetDao.getAssetById(
-          task.assetId,
+        // 使用 AssetSyncService 获取或计算 checksum
+        final checksum = await _assetSyncService.getOrCalculateChecksum(
+          assetId: task.assetId,
+          filePath: task.localPath,
         );
-
-        if (localAsset?.checksum != null) {
-          checksums.add(localAsset!.checksum);
-        } else {
-          // 计算 checksum（如果文件存在）
-          final file = File(task.localPath);
-          if (await file.exists()) {
-            final checksum = await _calculateFileChecksum(task.localPath);
-            checksums.add(checksum);
-          } else {
-            checksums.add(null);
-          }
-        }
+        checksums.add(checksum);
       } catch (e) {
         _logger.warning(
           'Failed to calculate checksum for taskId=${task.id}: $e',
@@ -440,13 +461,6 @@ class UploadOrchestrator {
     return checksums;
   }
 
-  /// 计算文件 checksum
-  Future<String> _calculateFileChecksum(String filePath) async {
-    final file = File(filePath);
-    final bytes = await file.readAsBytes();
-    final hash = sha256.convert(bytes);
-    return hash.toString();
-  }
 
   /// 批量检查已存在资产
   Future<Set<String>> _checkExistingAssets({
@@ -498,9 +512,16 @@ class UploadOrchestrator {
           existingChecksums.addAll(remoteChecksums);
         }
       } catch (e) {
+        // 使用统一的错误处理器
+        final backupError = _errorHandler.handleError(
+          e,
+          context: 'check_assets_exist_on_server',
+        );
+        
         // 降级策略：批量检查失败时，记录错误但不阻塞流程
         _logger.warning(
-          'Failed to check existing assets on server: $e',
+          'Failed to check existing assets on server: '
+          'errorType=${backupError.type}, errorMessage=${backupError.message}',
         );
         // 可以选择跳过去重或逐个检查（根据配置决定）
       }
@@ -574,14 +595,25 @@ class UploadOrchestrator {
         }
         return;
       } catch (e) {
+        // 使用统一的错误处理器
+        final backupError = _errorHandler.handleError(
+          e,
+          context: 'upload_with_retry',
+        );
+        
         // 判断是否可重试
-        final error = _handleUploadError(task, e);
-        final isRetryable = _isRetryableError(error);
+        final isRetryable = backupError.isRetryable;
         
         if (!isRetryable || retryCount >= maxRetries) {
           // 不可重试或达到最大重试次数，增加重试计数并抛出异常
           if (retryCount < maxRetries) {
-            await _database.uploadTaskDao.incrementRetryCount(task.id);
+            // 优先使用 TaskUpdateService，如果没有则直接操作数据库（降级处理）
+            if (_taskUpdateService != null) {
+              await _taskUpdateService.incrementRetryCount(task.id);
+            } else {
+              // 降级处理：直接操作数据库（避免循环依赖）
+              await _database.uploadTaskDao.incrementRetryCount(task.id);
+            }
           }
           rethrow;
         }
@@ -594,11 +626,18 @@ class UploadOrchestrator {
         
         _logger.info(
           'Upload failed, retrying: taskId=${task.id}, '
-          'attempt=$retryCount/$maxRetries, delay=${delay.inSeconds}s',
+          'attempt=$retryCount/$maxRetries, delay=${delay.inSeconds}s, '
+          'errorType=${backupError.type}, isRetryable=$isRetryable',
         );
         
         // 增加重试计数
-        await _database.uploadTaskDao.incrementRetryCount(task.id);
+        // 优先使用 TaskUpdateService，如果没有则直接操作数据库（降级处理）
+        if (_taskUpdateService != null) {
+          await _taskUpdateService.incrementRetryCount(task.id);
+        } else {
+          // 降级处理：直接操作数据库（避免循环依赖）
+          await _database.uploadTaskDao.incrementRetryCount(task.id);
+        }
         
         // 等待后重试
         await Future.delayed(delay);
@@ -609,22 +648,6 @@ class UploadOrchestrator {
     throw Exception('Max retries exceeded for taskId=${task.id}');
   }
 
-  /// 判断错误是否可重试
-  bool _isRetryableError(UploadError error) {
-    switch (error.type) {
-      case ErrorType.network:
-      case ErrorType.timeout:
-        return true; // 网络和超时错误可重试
-      case ErrorType.server:
-        // 5xx 可重试，4xx 不可重试（需要从错误消息中判断）
-        // 这里简化处理，假设服务器错误可重试
-        return true;
-      case ErrorType.authentication:
-      case ErrorType.local:
-      case ErrorType.cancelled:
-        return false; // 认证、本地、取消错误不可重试
-    }
-  }
 
   /// 执行上传（使用 background_downloader）
   /// 
@@ -655,11 +678,20 @@ class UploadOrchestrator {
       }
 
       // 3. 更新任务中的文件路径（如果路径已改变）
+      // 优先使用 TaskUpdateService，如果没有则直接操作数据库（降级处理）
       if (actualPath != task.localPath) {
-        await _database.uploadTaskDao.updateTaskLocalPath(
-          task.id,
-          actualPath,
-        );
+        if (_taskUpdateService != null) {
+          await _taskUpdateService.updateTaskLocalPath(
+            taskId: task.id,
+            localPath: actualPath,
+          );
+        } else {
+          // 降级处理：直接操作数据库（避免循环依赖）
+          await _database.uploadTaskDao.updateTaskLocalPath(
+            task.id,
+            actualPath,
+          );
+        }
       }
 
       // 4. 使用 FileMetadataExtractor 获取文件大小（如果未设置）
@@ -668,22 +700,11 @@ class UploadOrchestrator {
         fileSize = await _metadataExtractor.extractFileSize(actualPath);
       }
 
-      // 4. 获取 checksum（从本地资产或计算）
-      String? checksum;
-      if (localAsset.checksum != null && localAsset.checksum!.isNotEmpty) {
-        checksum = localAsset.checksum;
-      } else {
-        // 计算 checksum（使用实际路径）
-        checksum = await _calculateFileChecksum(actualPath);
-        // 更新本地资产的 checksum
-        if (localAsset.checksum != checksum) {
-          final updatedAsset = localAsset.copyWith(
-            checksum: Value(checksum),
-            updatedAt: DateTime.now(),
-          );
-          await _database.localAssetDao.updateAsset(updatedAsset);
-        }
-      }
+      // 4. 获取或计算 checksum（使用 AssetSyncService）
+      final checksum = await _assetSyncService.getOrCalculateChecksum(
+        assetId: task.assetId,
+        filePath: actualPath,
+      );
 
       // 5. 验证上传端点（可选，用于提前发现问题）
       final endpointValidation = await _endpointValidator.validateUploadEndpoint();
@@ -761,8 +782,15 @@ class UploadOrchestrator {
       // 我们需要等待任务真正完成，而不是只等待入队
       await _waitForTaskCompletion(task.id);
     } catch (e, stackTrace) {
+      // 使用统一的错误处理器
+      final backupError = _errorHandler.handleError(
+        e,
+        context: 'execute_upload',
+      );
+      
       _logger.warning(
-        'Upload failed: taskId=${task.id}, error=$e',
+        'Upload failed: taskId=${task.id}, '
+        'errorType=${backupError.type}, errorMessage=${backupError.message}',
         e,
         stackTrace,
       );
@@ -825,10 +853,16 @@ class UploadOrchestrator {
             'Task completed: taskId=$taskId, '
             'elapsed=${elapsed.inSeconds}s, polls=$pollCount',
           );
-          // 任务成功完成，更新数据库关联
-          _updateDatabaseAfterUpload(task).catchError((error) {
+          // 任务成功完成，同步资产（使用 AssetSyncService）
+          _assetSyncService.syncAssetAfterUpload(task).then((_) {
+            // 发出上传完成通知，通知 UI 刷新上传状态图标
+            _logger.info(
+              'Sending upload complete notification: assetId=${task.assetId}',
+            );
+            _uploadCompleteController.add(task.assetId);
+          }).catchError((error) {
             _logger.warning(
-              'Failed to update database after upload: taskId=$taskId, error=$error',
+              'Failed to sync asset after upload: taskId=$taskId, error=$error',
             );
             // 不阻塞上传流程，记录错误即可
           });
@@ -917,325 +951,28 @@ class UploadOrchestrator {
     }
   }
 
-  /// 处理上传错误
-  UploadError _handleUploadError(
-    UploadTaskEntityData task,
-    dynamic error,
-  ) {
-    // 根据错误类型分类
-    ErrorType errorType;
-    String errorMessage = error.toString();
-
-    if (error is TimeoutException) {
-      errorType = ErrorType.timeout;
-      errorMessage = '上传超时';
-    } else if (error is SocketException || error is DioException) {
-      if (error is DioException) {
-        final dioError = error;
-        if (dioError.type == DioExceptionType.connectionTimeout ||
-            dioError.type == DioExceptionType.receiveTimeout ||
-            dioError.type == DioExceptionType.sendTimeout) {
-          errorType = ErrorType.timeout;
-        } else if (dioError.type == DioExceptionType.connectionError ||
-            dioError.type == DioExceptionType.unknown) {
-          errorType = ErrorType.network;
-        } else if (dioError.response != null) {
-          final statusCode = dioError.response!.statusCode;
-          if (statusCode == 401) {
-            errorType = ErrorType.authentication;
-            errorMessage = '认证失败，请重新登录';
-          } else if (statusCode != null && statusCode >= 500) {
-            errorType = ErrorType.server;
-            errorMessage = '服务器错误 ($statusCode)';
-          } else if (statusCode != null && statusCode >= 400) {
-            errorType = ErrorType.server;
-            errorMessage = '客户端错误 ($statusCode)';
-          } else {
-            errorType = ErrorType.network;
-          }
-        } else {
-          errorType = ErrorType.network;
-        }
-      } else {
-        errorType = ErrorType.network;
-      }
-    } else if (error is FileSystemException) {
-      errorType = ErrorType.local;
-      errorMessage = '文件访问失败: ${error.message}';
-    } else {
-      // 默认作为本地错误
-      errorType = ErrorType.local;
-    }
-
-    return UploadError(
-      assetId: task.assetId,
-      errorMessage: errorMessage,
-      type: errorType,
-    );
-  }
-
-  /// 上传成功后更新数据库关联
-  /// 
-  /// **实现说明**：
-  /// - 通过 API 查询资产信息（使用 checksum）
-  /// - 更新 remote_asset_entity 表
-  /// - 确保 local_asset_entity 的 checksum 已设置
-  Future<void> _updateDatabaseAfterUpload(UploadTaskEntityData task) async {
-    try {
-      // 1. 获取本地资产信息
-      final localAsset = await _database.localAssetDao.getAssetById(task.assetId);
-      if (localAsset == null) {
-        _logger.warning(
-          'Local asset not found: assetId=${task.assetId}',
-        );
-        return;
-      }
-
-      // 2. 获取 checksum（如果还没有，计算它）
-      String? checksum = localAsset.checksum;
-      if (checksum == null || checksum.isEmpty) {
-        // 计算 checksum
-        final file = File(task.localPath);
-        if (await file.exists()) {
-          checksum = await _calculateFileChecksum(task.localPath);
-          // 更新本地资产的 checksum
-          final updatedAsset = localAsset.copyWith(
-            checksum: Value(checksum),
-            updatedAt: DateTime.now(),
-          );
-          await _database.localAssetDao.updateAsset(updatedAsset);
-        } else {
-          _logger.warning(
-            'File not found for checksum calculation: ${task.localPath}',
-          );
-          return;
-        }
-      }
-
-      // 3. 获取用户 ID（从任务中获取）
-      final userId = task.userId;
-
-      // 4. 通过 API 查询资产信息（使用 checksum）
-      // 优先通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
-      // 如果失败，再通过 /api/v1/media/changes 获取最近的变化
-      final remoteAssetInfo = await _queryRemoteAssetByChecksum(checksum, userId);
-      if (remoteAssetInfo == null) {
-        _logger.warning(
-          'Remote asset not found for checksum: $checksum',
-        );
-        // 如果查询不到，可能是服务器延迟，不阻塞流程
-        return;
-      }
-
-      // 5. 更新 remote_asset_entity 表
-      final remoteDao = RemoteAssetDao(_database);
-      
-      // 处理 updated_at 可能为空字符串的情况
-      final updatedAtStr = remoteAssetInfo['updated_at'] as String?;
-      final updatedAt = updatedAtStr != null && updatedAtStr.isNotEmpty
-          ? DateTime.parse(updatedAtStr)
-          : DateTime.parse(remoteAssetInfo['created_at'] as String);
-      
-      final remoteAssetData = RemoteAssetEntityData(
-        id: remoteAssetInfo['uuid'] as String,
-        checksum: remoteAssetInfo['hash'] as String,
-        ownerId: userId,
-        name: remoteAssetInfo['original_filename'] as String? ?? 
-              remoteAssetInfo['filename'] as String? ?? '',
-        type: _convertItemTypeToAssetType(remoteAssetInfo['item_type'] as String),
-        createdAt: DateTime.parse(remoteAssetInfo['created_at'] as String),
-        updatedAt: updatedAt,
-        width: remoteAssetInfo['width'] as int?,
-        height: remoteAssetInfo['height'] as int?,
-        durationInSeconds: null, // API 响应中没有 duration 字段
-        isFavorite: false, // 默认值
-        localDateTime: remoteAssetInfo['media_taken_at'] != null
-            ? DateTime.parse(remoteAssetInfo['media_taken_at'] as String)
-            : null,
-        thumbHash: null,
-        deletedAt: null,
-        livePhotoVideoId: null,
-        visibility: AssetVisibility.private,
-        stackId: null,
-        libraryId: null,
-      );
-
-      await remoteDao.insertOrUpdateAsset(remoteAssetData);
-
-      _logger.info(
-        'Database updated after upload: assetId=${task.assetId}, '
-        'remoteAssetId=${remoteAssetInfo['uuid']}',
-      );
-
-      // 发出上传完成通知，通知 UI 刷新上传状态图标
-      _logger.info(
-        'Sending upload complete notification: assetId=${task.assetId}',
-      );
-      _uploadCompleteController.add(task.assetId);
-    } catch (e, stackTrace) {
-      _logger.warning(
-        'Failed to update database after upload: taskId=${task.id}, error=$e',
-        e,
-        stackTrace,
-      );
-      // 不抛出异常，避免阻塞上传流程
-    }
-  }
-
-  /// 通过 checksum 查询远程资产信息
-  /// 
-  /// **实现说明**：
-  /// - 优先通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
-  /// - 如果失败，再通过 /api/v1/media/changes 获取最近的变化
-  /// - 返回完整的资产信息
-  Future<Map<String, dynamic>?> _queryRemoteAssetByChecksum(
-    String checksum,
-    String userId,
-  ) async {
-    try {
-      final endpoint = _apiService.endpoint ?? '';
-      final headers = ApiService.getRequestHeaders();
-
-      // 方法1：通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
-      final mediaUrl = '$endpoint/api/v1/media';
-      try {
-        final mediaResponse = await _apiService.dio.get(
-          mediaUrl,
-          queryParameters: {
-            'page': 1,
-            'page_size': 50, // 查询最近50个资产
-          },
-          options: Options(headers: headers),
-        );
-
-        if (mediaResponse.statusCode != null &&
-            mediaResponse.statusCode! >= 200 &&
-            mediaResponse.statusCode! < 300) {
-          final mediaData = mediaResponse.data as Map<String, dynamic>?;
-          if (mediaData != null) {
-            // 修复：直接访问 medias，不需要 data['data']
-            final medias = mediaData['medias'] as List<dynamic>?;
-            if (medias != null) {
-              _logger.fine(
-                'Found ${medias.length} medias in response, searching for checksum: $checksum',
-              );
-              // 查找匹配 checksum 的资产
-              for (final media in medias) {
-                final mediaInfo = media as Map<String, dynamic>;
-                final mediaHash = mediaInfo['hash'] as String?;
-                if (mediaHash == checksum) {
-                  _logger.info(
-                    'Found remote asset by checksum: uuid=${mediaInfo['uuid']}, hash=$checksum',
-                  );
-                  return mediaInfo;
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        _logger.warning(
-          'Failed to query media list: $e',
-        );
-      }
-
-      // 方法2：如果方法1失败，通过 /api/v1/media/changes 获取最近的变化
-      final changesUrl = '$endpoint/api/v1/media/changes';
-      try {
-        final changesResponse = await _apiService.dio.get(
-          changesUrl,
-          options: Options(headers: headers),
-        );
-
-        if (changesResponse.statusCode != null &&
-            changesResponse.statusCode! >= 200 &&
-            changesResponse.statusCode! < 300) {
-          final changesData = changesResponse.data as Map<String, dynamic>?;
-          if (changesData != null) {
-            // 修复：直接访问 changes，不需要 data['data']
-            final changes = changesData['changes'] as List<dynamic>?;
-            if (changes != null && changes.isNotEmpty) {
-              _logger.fine(
-                'Found ${changes.length} changes in response, searching for checksum: $checksum',
-              );
-              // 查找匹配 checksum 的资产
-              for (final change in changes) {
-                final changeData = change as Map<String, dynamic>;
-                final changeHash = changeData['hash'] as String?;
-                if (changeHash == checksum &&
-                    changeData['action'] == 'created') {
-                  final uuid = changeData['uuid'] as String?;
-                  if (uuid != null) {
-                    _logger.info(
-                      'Found remote asset UUID from changes: uuid=$uuid, hash=$checksum',
-                    );
-                    // 通过 UUID 获取完整的资产信息
-                    return await _getRemoteAssetInfo(uuid);
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        _logger.warning(
-          'Failed to query media changes: $e',
-        );
-      }
-
-      return null;
-    } catch (e) {
-      _logger.warning(
-        'Failed to query remote asset by checksum: checksum=$checksum, error=$e',
-      );
-      return null;
-    }
-  }
-
-  /// 获取远程资产详细信息
-  Future<Map<String, dynamic>?> _getRemoteAssetInfo(String remoteAssetId) async {
-    try {
-      final endpoint = _apiService.endpoint ?? '';
-      final url = '$endpoint/api/v1/media/$remoteAssetId';
-      final headers = ApiService.getRequestHeaders();
-
-      final response = await _apiService.dio.get(
-        url,
-        options: Options(headers: headers),
-      );
-
-      if (response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300) {
-        final data = response.data as Map<String, dynamic>?;
-        if (data != null) {
-          // 修复：尝试访问 data['data']，如果不存在则直接使用 data
-          return data['data'] as Map<String, dynamic>? ?? data;
-        }
-      }
-
-      return null;
-    } catch (e) {
-      _logger.warning(
-        'Failed to get remote asset info: remoteAssetId=$remoteAssetId, error=$e',
-      );
-      return null;
-    }
-  }
-
-  /// 转换 item_type 字符串为 AssetType 枚举
-  AssetType _convertItemTypeToAssetType(String itemType) {
-    switch (itemType.toLowerCase()) {
-      case 'image':
-        return AssetType.image;
-      case 'video':
-        return AssetType.video;
-      case 'audio':
-        return AssetType.audio;
+  /// 映射 BackupErrorType 到 ErrorType（用于返回 UploadError）
+  ErrorType _mapBackupErrorTypeToErrorType(BackupErrorType type) {
+    switch (type) {
+      case BackupErrorType.network:
+        return ErrorType.network;
+      case BackupErrorType.authentication:
+        return ErrorType.authentication;
+      case BackupErrorType.server:
+        return ErrorType.server;
+      case BackupErrorType.local:
+      case BackupErrorType.fileNotFound:
+        return ErrorType.local;
+      case BackupErrorType.timeout:
+        return ErrorType.timeout;
+      case BackupErrorType.cancelled:
+        return ErrorType.cancelled;
       default:
-        return AssetType.other;
+        return ErrorType.local;
     }
   }
+
+
 
   /// 更新最后备份时间（根据成功比例决定是否更新）
   /// 

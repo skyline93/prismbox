@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
+import 'package:prismbox/services/backup/error_handler.dart';
 
 /// 上传任务组常量
 class UploadTaskGroup {
@@ -23,6 +24,7 @@ class UploadTaskGroup {
 class UploadTaskManager {
   final AppDatabase _database;
   final UploadTaskStateMachine _stateMachine;
+  final BackupErrorHandler _errorHandler; // 必需，用于统一错误处理
   final Logger _logger = Logger('UploadTaskManager');
 
   // 回调函数
@@ -32,8 +34,10 @@ class UploadTaskManager {
   UploadTaskManager({
     required AppDatabase database,
     required UploadTaskStateMachine stateMachine,
+    required BackupErrorHandler errorHandler,
   })  : _database = database,
-        _stateMachine = stateMachine;
+        _stateMachine = stateMachine,
+        _errorHandler = errorHandler;
 
   /// 初始化 FileDownloader 配置
   ///
@@ -240,8 +244,14 @@ class UploadTaskManager {
 
     // 更新数据库中的任务进度
     _updateTaskProgress(taskId, progress).catchError((error) {
+      // 使用统一的错误处理器记录错误
+      final backupError = _errorHandler.handleError(
+        error,
+        context: 'upload_task_manager_progress_update',
+      );
       _logger.warning(
-        'Failed to update task progress: taskId=$taskId, error=$error',
+        'Failed to update task progress: taskId=$taskId, '
+        'errorType=${backupError.type}, errorMessage=${backupError.message}',
       );
     });
   }
@@ -326,9 +336,14 @@ class UploadTaskManager {
           '${errorMessage != null ? ", error: $errorMessage" : ""}',
         );
       } catch (e, stackTrace) {
+        // 使用统一的错误处理器记录错误
+        final error = _errorHandler.handleError(
+          e,
+          context: 'upload_task_manager_status_update',
+        );
         _logger.warning(
           'Failed to update task status via state machine: taskId=$taskId, '
-          'error=$e',
+          'errorType=${error.type}, errorMessage=${error.message}',
           e,
           stackTrace,
         );

@@ -6,7 +6,7 @@ part of 'asset_upload_status_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$assetUploadStatusHash() => r'102cc9ff2c80e0b8b3832a49ceb0c73ec33d134a';
+String _$assetUploadStatusHash() => r'dc67daf8b73bdb50c5c39b15051e2a95ab1bc8e4';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -32,11 +32,21 @@ class _SystemHash {
 /// 资产上传状态 Provider
 ///
 /// 根据资产查询上传状态，结合数据库和任务状态
-/// 使用 family 参数化，每个资产有独立的状态实例
+/// 使用唯一标识符（assetId）作为 family 参数，确保每个资产有独立的 Provider 实例
+/// 使用 StreamProvider 实现实时状态更新，避免状态闪烁
+///
+/// **优化措施**：
+/// - 使用唯一标识符作为 family 参数，避免对象相等性比较问题
+/// - 先查询初始值，避免 Stream 先返回 null 导致的闪烁
+/// - 状态去重，只在状态真正改变时才 yield
+///
+/// **参数**：
+/// - [assetId] - 资产的唯一标识符（localId 或 id）
+/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态）
 ///
 /// **状态判断逻辑**：
-/// 1. 如果 asset.hasRemote == true → 已上传
-/// 2. 如果是 LocalAsset，查询上传任务状态：
+/// 1. 如果 hasRemote == true → 已上传
+/// 2. 如果是 LocalAsset，监听上传任务状态变化：
 ///    - uploading/pending → 上传中
 ///    - failed/permanentlyFailed → 上传失败
 ///    - completed → 已上传（即使 remoteAssetId 为空，可能是数据不一致）
@@ -49,11 +59,21 @@ const assetUploadStatusProvider = AssetUploadStatusFamily();
 /// 资产上传状态 Provider
 ///
 /// 根据资产查询上传状态，结合数据库和任务状态
-/// 使用 family 参数化，每个资产有独立的状态实例
+/// 使用唯一标识符（assetId）作为 family 参数，确保每个资产有独立的 Provider 实例
+/// 使用 StreamProvider 实现实时状态更新，避免状态闪烁
+///
+/// **优化措施**：
+/// - 使用唯一标识符作为 family 参数，避免对象相等性比较问题
+/// - 先查询初始值，避免 Stream 先返回 null 导致的闪烁
+/// - 状态去重，只在状态真正改变时才 yield
+///
+/// **参数**：
+/// - [assetId] - 资产的唯一标识符（localId 或 id）
+/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态）
 ///
 /// **状态判断逻辑**：
-/// 1. 如果 asset.hasRemote == true → 已上传
-/// 2. 如果是 LocalAsset，查询上传任务状态：
+/// 1. 如果 hasRemote == true → 已上传
+/// 2. 如果是 LocalAsset，监听上传任务状态变化：
 ///    - uploading/pending → 上传中
 ///    - failed/permanentlyFailed → 上传失败
 ///    - completed → 已上传（即使 remoteAssetId 为空，可能是数据不一致）
@@ -65,11 +85,21 @@ class AssetUploadStatusFamily
   /// 资产上传状态 Provider
   ///
   /// 根据资产查询上传状态，结合数据库和任务状态
-  /// 使用 family 参数化，每个资产有独立的状态实例
+  /// 使用唯一标识符（assetId）作为 family 参数，确保每个资产有独立的 Provider 实例
+  /// 使用 StreamProvider 实现实时状态更新，避免状态闪烁
+  ///
+  /// **优化措施**：
+  /// - 使用唯一标识符作为 family 参数，避免对象相等性比较问题
+  /// - 先查询初始值，避免 Stream 先返回 null 导致的闪烁
+  /// - 状态去重，只在状态真正改变时才 yield
+  ///
+  /// **参数**：
+  /// - [assetId] - 资产的唯一标识符（localId 或 id）
+  /// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态）
   ///
   /// **状态判断逻辑**：
-  /// 1. 如果 asset.hasRemote == true → 已上传
-  /// 2. 如果是 LocalAsset，查询上传任务状态：
+  /// 1. 如果 hasRemote == true → 已上传
+  /// 2. 如果是 LocalAsset，监听上传任务状态变化：
   ///    - uploading/pending → 上传中
   ///    - failed/permanentlyFailed → 上传失败
   ///    - completed → 已上传（即使 remoteAssetId 为空，可能是数据不一致）
@@ -81,11 +111,21 @@ class AssetUploadStatusFamily
   /// 资产上传状态 Provider
   ///
   /// 根据资产查询上传状态，结合数据库和任务状态
-  /// 使用 family 参数化，每个资产有独立的状态实例
+  /// 使用唯一标识符（assetId）作为 family 参数，确保每个资产有独立的 Provider 实例
+  /// 使用 StreamProvider 实现实时状态更新，避免状态闪烁
+  ///
+  /// **优化措施**：
+  /// - 使用唯一标识符作为 family 参数，避免对象相等性比较问题
+  /// - 先查询初始值，避免 Stream 先返回 null 导致的闪烁
+  /// - 状态去重，只在状态真正改变时才 yield
+  ///
+  /// **参数**：
+  /// - [assetId] - 资产的唯一标识符（localId 或 id）
+  /// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态）
   ///
   /// **状态判断逻辑**：
-  /// 1. 如果 asset.hasRemote == true → 已上传
-  /// 2. 如果是 LocalAsset，查询上传任务状态：
+  /// 1. 如果 hasRemote == true → 已上传
+  /// 2. 如果是 LocalAsset，监听上传任务状态变化：
   ///    - uploading/pending → 上传中
   ///    - failed/permanentlyFailed → 上传失败
   ///    - completed → 已上传（即使 remoteAssetId 为空，可能是数据不一致）
@@ -93,10 +133,12 @@ class AssetUploadStatusFamily
   ///
   /// Copied from [assetUploadStatus].
   AssetUploadStatusProvider call(
-    BaseAsset asset,
+    String assetId,
+    bool hasRemote,
   ) {
     return AssetUploadStatusProvider(
-      asset,
+      assetId,
+      hasRemote,
     );
   }
 
@@ -105,7 +147,8 @@ class AssetUploadStatusFamily
     covariant AssetUploadStatusProvider provider,
   ) {
     return call(
-      provider.asset,
+      provider.assetId,
+      provider.hasRemote,
     );
   }
 
@@ -127,11 +170,21 @@ class AssetUploadStatusFamily
 /// 资产上传状态 Provider
 ///
 /// 根据资产查询上传状态，结合数据库和任务状态
-/// 使用 family 参数化，每个资产有独立的状态实例
+/// 使用唯一标识符（assetId）作为 family 参数，确保每个资产有独立的 Provider 实例
+/// 使用 StreamProvider 实现实时状态更新，避免状态闪烁
+///
+/// **优化措施**：
+/// - 使用唯一标识符作为 family 参数，避免对象相等性比较问题
+/// - 先查询初始值，避免 Stream 先返回 null 导致的闪烁
+/// - 状态去重，只在状态真正改变时才 yield
+///
+/// **参数**：
+/// - [assetId] - 资产的唯一标识符（localId 或 id）
+/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态）
 ///
 /// **状态判断逻辑**：
-/// 1. 如果 asset.hasRemote == true → 已上传
-/// 2. 如果是 LocalAsset，查询上传任务状态：
+/// 1. 如果 hasRemote == true → 已上传
+/// 2. 如果是 LocalAsset，监听上传任务状态变化：
 ///    - uploading/pending → 上传中
 ///    - failed/permanentlyFailed → 上传失败
 ///    - completed → 已上传（即使 remoteAssetId 为空，可能是数据不一致）
@@ -139,15 +192,25 @@ class AssetUploadStatusFamily
 ///
 /// Copied from [assetUploadStatus].
 class AssetUploadStatusProvider
-    extends AutoDisposeFutureProvider<AssetUploadStatusInfo> {
+    extends AutoDisposeStreamProvider<AssetUploadStatusInfo> {
   /// 资产上传状态 Provider
   ///
   /// 根据资产查询上传状态，结合数据库和任务状态
-  /// 使用 family 参数化，每个资产有独立的状态实例
+  /// 使用唯一标识符（assetId）作为 family 参数，确保每个资产有独立的 Provider 实例
+  /// 使用 StreamProvider 实现实时状态更新，避免状态闪烁
+  ///
+  /// **优化措施**：
+  /// - 使用唯一标识符作为 family 参数，避免对象相等性比较问题
+  /// - 先查询初始值，避免 Stream 先返回 null 导致的闪烁
+  /// - 状态去重，只在状态真正改变时才 yield
+  ///
+  /// **参数**：
+  /// - [assetId] - 资产的唯一标识符（localId 或 id）
+  /// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态）
   ///
   /// **状态判断逻辑**：
-  /// 1. 如果 asset.hasRemote == true → 已上传
-  /// 2. 如果是 LocalAsset，查询上传任务状态：
+  /// 1. 如果 hasRemote == true → 已上传
+  /// 2. 如果是 LocalAsset，监听上传任务状态变化：
   ///    - uploading/pending → 上传中
   ///    - failed/permanentlyFailed → 上传失败
   ///    - completed → 已上传（即使 remoteAssetId 为空，可能是数据不一致）
@@ -155,11 +218,13 @@ class AssetUploadStatusProvider
   ///
   /// Copied from [assetUploadStatus].
   AssetUploadStatusProvider(
-    BaseAsset asset,
+    String assetId,
+    bool hasRemote,
   ) : this._internal(
           (ref) => assetUploadStatus(
             ref as AssetUploadStatusRef,
-            asset,
+            assetId,
+            hasRemote,
           ),
           from: assetUploadStatusProvider,
           name: r'assetUploadStatusProvider',
@@ -170,7 +235,8 @@ class AssetUploadStatusProvider
           dependencies: AssetUploadStatusFamily._dependencies,
           allTransitiveDependencies:
               AssetUploadStatusFamily._allTransitiveDependencies,
-          asset: asset,
+          assetId: assetId,
+          hasRemote: hasRemote,
         );
 
   AssetUploadStatusProvider._internal(
@@ -180,14 +246,16 @@ class AssetUploadStatusProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.asset,
+    required this.assetId,
+    required this.hasRemote,
   }) : super.internal();
 
-  final BaseAsset asset;
+  final String assetId;
+  final bool hasRemote;
 
   @override
   Override overrideWith(
-    FutureOr<AssetUploadStatusInfo> Function(AssetUploadStatusRef provider)
+    Stream<AssetUploadStatusInfo> Function(AssetUploadStatusRef provider)
         create,
   ) {
     return ProviderOverride(
@@ -199,43 +267,52 @@ class AssetUploadStatusProvider
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        asset: asset,
+        assetId: assetId,
+        hasRemote: hasRemote,
       ),
     );
   }
 
   @override
-  AutoDisposeFutureProviderElement<AssetUploadStatusInfo> createElement() {
+  AutoDisposeStreamProviderElement<AssetUploadStatusInfo> createElement() {
     return _AssetUploadStatusProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is AssetUploadStatusProvider && other.asset == asset;
+    return other is AssetUploadStatusProvider &&
+        other.assetId == assetId &&
+        other.hasRemote == hasRemote;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, asset.hashCode);
+    hash = _SystemHash.combine(hash, assetId.hashCode);
+    hash = _SystemHash.combine(hash, hasRemote.hashCode);
 
     return _SystemHash.finish(hash);
   }
 }
 
 mixin AssetUploadStatusRef
-    on AutoDisposeFutureProviderRef<AssetUploadStatusInfo> {
-  /// The parameter `asset` of this provider.
-  BaseAsset get asset;
+    on AutoDisposeStreamProviderRef<AssetUploadStatusInfo> {
+  /// The parameter `assetId` of this provider.
+  String get assetId;
+
+  /// The parameter `hasRemote` of this provider.
+  bool get hasRemote;
 }
 
 class _AssetUploadStatusProviderElement
-    extends AutoDisposeFutureProviderElement<AssetUploadStatusInfo>
+    extends AutoDisposeStreamProviderElement<AssetUploadStatusInfo>
     with AssetUploadStatusRef {
   _AssetUploadStatusProviderElement(super.provider);
 
   @override
-  BaseAsset get asset => (origin as AssetUploadStatusProvider).asset;
+  String get assetId => (origin as AssetUploadStatusProvider).assetId;
+  @override
+  bool get hasRemote => (origin as AssetUploadStatusProvider).hasRemote;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

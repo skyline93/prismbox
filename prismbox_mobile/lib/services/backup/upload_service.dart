@@ -8,6 +8,7 @@ import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/task_conflict_resolver.dart';
 import 'package:prismbox/services/backup/upload_orchestrator.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
+import 'package:prismbox/services/backup/task_update_service.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 上传队列状态
@@ -71,10 +72,11 @@ class UploadTaskDetail {
 /// **职责边界明确**：
 /// - ✅ **负责**：上传队列管理（任务 CRUD、状态管理、队列调度）
 /// - ✅ **负责**：队列状态查询和统计
+/// - ✅ **负责**：任务信息更新（路径、重试计数等）
 /// - ❌ **不负责**：候选资源筛选（由 BackupCandidateSelector 负责）
 /// - ❌ **不负责**：上传流程编排（由 UploadOrchestrator 负责）
 /// - ❌ **不负责**：备份业务编排（由 BackupService 负责）
-class UploadService {
+class UploadService implements TaskUpdateService {
   final AppDatabase _database;
   final UploadOrchestrator _orchestrator;
   final TaskConflictResolver _conflictResolver;
@@ -143,6 +145,63 @@ class UploadService {
 
     for (final task in tasks) {
       await addTask(task);
+    }
+  }
+
+  /// 乐观更新：将任务状态从 pending 更新为 queued
+  ///
+  /// **参数**：
+  /// - [tasks] - 任务列表（可能包含未插入的任务）
+  ///
+  /// **职责**：
+  /// - 从数据库获取实际插入的任务
+  /// - 使用状态机将状态更新为 queued
+  /// - 提供即时反馈，解决状态更新延迟问题
+  ///
+  /// **注意**：这是队列管理的职责，应该由 UploadService 负责
+  Future<void> optimisticallyUpdateTasksToQueued(
+    List<UploadTaskEntityData> tasks,
+  ) async {
+    if (tasks.isEmpty) {
+      return;
+    }
+
+    final dao = _database.uploadTaskDao;
+    final tasksToUpdate = <UploadTaskEntityData>[];
+
+    // 从数据库获取实际插入的任务（过滤掉被冲突检测跳过的任务）
+    for (final task in tasks) {
+      final dbTask = await dao.getTaskById(task.id);
+      if (dbTask != null && dbTask.status == UploadTaskStatus.pending) {
+        tasksToUpdate.add(dbTask);
+      }
+    }
+
+    if (tasksToUpdate.isEmpty) {
+      _logger.fine('No tasks to update to queued status');
+      return;
+    }
+
+    _logger.info(
+      'Optimistically updating ${tasksToUpdate.length} tasks to queued status',
+    );
+
+    // 批量更新状态为 queued
+    try {
+      await _stateMachine.transitionBatch(
+        tasksToUpdate,
+        UploadTaskStatus.queued,
+      );
+      _logger.info(
+        'Successfully updated ${tasksToUpdate.length} tasks to queued status',
+      );
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Failed to optimistically update tasks to queued: $e',
+        e,
+        stackTrace,
+      );
+      // 不抛出异常，避免影响主流程
     }
   }
 
@@ -478,6 +537,48 @@ class UploadService {
     } else {
       return '${(speedBytesPerSecond / (1024 * 1024)).toStringAsFixed(1)} MB/s';
     }
+  }
+
+  /// 更新任务本地路径（实现 TaskUpdateService 接口）
+  ///
+  /// **参数**：
+  /// - [taskId] - 任务 ID
+  /// - [localPath] - 新的本地路径
+  ///
+  /// **职责**：
+  /// - 更新任务中的文件路径（当文件路径改变时）
+  ///
+  /// **注意**：这是队列管理的职责，应该由 UploadService 负责
+  @override
+  Future<void> updateTaskLocalPath({
+    required String taskId,
+    required String localPath,
+  }) async {
+    _logger.info('Updating task local path: taskId=$taskId, localPath=$localPath');
+
+    final dao = _database.uploadTaskDao;
+    await dao.updateTaskLocalPath(taskId, localPath);
+
+    _logger.info('Task local path updated: taskId=$taskId');
+  }
+
+  /// 增加任务重试计数（实现 TaskUpdateService 接口）
+  ///
+  /// **参数**：
+  /// - [taskId] - 任务 ID
+  ///
+  /// **职责**：
+  /// - 增加任务的重试计数（当上传失败需要重试时）
+  ///
+  /// **注意**：这是队列管理的职责，应该由 UploadService 负责
+  @override
+  Future<void> incrementRetryCount(String taskId) async {
+    _logger.fine('Incrementing retry count: taskId=$taskId');
+
+    final dao = _database.uploadTaskDao;
+    await dao.incrementRetryCount(taskId);
+
+    _logger.fine('Retry count incremented: taskId=$taskId');
   }
 }
 

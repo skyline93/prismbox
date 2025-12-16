@@ -66,8 +66,26 @@ final backupCandidateSelectorProvider =
 
 typedef BackupCandidateSelectorRef
     = AutoDisposeFutureProviderRef<BackupCandidateSelector>;
+String _$assetSyncServiceHash() => r'45e85cf6f81e84af6f259b2ac41fc4576c91862c';
+
+/// AssetSyncService Provider
+///
+/// Copied from [assetSyncService].
+@ProviderFor(assetSyncService)
+final assetSyncServiceProvider =
+    AutoDisposeFutureProvider<AssetSyncService>.internal(
+  assetSyncService,
+  name: r'assetSyncServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$assetSyncServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef AssetSyncServiceRef = AutoDisposeFutureProviderRef<AssetSyncService>;
 String _$uploadOrchestratorHash() =>
-    r'f2bf8592222ac9535cc85f17da706cee5257c00e';
+    r'874e86fe6134ca476c335a16ae9a2c0b8b3ca200';
 
 /// UploadOrchestrator Provider
 ///
@@ -87,7 +105,7 @@ final uploadOrchestratorProvider = FutureProvider<UploadOrchestrator>.internal(
 );
 
 typedef UploadOrchestratorRef = FutureProviderRef<UploadOrchestrator>;
-String _$uploadServiceHash() => r'8eab8fc05065077e8e0136be3a467f0093d05606';
+String _$uploadServiceHash() => r'9c47055749c9f3a01bc7e2c7082ef9086892bde8';
 
 /// UploadService Provider
 ///
@@ -198,7 +216,7 @@ final uploadTaskStateMachineProvider =
 
 typedef UploadTaskStateMachineRef
     = AutoDisposeFutureProviderRef<UploadTaskStateMachine>;
-String _$backupServiceHash() => r'9d995d73e6c9c11507135bc71a6f7b014b670e1f';
+String _$backupServiceHash() => r'7528f7ab4d669294bfae51d76a3b687c3f59ca22';
 
 /// BackupService Provider
 ///
@@ -235,7 +253,7 @@ final backgroundSyncManagerProvider =
 
 typedef BackgroundSyncManagerRef
     = AutoDisposeFutureProviderRef<BackgroundSyncManager>;
-String _$uploadTaskManagerHash() => r'a86a538eed4e177844ab2894b2dd01d57a83cf6b';
+String _$uploadTaskManagerHash() => r'81d2d9ad4597e5c2097d6f1c31176dcc945e9cac';
 
 /// UploadTaskManager Provider
 ///

@@ -188,9 +188,13 @@ class _UploadStatusIcon extends ConsumerWidget {
   
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 使用 Provider 获取上传状态
+    // 获取资产的唯一标识符
+    final assetId = asset.localId ?? asset.id;
+    final hasRemote = asset.hasRemote;
+    
+    // 使用 Provider 获取上传状态（使用唯一标识符作为 family 参数）
     final statusAsync = ref.watch(
-      assetUploadStatusProvider(asset),
+      assetUploadStatusProvider(assetId, hasRemote),
     );
     
     // 根据状态显示不同图标
@@ -245,8 +249,39 @@ class _UploadStatusIcon extends ConsumerWidget {
   }
   
   /// 上传中图标（带旋转动画）
+  /// 使用 Stack 组合静态云图标和外围 CircularProgressIndicator
   Widget _buildUploadingIcon(double? progress) {
-    return _RotatingCloudIcon();
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // 静态云图标
+        Icon(
+          Icons.cloud_upload_outlined,
+          color: const Color.fromRGBO(255, 255, 255, 0.8),
+          size: 16,
+          shadows: const [
+            Shadow(
+              blurRadius: 5.0,
+              color: Color.fromRGBO(0, 0, 0, 0.6),
+              offset: Offset(0.0, 0.0),
+            ),
+          ],
+        ),
+        // 外围旋转圆环（进度指示）
+        SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            value: progress,
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              Color.fromRGBO(255, 255, 255, 0.8),
+            ),
+            backgroundColor: const Color.fromRGBO(255, 255, 255, 0.3),
+          ),
+        ),
+      ],
+    );
   }
   
   /// 已上传图标
@@ -282,50 +317,4 @@ class _UploadStatusIcon extends ConsumerWidget {
   }
 }
 
-/// 旋转的云朵图标（用于上传中状态）
-class _RotatingCloudIcon extends StatefulWidget {
-  const _RotatingCloudIcon();
-
-  @override
-  State<_RotatingCloudIcon> createState() => _RotatingCloudIconState();
-}
-
-class _RotatingCloudIconState extends State<_RotatingCloudIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat(); // 持续循环
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: Icon(
-        Icons.cloud_upload_outlined,
-        color: const Color.fromRGBO(255, 255, 255, 0.8),
-        size: 16,
-        shadows: const [
-          Shadow(
-            blurRadius: 5.0,
-            color: Color.fromRGBO(0, 0, 0, 0.6),
-            offset: Offset(0.0, 0.0),
-          ),
-        ],
-      ),
-    );
-  }
-}
 

@@ -5,7 +5,6 @@ import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
-import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
@@ -14,7 +13,6 @@ import 'package:prismbox/services/backup/backup_candidate_selector.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/services/backup/backup_config_validator.dart';
 import 'package:prismbox/services/backup/task_factory.dart';
-import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 备份状态
@@ -84,7 +82,6 @@ class BackupService {
   final BackupConfigValidator _configValidator;
   final ApiService _apiService;
   final TaskFactory _taskFactory;
-  final UploadTaskStateMachine _stateMachine;
   final Logger _logger = Logger('BackupService');
 
   // 上传端点配置
@@ -96,14 +93,12 @@ class BackupService {
     required BackupCandidateSelector candidateSelector,
     ApiService? apiService,
     required TaskFactory taskFactory,
-    required UploadTaskStateMachine stateMachine,
   }) : _database = database,
        _uploadService = uploadService,
        _candidateSelector = candidateSelector,
        _configValidator = BackupConfigValidator(),
        _apiService = apiService ?? ApiService(),
-       _taskFactory = taskFactory,
-       _stateMachine = stateMachine;
+       _taskFactory = taskFactory;
 
   /// 启动手动备份
   ///
@@ -168,7 +163,7 @@ class BackupService {
 
     // 4. 乐观更新：立即将任务状态更新为 queued（已入队）
     // 这样UI可以立即显示上传中的状态，提供即时反馈
-    await _optimisticallyUpdateTasksToQueued(tasks);
+    await _uploadService.optimisticallyUpdateTasksToQueued(tasks);
 
     // 4. 对于手动备份，无论批量大小，都应该立即开始上传编排（异步）
     // 因为这是用户主动触发的操作，需要立即反馈
@@ -304,7 +299,7 @@ class BackupService {
 
     // 6. 乐观更新：立即将任务状态更新为 queued（已入队）
     // 这样UI可以立即显示上传中的状态，提供即时反馈
-    await _optimisticallyUpdateTasksToQueued(tasks);
+    await _uploadService.optimisticallyUpdateTasksToQueued(tasks);
 
     // 6. 启动上传（可选，也可以由后台任务触发）
     // await _uploadService.startUpload(
@@ -482,58 +477,4 @@ class BackupService {
     _logger.info('Backup config updated successfully');
   }
 
-  /// 乐观更新：将任务状态从 pending 更新为 queued
-  ///
-  /// **参数**：
-  /// - [tasks] - 任务列表（可能包含未插入的任务）
-  ///
-  /// **职责**：
-  /// - 从数据库获取实际插入的任务
-  /// - 使用状态机将状态更新为 queued
-  /// - 提供即时反馈，解决状态更新延迟问题
-  Future<void> _optimisticallyUpdateTasksToQueued(
-    List<UploadTaskEntityData> tasks,
-  ) async {
-    if (tasks.isEmpty) {
-      return;
-    }
-
-    final dao = _database.uploadTaskDao;
-    final tasksToUpdate = <UploadTaskEntityData>[];
-
-    // 从数据库获取实际插入的任务（过滤掉被冲突检测跳过的任务）
-    for (final task in tasks) {
-      final dbTask = await dao.getTaskById(task.id);
-      if (dbTask != null && dbTask.status == UploadTaskStatus.pending) {
-        tasksToUpdate.add(dbTask);
-      }
-    }
-
-    if (tasksToUpdate.isEmpty) {
-      _logger.fine('No tasks to update to queued status');
-      return;
-    }
-
-    _logger.info(
-      'Optimistically updating ${tasksToUpdate.length} tasks to queued status',
-    );
-
-    // 批量更新状态为 queued
-    try {
-      await _stateMachine.transitionBatch(
-        tasksToUpdate,
-        UploadTaskStatus.queued,
-      );
-      _logger.info(
-        'Successfully updated ${tasksToUpdate.length} tasks to queued status',
-      );
-    } catch (e, stackTrace) {
-      _logger.warning(
-        'Failed to optimistically update tasks to queued: $e',
-        e,
-        stackTrace,
-      );
-      // 不抛出异常，避免影响主流程
-    }
-  }
 }

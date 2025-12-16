@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/infrastructure/api/exceptions/api_exception.dart';
+import 'package:prismbox/data/database/app_database.dart';
 
 /// 统一错误处理器
 /// 
@@ -66,6 +67,18 @@ class BackupErrorHandler {
 
     // 文件系统错误
     if (error is FileSystemException) {
+      // 检查是否为文件不存在错误
+      if (error.osError?.errorCode == 2 || // ENOENT
+          error.message.contains('No such file') ||
+          error.message.contains('文件不存在')) {
+        return BackupError(
+          type: BackupErrorType.fileNotFound,
+          message: '文件不存在：${error.path}',
+          originalError: error,
+          isRetryable: false,
+        );
+      }
+      
       return BackupError(
         type: BackupErrorType.local,
         message: '文件访问失败：${error.message}',
@@ -187,6 +200,61 @@ class BackupErrorHandler {
   bool isRetryable(BackupError error) {
     return error.isRetryable;
   }
+
+  /// 判断错误是否为永久失败（不可重试）
+  /// 
+  /// **参数**：
+  /// - [error] - BackupError 对象
+  /// 
+  /// **返回**：是否为永久失败
+  bool isPermanentFailure(BackupError error) {
+    return !error.isRetryable;
+  }
+
+  /// 解析错误对象为 BackupError
+  /// 
+  /// **参数**：
+  /// - [error] - 原始错误对象
+  /// 
+  /// **返回**：BackupError（分类后的错误）
+  static BackupError parseError(Object error) {
+    final handler = BackupErrorHandler();
+    return handler.handleError(error);
+  }
+
+  /// 处理上传任务错误
+  /// 
+  /// **参数**：
+  /// - [error] - BackupError 对象
+  /// - [task] - 上传任务实体
+  /// 
+  /// **返回**：是否处理成功
+  /// 
+  /// **职责**：
+  /// - 记录错误日志
+  /// - 根据错误类型决定是否可重试
+  /// - 返回处理结果，供调用方决定后续操作
+  Future<bool> handleUploadError(
+    BackupError error,
+    UploadTaskEntityData task,
+  ) async {
+    final fileName = task.localPath.split('/').last;
+    
+    _logger.warning(
+      'Upload error handled: '
+      'taskId=${task.id}, '
+      'assetId=${task.assetId}, '
+      'filename=$fileName, '
+      'errorType=${error.type}, '
+      'isRetryable=${error.isRetryable}, '
+      'message=${error.message}',
+      error.originalError,
+      StackTrace.current,
+    );
+
+    // 返回 true 表示错误已处理，调用方可以根据 isRetryable 决定后续操作
+    return true;
+  }
 }
 
 /// 备份错误类型
@@ -208,6 +276,9 @@ enum BackupErrorType {
 
   /// 本地错误（文件不存在、权限不足等，不可重试）
   local,
+
+  /// 文件不存在（永久失败）
+  fileNotFound,
 
   /// 超时错误（可重试）
   timeout,
