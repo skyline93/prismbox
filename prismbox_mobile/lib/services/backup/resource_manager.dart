@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:prismbox/data/database/app_database.dart';
+import 'package:prismbox/services/backup/asset_path_resolver.dart';
 
 /// 资源管理器
 /// 
@@ -20,6 +21,7 @@ import 'package:prismbox/data/database/app_database.dart';
 /// - 监控内存使用，防止内存泄漏
 class ResourceManager {
   final AppDatabase _database;
+  final AssetPathResolver _pathResolver;
   final Logger _logger = Logger('ResourceManager');
 
   /// MethodChannel 名称
@@ -33,7 +35,9 @@ class ResourceManager {
 
   ResourceManager({
     required AppDatabase database,
-  }) : _database = database;
+    required AssetPathResolver pathResolver,
+  }) : _database = database,
+       _pathResolver = pathResolver;
 
   /// 清理任务完成后的临时文件
   /// 
@@ -185,10 +189,10 @@ class ResourceManager {
     try {
       final tempDir = await _getTempDirectory();
       final fileName = 'upload_${taskId}.tmp';
-      final file = File('${tempDir.path}/$fileName');
+      final filePath = '${tempDir.path}/$fileName';
       
-      if (await file.exists()) {
-        return file;
+      if (await _pathResolver.validateFileExists(filePath)) {
+        return File(filePath);
       }
       return null;
     } catch (e) {

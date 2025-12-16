@@ -2,8 +2,11 @@
 
 /// 上传任务状态枚举
 enum UploadTaskStatus {
-  /// 待上传
+  /// 待处理（刚创建）
   pending,
+  
+  /// 已入队（等待执行）
+  queued,
   
   /// 上传中
   uploading,

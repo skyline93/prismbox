@@ -6,7 +6,6 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
-import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:uuid/uuid.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
@@ -14,12 +13,13 @@ import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
-import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
-import 'package:prismbox/services/backup/task_status_validator.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
 import 'package:prismbox/services/backup/upload_task_manager.dart';
 import 'package:prismbox/services/backup/api_endpoint_validator.dart';
+import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/services/backup/file_metadata_extractor.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 上传结果
@@ -70,11 +70,13 @@ enum ErrorType {
 /// - ❌ **不负责**：队列管理（由 UploadService 负责）
 class UploadOrchestrator {
   final AppDatabase _database;
-  final TaskStatusValidator _statusValidator;
+  final UploadTaskStateMachine _stateMachine;
   final ApiService _apiService;
   final UploadConcurrencyController _concurrencyController;
   final UploadTaskManager _uploadTaskManager;
   final ApiEndpointValidator _endpointValidator;
+  final AssetPathResolver _pathResolver;
+  final FileMetadataExtractor _metadataExtractor;
   final Logger _logger = Logger('UploadOrchestrator');
 
   // 去重检查配置
@@ -95,22 +97,27 @@ class UploadOrchestrator {
 
   UploadOrchestrator({
     required AppDatabase database,
+    required UploadTaskStateMachine stateMachine,
     ApiService? apiService,
     UploadConcurrencyController? concurrencyController,
     UploadTaskManager? uploadTaskManager,
     ApiEndpointValidator? endpointValidator,
+    required AssetPathResolver pathResolver,
+    required FileMetadataExtractor metadataExtractor,
   })  : _database = database,
-        _statusValidator = TaskStatusValidator(),
+        _stateMachine = stateMachine,
         _apiService = apiService ?? ApiService(),
         _concurrencyController =
             concurrencyController ?? UploadConcurrencyController(),
         _uploadTaskManager = uploadTaskManager ??
             UploadTaskManager(
               database: database,
-              apiService: apiService ?? ApiService(),
+              stateMachine: stateMachine,
             ),
         _endpointValidator = endpointValidator ??
-            ApiEndpointValidator(apiService: apiService ?? ApiService());
+            ApiEndpointValidator(apiService: apiService ?? ApiService()),
+        _pathResolver = pathResolver,
+        _metadataExtractor = metadataExtractor;
 
   /// 过滤已上传资产（支持分批检查和降级策略）
   /// 
@@ -156,10 +163,13 @@ class UploadOrchestrator {
     // 3. 过滤掉已存在的资产，并将被去重的任务标记为 completed
     final filtered = <UploadTaskEntityData>[];
     final duplicateTasks = <UploadTaskEntityData>[];
+    // 创建任务到 checksum 的映射，用于后续日志记录
+    final taskChecksumMap = <String, String?>{};
     
     for (int i = 0; i < candidates.length; i++) {
       final task = candidates[i];
       final checksum = checksums[i];
+      taskChecksumMap[task.id] = checksum;
       
       if (!existingChecksums.contains(checksum)) {
         filtered.add(task);
@@ -177,21 +187,31 @@ class UploadOrchestrator {
       _logger.info(
         'Marking ${duplicateTasks.length} duplicate tasks as completed',
       );
-      final dao = _database.uploadTaskDao;
+      // 通过状态机批量更新重复任务为已完成
       for (final task in duplicateTasks) {
         try {
-          await dao.updateTaskStatus(
-            task.id,
+          await _stateMachine.transition(
+            task,
             UploadTaskStatus.completed,
-            uploadedAt: DateTime.now(),
           );
-          _logger.fine(
-            'Marked duplicate task as completed: taskId=${task.id}, '
-            'assetId=${task.assetId}',
+          // 状态机内部已记录详细日志，这里记录额外的上下文信息
+          final fileName = task.localPath.split('/').last;
+          final checksum = taskChecksumMap[task.id];
+          _logger.info(
+            'Marked duplicate task as completed: '
+            'taskId=${task.id}, '
+            'assetId=${task.assetId}, '
+            'filename=$fileName, '
+            'checksum=$checksum',
           );
         } catch (e) {
+          final fileName = task.localPath.split('/').last;
           _logger.warning(
-            'Failed to mark duplicate task as completed: taskId=${task.id}, error=$e',
+            'Failed to mark duplicate task as completed: '
+            'taskId=${task.id}, '
+            'assetId=${task.assetId}, '
+            'filename=$fileName, '
+            'error=$e',
           );
         }
       }
@@ -262,38 +282,52 @@ class UploadOrchestrator {
 
         // 使用并发控制器控制并发数
         await _concurrencyController.execute(() async {
-          _logger.fine('Acquired concurrency slot: taskId=${task.id}');
+          final fileName = task.localPath.split('/').last;
+          _logger.info(
+            'Acquired concurrency slot: taskId=${task.id}, '
+            'assetId=${task.assetId}, filename=$fileName',
+          );
           try {
-            // 更新状态为 uploading
-            await _statusValidator.validateAndUpdate(
-              database: _database,
-              taskId: task.id,
-              from: task.status,
-              to: UploadTaskStatus.uploading,
-            );
-
             // 执行上传（带自动重试）
-            // 注意：_executeUploadWithRetry 内部会等待任务完成
-            // UploadTaskManager 的回调会自动更新状态为 completed
+            // 注意：
+            // 1. 状态更新由 background_downloader 的状态回调驱动（单一数据源原则）
+            // 2. background_downloader 会依次报告：enqueued -> running -> complete
+            // 3. UploadTaskManager 的回调会将它们映射为：queued -> uploading -> completed
+            // 4. 不在入队前提前更新状态，避免状态冲突
             await _executeUploadWithRetry(task);
 
             // 验证任务状态（应该已经被 UploadTaskManager 更新为 completed）
             final completedTask = await _database.uploadTaskDao.getTaskById(task.id);
             if (completedTask?.status != UploadTaskStatus.completed) {
+              final fileName = task.localPath.split('/').last;
               _logger.warning(
-                'Task status mismatch after completion: taskId=${task.id}, '
+                'Task status mismatch after completion: '
+                'taskId=${task.id}, '
+                'assetId=${task.assetId}, '
+                'filename=$fileName, '
                 'expected=completed, actual=${completedTask?.status}',
               );
             }
 
             successCount++;
-            _logger.fine('Upload completed: taskId=${task.id}');
+            final fileName = task.localPath.split('/').last;
+            _logger.info(
+              'Upload completed successfully: '
+              'taskId=${task.id}, '
+              'assetId=${task.assetId}, '
+              'filename=$fileName',
+            );
           } catch (e, stackTrace) {
+            final fileName = task.localPath.split('/').last;
             _logger.warning(
-              'Upload error in orchestration: taskId=${task.id}, error=$e',
+              'Upload error in orchestration: '
+              'taskId=${task.id}, '
+              'assetId=${task.assetId}, '
+              'filename=$fileName, '
+              'error=$e',
             );
             _logger.warning(
-              'Upload failed: taskId=${task.id}, error=$e',
+              'Upload failed: taskId=${task.id}, assetId=${task.assetId}, filename=$fileName, error=$e',
               e,
               stackTrace,
             );
@@ -303,6 +337,8 @@ class UploadOrchestrator {
             errors.add(error);
 
             // 获取当前任务状态（UploadTaskManager 的回调可能已经更新了状态）
+            // 注意：正常情况下，background_downloader 会通过回调更新状态
+            // 但如果异常发生在入队之前，或者回调未触发，需要手动更新状态
             final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
             if (currentTask != null) {
               // 如果状态已经是最终状态（failed、permanentlyFailed、cancelled），不需要再次更新
@@ -311,17 +347,17 @@ class UploadOrchestrator {
                   currentTask.status == UploadTaskStatus.cancelled;
 
               if (!isFinalStatus) {
-                // 状态还未更新，手动更新
+                // 状态还未更新，手动更新（异常情况下的兜底处理）
                 final currentRetryCount = currentTask.retryCount;
                 final newStatus = currentRetryCount >= task.maxRetries
                     ? UploadTaskStatus.permanentlyFailed
                     : UploadTaskStatus.failed;
 
-                await _statusValidator.validateAndUpdate(
-                  database: _database,
-                  taskId: task.id,
-                  from: currentTask.status,
-                  to: newStatus,
+                // 通过状态机更新状态
+                await _stateMachine.transition(
+                  currentTask,
+                  newStatus,
+                  errorMessage: error.errorMessage,
                 );
               }
             }
@@ -533,16 +569,8 @@ class UploadOrchestrator {
         await _executeUpload(task);
         // 上传成功，清除重试计数（如果之前有重试）
         if (retryCount > 0) {
-          // 重置重试计数：先获取当前任务，然后更新
-          final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
-          if (currentTask != null && currentTask.retryCount > 0) {
-            await _database.uploadTaskDao.updateTaskStatus(
-              task.id,
-              currentTask.status,
-            );
-            // 注意：这里没有直接重置 retryCount 的方法，可以通过更新整个任务来实现
-            // 或者保留重试计数，因为任务已成功完成
-          }
+          // 注意：重试计数不需要重置，因为任务已成功完成
+          // 状态机已经处理了状态转换，不需要额外的更新
         }
         return;
       } catch (e) {
@@ -614,79 +642,30 @@ class UploadOrchestrator {
     _logger.info('Executing upload: taskId=${task.id}, assetId=${task.assetId}');
 
     try {
-      // 1. 检查文件是否存在，如果不存在则尝试从 photo_manager 重新获取
-      String actualPath = task.localPath;
-      File file = File(actualPath);
-      
-      if (!await file.exists()) {
-        _logger.warning(
-          'File not found: ${task.localPath}, trying to get from photo_manager',
-        );
-        
-        try {
-          final assetEntity = await pm.AssetEntity.fromId(task.assetId);
-          if (assetEntity != null) {
-            // 使用 originFile 获取原始文件路径，确保获取的是永久文件
-            final fileFromAsset = await assetEntity.originFile;
-            if (fileFromAsset != null && await fileFromAsset.exists()) {
-              actualPath = fileFromAsset.path;
-              file = fileFromAsset;
-              _logger.info('Got file path from photo_manager: $actualPath');
-              
-              // 更新任务中的文件路径（确保后续使用正确的路径）
-              await _database.uploadTaskDao.updateTaskLocalPath(
-                task.id,
-                actualPath,
-              );
-              
-              // 更新本地资产数据库中的路径（如果路径已改变）
-              final localAsset = await _database.localAssetDao.getAssetById(task.assetId);
-              if (localAsset != null && localAsset.path != actualPath) {
-                final updatedAsset = localAsset.copyWith(
-                  path: actualPath,
-                  updatedAt: DateTime.now(),
-                );
-                try {
-                  await _database.localAssetDao.updateAsset(updatedAsset);
-                  _logger.info('Updated asset path in database: ${task.assetId}');
-                } catch (e) {
-                  _logger.warning(
-                    'Failed to update asset path in database: ${task.assetId}',
-                    e,
-                  );
-                  // 继续上传，即使更新数据库失败
-                }
-              }
-            } else {
-              throw FileSystemException(
-                'File not found in photo_manager',
-                task.assetId,
-              );
-            }
-          } else {
-            throw FileSystemException(
-              'AssetEntity not found',
-              task.assetId,
-            );
-          }
-        } catch (e) {
-          _logger.warning(
-            'Failed to get file from photo_manager for ${task.assetId}: $e',
-          );
-          throw FileSystemException('File not found', task.localPath);
-        }
-      }
-
-      // 2. 获取文件大小（如果未设置）
-      int fileSize = task.fileSize;
-      if (fileSize == 0) {
-        fileSize = await file.length();
-      }
-
-      // 3. 获取本地资产信息（必需，用于构建上传表单字段）
+      // 1. 获取本地资产信息（必需，用于路径解析和构建上传表单字段）
       final localAsset = await _database.localAssetDao.getAssetById(task.assetId);
       if (localAsset == null) {
         throw Exception('Local asset not found: ${task.assetId}');
+      }
+
+      // 2. 使用 AssetPathResolver 解析文件路径（如果不存在则尝试从 photo_manager 重新获取）
+      final actualPath = await _pathResolver.resolveAssetPath(localAsset);
+      if (actualPath == null) {
+        throw FileSystemException('File not found', task.localPath);
+      }
+
+      // 3. 更新任务中的文件路径（如果路径已改变）
+      if (actualPath != task.localPath) {
+        await _database.uploadTaskDao.updateTaskLocalPath(
+          task.id,
+          actualPath,
+        );
+      }
+
+      // 4. 使用 FileMetadataExtractor 获取文件大小（如果未设置）
+      int fileSize = task.fileSize;
+      if (fileSize == 0) {
+        fileSize = await _metadataExtractor.extractFileSize(actualPath);
       }
 
       // 4. 获取 checksum（从本地资产或计算）
@@ -872,6 +851,7 @@ class UploadOrchestrator {
           throw Exception('Upload task cancelled');
 
         case UploadTaskStatus.pending:
+        case UploadTaskStatus.queued:
         case UploadTaskStatus.uploading:
         case UploadTaskStatus.paused:
           // 任务还在进行中，继续等待

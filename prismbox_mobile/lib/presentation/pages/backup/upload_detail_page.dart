@@ -259,6 +259,10 @@ class _UploadTaskCard extends StatelessWidget {
         icon = Icons.pending;
         color = Colors.orange;
         break;
+      case UploadTaskStatus.queued:
+        icon = Icons.queue;
+        color = Colors.blue;
+        break;
       case UploadTaskStatus.uploading:
         icon = Icons.cloud_upload;
         color = Colors.blue;

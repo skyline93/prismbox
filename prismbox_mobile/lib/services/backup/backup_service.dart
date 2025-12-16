@@ -1,21 +1,20 @@
 // lib/services/backup/backup_service.dart
 
 import 'dart:async';
-import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
-import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
-import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
+import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/backup_candidate_selector.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/services/backup/backup_config_validator.dart';
-import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
+import 'package:prismbox/services/backup/task_factory.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 备份状态
@@ -82,9 +81,10 @@ class BackupService {
   final AppDatabase _database;
   final UploadService _uploadService;
   final BackupCandidateSelector _candidateSelector;
-  final LocalSyncService _localSyncService;
   final BackupConfigValidator _configValidator;
   final ApiService _apiService;
+  final TaskFactory _taskFactory;
+  final UploadTaskStateMachine _stateMachine;
   final Logger _logger = Logger('BackupService');
 
   // 上传端点配置
@@ -94,14 +94,16 @@ class BackupService {
     required AppDatabase database,
     required UploadService uploadService,
     required BackupCandidateSelector candidateSelector,
-    required LocalSyncService localSyncService,
     ApiService? apiService,
+    required TaskFactory taskFactory,
+    required UploadTaskStateMachine stateMachine,
   }) : _database = database,
        _uploadService = uploadService,
        _candidateSelector = candidateSelector,
-       _localSyncService = localSyncService,
        _configValidator = BackupConfigValidator(),
-       _apiService = apiService ?? ApiService();
+       _apiService = apiService ?? ApiService(),
+       _taskFactory = taskFactory,
+       _stateMachine = stateMachine;
 
   /// 启动手动备份
   ///
@@ -148,84 +150,25 @@ class BackupService {
     }
 
     // 2. 创建上传任务（高优先级，manual 类型）
-    final tasks = <UploadTaskEntityData>[];
     final endpoint = _apiService.endpoint ?? ApiConfig.apiEndpoint;
     final remotePath = '$endpoint$_uploadEndpoint';
 
-    for (final asset in assets) {
-      // 获取文件路径和大小
-      String? actualPath = asset.path;
-      int fileSize = 0;
-
-      try {
-        final file = File(asset.path);
-        if (await file.exists()) {
-          fileSize = await file.length();
-        } else {
-          // 文件不存在，尝试通过 photo_manager 重新获取
-          _logger.warning(
-            'File not found: ${asset.path}, trying to get from photo_manager',
-          );
-          try {
-            final assetEntity = await pm.AssetEntity.fromId(asset.id);
-            if (assetEntity != null) {
-              // 使用 originFile 获取原始文件路径，确保获取的是永久文件
-              final fileFromAsset = await assetEntity.originFile;
-              if (fileFromAsset != null && await fileFromAsset.exists()) {
-                actualPath = fileFromAsset.path;
-                fileSize = await fileFromAsset.length();
-                _logger.info('Got file path from photo_manager: $actualPath');
-              } else {
-                _logger.warning('File not found in photo_manager: ${asset.id}');
-                continue; // 跳过不存在的文件
-              }
-            } else {
-              _logger.warning('AssetEntity not found: ${asset.id}');
-              continue; // 跳过找不到的资产
-            }
-          } catch (e) {
-            _logger.warning(
-              'Failed to get file from photo_manager for ${asset.id}: $e',
-            );
-            continue; // 跳过无法获取的文件
-          }
-        }
-      } catch (e) {
-        _logger.warning('Failed to get file size for ${asset.path}: $e');
-        // 继续创建任务，fileSize 为 0，后续上传时会重新获取
-      }
-
-      // 确保有有效的文件路径
-      if (actualPath == null || actualPath.isEmpty) {
-        _logger.warning('No valid file path for asset: ${asset.id}');
-        continue;
-      }
-
-      final task = UploadTaskEntityData(
-        id: 'manual_${asset.id}_${DateTime.now().millisecondsSinceEpoch}',
-        userId: userId,
-        assetId: asset.id,
-        localPath: actualPath, // 使用实际获取到的路径
-        remotePath: remotePath,
-        fileSize: fileSize,
-        taskType: UploadTaskType.manual,
-        priority: 1, // 手动备份高优先级
-        status: UploadTaskStatus.pending,
-        retryCount: 0,
-        maxRetries: 3,
-        errorMessage: null,
-        uploadedAt: null,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        progress: 0,
-      );
-      tasks.add(task);
-    }
+    final tasks = await _taskFactory.createTasks(
+      assets: assets,
+      userId: userId,
+      remotePath: remotePath,
+      taskType: UploadTaskType.manual,
+      priority: 1, // 手动备份高优先级
+    );
 
     // 3. 添加上传任务到队列（自动进行冲突检测）
     await _uploadService.addTasks(tasks);
 
     _logger.info('Created ${tasks.length} manual backup tasks');
+
+    // 4. 乐观更新：立即将任务状态更新为 queued（已入队）
+    // 这样UI可以立即显示上传中的状态，提供即时反馈
+    await _optimisticallyUpdateTasksToQueued(tasks);
 
     // 4. 对于手动备份，无论批量大小，都应该立即开始上传编排（异步）
     // 因为这是用户主动触发的操作，需要立即反馈
@@ -343,102 +286,25 @@ class BackupService {
     _logger.info('Found ${candidates.length} candidates for auto backup');
 
     // 4. 创建上传任务（正常优先级，auto 类型）
-    final tasks = <UploadTaskEntityData>[];
     final endpoint = _apiService.endpoint ?? ApiConfig.apiEndpoint;
     final remotePath = '$endpoint$_uploadEndpoint';
 
-    for (final asset in candidates) {
-      // 获取文件路径和大小
-      String? actualPath = asset.path;
-      int fileSize = 0;
-
-      try {
-        final file = File(asset.path);
-        if (await file.exists()) {
-          fileSize = await file.length();
-        } else {
-          // 文件不存在，尝试通过 photo_manager 重新获取
-          _logger.warning(
-            'File not found: ${asset.path}, trying to get from photo_manager',
-          );
-          try {
-            final assetEntity = await pm.AssetEntity.fromId(asset.id);
-            if (assetEntity != null) {
-              // 使用 originFile 获取原始文件路径，确保获取的是永久文件
-              final fileFromAsset = await assetEntity.originFile;
-              if (fileFromAsset != null && await fileFromAsset.exists()) {
-                actualPath = fileFromAsset.path;
-                fileSize = await fileFromAsset.length();
-                _logger.info('Got file path from photo_manager: $actualPath');
-
-                // 更新本地资产数据库中的路径（如果路径已改变）
-                if (actualPath != asset.path) {
-                  final updatedAsset = asset.copyWith(
-                    path: actualPath,
-                    updatedAt: DateTime.now(),
-                  );
-                  try {
-                    await _database.localAssetDao.updateAsset(updatedAsset);
-                    _logger.info('Updated asset path in database: ${asset.id}');
-                  } catch (e) {
-                    _logger.warning(
-                      'Failed to update asset path in database: ${asset.id}',
-                      e,
-                    );
-                    // 继续创建任务，即使更新数据库失败
-                  }
-                }
-              } else {
-                _logger.warning('File not found in photo_manager: ${asset.id}');
-                continue; // 跳过不存在的文件
-              }
-            } else {
-              _logger.warning('AssetEntity not found: ${asset.id}');
-              continue; // 跳过找不到的资产
-            }
-          } catch (e) {
-            _logger.warning(
-              'Failed to get file from photo_manager for ${asset.id}: $e',
-            );
-            continue; // 跳过无法获取的文件
-          }
-        }
-      } catch (e) {
-        _logger.warning('Failed to get file size for ${asset.path}: $e');
-        // 继续创建任务，fileSize 为 0，后续上传时会重新获取
-      }
-
-      // 确保有有效的文件路径
-      if (actualPath == null || actualPath.isEmpty) {
-        _logger.warning('No valid file path for asset: ${asset.id}');
-        continue;
-      }
-
-      final task = UploadTaskEntityData(
-        id: 'auto_${asset.id}_${DateTime.now().millisecondsSinceEpoch}',
-        userId: userId,
-        assetId: asset.id,
-        localPath: actualPath, // 使用实际获取到的路径
-        remotePath: remotePath,
-        fileSize: fileSize,
-        taskType: UploadTaskType.auto,
-        priority: 5, // 自动备份正常优先级
-        status: UploadTaskStatus.pending,
-        retryCount: 0,
-        maxRetries: 3,
-        errorMessage: null,
-        uploadedAt: null,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        progress: 0,
-      );
-      tasks.add(task);
-    }
+    final tasks = await _taskFactory.createTasks(
+      assets: candidates,
+      userId: userId,
+      remotePath: remotePath,
+      taskType: UploadTaskType.auto,
+      priority: 5, // 自动备份正常优先级
+    );
 
     // 5. 添加上传任务到队列
     await _uploadService.addTasks(tasks);
 
     _logger.info('Created ${tasks.length} auto backup tasks');
+
+    // 6. 乐观更新：立即将任务状态更新为 queued（已入队）
+    // 这样UI可以立即显示上传中的状态，提供即时反馈
+    await _optimisticallyUpdateTasksToQueued(tasks);
 
     // 6. 启动上传（可选，也可以由后台任务触发）
     // await _uploadService.startUpload(
@@ -614,5 +480,60 @@ class BackupService {
     await dao.updateBackupConfig(userId, config);
 
     _logger.info('Backup config updated successfully');
+  }
+
+  /// 乐观更新：将任务状态从 pending 更新为 queued
+  ///
+  /// **参数**：
+  /// - [tasks] - 任务列表（可能包含未插入的任务）
+  ///
+  /// **职责**：
+  /// - 从数据库获取实际插入的任务
+  /// - 使用状态机将状态更新为 queued
+  /// - 提供即时反馈，解决状态更新延迟问题
+  Future<void> _optimisticallyUpdateTasksToQueued(
+    List<UploadTaskEntityData> tasks,
+  ) async {
+    if (tasks.isEmpty) {
+      return;
+    }
+
+    final dao = _database.uploadTaskDao;
+    final tasksToUpdate = <UploadTaskEntityData>[];
+
+    // 从数据库获取实际插入的任务（过滤掉被冲突检测跳过的任务）
+    for (final task in tasks) {
+      final dbTask = await dao.getTaskById(task.id);
+      if (dbTask != null && dbTask.status == UploadTaskStatus.pending) {
+        tasksToUpdate.add(dbTask);
+      }
+    }
+
+    if (tasksToUpdate.isEmpty) {
+      _logger.fine('No tasks to update to queued status');
+      return;
+    }
+
+    _logger.info(
+      'Optimistically updating ${tasksToUpdate.length} tasks to queued status',
+    );
+
+    // 批量更新状态为 queued
+    try {
+      await _stateMachine.transitionBatch(
+        tasksToUpdate,
+        UploadTaskStatus.queued,
+      );
+      _logger.info(
+        'Successfully updated ${tasksToUpdate.length} tasks to queued status',
+      );
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Failed to optimistically update tasks to queued: $e',
+        e,
+        stackTrace,
+      );
+      // 不抛出异常，避免影响主流程
+    }
   }
 }

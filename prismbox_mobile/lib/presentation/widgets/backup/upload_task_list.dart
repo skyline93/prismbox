@@ -202,6 +202,10 @@ class _UploadTaskItem extends StatelessWidget {
         icon = Icons.pending;
         color = Colors.orange;
         break;
+      case UploadTaskStatus.queued:
+        icon = Icons.queue;
+        color = Colors.blue;
+        break;
       case UploadTaskStatus.uploading:
         icon = Icons.cloud_upload;
         color = Colors.blue;
@@ -235,6 +239,8 @@ class _UploadTaskItem extends StatelessWidget {
     switch (status) {
       case UploadTaskStatus.pending:
         return '待上传';
+      case UploadTaskStatus.queued:
+        return '已入队';
       case UploadTaskStatus.uploading:
         return '上传中';
       case UploadTaskStatus.completed:

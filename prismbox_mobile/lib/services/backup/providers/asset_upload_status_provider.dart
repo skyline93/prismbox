@@ -54,12 +54,19 @@ Future<AssetUploadStatusInfo> assetUploadStatus(
     if (task != null) {
       switch (task.status) {
         case UploadTaskStatus.uploading:
-        case UploadTaskStatus.pending:
           // 上传中，计算进度（0.0 - 1.0）
           final progress = task.progress / 100.0;
           return AssetUploadStatusInfo(
             status: AssetUploadStatus.uploading,
             progress: progress.clamp(0.0, 1.0),
+          );
+        case UploadTaskStatus.queued:
+        case UploadTaskStatus.pending:
+          // pending/queued 状态显示为上传中（但进度为0）
+          // 这样用户可以看到任务已经创建并等待执行
+          return const AssetUploadStatusInfo(
+            status: AssetUploadStatus.uploading,
+            progress: 0.0,
           );
         case UploadTaskStatus.failed:
         case UploadTaskStatus.permanentlyFailed:

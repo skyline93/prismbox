@@ -11,6 +11,7 @@ import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
+import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 后台同步结果
@@ -77,6 +78,7 @@ class BackgroundSyncManager {
   final AppDatabase _database;
   final LocalSyncService _localSyncService;
   final ApiService _apiService;
+  final AssetPathResolver _pathResolver;
   final Logger _logger = Logger('BackgroundSyncManager');
 
   // 远程同步配置
@@ -87,9 +89,11 @@ class BackgroundSyncManager {
     required AppDatabase database,
     required LocalSyncService localSyncService,
     ApiService? apiService,
+    required AssetPathResolver pathResolver,
   })  : _database = database,
         _localSyncService = localSyncService,
-        _apiService = apiService ?? ApiService();
+        _apiService = apiService ?? ApiService(),
+        _pathResolver = pathResolver;
 
   /// 执行完整同步流程（三阶段）
   /// 
@@ -534,8 +538,7 @@ class BackgroundSyncManager {
               }
 
               // 检查文件是否存在
-              final file = File(asset.path);
-              if (!await file.exists()) {
+              if (!await _pathResolver.validateFileExists(asset.path)) {
                 _logger.warning('File not found for hash calculation: ${asset.path}');
                 return;
               }

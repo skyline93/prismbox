@@ -35,9 +35,9 @@ class TaskCleanupScheduler {
 
   TaskCleanupScheduler({
     required AppDatabase database,
-    ResourceManager? resourceManager,
+    required ResourceManager resourceManager,
   })  : _database = database,
-        _resourceManager = resourceManager ?? ResourceManager(database: database);
+        _resourceManager = resourceManager;
 
   /// 启动定时清理
   /// 

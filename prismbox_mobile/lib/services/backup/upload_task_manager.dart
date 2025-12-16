@@ -6,7 +6,7 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
-import 'package:prismbox/infrastructure/api/api_service.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 
 /// 上传任务组常量
 class UploadTaskGroup {
@@ -22,16 +22,18 @@ class UploadTaskGroup {
 /// - 创建和入队上传任务
 class UploadTaskManager {
   final AppDatabase _database;
-  final ApiService _apiService;
+  final UploadTaskStateMachine _stateMachine;
   final Logger _logger = Logger('UploadTaskManager');
 
   // 回调函数
   void Function(String taskId, TaskStatus status)? onStatusChange;
   void Function(String taskId, double progress)? onProgress;
 
-  UploadTaskManager({required AppDatabase database, ApiService? apiService})
-    : _database = database,
-      _apiService = apiService ?? ApiService();
+  UploadTaskManager({
+    required AppDatabase database,
+    required UploadTaskStateMachine stateMachine,
+  })  : _database = database,
+        _stateMachine = stateMachine;
 
   /// 初始化 FileDownloader 配置
   ///
@@ -82,10 +84,31 @@ class UploadTaskManager {
     final status = update.status;
     final group = update.task.group;
 
-    // 记录详细的状态更新信息
+    // 异步获取任务详细信息用于日志记录
+    _database.uploadTaskDao.getTaskById(taskId).then((task) {
+      if (task != null) {
+        final fileName = task.localPath.split('/').last;
+        _logger.info(
+          'Task status update from background_downloader: '
+          'taskId=$taskId, '
+          'assetId=${task.assetId}, '
+          'userId=${task.userId}, '
+          'filename=$fileName, '
+          'status=$status, '
+          'group=$group, '
+          'currentDbStatus=${task.status}',
+        );
+      } else {
     _logger.info(
-      'Task status update: taskId=$taskId, status=$status, group=$group',
+          'Task status update from background_downloader: '
+          'taskId=$taskId, status=$status, group=$group (task not found in DB)',
+        );
+      }
+    }).catchError((e) {
+      _logger.warning(
+        'Failed to get task info for logging: taskId=$taskId, error=$e',
     );
+    });
 
     // 如果是失败状态，提取详细的错误信息
     String? errorMessage;
@@ -161,12 +184,8 @@ class UploadTaskManager {
           errorMessage = 'Unknown error';
         }
         
-        // 添加状态码和异常类型（statusCode 可能为 null）
-        if (statusCode != null) {
-          errorMessage = 'HTTP $statusCode ($exceptionType): $errorMessage';
-        } else {
-          errorMessage = '$exceptionType: $errorMessage';
-        }
+        // 添加状态码和异常类型
+        errorMessage = 'HTTP $statusCode ($exceptionType): $errorMessage';
         
         // 如果有响应体，也记录（responseBody 可能为 null）
         final responseBody = update.responseBody;
@@ -240,44 +259,81 @@ class UploadTaskManager {
     }
 
     UploadTaskStatus newStatus;
-    DateTime? uploadedAt;
 
     switch (status) {
       case TaskStatus.enqueued:
+        // enqueued 状态映射到 queued，保持状态流转的完整性
+        newStatus = UploadTaskStatus.queued;
+        
+        // 特殊处理：如果 background_downloader 报告 enqueued（映射到 queued），
+        // 但当前状态已经是 uploading 或终态（completed, permanentlyFailed），
+        // 说明这是重试时的重新入队，但状态不应该回退，应该忽略这个状态更新
+        // 注意：如果当前状态是 failed，允许 failed -> queued（状态机已支持，用于重试）
+        if (task.status == UploadTaskStatus.uploading ||
+            task.status == UploadTaskStatus.completed ||
+            task.status == UploadTaskStatus.permanentlyFailed) {
+          _logger.fine(
+            'Ignoring enqueued status update for retry: taskId=$taskId, '
+            'currentStatus=${task.status}, this is a retry re-enqueue',
+          );
+          return;
+        }
+        break;
       case TaskStatus.running:
+        // running 状态映射到 uploading
         newStatus = UploadTaskStatus.uploading;
         break;
       case TaskStatus.complete:
         newStatus = UploadTaskStatus.completed;
-        uploadedAt = DateTime.now();
+        // uploadedAt 由状态机自动设置
         break;
       case TaskStatus.failed:
         newStatus = UploadTaskStatus.failed;
+        break;
+      case TaskStatus.waitingToRetry:
+        // waitingToRetry 明确表示失败后的重试等待，应该映射为 failed
+        // 这样重试时可以从 failed -> queued -> uploading（合法转换）
+        newStatus = UploadTaskStatus.failed;
+        errorMessage ??= 'Upload failed, waiting to retry';
         break;
       case TaskStatus.canceled:
         newStatus = UploadTaskStatus.cancelled;
         break;
       case TaskStatus.notFound:
       case TaskStatus.paused:
-      default:
-        // 保持原状态
+        // 保持原状态（这些状态不需要更新数据库状态）
         return;
     }
 
-    // 如果状态改变，或者有新的错误信息，更新数据库
+    // 如果状态改变，或者有新的错误信息，通过状态机更新数据库
     if (task.status != newStatus || 
         (errorMessage != null && task.errorMessage != errorMessage)) {
-      await _database.uploadTaskDao.updateTaskStatus(
-        taskId,
-        newStatus,
-        uploadedAt: uploadedAt,
-        errorMessage: errorMessage,
-      );
-      
-      _logger.fine(
-        'Task status updated in database: taskId=$taskId, '
-        'status=$newStatus, errorMessage=$errorMessage',
-      );
+      try {
+        await _stateMachine.transition(
+          task,
+          newStatus,
+          errorMessage: errorMessage,
+        );
+        
+        // 记录详细的状态更新日志（状态机内部已记录详细日志，这里记录额外的上下文信息）
+        final fileName = task.localPath.split('/').last;
+        _logger.info(
+          'Task status updated via state machine: '
+          'taskId=$taskId, '
+          'assetId=${task.assetId}, '
+          'filename=$fileName, '
+          'from=${task.status} -> to=$newStatus'
+          '${errorMessage != null ? ", error: $errorMessage" : ""}',
+        );
+      } catch (e, stackTrace) {
+        _logger.warning(
+          'Failed to update task status via state machine: taskId=$taskId, '
+          'error=$e',
+          e,
+          stackTrace,
+        );
+        // 如果状态机转换失败，记录错误但不抛出异常，避免影响回调流程
+      }
     }
   }
 

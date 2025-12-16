@@ -1,7 +1,0 @@
-﻿,created,updated,updated_deleted,deleted
-localOnly_active,synced_active,synced_active,localOnly_active,localOnly_active
-synced_active,synced_active,synced_active,localOnly_active,localOnly_active
-cloudOnly_active,cloudOnly_active,cloudOnly_active,x,x
-localOnly_trashed,localOnly_trashed,localOnly_trashed,localOnly_trashed,localOnly_trashed
-synced_trashed,synced_trashed,synced_trashed,synced_trashed,localOnly_trashed
-cloudOnly_trashed,cloudOnly_trashed,cloudOnly_trashed,cloudOnly_trashed,x

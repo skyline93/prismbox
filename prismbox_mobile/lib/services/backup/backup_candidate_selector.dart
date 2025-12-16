@@ -3,7 +3,6 @@
 import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/backup_selection.dart';
-import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
 
 /// 候选资源筛选器
 /// 
@@ -18,14 +17,11 @@ import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
 /// - ❌ **不负责**：上传编排（由 UploadOrchestrator 负责）
 class BackupCandidateSelector {
   final AppDatabase _database;
-  final LocalSyncService _localSyncService;
   final Logger _logger = Logger('BackupCandidateSelector');
 
   BackupCandidateSelector({
     required AppDatabase database,
-    required LocalSyncService localSyncService,
-  })  : _database = database,
-        _localSyncService = localSyncService; // 保留用于后续扩展
+  })  : _database = database;
 
   /// 筛选所有未备份资源（模式 A：all_unbacked）
   /// 

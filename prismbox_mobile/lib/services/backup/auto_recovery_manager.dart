@@ -1,12 +1,13 @@
 // lib/services/backup/auto_recovery_manager.dart
 
-import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
+import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 
 /// 自动恢复管理器
 /// 
@@ -22,6 +23,8 @@ import 'package:prismbox/services/backup/error_handler.dart';
 /// - cancelled 状态的任务：不恢复
 class AutoRecoveryManager {
   final AppDatabase _database;
+  final AssetPathResolver _pathResolver;
+  final UploadTaskStateMachine _stateMachine;
   final Logger _logger = Logger('AutoRecoveryManager');
 
   /// 任务有效期（7 天）
@@ -31,7 +34,11 @@ class AutoRecoveryManager {
     required AppDatabase database,
     UploadService? uploadService,
     BackupErrorHandler? errorHandler,
-  })  : _database = database;
+    required AssetPathResolver pathResolver,
+    required UploadTaskStateMachine stateMachine,
+  })  : _database = database,
+        _pathResolver = pathResolver,
+        _stateMachine = stateMachine;
 
   /// 恢复未完成任务
   /// 
@@ -107,9 +114,9 @@ class AutoRecoveryManager {
               break;
 
             case UploadTaskStatus.uploading:
-              // uploading 任务标记为 failed，允许重试
-              await _database.uploadTaskDao.updateTaskStatus(
-                task.id,
+              // uploading 任务标记为 failed，允许重试（通过状态机）
+              await _stateMachine.transition(
+                task,
                 UploadTaskStatus.failed,
                 errorMessage: 'Application was terminated during upload',
               );
@@ -177,8 +184,7 @@ class AutoRecoveryManager {
   /// - 任务是否过期（超过 7 天）
   Future<bool> _isTaskValid(UploadTaskEntityData task) async {
     // 1. 检查文件是否存在
-    final file = File(task.localPath);
-    if (!await file.exists()) {
+    if (!await _pathResolver.validateFileExists(task.localPath)) {
       _logger.warning('Task file not found: taskId=${task.id}, path=${task.localPath}');
       return false;
     }
@@ -206,12 +212,16 @@ class AutoRecoveryManager {
     String taskId,
     String reason,
   ) async {
-    await _database.uploadTaskDao.updateTaskStatus(
-      taskId,
-      UploadTaskStatus.permanentlyFailed,
-      errorMessage: reason,
-    );
-    _logger.info('Marked task as permanently failed: taskId=$taskId, reason=$reason');
+    // 通过状态机更新状态
+    final task = await _database.uploadTaskDao.getTaskById(taskId);
+    if (task != null) {
+      await _stateMachine.transition(
+        task,
+        UploadTaskStatus.permanentlyFailed,
+        errorMessage: reason,
+      );
+      _logger.info('Marked task as permanently failed: taskId=$taskId, reason=$reason');
+    }
   }
 
   /// 清理过期任务

@@ -45,11 +45,15 @@ class UploadTaskDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 获取待上传任务（按优先级排序）
+  /// 
+  /// **注意**：现在同时查询 pending 和 queued 状态的任务
+  /// 因为任务创建后会立即更新为 queued 状态
   Future<List<UploadTaskEntityData>> getPendingTasksByUserId(String userId) {
     return (select(uploadTaskEntity)
           ..where((t) =>
               t.userId.equals(userId) &
-              t.status.equalsValue(UploadTaskStatus.pending))
+              (t.status.equalsValue(UploadTaskStatus.pending) |
+               t.status.equalsValue(UploadTaskStatus.queued)))
           ..orderBy([
             (t) => OrderingTerm(expression: t.priority),
             (t) => OrderingTerm(expression: t.createdAt),

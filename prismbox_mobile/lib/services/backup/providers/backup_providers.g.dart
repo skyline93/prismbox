@@ -27,7 +27,7 @@ final backupQueryBuilderProvider =
 typedef BackupQueryBuilderRef
     = AutoDisposeFutureProviderRef<BackupQueryBuilder>;
 String _$taskConflictResolverHash() =>
-    r'166fad03eed42c2c8771a4da5086f854074ad226';
+    r'fd7b4bdf2eab742988afee71f13380c3fdf95e33';
 
 /// TaskConflictResolver Provider
 ///
@@ -46,27 +46,8 @@ final taskConflictResolverProvider =
 
 typedef TaskConflictResolverRef
     = AutoDisposeFutureProviderRef<TaskConflictResolver>;
-String _$taskStatusValidatorHash() =>
-    r'88e1cd7aa60001fffef8f96b9252aa19ab76a46a';
-
-/// TaskStatusValidator Provider
-///
-/// Copied from [taskStatusValidator].
-@ProviderFor(taskStatusValidator)
-final taskStatusValidatorProvider =
-    AutoDisposeProvider<TaskStatusValidator>.internal(
-  taskStatusValidator,
-  name: r'taskStatusValidatorProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$taskStatusValidatorHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef TaskStatusValidatorRef = AutoDisposeProviderRef<TaskStatusValidator>;
 String _$backupCandidateSelectorHash() =>
-    r'c74cbab3eaaf71b020a5bdd3475754cab79697c6';
+    r'2900165d51243d5aa9aeb82355a0e5c894cc76a3';
 
 /// BackupCandidateSelector Provider
 ///
@@ -86,7 +67,7 @@ final backupCandidateSelectorProvider =
 typedef BackupCandidateSelectorRef
     = AutoDisposeFutureProviderRef<BackupCandidateSelector>;
 String _$uploadOrchestratorHash() =>
-    r'19b439f94b77e33eb117f4c427d8d81383579883';
+    r'f2bf8592222ac9535cc85f17da706cee5257c00e';
 
 /// UploadOrchestrator Provider
 ///
@@ -106,7 +87,7 @@ final uploadOrchestratorProvider = FutureProvider<UploadOrchestrator>.internal(
 );
 
 typedef UploadOrchestratorRef = FutureProviderRef<UploadOrchestrator>;
-String _$uploadServiceHash() => r'd10b19d057cf51c6b6c263d7e880b68624b5607f';
+String _$uploadServiceHash() => r'8eab8fc05065077e8e0136be3a467f0093d05606';
 
 /// UploadService Provider
 ///
@@ -143,7 +124,81 @@ final backupConfigValidatorProvider =
 
 typedef BackupConfigValidatorRef
     = AutoDisposeProviderRef<BackupConfigValidator>;
-String _$backupServiceHash() => r'aec8e3de5ac9f6b1b2f3074dc94800cadd98cbc2';
+String _$fileMetadataExtractorHash() =>
+    r'87f8a3e587d3a5daa8acc66cda22a695ed7f2624';
+
+/// FileMetadataExtractor Provider
+///
+/// Copied from [fileMetadataExtractor].
+@ProviderFor(fileMetadataExtractor)
+final fileMetadataExtractorProvider =
+    AutoDisposeProvider<FileMetadataExtractor>.internal(
+  fileMetadataExtractor,
+  name: r'fileMetadataExtractorProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$fileMetadataExtractorHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef FileMetadataExtractorRef
+    = AutoDisposeProviderRef<FileMetadataExtractor>;
+String _$assetPathResolverHash() => r'34790b6143b52a38555373aee88f219c57ae49b1';
+
+/// AssetPathResolver Provider
+///
+/// Copied from [assetPathResolver].
+@ProviderFor(assetPathResolver)
+final assetPathResolverProvider =
+    AutoDisposeFutureProvider<AssetPathResolver>.internal(
+  assetPathResolver,
+  name: r'assetPathResolverProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$assetPathResolverHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef AssetPathResolverRef = AutoDisposeFutureProviderRef<AssetPathResolver>;
+String _$taskFactoryHash() => r'10e4901397311091c4f034b5b4fa1a55e8cd628f';
+
+/// TaskFactory Provider
+///
+/// Copied from [taskFactory].
+@ProviderFor(taskFactory)
+final taskFactoryProvider = AutoDisposeFutureProvider<TaskFactory>.internal(
+  taskFactory,
+  name: r'taskFactoryProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$taskFactoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef TaskFactoryRef = AutoDisposeFutureProviderRef<TaskFactory>;
+String _$uploadTaskStateMachineHash() =>
+    r'795053592cf9dd6a161ba577f05866498881f794';
+
+/// UploadTaskStateMachine Provider
+///
+/// Copied from [uploadTaskStateMachine].
+@ProviderFor(uploadTaskStateMachine)
+final uploadTaskStateMachineProvider =
+    AutoDisposeFutureProvider<UploadTaskStateMachine>.internal(
+  uploadTaskStateMachine,
+  name: r'uploadTaskStateMachineProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$uploadTaskStateMachineHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef UploadTaskStateMachineRef
+    = AutoDisposeFutureProviderRef<UploadTaskStateMachine>;
+String _$backupServiceHash() => r'9d995d73e6c9c11507135bc71a6f7b014b670e1f';
 
 /// BackupService Provider
 ///
@@ -161,7 +216,7 @@ final backupServiceProvider = AutoDisposeFutureProvider<BackupService>.internal(
 
 typedef BackupServiceRef = AutoDisposeFutureProviderRef<BackupService>;
 String _$backgroundSyncManagerHash() =>
-    r'168eeb2dc4421d267ad04451b27817e9566cfab3';
+    r'93d3f73f56aac9169589dfb0ef8031c1dbf7bd8f';
 
 /// BackgroundSyncManager Provider
 ///
@@ -180,7 +235,7 @@ final backgroundSyncManagerProvider =
 
 typedef BackgroundSyncManagerRef
     = AutoDisposeFutureProviderRef<BackgroundSyncManager>;
-String _$uploadTaskManagerHash() => r'0ef99bb4ea08e3fb8edf868bbf6c3959607bacf3';
+String _$uploadTaskManagerHash() => r'a86a538eed4e177844ab2894b2dd01d57a83cf6b';
 
 /// UploadTaskManager Provider
 ///
@@ -218,7 +273,7 @@ final backupErrorHandlerProvider =
 
 typedef BackupErrorHandlerRef = AutoDisposeProviderRef<BackupErrorHandler>;
 String _$autoRecoveryManagerHash() =>
-    r'054f710d549fa6d7b71fd1f09a46dff8c219ff92';
+    r'd50e36f28c62c5cb8c04ab5c9a57601522498ea4';
 
 /// AutoRecoveryManager Provider
 ///
@@ -254,7 +309,7 @@ final networkOptimizerProvider = AutoDisposeProvider<NetworkOptimizer>.internal(
 );
 
 typedef NetworkOptimizerRef = AutoDisposeProviderRef<NetworkOptimizer>;
-String _$resourceManagerHash() => r'a8873006a31925f451128453b0e4dbad6c557824';
+String _$resourceManagerHash() => r'af23b016dbe9eaeeffa7c444584bfcdd5c1d185e';
 
 /// ResourceManager Provider
 ///

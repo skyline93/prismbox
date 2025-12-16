@@ -4,7 +4,6 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/task_conflict_resolver.dart';
-import 'package:prismbox/services/backup/task_status_validator.dart';
 import 'package:prismbox/services/backup/backup_candidate_selector.dart';
 import 'package:prismbox/services/backup/upload_orchestrator.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
@@ -19,6 +18,10 @@ import 'package:prismbox/services/backup/network_optimizer.dart';
 import 'package:prismbox/services/backup/resource_manager.dart';
 import 'package:prismbox/services/backup/queue_size_manager.dart';
 import 'package:prismbox/services/backup/task_cleanup_scheduler.dart';
+import 'package:prismbox/services/backup/task_factory.dart';
+import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/services/backup/file_metadata_extractor.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart' as infra;
@@ -38,13 +41,11 @@ Future<TaskConflictResolver> taskConflictResolver(
   TaskConflictResolverRef ref,
 ) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  return TaskConflictResolver(database: database);
-}
-
-/// TaskStatusValidator Provider
-@riverpod
-TaskStatusValidator taskStatusValidator(TaskStatusValidatorRef ref) {
-  return TaskStatusValidator();
+  final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
+  return TaskConflictResolver(
+    database: database,
+    stateMachine: stateMachine,
+  );
 }
 
 /// BackupCandidateSelector Provider
@@ -53,10 +54,8 @@ Future<BackupCandidateSelector> backupCandidateSelector(
   BackupCandidateSelectorRef ref,
 ) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  final localSyncService = await ref.watch(localSyncServiceProvider.future);
   return BackupCandidateSelector(
     database: database,
-    localSyncService: localSyncService,
   );
 }
 
@@ -71,12 +70,18 @@ Future<UploadOrchestrator> uploadOrchestrator(
   final database = await ref.watch(infra.databaseProvider.future);
   final apiService = ref.watch(infra.apiServiceProvider);
   final uploadTaskManager = await ref.watch(uploadTaskManagerProvider.future);
+  final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
   final concurrencyController = UploadConcurrencyController();
+  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final metadataExtractor = ref.watch(fileMetadataExtractorProvider);
   return UploadOrchestrator(
     database: database,
+    stateMachine: stateMachine,
     apiService: apiService,
     concurrencyController: concurrencyController,
     uploadTaskManager: uploadTaskManager,
+    pathResolver: pathResolver,
+    metadataExtractor: metadataExtractor,
   );
 }
 
@@ -86,10 +91,12 @@ Future<UploadService> uploadService(UploadServiceRef ref) async {
   final database = await ref.watch(infra.databaseProvider.future);
   final orchestrator = await ref.watch(uploadOrchestratorProvider.future);
   final conflictResolver = await ref.watch(taskConflictResolverProvider.future);
+  final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
   return UploadService(
     database: database,
     orchestrator: orchestrator,
     conflictResolver: conflictResolver,
+    stateMachine: stateMachine,
   );
 }
 
@@ -99,20 +106,55 @@ BackupConfigValidator backupConfigValidator(BackupConfigValidatorRef ref) {
   return BackupConfigValidator();
 }
 
+/// FileMetadataExtractor Provider
+@riverpod
+FileMetadataExtractor fileMetadataExtractor(FileMetadataExtractorRef ref) {
+  return FileMetadataExtractor();
+}
+
+/// AssetPathResolver Provider
+@riverpod
+Future<AssetPathResolver> assetPathResolver(AssetPathResolverRef ref) async {
+  final database = await ref.watch(infra.databaseProvider.future);
+  return AssetPathResolver(database: database);
+}
+
+/// TaskFactory Provider
+@riverpod
+Future<TaskFactory> taskFactory(TaskFactoryRef ref) async {
+  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final metadataExtractor = ref.watch(fileMetadataExtractorProvider);
+  return TaskFactory(
+    pathResolver: pathResolver,
+    metadataExtractor: metadataExtractor,
+  );
+}
+
+/// UploadTaskStateMachine Provider
+@riverpod
+Future<UploadTaskStateMachine> uploadTaskStateMachine(
+  UploadTaskStateMachineRef ref,
+) async {
+  final database = await ref.watch(infra.databaseProvider.future);
+  return UploadTaskStateMachine(database: database);
+}
+
 /// BackupService Provider
 @riverpod
 Future<BackupService> backupService(BackupServiceRef ref) async {
   final database = await ref.watch(infra.databaseProvider.future);
   final uploadService = await ref.watch(uploadServiceProvider.future);
   final candidateSelector = await ref.watch(backupCandidateSelectorProvider.future);
-  final localSyncService = await ref.watch(localSyncServiceProvider.future);
   final apiService = ref.watch(infra.apiServiceProvider);
+  final taskFactory = await ref.watch(taskFactoryProvider.future);
+  final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
   return BackupService(
     database: database,
     uploadService: uploadService,
     candidateSelector: candidateSelector,
-    localSyncService: localSyncService,
     apiService: apiService,
+    taskFactory: taskFactory,
+    stateMachine: stateMachine,
   );
 }
 
@@ -124,10 +166,12 @@ Future<BackgroundSyncManager> backgroundSyncManager(
   final database = await ref.watch(infra.databaseProvider.future);
   final localSyncService = await ref.watch(localSyncServiceProvider.future);
   final apiService = ref.watch(infra.apiServiceProvider);
+  final pathResolver = await ref.watch(assetPathResolverProvider.future);
   return BackgroundSyncManager(
     database: database,
     localSyncService: localSyncService,
     apiService: apiService,
+    pathResolver: pathResolver,
   );
 }
 
@@ -137,10 +181,10 @@ Future<UploadTaskManager> uploadTaskManager(
   UploadTaskManagerRef ref,
 ) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  final apiService = ref.watch(infra.apiServiceProvider);
+  final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
   final uploadTaskManager = UploadTaskManager(
     database: database,
-    apiService: apiService,
+    stateMachine: stateMachine,
   );
   
   // 初始化 UploadTaskManager（注册回调和配置）
@@ -172,7 +216,13 @@ Future<AutoRecoveryManager> autoRecoveryManager(
   AutoRecoveryManagerRef ref,
 ) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  return AutoRecoveryManager(database: database);
+  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
+  return AutoRecoveryManager(
+    database: database,
+    pathResolver: pathResolver,
+    stateMachine: stateMachine,
+  );
 }
 
 /// NetworkOptimizer Provider
@@ -186,7 +236,11 @@ NetworkOptimizer networkOptimizer(NetworkOptimizerRef ref) {
 @riverpod
 Future<ResourceManager> resourceManager(ResourceManagerRef ref) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  return ResourceManager(database: database);
+  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  return ResourceManager(
+    database: database,
+    pathResolver: pathResolver,
+  );
 }
 
 /// QueueSizeManager Provider

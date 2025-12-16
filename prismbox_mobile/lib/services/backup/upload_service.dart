@@ -7,7 +7,7 @@ import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/task_conflict_resolver.dart';
 import 'package:prismbox/services/backup/upload_orchestrator.dart';
-import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 上传队列状态
@@ -78,17 +78,18 @@ class UploadService {
   final AppDatabase _database;
   final UploadOrchestrator _orchestrator;
   final TaskConflictResolver _conflictResolver;
-  final UploadConcurrencyController _concurrencyController;
+  final UploadTaskStateMachine _stateMachine;
   final Logger _logger = Logger('UploadService');
 
   UploadService({
     required AppDatabase database,
     required UploadOrchestrator orchestrator,
     required TaskConflictResolver conflictResolver,
+    required UploadTaskStateMachine stateMachine,
   })  : _database = database,
         _orchestrator = orchestrator,
         _conflictResolver = conflictResolver,
-        _concurrencyController = UploadConcurrencyController();
+        _stateMachine = stateMachine;
 
   /// 添加上传任务（自动进行冲突检测）
   /// 
@@ -220,12 +221,11 @@ class UploadService {
     final dao = _database.uploadTaskDao;
     final uploadingTasks = await dao.getUploadingTasksByUserId(userId);
 
-    for (final task in uploadingTasks) {
-      await dao.updateTaskStatus(
-        task.id,
-        UploadTaskStatus.paused,
-      );
-    }
+    // 通过状态机批量更新状态
+    await _stateMachine.transitionBatch(
+      uploadingTasks,
+      UploadTaskStatus.paused,
+    );
 
     _logger.info('Paused ${uploadingTasks.length} tasks');
   }
@@ -240,18 +240,17 @@ class UploadService {
   Future<void> resumeUpload(String userId) async {
     _logger.info('Resuming upload for userId=$userId');
 
-    final dao = _database.uploadTaskDao;
     final pausedTasks = await BackupQueryBuilder(_database)
         .withUserId(userId)
         .buildTaskQuery(status: UploadTaskStatus.paused)
         .get();
 
-    for (final task in pausedTasks) {
-      await dao.updateTaskStatus(
-        task.id,
-        UploadTaskStatus.pending,
-      );
-    }
+    // 通过状态机批量更新状态（paused -> queued，因为恢复后应该重新入队）
+    // 注意：根据状态转换规则，paused 不能直接转换为 pending，应该转换为 queued
+    await _stateMachine.transitionBatch(
+      pausedTasks,
+      UploadTaskStatus.queued,
+    );
 
     _logger.info('Resumed ${pausedTasks.length} tasks');
   }
@@ -274,13 +273,12 @@ class UploadService {
 
     final allTasks = [...pendingTasks, ...uploadingTasks];
 
-    for (final task in allTasks) {
-      await dao.updateTaskStatus(
-        task.id,
-        UploadTaskStatus.cancelled,
-        errorMessage: 'Cancelled by user',
-      );
-    }
+    // 通过状态机批量更新状态
+    await _stateMachine.transitionBatch(
+      allTasks,
+      UploadTaskStatus.cancelled,
+      errorMessage: 'Cancelled by user',
+    );
 
     _logger.info('Cancelled ${allTasks.length} tasks');
   }
@@ -385,10 +383,10 @@ class UploadService {
       return;
     }
 
-    final dao = _database.uploadTaskDao;
-    await dao.updateTaskStatus(
-      taskId,
-      UploadTaskStatus.pending,
+    // 通过状态机更新状态（failed/permanentlyFailed -> uploading，重试时直接开始上传）
+    await _stateMachine.transition(
+      task,
+      UploadTaskStatus.uploading,
       errorMessage: null, // 清除错误信息
     );
 

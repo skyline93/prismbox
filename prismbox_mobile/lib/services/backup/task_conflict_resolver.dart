@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
+import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 
 /// 冲突解决策略
 enum ConflictResolution {
@@ -25,11 +26,14 @@ enum ConflictResolution {
 /// - 相同任务类型和优先级时，跳过新任务
 class TaskConflictResolver {
   final AppDatabase _database;
+  final UploadTaskStateMachine _stateMachine;
   final Logger _logger = Logger('TaskConflictResolver');
 
   TaskConflictResolver({
     required AppDatabase database,
-  }) : _database = database;
+    required UploadTaskStateMachine stateMachine,
+  })  : _database = database,
+        _stateMachine = stateMachine;
 
   /// 检查冲突
   /// 
@@ -140,10 +144,9 @@ class TaskConflictResolver {
 
       case ConflictResolution.replace:
         if (existingTask != null) {
-          // 取消旧任务
-          final dao = _database.uploadTaskDao;
-          await dao.updateTaskStatus(
-            existingTask.id,
+          // 取消旧任务（通过状态机）
+          await _stateMachine.transition(
+            existingTask,
             UploadTaskStatus.cancelled,
             errorMessage: 'Replaced by higher priority task',
           );
