@@ -135,6 +135,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 
     return MaterialApp.router(
       title: 'PrismBox',
+      debugShowCheckedModeBanner: false, // 隐藏右上角的 DEBUG 标识
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,

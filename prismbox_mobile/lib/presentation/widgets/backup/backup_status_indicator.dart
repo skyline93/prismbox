@@ -43,7 +43,7 @@ class _BackupIndicatorContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 先检查服务是否准备好
     final servicesReadyAsync = ref.watch(backupServicesReadyProvider);
-    
+
     return servicesReadyAsync.when(
       data: (_) {
         // 服务已准备好，可以安全使用 backupStateProvider
@@ -59,40 +59,59 @@ class _BackupIndicatorContent extends ConsumerWidget {
               final isBackingUp = backupState.isBackingUp;
               final hasError = backupState.hasError;
 
-          final indicatorIcon = _getBackupBadgeIcon(
-            context,
-            isEnabled,
-            isBackingUp,
-            hasError,
-          );
+              final indicatorIcon = _getBackupBadgeIcon(
+                context,
+                isEnabled,
+                isBackingUp,
+                hasError,
+              );
 
-          if (indicatorIcon == null) {
-            return const SizedBox.shrink();
-          }
+              final backgroundColor = _getBackgroundColor(
+                context,
+                isEnabled,
+                isBackingUp,
+                hasError,
+              );
 
-          return SizedBox(
-            width: 40,
-            height: 40,
-            child: InkWell(
-              onTap: () {
-                // 跳转到备份设置页面
-                context.router.push(const BackupSettingsRoute());
-              },
-              borderRadius: const BorderRadius.all(Radius.circular(12)),
-              child: Badge(
-                label: indicatorIcon,
-                backgroundColor: Colors.transparent,
-                alignment: Alignment.bottomRight,
-                isLabelVisible: true,
-                offset: const Offset(-2, -12),
-                child: Icon(
-                  Icons.backup_rounded,
-                  size: 24,
-                  color: Theme.of(context).colorScheme.primary,
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    // 跳转到备份设置页面
+                    context.router.push(const BackupSettingsRoute());
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: backgroundColor != null
+                        ? BoxDecoration(
+                            color: backgroundColor,
+                            borderRadius: BorderRadius.circular(20),
+                          )
+                        : null,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // 主图标
+                        Icon(
+                          _getMainIcon(isEnabled, isBackingUp, hasError),
+                          size: 24,
+                          color: _getIconColor(
+                            context,
+                            isEnabled,
+                            isBackingUp,
+                            hasError,
+                          ),
+                        ),
+                        // 状态指示器（右上角小点）
+                        if (indicatorIcon != null)
+                          Positioned(top: 5, right: 5, child: indicatorIcon),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
+              );
             },
           ),
           loading: () => const SizedBox.shrink(),
@@ -104,86 +123,111 @@ class _BackupIndicatorContent extends ConsumerWidget {
     );
   }
 
+  /// 获取主图标
+  /// 统一使用 backup_rounded 图标，通过颜色和状态指示器区分不同状态
+  IconData _getMainIcon(bool isEnabled, bool isBackingUp, bool hasError) {
+    return Icons.backup_rounded;
+  }
+
+  /// 获取图标颜色
+  Color _getIconColor(
+    BuildContext context,
+    bool isEnabled,
+    bool isBackingUp,
+    bool hasError,
+  ) {
+    if (hasError) {
+      return Theme.of(context).colorScheme.error;
+    }
+    if (!isEnabled) {
+      return Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+    }
+    if (isBackingUp) {
+      return Theme.of(context).colorScheme.primary;
+    }
+    return Theme.of(context).colorScheme.primary;
+  }
+
+  /// 获取背景颜色
+  /// 使用更简洁的设计，只在必要时显示背景
+  Color? _getBackgroundColor(
+    BuildContext context,
+    bool isEnabled,
+    bool isBackingUp,
+    bool hasError,
+  ) {
+    // 只在备份中或错误时显示背景，其他情况透明
+    if (hasError) {
+      return Theme.of(context).colorScheme.errorContainer.withOpacity(0.15);
+    }
+    if (isBackingUp) {
+      return Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2);
+    }
+    return null; // 透明背景，更简洁
+  }
+
+  /// 获取状态指示器图标（右上角小点）
   Widget? _getBackupBadgeIcon(
     BuildContext context,
     bool isEnabled,
     bool isBackingUp,
     bool hasError,
   ) {
-    final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
-    final iconColor = isDarkTheme ? Colors.white : Colors.black;
-
     if (hasError) {
-      return _BadgeLabel(
-        Icon(
-          Icons.warning_rounded,
-          size: 12,
+      return Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.error,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.error.withOpacity(0.5),
+              blurRadius: 4,
+              spreadRadius: 1,
+            ),
+          ],
         ),
-        backgroundColor: Theme.of(context).colorScheme.errorContainer,
       );
     }
 
     if (!isEnabled) {
-      return _BadgeLabel(
-        Icon(
-          Icons.cloud_off_rounded,
-          size: 9,
-          color: iconColor,
-        ),
-      );
+      return null; // 未启用时不显示指示器
     }
 
     if (isBackingUp) {
-      return _BadgeLabel(
-        Container(
-          padding: const EdgeInsets.all(3.5),
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            strokeCap: StrokeCap.round,
-            valueColor: AlwaysStoppedAnimation<Color>(iconColor),
-          ),
+      return Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              blurRadius: 4,
+              spreadRadius: 1,
+            ),
+          ],
         ),
       );
     }
 
-    return _BadgeLabel(
-      Icon(
-        Icons.check_outlined,
-        size: 9,
-        color: iconColor,
-      ),
-    );
-  }
-}
-
-class _BadgeLabel extends StatelessWidget {
-  final Widget child;
-  final Color? backgroundColor;
-
-  const _BadgeLabel(
-    this.child, {
-    this.backgroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const widgetSize = 30.0;
-    final badgeBackground = backgroundColor ??
-        Theme.of(context).colorScheme.surfaceContainer;
-
+    // 已备份状态：显示绿色小点
     return Container(
-      width: widgetSize / 2,
-      height: widgetSize / 2,
+      width: 8,
+      height: 8,
       decoration: BoxDecoration(
-        color: badgeBackground,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-        ),
-        borderRadius: BorderRadius.circular(widgetSize / 2),
+        color: Colors.green,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.5),
+            blurRadius: 4,
+            spreadRadius: 1,
+          ),
+        ],
       ),
-      child: Center(child: child),
     );
   }
 }
-

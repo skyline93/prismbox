@@ -17,6 +17,7 @@ import 'package:prismbox/presentation/widgets/backup/backup_status_indicator.dar
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_grid_columns_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
+import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
@@ -388,28 +389,18 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                       floating: true,
                       pinned: true, // 与选择模式保持一致，避免布局变化导致滚动位置变动
                       snap: false,
-                      title: const Text('照片'),
+                      title: Row(
+                        children: [
+                          const Text('照片'),
+                          const SizedBox(width: 12),
+                          // 筛选模式按钮（放在标题右侧）
+                          _buildFilterButton(context, ref),
+                        ],
+                      ),
                       actions: [
-                        IconButton(
-                          icon: const Icon(Icons.filter_list),
-                          onPressed: () {
-                            // TODO: 显示筛选对话框
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.refresh),
-                          onPressed: () {
-                            // 刷新时间线数据
-                            ref.invalidate(timelineSectionsProvider);
-                          },
-                        ),
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: BackupStatusIndicator(),
-                          ),
+                          child: BackupStatusIndicator(),
                         ),
                       ],
                     ),
@@ -1020,5 +1011,72 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     targetColumns = targetColumns.clamp(2, 8);
 
     return targetColumns;
+  }
+
+  /// 构建筛选模式按钮
+  ///
+  /// 显示当前筛选模式，点击可循环切换：全部 -> 已备份 -> 未备份 -> 全部
+  /// 使用简洁的文字按钮样式，三种模式下按钮大小保持一致
+  Widget _buildFilterButton(BuildContext context, WidgetRef ref) {
+    final filterMode = ref.watch(photoFilterModeProvider);
+    final filterNotifier = ref.read(photoFilterModeProvider.notifier);
+
+    // 根据模式选择文字和样式
+    String text;
+    Color? backgroundColor;
+    Color? textColor;
+
+    switch (filterMode) {
+      case PhotoFilterModeEnum.all:
+        text = '全部';
+        backgroundColor = null; // 使用默认背景
+        textColor = null; // 使用默认文字颜色
+        break;
+      case PhotoFilterModeEnum.backedUp:
+        text = '已备份';
+        backgroundColor = Theme.of(context).colorScheme.primaryContainer;
+        textColor = Theme.of(context).colorScheme.onPrimaryContainer;
+        break;
+      case PhotoFilterModeEnum.notBackedUp:
+        text = '未备份';
+        backgroundColor = Theme.of(context).colorScheme.errorContainer;
+        textColor = Theme.of(context).colorScheme.onErrorContainer;
+        break;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        // 循环切换到下一个模式
+        // 注意：由于 timelineSectionsProvider 已经 watch 了 photoFilterModeProvider，
+        // 所以当筛选模式改变时，provider 会自动重新计算，无需手动 invalidate
+        filterNotifier.cycle();
+      },
+      child: Container(
+        // 固定宽度，确保三种模式下按钮大小一致
+        width: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(16),
+          border: backgroundColor == null
+              ? Border.all(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                  width: 1,
+                )
+              : null,
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
   }
 }

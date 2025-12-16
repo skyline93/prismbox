@@ -7,10 +7,10 @@ part of 'timeline_grid_columns_provider.dart';
 // **************************************************************************
 
 String _$timelineGridColumnsHash() =>
-    r'2539ed567418f003e7b8a03bdddfd7f7009af880';
+    r'0939f37850de615f595546338759d4ce9b1148cc';
 
 /// 时间线网格列数 Provider
-/// 支持 2、3、4、5、6 列，默认 4 列
+/// 支持 2、3、4、5、6、7、8 列，默认 4 列
 ///
 /// Copied from [TimelineGridColumns].
 @ProviderFor(TimelineGridColumns)

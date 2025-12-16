@@ -177,12 +177,13 @@ class _TimelineAssetsProviderElement
       (origin as TimelineAssetsProvider).forcePhotoManager;
 }
 
-String _$timelineSectionsHash() => r'7cad26538b58a289be081b454113fb1507b796ab';
+String _$timelineSectionsHash() => r'69cbd45e83eddb4959c6aeef9302f9f2e622e2e7';
 
 /// 时间线分组数据 Provider
 ///
 /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
 /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+/// 支持根据筛选模式（全部/已备份/未备份）过滤照片
 ///
 /// Copied from [timelineSections].
 @ProviderFor(timelineSections)
