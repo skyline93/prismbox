@@ -63,7 +63,7 @@ class _BackupAssetSelectionDialogState
             return CheckboxListTile(
               title: Text(asset.id),
               subtitle: Text(
-                asset.createdAt?.toString() ?? '未知日期',
+                asset.createdAt.toString(),
               ),
               value: isSelected,
               onChanged: (value) {

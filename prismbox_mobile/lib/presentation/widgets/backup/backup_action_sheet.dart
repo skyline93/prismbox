@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
-import 'package:prismbox/services/backup/backup_service.dart';
 
 /// 备份操作底部表单
 /// 显示备份进度和结果

@@ -50,64 +50,13 @@ class DragSelectionWrapper extends StatefulWidget {
 
 class _DragSelectionWrapperState extends State<DragSelectionWrapper> {
   bool _isDragging = false;
-  Offset? _dragStartPosition;
-  int? _dragStartSectionIndex;
-  int? _dragStartAssetIndex;
   final Set<String> _dragSelectedAssetIds = {};
-
-  /// 根据全局位置查找对应的资产
-  BaseAsset? _findAssetAtPosition(Offset globalPosition) {
-    // 遍历所有分组，查找包含该位置的资产
-    for (final section in widget.sections) {
-      // 这里需要获取每个分组的 RenderBox
-      // 由于 SliverGrid 是虚拟化的，我们需要使用不同的方法
-      // 暂时返回 null，后续优化
-    }
-    return null;
-  }
-
-  /// 计算矩形选择区域内的所有资产
-  Set<BaseAsset> _calculateSelectionRange(
-    TimelineSection section,
-    int startIndex,
-    int endIndex,
-  ) {
-    if (startIndex == endIndex) {
-      if (startIndex >= 0 && startIndex < section.assets.length) {
-        return {section.assets[startIndex]};
-      }
-      return {};
-    }
-
-    final startRow = startIndex ~/ widget.crossAxisCount;
-    final startCol = startIndex % widget.crossAxisCount;
-    final endRow = endIndex ~/ widget.crossAxisCount;
-    final endCol = endIndex % widget.crossAxisCount;
-
-    final minRow = startRow < endRow ? startRow : endRow;
-    final maxRow = startRow > endRow ? startRow : endRow;
-    final minCol = startCol < endCol ? startCol : endCol;
-    final maxCol = startCol > endCol ? startCol : endCol;
-
-    final selectedAssets = <BaseAsset>{};
-    for (int row = minRow; row <= maxRow; row++) {
-      for (int col = minCol; col <= maxCol; col++) {
-        final index = row * widget.crossAxisCount + col;
-        if (index >= 0 && index < section.assets.length) {
-          selectedAssets.add(section.assets[index]);
-        }
-      }
-    }
-
-    return selectedAssets;
-  }
 
   void _handlePanStart(DragStartDetails details) {
     if (!widget.enabled) return;
 
     setState(() {
       _isDragging = true;
-      _dragStartPosition = details.globalPosition;
       _dragSelectedAssetIds.clear();
     });
 
@@ -127,9 +76,6 @@ class _DragSelectionWrapperState extends State<DragSelectionWrapper> {
 
     setState(() {
       _isDragging = false;
-      _dragStartPosition = null;
-      _dragStartSectionIndex = null;
-      _dragStartAssetIndex = null;
       _dragSelectedAssetIds.clear();
     });
   }
@@ -139,9 +85,6 @@ class _DragSelectionWrapperState extends State<DragSelectionWrapper> {
 
     setState(() {
       _isDragging = false;
-      _dragStartPosition = null;
-      _dragStartSectionIndex = null;
-      _dragStartAssetIndex = null;
       _dragSelectedAssetIds.clear();
     });
   }
