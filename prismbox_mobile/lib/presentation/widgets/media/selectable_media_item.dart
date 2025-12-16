@@ -226,8 +226,8 @@ class _UploadStatusIcon extends ConsumerWidget {
     }
     
     return Positioned(
-      top: 8,
-      right: 8,
+      top: 4,
+      right: 4,
       child: iconWidget,
     );
   }
@@ -249,7 +249,7 @@ class _UploadStatusIcon extends ConsumerWidget {
   }
   
   /// 上传中图标（带旋转动画）
-  /// 使用 Stack 组合静态云图标和外围 CircularProgressIndicator
+  /// 使用 Stack 组合静态云图标和外围旋转圆环
   Widget _buildUploadingIcon(double? progress) {
     return Stack(
       alignment: Alignment.center,
@@ -267,13 +267,13 @@ class _UploadStatusIcon extends ConsumerWidget {
             ),
           ],
         ),
-        // 外围旋转圆环（进度指示）
+        // 外围旋转圆环（无限旋转动画，不显示进度）
         SizedBox(
           width: 20,
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            value: progress,
+            // 移除 value 参数，让圆环无限旋转
             valueColor: const AlwaysStoppedAnimation<Color>(
               Color.fromRGBO(255, 255, 255, 0.8),
             ),
