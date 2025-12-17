@@ -7,6 +7,7 @@ import (
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/media"
 	"github.com/album/backend/internal/service/storagepool"
+	"github.com/album/backend/internal/service/sync"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
@@ -46,17 +47,20 @@ type App struct {
 	GroupInviteRepo  repository.GroupInviteRepository
 	ShareRepo        repository.ShareRepository
 	StoragePoolRepo  repository.StoragePoolRepository
+	SyncRepo         repository.SyncRepository
+	CheckpointRepo   repository.CheckpointRepository
 
 	// 媒体处理
 	MediaProcessor       mediaprocessor.MediaProcessor
 	MediaProcessorConfig *mediaprocessor.Config
 
 	// 服务
-	MediaService media.Service
-	AuthService  auth.Service
+	MediaService       media.Service
+	AuthService        auth.Service
 	StoragePoolService storagepool.Service
-	GroupService interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
-	ShareService interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
+	SyncService        sync.Service
+	GroupService       interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
+	ShareService       interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
 
 	// 变更日志模块（可选）
 	ChangelogEngine  *changelog.Engine

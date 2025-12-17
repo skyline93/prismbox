@@ -25,6 +25,7 @@ func RunAutoMigrations(db *gorm.DB) error {
 		&models.Like{},
 		&models.GroupInvite{},
 		&models.Share{},
+		&models.SyncCheckpoint{},
 	); err != nil {
 		return fmt.Errorf("auto migrate models: %w", err)
 	}

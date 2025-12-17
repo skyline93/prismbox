@@ -13,6 +13,7 @@ import (
 	"github.com/album/backend/internal/service/media"
 	"github.com/album/backend/internal/service/share"
 	"github.com/album/backend/internal/service/storagepool"
+	"github.com/album/backend/internal/service/sync"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/urlsigner"
 	"github.com/album/backend/pkg/gq"
@@ -208,6 +209,8 @@ func (b *Builder) BuildRepositories() error {
 	b.app.GroupInviteRepo = repository.NewGroupInviteRepository(b.app.DB)
 	b.app.ShareRepo = repository.NewShareRepository(b.app.DB)
 	b.app.StoragePoolRepo = repository.NewStoragePoolRepository(b.app.DB)
+	b.app.SyncRepo = repository.NewSyncRepository(b.app.DB)
+	b.app.CheckpointRepo = repository.NewCheckpointRepository(b.app.DB)
 
 	return nil
 }
@@ -327,6 +330,15 @@ func (b *Builder) BuildServices() error {
 		return fmt.Errorf("storage pool repository is required")
 	}
 	b.app.StoragePoolService = storagepool.NewService(b.app.StoragePoolRepo, b.app.PrimaryStorage)
+
+	// 创建同步服务
+	if b.app.SyncRepo == nil || b.app.CheckpointRepo == nil {
+		return fmt.Errorf("sync repositories are required")
+	}
+	b.app.SyncService = sync.NewService(
+		b.app.SyncRepo,
+		b.app.CheckpointRepo,
+	)
 
 	return nil
 }

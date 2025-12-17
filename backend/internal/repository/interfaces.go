@@ -202,3 +202,25 @@ type StoragePoolUsageRow struct {
 	ActualSize    int64
 	LastCheckedAt *time.Time
 }
+
+// SyncRepository 同步仓储接口
+type SyncRepository interface {
+	// GetAssetsWithCursor 使用游标分页获取资产列表
+	GetAssetsWithCursor(ctx context.Context, userID uint, batchSize int, lastID string) ([]*models.Media, string, error)
+	// GetAssetsSince 获取指定时间之后的资产（用于增量同步）
+	GetAssetsSince(ctx context.Context, userID uint, since *time.Time, batchSize int) ([]*models.Media, error)
+}
+
+// CheckpointRepository 检查点仓储接口
+type CheckpointRepository interface {
+	// GetCheckpoint 获取检查点
+	GetCheckpoint(ctx context.Context, userID uint, deviceID string, syncType string) (*models.SyncCheckpoint, error)
+	// SetCheckpoint 设置检查点
+	SetCheckpoint(ctx context.Context, userID uint, deviceID string, syncType string, ack string) error
+	// DeleteCheckpoint 删除检查点
+	DeleteCheckpoint(ctx context.Context, userID uint, deviceID string, syncType string) error
+	// ResetSyncProgress 重置同步进度（删除所有检查点）
+	ResetSyncProgress(ctx context.Context, userID uint, deviceID string) error
+	// GetNowID 获取当前时间ID（用于生成checkpoint）
+	GetNowID() string
+}

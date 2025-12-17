@@ -11,6 +11,7 @@ import (
 	"github.com/album/backend/internal/api/v1/media"
 	"github.com/album/backend/internal/api/v1/share"
 	"github.com/album/backend/internal/api/v1/storage"
+	"github.com/album/backend/internal/api/v1/sync"
 	"github.com/album/backend/internal/app"
 	"github.com/album/backend/internal/version"
 	"github.com/album/backend/pkg/logger"
@@ -99,6 +100,9 @@ func (r *Router) setupAPIV1() {
 
 	// 注册存储路由
 	storage.RegisterRoutes(v1, r.app)
+
+	// 注册同步路由
+	sync.RegisterRoutes(v1, r.app)
 
 	// 注册分享的公开路由（在根路由）
 	share.RegisterPublicRoutes(r.engine, r.app)
