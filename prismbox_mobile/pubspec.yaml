@@ -48,6 +48,7 @@ dependencies:
   # 设备信息
   device_info_plus: ^9.1.0
   platform: ^3.1.0
+  flutter_udid: ^4.1.1
 
   # 并发控制
   synchronized: ^3.1.0
