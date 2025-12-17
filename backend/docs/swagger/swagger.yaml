@@ -112,6 +112,15 @@ definitions:
         description: 总数量
         type: integer
     type: object
+  dto.CheckpointDto:
+    properties:
+      ack:
+        description: Checkpoint ID
+        type: string
+      type:
+        description: 同步类型（如 "assets_v1"）
+        type: string
+    type: object
   dto.CreateCommentInput:
     description: 创建评论的请求体
     properties:
@@ -161,6 +170,17 @@ definitions:
     - duration_minute
     - media_uuid
     type: object
+  dto.DeleteCheckpointRequest:
+    properties:
+      types:
+        description: 要删除的同步类型列表
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - types
+    type: object
   dto.GetChangesResponse:
     description: 媒体变更列表响应数据
     properties:
@@ -170,6 +190,13 @@ definitions:
         type: array
       since:
         type: string
+    type: object
+  dto.GetCheckpointResponse:
+    properties:
+      checkpoints:
+        items:
+          $ref: '#/definitions/dto.CheckpointDto'
+        type: array
     type: object
   dto.GetMediasResponse:
     description: 媒体列表响应数据
@@ -250,6 +277,37 @@ definitions:
         type: string
       width:
         type: integer
+    type: object
+  dto.SetCheckpointRequest:
+    properties:
+      checkpoints:
+        items:
+          $ref: '#/definitions/dto.CheckpointDto'
+        minItems: 1
+        type: array
+    required:
+    - checkpoints
+    type: object
+  dto.SyncRequestType:
+    enum:
+    - assets_v1
+    type: string
+    x-enum-varnames:
+    - SyncRequestTypeAssetsV1
+  dto.SyncStreamRequest:
+    properties:
+      reset:
+        type: boolean
+      types:
+        items:
+          $ref: '#/definitions/dto.SyncRequestType'
+        minItems: 1
+        type: array
+      updated_after:
+        description: RFC3339 格式的时间戳
+        type: string
+    required:
+    - types
     type: object
   dto.UpdateGroupInput:
     description: 更新圈子的请求体
@@ -1409,6 +1467,20 @@ paths:
       tags:
       - Media
   /media/upload-stream:
+    head:
+      description: 用于客户端验证上传端点是否可用（HEAD 请求）
+      responses:
+        "200":
+          description: 端点可用
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 验证上传端点
+      tags:
+      - Media
     post:
       consumes:
       - multipart/form-data
@@ -1921,6 +1993,118 @@ paths:
       summary: 获取存储池使用情况
       tags:
       - Storage
+  /sync/assets/stream:
+    post:
+      consumes:
+      - application/json
+      description: 流式同步远程媒体资源到本地，支持全量和增量同步
+      parameters:
+      - description: 同步请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SyncStreamRequest'
+      produces:
+      - application/jsonlines+json
+      responses:
+        "200":
+          description: 流式数据（JSON Lines 格式）
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 流式同步资产
+      tags:
+      - Sync
+  /sync/checkpoint:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的同步检查点
+      parameters:
+      - description: 删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteCheckpointRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 删除成功
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 删除检查点
+      tags:
+      - Sync
+    get:
+      description: 获取当前用户的同步检查点
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.GetCheckpointResponse'
+              type: object
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取检查点
+      tags:
+      - Sync
+    post:
+      consumes:
+      - application/json
+      description: 更新同步检查点
+      parameters:
+      - description: 检查点请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetCheckpointRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 设置成功
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 设置检查点
+      tags:
+      - Sync
   /version:
     get:
       description: 返回服务器版本信息

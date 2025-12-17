@@ -1492,6 +1492,29 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "head": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "用于客户端验证上传端点是否可用（HEAD 请求）",
+                "tags": [
+                    "Media"
+                ],
+                "summary": "验证上传端点",
+                "responses": {
+                    "200": {
+                        "description": "端点可用"
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
             }
         },
         "/media/{uuid}": {
@@ -2515,6 +2538,189 @@ const docTemplate = `{
                 }
             }
         },
+        "/sync/assets/stream": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "流式同步远程媒体资源到本地，支持全量和增量同步",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/jsonlines+json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "流式同步资产",
+                "parameters": [
+                    {
+                        "description": "同步请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SyncStreamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "流式数据（JSON Lines 格式）"
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/checkpoint": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取当前用户的同步检查点",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "获取检查点",
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.GetCheckpointResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "更新同步检查点",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "设置检查点",
+                "parameters": [
+                    {
+                        "description": "检查点请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SetCheckpointRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "设置成功"
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "删除指定的同步检查点",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "删除检查点",
+                "parameters": [
+                    {
+                        "description": "删除请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DeleteCheckpointRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "删除成功"
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/version": {
             "get": {
                 "description": "返回服务器版本信息",
@@ -2700,6 +2906,19 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CheckpointDto": {
+            "type": "object",
+            "properties": {
+                "ack": {
+                    "description": "Checkpoint ID",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "同步类型（如 \"assets_v1\"）",
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreateCommentInput": {
             "description": "创建评论的请求体",
             "type": "object",
@@ -2771,6 +2990,22 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.DeleteCheckpointRequest": {
+            "type": "object",
+            "required": [
+                "types"
+            ],
+            "properties": {
+                "types": {
+                    "description": "要删除的同步类型列表",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "dto.GetChangesResponse": {
             "description": "媒体变更列表响应数据",
             "type": "object",
@@ -2783,6 +3018,17 @@ const docTemplate = `{
                 },
                 "since": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.GetCheckpointResponse": {
+            "type": "object",
+            "properties": {
+                "checkpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CheckpointDto"
+                    }
                 }
             }
         },
@@ -2902,6 +3148,52 @@ const docTemplate = `{
                 },
                 "width": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.SetCheckpointRequest": {
+            "type": "object",
+            "required": [
+                "checkpoints"
+            ],
+            "properties": {
+                "checkpoints": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.CheckpointDto"
+                    }
+                }
+            }
+        },
+        "dto.SyncRequestType": {
+            "type": "string",
+            "enum": [
+                "assets_v1"
+            ],
+            "x-enum-varnames": [
+                "SyncRequestTypeAssetsV1"
+            ]
+        },
+        "dto.SyncStreamRequest": {
+            "type": "object",
+            "required": [
+                "types"
+            ],
+            "properties": {
+                "reset": {
+                    "type": "boolean"
+                },
+                "types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.SyncRequestType"
+                    }
+                },
+                "updated_after": {
+                    "description": "RFC3339 格式的时间戳",
+                    "type": "string"
                 }
             }
         },
