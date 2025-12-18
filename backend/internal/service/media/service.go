@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -87,6 +88,10 @@ type Service interface {
 	GetFileReader(ctx context.Context, storageKey string) (io.ReadCloser, error)
 	// BuildThumbnailKey 构建缩略图存储key
 	BuildThumbnailKey(media *models.Media) (string, error)
+	// BuildDynamicThumbnailKey 构建动态尺寸缩略图存储key
+	BuildDynamicThumbnailKey(media *models.Media, width, height int) (string, error)
+	// GetOrGenerateThumbnail 获取或生成缩略图（按需生成）
+	GetOrGenerateThumbnail(ctx context.Context, media *models.Media, sizeParam string) (io.ReadCloser, error)
 	// BuildPreviewKey 构建预览图存储key
 	BuildPreviewKey(media *models.Media) (string, error)
 	// GetOriginalMimeType 获取原始文件的MIME类型
@@ -118,6 +123,7 @@ type service struct {
 	processor      mediaprocessor.MediaProcessor
 	processorCfg   *mediaprocessor.Config
 	storageAdapter *StorageAdapter
+	thumbnailQueue *ThumbnailQueue // 缩略图生成队列
 }
 
 // NewService 创建媒体服务
@@ -128,6 +134,10 @@ func NewService(
 	processor mediaprocessor.MediaProcessor,
 	processorCfg *mediaprocessor.Config,
 ) Service {
+	thumbnailQueue := NewThumbnailQueue()
+	// 启动清理任务（使用 context.Background，因为 service 生命周期与应用一致）
+	thumbnailQueue.StartCleanup(context.Background())
+
 	return &service{
 		log:            logger.New("service.media"),
 		repo:           repo,
@@ -136,6 +146,7 @@ func NewService(
 		processor:      processor,
 		processorCfg:   processorCfg,
 		storageAdapter: NewStorageAdapter(),
+		thumbnailQueue: thumbnailQueue,
 	}
 }
 
@@ -466,6 +477,238 @@ func (s *service) BuildThumbnailKey(media *models.Media) (string, error) {
 		return "", fmt.Errorf("parse storage key: %w", err)
 	}
 	return s.storageAdapter.GetThumbnailKey(hash, media.ItemType, ext)
+}
+
+// BuildDynamicThumbnailKey 构建动态尺寸缩略图存储key
+func (s *service) BuildDynamicThumbnailKey(media *models.Media, width, height int) (string, error) {
+	// 从原始文件的LocalPath提取hash和扩展名
+	hash, ext, _, err := s.storageAdapter.ParseStorageKey(media.LocalPath)
+	if err != nil {
+		return "", fmt.Errorf("parse storage key: %w", err)
+	}
+	return s.storageAdapter.BuildDynamicThumbnailKey(hash, media.ItemType, ext, width, height)
+}
+
+// GetOrGenerateThumbnail 获取或生成缩略图（按需生成，支持异步生成和降级方案）
+func (s *service) GetOrGenerateThumbnail(ctx context.Context, media *models.Media, sizeParam string) (io.ReadCloser, error) {
+	// 解析尺寸参数
+	size, err := ParseThumbnailSize(sizeParam)
+	if err != nil {
+		return nil, fmt.Errorf("parse size: %w", err)
+	}
+
+	// 检查是否是预设尺寸（thumbnail 或 preview）
+	if sizeParam == "thumbnail" {
+		// 使用预生成的缩略图
+		key, err := s.BuildThumbnailKey(media)
+		if err != nil {
+			return nil, fmt.Errorf("build thumbnail key: %w", err)
+		}
+		// 检查是否存在
+		exists, err := s.storageManager.Exists(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("check thumbnail exists: %w", err)
+		}
+		if exists {
+			return s.storageManager.Get(ctx, key)
+		}
+		// 如果不存在，降级到动态生成
+	}
+
+	if sizeParam == "preview" {
+		// 使用预生成的预览图
+		key, err := s.BuildPreviewKey(media)
+		if err != nil {
+			return nil, fmt.Errorf("build preview key: %w", err)
+		}
+		// 检查是否存在
+		exists, err := s.storageManager.Exists(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("check preview exists: %w", err)
+		}
+		if exists {
+			return s.storageManager.Get(ctx, key)
+		}
+		// 如果不存在，降级到动态生成（使用 1280x0）
+		size = &ThumbnailSize{Width: 1280, Height: 0}
+	}
+
+	// 构建动态缩略图 key
+	dynamicKey, err := s.BuildDynamicThumbnailKey(media, size.Width, size.Height)
+	if err != nil {
+		return nil, fmt.Errorf("build dynamic thumbnail key: %w", err)
+	}
+
+	// 检查动态缩略图是否已存在
+	exists, err := s.storageManager.Exists(ctx, dynamicKey)
+	if err != nil {
+		return nil, fmt.Errorf("check dynamic thumbnail exists: %w", err)
+	}
+
+	if exists {
+		// 直接返回
+		return s.storageManager.Get(ctx, dynamicKey)
+	}
+
+	// 需要按需生成，使用队列机制避免重复生成
+	task := &ThumbnailGenerationTask{
+		MediaUUID: media.UUID,
+		SizeParam: sizeParam,
+		Key:       dynamicKey,
+		CreatedAt: time.Now(),
+	}
+
+	// 尝试获取生成权限
+	acquired, waitCh := s.thumbnailQueue.TryAcquire(dynamicKey, task)
+	if !acquired {
+		// 已有其他请求正在生成，等待完成或返回降级方案
+		s.log.Debug("thumbnail generation in progress, waiting or returning fallback",
+			logger.String("key", dynamicKey),
+			logger.String("media_uuid", media.UUID),
+		)
+
+		// 如果有 ThumbHash，返回降级方案
+		if media.ThumbHash != "" {
+			return s.getThumbHashFallback(media.ThumbHash)
+		}
+
+		// 等待生成完成（最多等待5秒）
+		select {
+		case err := <-waitCh:
+			if err != nil {
+				// 生成失败，返回降级方案
+				if media.ThumbHash != "" {
+					return s.getThumbHashFallback(media.ThumbHash)
+				}
+				return nil, fmt.Errorf("thumbnail generation failed: %w", err)
+			}
+			// 生成成功，重新获取
+			return s.storageManager.Get(ctx, dynamicKey)
+		case <-time.After(5 * time.Second):
+			// 超时，返回降级方案
+			if media.ThumbHash != "" {
+				return s.getThumbHashFallback(media.ThumbHash)
+			}
+			return nil, fmt.Errorf("thumbnail generation timeout")
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	// 获得了生成权限，异步生成
+	go s.generateThumbnailAsync(ctx, media, size, dynamicKey, task)
+
+	// 立即返回降级方案（ThumbHash 或预生成缩略图）
+	if media.ThumbHash != "" {
+		return s.getThumbHashFallback(media.ThumbHash)
+	}
+
+	// 如果没有 ThumbHash，尝试返回预生成的缩略图作为降级方案
+	fallbackKey, _ := s.BuildThumbnailKey(media)
+	if exists, _ := s.storageManager.Exists(ctx, fallbackKey); exists {
+		return s.storageManager.Get(ctx, fallbackKey)
+	}
+
+	// 没有降级方案，返回错误
+	return nil, fmt.Errorf("thumbnail not available and generation in progress")
+}
+
+// generateThumbnailAsync 异步生成缩略图
+func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Media, size *ThumbnailSize, dynamicKey string, task *ThumbnailGenerationTask) {
+	defer s.thumbnailQueue.Complete(dynamicKey, nil)
+
+	// 1. 获取原始文件路径
+	originalPath, err := s.storageManager.GetSignedURL(ctx, media.LocalPath, 10*time.Minute)
+	if err != nil {
+		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("get original file path: %w", err))
+		return
+	}
+
+	// 2. 生成缩略图
+	// 构建 ImageSpec（使用 MaxWidth 和 MaxHeight）
+	spec := mediaprocessor.ImageSpec{
+		MaxWidth:  size.Width,
+		MaxHeight: size.Height,
+		Format:    "jpg",
+		Quality:   85,
+		Crop:      size.Height > 0, // 如果指定了高度，则允许裁剪
+	}
+
+	var thumbnailPath string
+	if strings.EqualFold(media.ItemType, "image") {
+		thumbnailPath, err = s.processor.GenerateThumbnail(ctx, originalPath, spec)
+	} else if strings.EqualFold(media.ItemType, "video") {
+		// 对于视频，使用预生成的缩略图作为源来生成动态尺寸
+		thumbnailKey, _ := s.BuildThumbnailKey(media)
+		sourcePath := originalPath
+
+		// 尝试使用预生成的缩略图作为源
+		if exists, _ := s.storageManager.Exists(ctx, thumbnailKey); exists {
+			sourcePath, _ = s.storageManager.GetSignedURL(ctx, thumbnailKey, 10*time.Minute)
+		}
+
+		// 从源图片生成动态尺寸缩略图
+		thumbnailPath, err = s.processor.GenerateThumbnail(ctx, sourcePath, spec)
+	} else {
+		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("unsupported item type: %s", media.ItemType))
+		return
+	}
+
+	if err != nil {
+		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("generate thumbnail: %w", err))
+		return
+	}
+
+	// 3. 读取生成的缩略图文件
+	thumbnailFile, err := os.Open(thumbnailPath)
+	if err != nil {
+		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("open generated thumbnail file: %w", err))
+		return
+	}
+	defer thumbnailFile.Close()
+
+	// 4. 读取文件数据
+	thumbnailData, err := io.ReadAll(thumbnailFile)
+	if err != nil {
+		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("read thumbnail data: %w", err))
+		return
+	}
+
+	// 5. 存储到动态 key
+	if err := s.storageManager.Put(ctx, dynamicKey, bytes.NewReader(thumbnailData), int64(len(thumbnailData)), nil); err != nil {
+		s.log.Warn("failed to store dynamic thumbnail",
+			logger.Error(err),
+			logger.String("key", dynamicKey),
+		)
+		s.thumbnailQueue.Complete(dynamicKey, err)
+		return
+	}
+
+	s.log.Info("dynamic thumbnail generated successfully",
+		logger.String("key", dynamicKey),
+		logger.String("media_uuid", media.UUID),
+		logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
+	)
+}
+
+// getThumbHashFallback 返回 ThumbHash 占位符（作为降级方案）
+// 注意：这里返回一个简单的占位符响应，实际应该返回 ThumbHash 编码的图片
+// 为了简化，这里返回一个提示信息，前端应该使用 ThumbHash 来渲染占位符
+func (s *service) getThumbHashFallback(thumbHash string) (io.ReadCloser, error) {
+	// 返回一个简单的占位符图片（1x1 透明 PNG）
+	// 实际应用中，前端应该使用 ThumbHash 来渲染占位符
+	// 这里返回一个最小的 PNG 图片作为占位符
+	placeholderPNG := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89,
+		0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, // IDAT chunk
+		0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01,
+		0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND
+		0xAE, 0x42, 0x60, 0x82,
+	}
+	return io.NopCloser(bytes.NewReader(placeholderPNG)), nil
 }
 
 // BuildPreviewKey 构建预览图存储key

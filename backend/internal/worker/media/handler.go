@@ -9,6 +9,7 @@ import (
 
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
+	"github.com/album/backend/internal/thumbhash"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
@@ -96,6 +97,18 @@ func processImageHandler(
 				logger.String("media_uuid", payload.MediaUUID),
 				logger.Int("error_count", len(result.Errors)),
 			)
+		}
+
+		// 生成 ThumbHash（仅图片类型，失败不阻塞主流程）
+		if status == "COMPLETED" && strings.EqualFold(media.ItemType, "image") {
+			if thumbHash, err := generateThumbHash(ctx, originalPath); err == nil && thumbHash != "" {
+				updates["thumb_hash"] = thumbHash
+			} else {
+				log.Warn("failed to generate thumbhash",
+					logger.Error(err),
+					logger.String("media_uuid", payload.MediaUUID),
+				)
+			}
 		}
 
 		if err := repo.Update(ctx, payload.MediaUUID, updates); err != nil {
@@ -226,4 +239,19 @@ func applyMetadataToUpdates(metadata *mediaprocessor.MediaMetadata, updates map[
 	if metadata.Duration != nil {
 		updates["duration"] = *metadata.Duration
 	}
+}
+
+// generateThumbHash 生成 ThumbHash 占位符
+func generateThumbHash(ctx context.Context, imagePath string) (string, error) {
+	generator, err := thumbhash.NewGenerator()
+	if err != nil {
+		return "", fmt.Errorf("create generator: %w", err)
+	}
+
+	thumbHash, err := generator.GenerateFromFile(ctx, imagePath)
+	if err != nil {
+		return "", fmt.Errorf("generate thumbhash: %w", err)
+	}
+
+	return thumbHash, nil
 }

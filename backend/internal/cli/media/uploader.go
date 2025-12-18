@@ -206,8 +206,8 @@ func uploadSingle(ctx context.Context, client *remote.Client, task PreparedTask,
 	}
 	defer f.Close()
 
-	reader := io.Reader(f)
 	var bar *progressbar.ProgressBar
+	reader := io.Reader(f)
 	if !quiet {
 		bar = progressbar.NewOptions64(task.FileSize,
 			progressbar.OptionSetDescription("上传中"),

@@ -19,6 +19,7 @@ type MediaResponse struct {
 	Width            int     `json:"width"`
 	Height           int     `json:"height"`
 	MediaTakenAt     *string `json:"media_taken_at,omitempty"`
+	ThumbHash        string  `json:"thumb_hash,omitempty"` // ThumbHash 占位符（base64 编码）
 	ThumbnailURL     string  `json:"thumbnail_url,omitempty"`
 	PreviewURL       string  `json:"preview_url,omitempty"`
 	DownloadURL      string  `json:"download_url,omitempty"`
@@ -54,7 +55,7 @@ type CheckHashesResponse struct {
 	MissingHashes  []string `json:"missing_hashes"`  // 缺失的哈希列表
 	TotalCount     int      `json:"total_count"`     // 总数量
 	ExistingCount  int      `json:"existing_count"`  // 已存在数量
-	MissingCount   int      `json:"missing_count"`    // 缺失数量
+	MissingCount   int      `json:"missing_count"`   // 缺失数量
 }
 
 // GetChangesRequest 获取媒体变更请求

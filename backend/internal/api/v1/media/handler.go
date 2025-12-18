@@ -149,6 +149,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 			LocalPath:        existingMedia.LocalPath,
 			BackupStatus:     existingMedia.BackupStatus,
 			CreatedAt:        existingMedia.CreatedAt.Format(time.RFC3339),
+			ThumbHash:        existingMedia.ThumbHash,
 		}
 		h.log.Info("media instant upload (file already exists)",
 			logger.String("uuid", existingMedia.UUID),
@@ -234,6 +235,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		LocalPath:        media.LocalPath,
 		BackupStatus:     media.BackupStatus,
 		CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+		ThumbHash:        media.ThumbHash,
 	}
 
 	// 12. 新上传成功，返回201
@@ -264,7 +266,7 @@ func (h *Handler) ValidateUploadEndpoint(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	
+
 	// 端点可用，返回 200
 	c.Status(http.StatusOK)
 	h.log.Info("upload endpoint validated",
@@ -341,6 +343,7 @@ func (h *Handler) GetMedias(c *gin.Context) {
 			LocalPath:        media.LocalPath,
 			BackupStatus:     media.BackupStatus,
 			CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+			ThumbHash:        media.ThumbHash,
 		})
 	}
 
@@ -588,6 +591,7 @@ func (h *Handler) GetMediaDetail(c *gin.Context) {
 		UpdatedAt:        media.UpdatedAt.Format(time.RFC3339),
 		Width:            media.Width,
 		Height:           media.Height,
+		ThumbHash:        media.ThumbHash,
 	}
 
 	// 3. 处理可选的 MediaTakenAt 字段
@@ -859,11 +863,12 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 
 // DownloadThumbnail 下载缩略图
 // @Summary      下载缩略图
-// @Description  下载媒体的缩略图（小尺寸预览），支持认证或签名 URL 访问
+// @Description  下载媒体的缩略图（小尺寸预览），支持动态尺寸和认证或签名 URL 访问
 // @Tags         Media
 // @Produce      image/jpeg
 // @Security     BearerAuth
 // @Param        uuid path string true "媒体 UUID"
+// @Param        size query string false "尺寸参数：200x200, thumbnail, preview, 或单边限制如 200（默认：thumbnail）"
 // @Success      200 "缩略图内容"
 // @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
 // @Failure      401 {object} response.ApiResponse "未认证"
@@ -873,6 +878,12 @@ func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	if mediaUUID == "" {
 		apiresponse.Error(c, "Media UUID is required")
 		return
+	}
+
+	// 获取 size 参数（可选）
+	sizeParam := c.Query("size")
+	if sizeParam == "" {
+		sizeParam = "thumbnail" // 默认值
 	}
 
 	// 获取userID（可能为nil，表示通过签名URL访问）
@@ -904,22 +915,34 @@ func (h *Handler) DownloadThumbnail(c *gin.Context) {
 		return
 	}
 
-	// 3. 构建缩略图存储key
-	storageKey, err := h.mediaService.BuildThumbnailKey(media)
+	// 3. 获取或生成缩略图（支持动态尺寸）
+	thumbnailReader, err := h.mediaService.GetOrGenerateThumbnail(c.Request.Context(), media, sizeParam)
 	if err != nil {
-		h.log.Error("failed to build thumbnail key",
+		h.log.Error("failed to get or generate thumbnail",
 			logger.Error(err),
 			logger.String("uuid", mediaUUID),
+			logger.String("size", sizeParam),
 		)
-		apiresponse.Error(c, "Failed to build thumbnail key")
+		apiresponse.Error(c, fmt.Sprintf("Failed to get thumbnail: %v", err))
 		return
 	}
+	defer thumbnailReader.Close()
 
 	// 4. 获取缩略图的MIME类型
 	mimeType := h.mediaService.GetThumbnailMimeType(media)
 
-	// 5. 提供文件
-	h.downloadFile(c, storageKey, mimeType)
+	// 5. 设置响应头
+	c.Header("Content-Type", mimeType)
+	c.Header("Cache-Control", "public, max-age=2592000") // 30天缓存
+
+	// 如果是占位符（通过检查 Content-Length 或特殊标记），添加 X-ThumbHash 头
+	// 注意：这里简化处理，实际可以通过检查 reader 类型来判断
+	if media.ThumbHash != "" {
+		c.Header("X-ThumbHash", media.ThumbHash) // 提供 ThumbHash 供前端使用
+	}
+
+	// 6. 流式传输缩略图
+	c.DataFromReader(200, -1, mimeType, thumbnailReader, nil)
 }
 
 // downloadFile 从存储提供文件下载
