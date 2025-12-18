@@ -191,10 +191,11 @@ class _UploadStatusIcon extends ConsumerWidget {
     // 获取资产的唯一标识符
     final assetId = asset.localId ?? asset.id;
     final hasRemote = asset.hasRemote;
+    final checksum = asset.checksum; // 获取 checksum，用于查询远程资产表
     
     // 使用 Provider 获取上传状态（使用唯一标识符作为 family 参数）
     final statusAsync = ref.watch(
-      assetUploadStatusProvider(assetId, hasRemote),
+      assetUploadStatusProvider(assetId, hasRemote, checksum),
     );
     
     // 根据状态显示不同图标

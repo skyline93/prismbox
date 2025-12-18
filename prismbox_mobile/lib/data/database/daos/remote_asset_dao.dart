@@ -105,6 +105,21 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// 流式查询：监听指定 checksum 的远程资产变化
+  /// 
+  /// **用途**：用于实时查询本地资产是否有对应的远程版本
+  /// 当远程同步完成后，如果该 checksum 的远程资产被插入，会自动发出新值
+  /// 
+  /// **返回**：Stream<RemoteAssetEntityData?>，当远程资产变化时会自动发出新值
+  Stream<RemoteAssetEntityData?> watchAssetByChecksum(String checksum) {
+    return (select(remoteAssetEntity)
+          ..where((t) => 
+              t.checksum.equals(checksum) & 
+              t.deletedAt.isNull())
+          ..limit(1))
+      .watchSingleOrNull();
+  }
+
   /// 批量更新资产
   Future<void> updateAssets(List<RemoteAssetEntityData> assets) {
     return batch((batch) {

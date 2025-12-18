@@ -10,12 +10,14 @@ import 'package:prismbox/data/database/tables/album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/store_entity.dart';
 import 'package:prismbox/data/database/tables/backup_status_entity.dart';
 import 'package:prismbox/data/database/tables/upload_task_entity.dart';
+import 'package:prismbox/data/database/tables/sync_checkpoint_entity.dart';
 import 'package:prismbox/data/database/daos/user_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/daos/album_dao.dart';
 import 'package:prismbox/data/database/daos/backup_status_dao.dart';
 import 'package:prismbox/data/database/daos/upload_task_dao.dart';
+import 'package:prismbox/data/database/daos/sync_checkpoint_dao.dart';
 import 'package:prismbox/data/database/exceptions/database_exception.dart';
 // 导入枚举类型，供生成的代码使用
 import 'package:prismbox/data/database/enums/asset_type.dart';
@@ -41,6 +43,7 @@ part 'app_database.g.dart';
     StoreEntity,
     BackupStatusEntity,
     UploadTaskEntity,
+    SyncCheckpointEntity,
   ],
   daos: [
     UserDao,
@@ -49,13 +52,14 @@ part 'app_database.g.dart';
     AlbumDao,
     BackupStatusDao,
     UploadTaskDao,
+    SyncCheckpointDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -112,6 +116,10 @@ class AppDatabase extends _$AppDatabase {
         // 添加备份相关表
         await m.createTable(backupStatusEntity);
         await m.createTable(uploadTaskEntity);
+        break;
+      case 4:
+        // 添加同步检查点表
+        await m.createTable(syncCheckpointEntity);
         break;
       // ... 其他版本迁移
       default:

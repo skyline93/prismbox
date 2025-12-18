@@ -8,6 +8,7 @@ import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
+import 'package:prismbox/features/remote_sync/providers/remote_sync_providers.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_sliver_list.dart';
 import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
@@ -37,6 +38,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<bool>? _dataSourceSwitchSubscription;
   StreamSubscription<String>? _uploadCompleteSubscription;
+  StreamSubscription? _remoteSyncCompleteSubscription;
+  StreamSubscription? _checksumMatchCompleteSubscription;
 
   /// 拖动选择相关状态
   AssetIndex? _dragAnchorIndex;
@@ -57,12 +60,18 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     _listenDataSourceSwitch();
     // 监听上传完成通知
     _listenUploadComplete();
+    // 监听远程同步完成通知
+    _listenRemoteSyncComplete();
+    // 监听 checksum 匹配完成通知
+    _listenChecksumMatchComplete();
   }
 
   @override
   void dispose() {
     _dataSourceSwitchSubscription?.cancel();
     _uploadCompleteSubscription?.cancel();
+    _remoteSyncCompleteSubscription?.cancel();
+    _checksumMatchCompleteSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -131,6 +140,70 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         })
         .catchError((error) {
           debugPrint('❌ 启动上传完成监听失败: $error');
+        });
+  }
+
+  /// 监听远程同步完成通知
+  /// 当远程同步完成后，刷新时间线数据以更新上传状态图标
+  void _listenRemoteSyncComplete() {
+    ref
+        .read(remoteSyncCoordinatorProvider.future)
+        .then((coordinator) {
+          debugPrint('✅ 远程同步完成监听已启动');
+          _remoteSyncCompleteSubscription = coordinator.remoteSyncCompleteStream.listen(
+            (result) async {
+              if (mounted && result.addedCount > 0) {
+                debugPrint('✅ 收到远程同步完成通知: 新增 ${result.addedCount} 个资产，刷新时间线数据');
+                // 短暂延迟，确保数据库事务已提交
+                await Future.delayed(const Duration(milliseconds: 200));
+                if (mounted) {
+                  // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
+                  ref.invalidate(timelineAssetsProvider());
+                  ref.invalidate(timelineSectionsProvider);
+                  debugPrint('✅ 已刷新时间线数据');
+                }
+              }
+            },
+            onError: (error) {
+              // 记录错误但不影响功能
+              debugPrint('❌ 远程同步完成监听错误: $error');
+            },
+          );
+        })
+        .catchError((error) {
+          debugPrint('❌ 启动远程同步完成监听失败: $error');
+        });
+  }
+
+  /// 监听 checksum 匹配完成通知
+  /// 当 checksum 匹配完成后，刷新时间线数据以更新上传状态图标
+  void _listenChecksumMatchComplete() {
+    ref
+        .read(syncCoordinatorProvider.future)
+        .then((coordinator) {
+          debugPrint('✅ Checksum 匹配完成监听已启动');
+          _checksumMatchCompleteSubscription = coordinator.checksumMatchCompleteStream.listen(
+            (_) async {
+              if (mounted) {
+                debugPrint('✅ 收到 checksum 匹配完成通知，刷新时间线数据');
+                // 短暂延迟，确保数据库事务已提交
+                await Future.delayed(const Duration(milliseconds: 200));
+                if (mounted) {
+                  // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
+                  ref.invalidate(timelineAssetsProvider());
+                  ref.invalidate(timelineSectionsProvider);
+                  debugPrint('✅ 已刷新时间线数据');
+                }
+              }
+            },
+            onError: (error) {
+              // 记录错误但不影响功能
+              debugPrint('❌ Checksum 匹配完成监听错误: $error');
+            },
+          );
+        })
+        .catchError((error) {
+          debugPrint('❌ 启动 Checksum 匹配完成监听失败: $error');
         });
   }
 

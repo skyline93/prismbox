@@ -4420,6 +4420,324 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
   }
 }
 
+class $SyncCheckpointEntityTable extends SyncCheckpointEntity
+    with TableInfo<$SyncCheckpointEntityTable, SyncCheckpointEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncCheckpointEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES user_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _syncTypeMeta =
+      const VerificationMeta('syncType');
+  @override
+  late final GeneratedColumn<String> syncType = GeneratedColumn<String>(
+      'sync_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _ackMeta = const VerificationMeta('ack');
+  @override
+  late final GeneratedColumn<String> ack = GeneratedColumn<String>(
+      'ack', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [userId, syncType, ack, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_checkpoint_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<SyncCheckpointEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('sync_type')) {
+      context.handle(_syncTypeMeta,
+          syncType.isAcceptableOrUnknown(data['sync_type']!, _syncTypeMeta));
+    } else if (isInserting) {
+      context.missing(_syncTypeMeta);
+    }
+    if (data.containsKey('ack')) {
+      context.handle(
+          _ackMeta, ack.isAcceptableOrUnknown(data['ack']!, _ackMeta));
+    } else if (isInserting) {
+      context.missing(_ackMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {userId, syncType};
+  @override
+  SyncCheckpointEntityData map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncCheckpointEntityData(
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      syncType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_type'])!,
+      ack: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ack'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $SyncCheckpointEntityTable createAlias(String alias) {
+    return $SyncCheckpointEntityTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SyncCheckpointEntityData extends DataClass
+    implements Insertable<SyncCheckpointEntityData> {
+  /// 用户 ID
+  final String userId;
+
+  /// 同步类型（如 "assets_v1"）
+  final String syncType;
+
+  /// Checkpoint ID（由服务器生成）
+  final String ack;
+
+  /// 创建时间
+  final DateTime createdAt;
+
+  /// 更新时间
+  final DateTime updatedAt;
+  const SyncCheckpointEntityData(
+      {required this.userId,
+      required this.syncType,
+      required this.ack,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['user_id'] = Variable<String>(userId);
+    map['sync_type'] = Variable<String>(syncType);
+    map['ack'] = Variable<String>(ack);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SyncCheckpointEntityCompanion toCompanion(bool nullToAbsent) {
+    return SyncCheckpointEntityCompanion(
+      userId: Value(userId),
+      syncType: Value(syncType),
+      ack: Value(ack),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SyncCheckpointEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncCheckpointEntityData(
+      userId: serializer.fromJson<String>(json['userId']),
+      syncType: serializer.fromJson<String>(json['syncType']),
+      ack: serializer.fromJson<String>(json['ack']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'userId': serializer.toJson<String>(userId),
+      'syncType': serializer.toJson<String>(syncType),
+      'ack': serializer.toJson<String>(ack),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SyncCheckpointEntityData copyWith(
+          {String? userId,
+          String? syncType,
+          String? ack,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      SyncCheckpointEntityData(
+        userId: userId ?? this.userId,
+        syncType: syncType ?? this.syncType,
+        ack: ack ?? this.ack,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  SyncCheckpointEntityData copyWithCompanion(
+      SyncCheckpointEntityCompanion data) {
+    return SyncCheckpointEntityData(
+      userId: data.userId.present ? data.userId.value : this.userId,
+      syncType: data.syncType.present ? data.syncType.value : this.syncType,
+      ack: data.ack.present ? data.ack.value : this.ack,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncCheckpointEntityData(')
+          ..write('userId: $userId, ')
+          ..write('syncType: $syncType, ')
+          ..write('ack: $ack, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(userId, syncType, ack, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncCheckpointEntityData &&
+          other.userId == this.userId &&
+          other.syncType == this.syncType &&
+          other.ack == this.ack &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SyncCheckpointEntityCompanion
+    extends UpdateCompanion<SyncCheckpointEntityData> {
+  final Value<String> userId;
+  final Value<String> syncType;
+  final Value<String> ack;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const SyncCheckpointEntityCompanion({
+    this.userId = const Value.absent(),
+    this.syncType = const Value.absent(),
+    this.ack = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SyncCheckpointEntityCompanion.insert({
+    required String userId,
+    required String syncType,
+    required String ack,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  })  : userId = Value(userId),
+        syncType = Value(syncType),
+        ack = Value(ack),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<SyncCheckpointEntityData> custom({
+    Expression<String>? userId,
+    Expression<String>? syncType,
+    Expression<String>? ack,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (syncType != null) 'sync_type': syncType,
+      if (ack != null) 'ack': ack,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SyncCheckpointEntityCompanion copyWith(
+      {Value<String>? userId,
+      Value<String>? syncType,
+      Value<String>? ack,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return SyncCheckpointEntityCompanion(
+      userId: userId ?? this.userId,
+      syncType: syncType ?? this.syncType,
+      ack: ack ?? this.ack,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (syncType.present) {
+      map['sync_type'] = Variable<String>(syncType.value);
+    }
+    if (ack.present) {
+      map['ack'] = Variable<String>(ack.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncCheckpointEntityCompanion(')
+          ..write('userId: $userId, ')
+          ..write('syncType: $syncType, ')
+          ..write('ack: $ack, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4439,6 +4757,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $BackupStatusEntityTable(this);
   late final $UploadTaskEntityTable uploadTaskEntity =
       $UploadTaskEntityTable(this);
+  late final $SyncCheckpointEntityTable syncCheckpointEntity =
+      $SyncCheckpointEntityTable(this);
   late final Index idxLocalAssetChecksum = Index('idx_local_asset_checksum',
       'CREATE INDEX idx_local_asset_checksum ON local_asset_entity (checksum)');
   late final Index idxRemoteAssetOwnerChecksum = Index(
@@ -4466,6 +4786,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final BackupStatusDao backupStatusDao =
       BackupStatusDao(this as AppDatabase);
   late final UploadTaskDao uploadTaskDao = UploadTaskDao(this as AppDatabase);
+  late final SyncCheckpointDao syncCheckpointDao =
+      SyncCheckpointDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4480,6 +4802,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         storeEntity,
         backupStatusEntity,
         uploadTaskEntity,
+        syncCheckpointEntity,
         idxLocalAssetChecksum,
         idxRemoteAssetOwnerChecksum,
         idxRemoteAssetChecksum,
@@ -4547,6 +4870,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('upload_task_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('user_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('sync_checkpoint_entity', kind: UpdateKind.delete),
             ],
           ),
         ],
@@ -4716,6 +5046,24 @@ class $$UserEntityTableFilterComposer
             builder: (joinBuilder, parentComposers) =>
                 $$UploadTaskEntityTableFilterComposer(ComposerState($state.db,
                     $state.db.uploadTaskEntity, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter syncCheckpointEntityRefs(
+      ComposableFilter Function($$SyncCheckpointEntityTableFilterComposer f)
+          f) {
+    final $$SyncCheckpointEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.syncCheckpointEntity,
+            getReferencedColumn: (t) => t.userId,
+            builder: (joinBuilder, parentComposers) =>
+                $$SyncCheckpointEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.syncCheckpointEntity,
+                    joinBuilder,
+                    parentComposers)));
     return f(composer);
   }
 }
@@ -6484,6 +6832,143 @@ class $$UploadTaskEntityTableOrderingComposer
   }
 }
 
+typedef $$SyncCheckpointEntityTableCreateCompanionBuilder
+    = SyncCheckpointEntityCompanion Function({
+  required String userId,
+  required String syncType,
+  required String ack,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+});
+typedef $$SyncCheckpointEntityTableUpdateCompanionBuilder
+    = SyncCheckpointEntityCompanion Function({
+  Value<String> userId,
+  Value<String> syncType,
+  Value<String> ack,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+});
+
+class $$SyncCheckpointEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncCheckpointEntityTable,
+    SyncCheckpointEntityData,
+    $$SyncCheckpointEntityTableFilterComposer,
+    $$SyncCheckpointEntityTableOrderingComposer,
+    $$SyncCheckpointEntityTableCreateCompanionBuilder,
+    $$SyncCheckpointEntityTableUpdateCompanionBuilder> {
+  $$SyncCheckpointEntityTableTableManager(
+      _$AppDatabase db, $SyncCheckpointEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer: $$SyncCheckpointEntityTableFilterComposer(
+              ComposerState(db, table)),
+          orderingComposer: $$SyncCheckpointEntityTableOrderingComposer(
+              ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> userId = const Value.absent(),
+            Value<String> syncType = const Value.absent(),
+            Value<String> ack = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              SyncCheckpointEntityCompanion(
+            userId: userId,
+            syncType: syncType,
+            ack: ack,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            required String userId,
+            required String syncType,
+            required String ack,
+            required DateTime createdAt,
+            required DateTime updatedAt,
+          }) =>
+              SyncCheckpointEntityCompanion.insert(
+            userId: userId,
+            syncType: syncType,
+            ack: ack,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+        ));
+}
+
+class $$SyncCheckpointEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $SyncCheckpointEntityTable> {
+  $$SyncCheckpointEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get syncType => $state.composableBuilder(
+      column: $state.table.syncType,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get ack => $state.composableBuilder(
+      column: $state.table.ack,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get userId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$SyncCheckpointEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $SyncCheckpointEntityTable> {
+  $$SyncCheckpointEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get syncType => $state.composableBuilder(
+      column: $state.table.syncType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get ack => $state.composableBuilder(
+      column: $state.table.ack,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get userId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
@@ -6505,4 +6990,6 @@ class $AppDatabaseManager {
       $$BackupStatusEntityTableTableManager(_db, _db.backupStatusEntity);
   $$UploadTaskEntityTableTableManager get uploadTaskEntity =>
       $$UploadTaskEntityTableTableManager(_db, _db.uploadTaskEntity);
+  $$SyncCheckpointEntityTableTableManager get syncCheckpointEntity =>
+      $$SyncCheckpointEntityTableTableManager(_db, _db.syncCheckpointEntity);
 }

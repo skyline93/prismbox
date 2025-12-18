@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/storage/store_key.dart';
+import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
+import 'package:prismbox/features/remote_sync/providers/remote_sync_providers.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
@@ -63,8 +67,17 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
 
     try {
       _log.info('✅ 触发应用恢复时的同步检查');
+      
+      // 本地同步
       final coordinator = await ref.read(syncCoordinatorProvider.future);
       coordinator.checkAndSyncOnResume();
+      
+      // 远程同步
+      final userId = await _getCurrentUserId();
+      if (userId != null) {
+        final remoteCoordinator = await ref.read(remoteSyncCoordinatorProvider.future);
+        remoteCoordinator.checkAndSyncOnResume(userId: userId);
+      }
     } catch (e, stackTrace) {
       _log.warning('应用恢复时同步检查失败', e, stackTrace);
     }
@@ -99,13 +112,56 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
     if (!mounted) return;
 
     try {
+      // 启动本地媒体同步服务
       _log.info('启动本地媒体同步服务');
       final coordinator = await ref.read(syncCoordinatorProvider.future);
       coordinator.startAutoSyncOnLaunch();
       _log.info('本地媒体同步服务已启动');
+      
+      // 启动远程媒体同步服务
+      final userId = await _getCurrentUserId();
+      if (userId != null) {
+        _log.info('启动远程媒体同步服务: userId=$userId');
+        final remoteCoordinator = await ref.read(remoteSyncCoordinatorProvider.future);
+        remoteCoordinator.startAutoSyncOnLaunch(userId: userId);
+        _log.info('远程媒体同步服务已启动');
+      } else {
+        _log.info('未获取到用户ID，跳过远程同步');
+      }
     } catch (e, stackTrace) {
       // 记录错误但不阻塞 UI
       _log.warning('启动自动同步失败', e, stackTrace);
+    }
+  }
+
+  /// 获取当前用户ID
+  /// 从 Store 中读取 currentUser（JSON 字符串），解析并返回 id
+  Future<String?> _getCurrentUserId() async {
+    try {
+      final store = StoreService();
+      if (!store.isInitialized) {
+        _log.warning('StoreService not initialized, cannot get current user ID');
+        return null;
+      }
+
+      final userJson = store.tryGet<String>(StoreKey.currentUser);
+      if (userJson == null || userJson.isEmpty) {
+        _log.fine('No current user found in Store');
+        return null;
+      }
+
+      // 解析 JSON
+      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+      final userId = userMap['id'];
+      if (userId != null) {
+        return userId.toString();
+      }
+
+      _log.warning('User JSON does not contain id field');
+      return null;
+    } catch (e, stackTrace) {
+      _log.warning('获取用户ID失败', e, stackTrace);
+      return null;
     }
   }
 

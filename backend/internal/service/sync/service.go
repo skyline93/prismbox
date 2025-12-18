@@ -48,8 +48,12 @@ func NewService(
 
 // StreamAssets 流式同步资产
 func (s *service) StreamAssets(ctx context.Context, writer io.Writer, req *StreamAssetsRequest) error {
+	var checkpoint *models.SyncCheckpoint
+	var err error
+
 	// 1. 检查是否需要重置
 	if req.Reset {
+		// 重置时，清除 checkpoint 并直接进行全量同步
 		if err := s.checkpointRepo.ResetSyncProgress(ctx, req.UserID, req.DeviceID); err != nil {
 			s.log.Error("failed to reset sync progress",
 				logger.Error(err),
@@ -57,18 +61,21 @@ func (s *service) StreamAssets(ctx context.Context, writer io.Writer, req *Strea
 			)
 			// 继续执行，不中断
 		}
-	}
+		// 重置后，checkpoint 为 nil，表示全量同步
+		checkpoint = nil
+	} else {
+		// 2. 非重置模式：获取 checkpoint
+		checkpoint, err = s.checkpointRepo.GetCheckpoint(ctx, req.UserID, req.DeviceID, "assets_v1")
+		if err != nil {
+			return fmt.Errorf("get checkpoint: %w", err)
+		}
 
-	// 2. 获取 checkpoint
-	checkpoint, err := s.checkpointRepo.GetCheckpoint(ctx, req.UserID, req.DeviceID, "assets_v1")
-	if err != nil {
-		return fmt.Errorf("get checkpoint: %w", err)
-	}
-
-	// 3. 检查是否需要全量同步
-	if s.needsFullSync(checkpoint) {
-		s.sendResetEvent(writer)
-		return nil
+		// 3. 检查是否需要全量同步（仅在非重置模式下检查）
+		if s.needsFullSync(checkpoint) {
+			// 需要全量同步，发送重置事件通知客户端
+			s.sendResetEvent(writer)
+			return nil
+		}
 	}
 
 	// 4. 获取当前时间 ID（用于 checkpoint）

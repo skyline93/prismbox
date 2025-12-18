@@ -3,10 +3,13 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
+import 'package:prismbox/data/database/daos/local_asset_dao.dart';
+import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
+import 'package:prismbox/services/backup/asset_sync_service.dart';
 import 'package:prismbox/utils/async_mutex.dart';
 
 /// 同步协调器
@@ -21,6 +24,9 @@ class SyncCoordinator {
   
   /// 数据源切换通知流控制器
   final _dataSourceSwitchController = StreamController<bool>.broadcast();
+  
+  /// Checksum 匹配完成通知流控制器
+  final _checksumMatchCompleteController = StreamController<void>.broadcast();
   
   /// 同步互斥锁（确保顺序执行）
   final AsyncMutex _syncMutex = AsyncMutex();
@@ -52,6 +58,10 @@ class SyncCoordinator {
   /// 数据源切换通知流
   /// 当同步完成后，如果数据库数据可用，会发出 true 通知
   Stream<bool> get dataSourceSwitchStream => _dataSourceSwitchController.stream;
+
+  /// Checksum 匹配完成通知流
+  /// 当 checksum 匹配任务完成并匹配到远程资产时，会发出通知
+  Stream<void> get checksumMatchCompleteStream => _checksumMatchCompleteController.stream;
 
   /// 当前状态
   SyncStatusInfo _currentStatus = const SyncStatusInfo();
@@ -160,6 +170,9 @@ class SyncCoordinator {
         
         // 同步成功后，检查是否需要切换到数据库数据源
         await _checkAndSwitchDataSource();
+        
+        // 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
+        _startChecksumMatchingTask();
       } else {
         _updateStatus(
           SyncStatus.error,
@@ -229,11 +242,100 @@ class SyncCoordinator {
     }
   }
 
+  /// 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
+  /// 这是一个耗时的操作，在后台异步执行，不阻塞同步流程
+  void _startChecksumMatchingTask() {
+    // 在后台执行，不等待完成
+    Future(() async {
+      try {
+        _logger.info('启动后台任务：计算 checksum 并匹配远程资产');
+        final localDao = LocalAssetDao(_database);
+        final remoteDao = RemoteAssetDao(_database);
+        final assetSyncService = AssetSyncService(database: _database);
+        
+        // 获取所有没有 checksum 的本地资产
+        final localAssets = await localDao.getAllAssets();
+        final assetsWithoutChecksum = localAssets
+            .where((asset) => asset.checksum == null || asset.checksum!.isEmpty)
+            .toList();
+        
+        if (assetsWithoutChecksum.isEmpty) {
+          _logger.info('所有本地资产都有 checksum，跳过匹配任务');
+          return;
+        }
+        
+        _logger.info('找到 ${assetsWithoutChecksum.length} 个没有 checksum 的本地资产，开始计算并匹配');
+        
+        int matchedCount = 0;
+        int processedCount = 0;
+        
+        // 分批处理，避免一次性处理太多
+        const batchSize = 10;
+        for (int i = 0; i < assetsWithoutChecksum.length; i += batchSize) {
+          final batch = assetsWithoutChecksum
+              .skip(i)
+              .take(batchSize)
+              .toList();
+          
+          for (final localAsset in batch) {
+            try {
+              // 计算 checksum
+              final checksum = await assetSyncService.getOrCalculateChecksum(
+                assetId: localAsset.id,
+                filePath: localAsset.path,
+              );
+              
+              if (checksum != null && checksum.isNotEmpty) {
+                // 查找匹配的远程资产
+                final remoteAsset = await remoteDao.getAssetByChecksum(checksum);
+                if (remoteAsset != null) {
+                  matchedCount++;
+                  _logger.fine(
+                    '匹配到远程资产: localId=${localAsset.id}, '
+                    'remoteId=${remoteAsset.id}, checksum=$checksum',
+                  );
+                }
+              }
+              
+              processedCount++;
+              
+              // 每处理 10 个资产记录一次日志
+              if (processedCount % 10 == 0) {
+                _logger.info(
+                  'Checksum 匹配进度: $processedCount/${assetsWithoutChecksum.length}, '
+                  '已匹配: $matchedCount',
+                );
+              }
+            } catch (e) {
+              _logger.warning(
+                '处理资产失败: assetId=${localAsset.id}',
+                e,
+              );
+            }
+          }
+        }
+        
+        _logger.info(
+          'Checksum 匹配任务完成: 处理了 $processedCount 个资产，'
+          '匹配到 $matchedCount 个远程资产',
+        );
+        
+        // 如果匹配到了远程资产，通知 UI 刷新
+        if (matchedCount > 0 && !_checksumMatchCompleteController.isClosed) {
+          _checksumMatchCompleteController.add(null);
+        }
+      } catch (e, stackTrace) {
+        _logger.warning('Checksum 匹配任务失败', e, stackTrace);
+      }
+    });
+  }
+
   /// 释放资源
   void dispose() {
     cancel();
     _statusController.close();
     _dataSourceSwitchController.close();
+    _checksumMatchCompleteController.close();
   }
 }
 
