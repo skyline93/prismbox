@@ -16,6 +16,7 @@ import 'package:prismbox/infrastructure/api/exceptions/api_error_handler.dart';
 import 'package:prismbox/infrastructure/api/network/endpoint_discovery.dart';
 import 'package:prismbox/infrastructure/api/utils/url_helper.dart';
 import 'package:prismbox/infrastructure/api/utils/api_logging_utils.dart';
+import 'package:prismbox/services/device/device_service.dart';
 
 /// 401错误回调函数类型
 typedef OnUnauthorizedCallback = void Function();
@@ -104,15 +105,19 @@ class ApiService {
     };
 
     // 添加拦截器（注意顺序很重要）
-    // 1. 认证拦截器（最先，添加认证头）
+    // 1. 设备信息拦截器（最先，因为可能需要异步操作）
+    dio.interceptors.add(_DeviceInterceptor());
+    // 2. 认证拦截器（添加认证头）
     dio.interceptors.add(_AuthInterceptor(this));
-    // 2. 响应格式拦截器（处理统一响应格式，提取 data 字段）
+    // 3. 自定义头拦截器（添加用户自定义头）
+    dio.interceptors.add(_CustomHeaderInterceptor());
+    // 4. 响应格式拦截器（处理统一响应格式，提取 data 字段）
     dio.interceptors.add(_ResponseInterceptor());
-    // 3. 日志拦截器（记录处理后的数据，放在 ResponseInterceptor 之后）
+    // 5. 日志拦截器（记录处理后的数据，放在 ResponseInterceptor 之后）
     dio.interceptors.add(_LoggingInterceptor());
-    // 4. 重试拦截器（处理网络错误重试）
+    // 6. 重试拦截器（处理网络错误重试）
     dio.interceptors.add(_RetryInterceptor());
-    // 5. 错误拦截器（最后，统一错误处理）
+    // 7. 错误拦截器（最后，统一错误处理）
     dio.interceptors.add(_ErrorInterceptor(this));
   }
 
@@ -191,8 +196,11 @@ class ApiService {
     _log.info('Access token cleared');
   }
 
-  /// 获取请求头（用于background_downloader等）
-  static Map<String, String> getRequestHeaders() {
+  /// 获取请求头（用于background_downloader等外部场景）
+  /// 
+  /// 注意：此方法用于非Dio场景，需要手动调用
+  /// 对于Dio请求，拦截器会自动处理
+  static Future<Map<String, String>> getRequestHeaders() async {
     final headers = <String, String>{};
 
     // 添加认证头
@@ -201,6 +209,25 @@ class ApiService {
       final token = store.tryGet<String>(StoreKey.accessToken);
       if (token != null) {
         headers['x-prismbox-user-token'] = token;
+      }
+
+      // 添加设备信息头
+      try {
+        final deviceService = DeviceService();
+        final deviceId = await deviceService.getDeviceId();
+        if (deviceId.isNotEmpty) {
+          headers['x-device-id'] = deviceId;
+        }
+        
+        final platformType = await deviceService.getPlatformType();
+        if (platformType.isNotEmpty) {
+          headers['x-device-type'] = platformType;
+        }
+      } catch (e) {
+        // 记录错误但不中断
+        // 注意：调用方需要处理设备信息缺失的情况
+        final log = Logger('ApiService');
+        log.warning('Failed to get device info in getRequestHeaders: $e');
       }
 
       // 添加自定义头
@@ -284,7 +311,56 @@ class ApiService {
   Dio get refreshDio => _refreshDio;
 }
 
-/// 认证拦截器
+/// 设备信息拦截器（负责设备相关请求头）
+class _DeviceInterceptor extends Interceptor {
+  final Logger _log = Logger('DeviceInterceptor');
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    try {
+      final deviceService = DeviceService();
+      
+      // 获取设备ID（必需）
+      final deviceId = await deviceService.getDeviceId();
+      if (deviceId.isNotEmpty) {
+        options.headers['x-device-id'] = deviceId;
+        _log.fine('Device ID added to request: ${deviceId.substring(0, 8)}...');
+      } else {
+        _log.warning('Device ID is empty, request may fail if device middleware is required: ${options.path}');
+      }
+      
+      // 获取设备类型（必需）
+      final platformType = await deviceService.getPlatformType();
+      if (platformType.isNotEmpty) {
+        options.headers['x-device-type'] = platformType;
+        _log.fine('Device type added to request: $platformType');
+      } else {
+        _log.warning('Device type is empty, request may fail if device middleware is required: ${options.path}');
+      }
+
+      // 向后兼容：添加旧的设备信息头（用于日志记录）
+      final store = StoreService();
+      if (store.isInitialized) {
+        final deviceModel = store.tryGet<String>(StoreKey.deviceModel);
+        final deviceType = store.tryGet<String>(StoreKey.deviceType);
+        if (deviceModel != null) {
+          options.headers['deviceModel'] = deviceModel;
+        }
+        if (deviceType != null) {
+          options.headers['deviceType'] = deviceType;
+        }
+      }
+    } catch (e, stackTrace) {
+      _log.severe('Failed to get device info: ${options.path}', e, stackTrace);
+      // 对于需要设备信息的接口，这会导致请求失败
+      // 但不应中断拦截器链，让后端中间件来处理验证
+    }
+
+    handler.next(options);
+  }
+}
+
+/// 认证拦截器（仅负责认证相关逻辑）
 class _AuthInterceptor extends Interceptor {
   final ApiService _apiService;
 
@@ -292,13 +368,20 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // 注入认证头
+    // 仅注入认证头
     final token = _apiService.getAccessToken();
     if (token != null) {
       options.headers['x-prismbox-user-token'] = token;
     }
 
-    // 注入自定义头
+    handler.next(options);
+  }
+}
+
+/// 自定义请求头拦截器（负责注入用户自定义的请求头）
+class _CustomHeaderInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final store = StoreService();
     if (store.isInitialized) {
       final customHeaders = store.tryGet<String>(StoreKey.customHeaders);
@@ -311,16 +394,6 @@ class _AuthInterceptor extends Interceptor {
         } catch (e) {
           // 忽略解析错误
         }
-      }
-
-      // 注入设备信息头
-      final deviceModel = store.tryGet<String>(StoreKey.deviceModel);
-      final deviceType = store.tryGet<String>(StoreKey.deviceType);
-      if (deviceModel != null) {
-        options.headers['deviceModel'] = deviceModel;
-      }
-      if (deviceType != null) {
-        options.headers['deviceType'] = deviceType;
       }
     }
 

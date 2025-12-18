@@ -19,8 +19,14 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 		protected.Use(middleware.AuthMiddleware(app.AuthService))
 	}
 	{
-		protected.POST("/upload-stream", handler.UploadMedia)
-		protected.HEAD("/upload-stream", handler.ValidateUploadEndpoint)
+		// 上传接口需要设备信息（用于统计上传来源设备）
+		uploadGroup := protected.Group("")
+		uploadGroup.Use(middleware.DeviceMiddleware())
+		{
+			uploadGroup.POST("/upload-stream", handler.UploadMedia)
+			uploadGroup.HEAD("/upload-stream", handler.ValidateUploadEndpoint)
+		}
+		
 		protected.GET("", handler.GetMedias)
 		protected.POST("/check_hashes", handler.CheckHashes)
 		protected.GET("/changes", handler.GetChanges)

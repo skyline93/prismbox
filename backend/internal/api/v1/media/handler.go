@@ -110,7 +110,20 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		mediaTakenAt = &utcTime
 	}
 
-	// 5. 秒传检查（在打开文件流之前，优化性能）
+	// 5. 获取设备信息（用于统计上传来源设备）
+	deviceID := middleware.MustGetDeviceID(c)
+	deviceType := middleware.MustGetDeviceType(c)
+
+	h.log.Info("Starting media upload",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+		logger.String("item_type", itemType),
+		logger.String("cloud_uuid", cloudUUID),
+		logger.String("filename", originalFilename),
+	)
+
+	// 6. 秒传检查（在打开文件流之前，优化性能）
 	existingMedia, err := h.mediaService.CheckInstantUpload(c.Request.Context(), userID, hash)
 	if err != nil {
 		h.log.Error("failed to check instant upload",
@@ -142,12 +155,14 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 			logger.String("requested_uuid", cloudUUID),
 			logger.String("hash", hash),
 			logger.Uint("user_id", userID),
+			logger.String("device_id", deviceID),
+			logger.String("device_type", deviceType),
 		)
 		apiresponse.Success(c, "File already exists for this user", response)
 		return
 	}
 
-	// 6. 获取上传的文件（只有在不是秒传时才需要）
+	// 7. 获取上传的文件（只有在不是秒传时才需要）
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.log.Error("failed to get uploaded file",
@@ -157,7 +172,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 7. 验证文件大小（如果配置了最大文件大小）
+	// 8. 验证文件大小（如果配置了最大文件大小）
 	if h.app != nil && h.app.Config != nil && h.app.Config.API != nil && h.app.Config.API.MaxFileSize > 0 {
 		maxSize := int64(h.app.Config.API.MaxFileSize)
 		if file.Size > maxSize {
@@ -171,7 +186,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		}
 	}
 
-	// 8. 打开文件流（流式处理）
+	// 9. 打开文件流（流式处理）
 	src, err := file.Open()
 	if err != nil {
 		h.log.Error("failed to open uploaded file",
@@ -183,7 +198,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	}
 	defer src.Close()
 
-	// 9. 调用Service层上传媒体（传入所有参数）
+	// 10. 调用Service层上传媒体（传入所有参数）
 	media, err := h.mediaService.UploadMedia(c.Request.Context(), &mediaservice.UploadMediaRequest{
 		UserID:           userID,
 		Hash:             hash,
@@ -205,7 +220,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 10. 转换为响应格式
+	// 11. 转换为响应格式
 	response := &dto.MediaResponse{
 		UUID:             media.UUID,
 		UserID:           media.UserID,
@@ -221,11 +236,14 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		CreatedAt:        media.CreatedAt.Format(time.RFC3339),
 	}
 
-	// 10. 新上传成功，返回201
+	// 12. 新上传成功，返回201
 	h.log.Info("media uploaded successfully",
 		logger.String("uuid", media.UUID),
 		logger.String("filename", file.Filename),
 		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+		logger.Int64("file_size", file.Size),
 	)
 	apiresponse.Created(c, "Media uploaded successfully", response)
 }

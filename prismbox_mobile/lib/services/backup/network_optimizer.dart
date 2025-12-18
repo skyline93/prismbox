@@ -147,7 +147,7 @@ class NetworkOptimizer {
         final endpoint = _apiService.endpoint ?? '';
         final url = '$endpoint/api/v1/media/check_hashes';
 
-        final headers = ApiService.getRequestHeaders();
+        final headers = await ApiService.getRequestHeaders();
         headers['Content-Type'] = 'application/json';
 
         final response = await _apiService.dio

@@ -36,6 +36,8 @@ func CORSMiddleware() gin.HandlerFunc {
 			"X-Chunk-Hash",
 			"X-Album-ID",
 			"X-Prismbox-User-Token",
+			"X-Device-ID",
+			"X-Device-Type",
 		},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type", "Content-Disposition"},
 		AllowCredentials: true,

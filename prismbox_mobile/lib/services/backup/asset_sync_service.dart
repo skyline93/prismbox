@@ -145,7 +145,7 @@ class AssetSyncService {
   }) async {
     try {
       final endpoint = _apiService.endpoint ?? '';
-      final headers = ApiService.getRequestHeaders();
+      final headers = await ApiService.getRequestHeaders();
 
       // 方法1：通过 /api/v1/media 分页查询（更可靠，直接返回完整信息）
       final mediaUrl = '$endpoint/api/v1/media';
@@ -242,7 +242,7 @@ class AssetSyncService {
     try {
       final endpoint = _apiService.endpoint ?? '';
       final url = '$endpoint/api/v1/media/$remoteAssetId';
-      final headers = ApiService.getRequestHeaders();
+      final headers = await ApiService.getRequestHeaders();
 
       final response = await _apiService.dio.get(
         url,

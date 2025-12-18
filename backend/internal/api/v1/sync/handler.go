@@ -62,16 +62,25 @@ func (h *Handler) StreamSyncAssets(c *gin.Context) {
 	// 3. 解析 updated_after 时间戳
 	updatedAfter, err := req.ParseUpdatedAfter()
 	if err != nil {
+		h.log.Warn("Invalid updated_after format",
+			logger.Uint("user_id", userID),
+			logger.Error(err),
+		)
 		apiresponse.Error(c, "Invalid 'updated_after' format. Must be RFC3339 format")
 		return
 	}
 
-	// 4. 获取设备ID（从请求头，必须提供）
-	deviceID := c.GetHeader("x-device-id")
-	if deviceID == "" {
-		apiresponse.Error(c, "Device ID is required. Please provide 'x-device-id' header")
-		return
-	}
+	// 4. 获取设备ID（从中间件，已保证存在）
+	deviceID := middleware.MustGetDeviceID(c)
+	deviceType := middleware.MustGetDeviceType(c)
+
+	h.log.Info("Starting stream sync assets",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+		logger.Int("types_count", len(req.Types)),
+		logger.Bool("reset", req.Reset),
+	)
 
 	// 5. 设置响应头
 	c.Header("Content-Type", "application/jsonlines+json")
@@ -88,6 +97,8 @@ func (h *Handler) StreamSyncAssets(c *gin.Context) {
 		h.log.Error("failed to stream sync assets",
 			logger.Error(err),
 			logger.Uint("user_id", userID),
+			logger.String("device_id", deviceID),
+			logger.String("device_type", deviceType),
 		)
 		// 如果响应已经开始写入，无法返回错误响应
 		if !c.Writer.Written() {
@@ -95,6 +106,11 @@ func (h *Handler) StreamSyncAssets(c *gin.Context) {
 		}
 		return
 	}
+
+	h.log.Info("Stream sync assets completed",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+	)
 }
 
 // GetCheckpoint 获取检查点
@@ -112,12 +128,15 @@ func (h *Handler) GetCheckpoint(c *gin.Context) {
 		return
 	}
 
-	// 1. 获取设备ID（从请求头，必须提供）
-	deviceID := c.GetHeader("x-device-id")
-	if deviceID == "" {
-		apiresponse.Error(c, "Device ID is required. Please provide 'x-device-id' header")
-		return
-	}
+	// 1. 获取设备ID（从中间件，已保证存在）
+	deviceID := middleware.MustGetDeviceID(c)
+	deviceType := middleware.MustGetDeviceType(c)
+
+	h.log.Debug("Getting checkpoint",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+	)
 
 	// 2. 检查 CheckpointRepo 是否可用
 	if h.app == nil || h.app.CheckpointRepo == nil {
@@ -155,6 +174,12 @@ func (h *Handler) GetCheckpoint(c *gin.Context) {
 	response := &dto.GetCheckpointResponse{
 		Checkpoints: checkpoints,
 	}
+
+	h.log.Info("Get checkpoint completed",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.Int("checkpoints_count", len(checkpoints)),
+	)
 
 	apiresponse.Success(c, "Success", response)
 }
@@ -197,12 +222,16 @@ func (h *Handler) SetCheckpoint(c *gin.Context) {
 		return
 	}
 
-	// 4. 获取设备ID（从请求头，必须提供）
-	deviceID := c.GetHeader("x-device-id")
-	if deviceID == "" {
-		apiresponse.Error(c, "Device ID is required. Please provide 'x-device-id' header")
-		return
-	}
+	// 4. 获取设备ID（从中间件，已保证存在）
+	deviceID := middleware.MustGetDeviceID(c)
+	deviceType := middleware.MustGetDeviceType(c)
+
+	h.log.Info("Setting checkpoint",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+		logger.Int("checkpoints_count", len(req.Checkpoints)),
+	)
 
 	// 5. 批量设置检查点
 	for _, checkpoint := range req.Checkpoints {
@@ -274,12 +303,16 @@ func (h *Handler) DeleteCheckpoint(c *gin.Context) {
 		return
 	}
 
-	// 4. 获取设备ID（从请求头，必须提供）
-	deviceID := c.GetHeader("x-device-id")
-	if deviceID == "" {
-		apiresponse.Error(c, "Device ID is required. Please provide 'x-device-id' header")
-		return
-	}
+	// 4. 获取设备ID（从中间件，已保证存在）
+	deviceID := middleware.MustGetDeviceID(c)
+	deviceType := middleware.MustGetDeviceType(c)
+
+	h.log.Info("Deleting checkpoint",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+		logger.Int("types_count", len(req.Types)),
+	)
 
 	// 5. 批量删除检查点
 	for _, syncType := range req.Types {
@@ -304,6 +337,12 @@ func (h *Handler) DeleteCheckpoint(c *gin.Context) {
 			return
 		}
 	}
+
+	h.log.Info("Delete checkpoint completed",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.Int("types_count", len(req.Types)),
+	)
 
 	c.Status(http.StatusNoContent)
 }

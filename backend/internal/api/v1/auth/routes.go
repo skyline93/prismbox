@@ -26,7 +26,13 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 	protected := rg.Group("/")
 	protected.Use(middleware.AuthMiddleware(app.AuthService))
 	{
-		protected.GET("/auth/profile", handler.GetProfile)
+		// 获取用户资料接口需要设备信息（用于统计和审计）
+		profileGroup := protected.Group("/auth")
+		profileGroup.Use(middleware.DeviceMiddleware())
+		{
+			profileGroup.GET("/profile", handler.GetProfile)
+		}
+		
 		protected.POST("/auth/avatar", handler.UploadAvatar)
 		protected.POST("/auth/password/set", handler.SetPassword)
 	}

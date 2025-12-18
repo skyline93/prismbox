@@ -719,8 +719,8 @@ class UploadOrchestrator {
       final endpoint = _apiService.endpoint ?? '';
       final uploadUrl = '$endpoint$_uploadEndpoint';
 
-      // 7. 获取请求头（包含认证信息）
-      final headers = ApiService.getRequestHeaders();
+      // 7. 获取请求头（包含认证信息和设备信息）
+      final headers = await ApiService.getRequestHeaders();
 
       // 8. 构建表单字段（后端 API 要求的格式）
       // 转换 AssetType 为后端期望的 item_type
@@ -917,7 +917,7 @@ class UploadOrchestrator {
       final endpoint = _apiService.endpoint ?? '';
       final url = '$endpoint$_checkAssetsEndpoint';
 
-      final headers = ApiService.getRequestHeaders();
+      final headers = await ApiService.getRequestHeaders();
       headers['Content-Type'] = 'application/json';
 
       final response = await _apiService.dio.post(

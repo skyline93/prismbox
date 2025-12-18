@@ -257,7 +257,7 @@ class BackgroundSyncManager {
     try {
       final endpoint = _apiService.endpoint ?? '';
       final url = '$endpoint$_remoteAssetsEndpoint';
-      final headers = ApiService.getRequestHeaders();
+      final headers = await ApiService.getRequestHeaders();
 
       // 分页获取远程资产
       int page = 1;

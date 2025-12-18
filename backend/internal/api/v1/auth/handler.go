@@ -7,6 +7,7 @@ import (
 	"github.com/album/backend/internal/api/middleware"
 	"github.com/album/backend/internal/api/response"
 	authservice "github.com/album/backend/internal/service/auth"
+	"github.com/album/backend/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -14,12 +15,14 @@ import (
 // Handler 认证处理器。
 type Handler struct {
 	authService authservice.Service
+	log         logger.Logger
 }
 
 // NewHandler 创建认证处理器。
 func NewHandler(authService authservice.Service) *Handler {
 	return &Handler{
 		authService: authService,
+		log:         logger.New("api.v1.auth"),
 	}
 }
 
@@ -313,15 +316,38 @@ func (h *Handler) GetProfile(c *gin.Context) {
 		return
 	}
 
+	// 获取设备信息（用于统计和审计）
+	deviceID := middleware.MustGetDeviceID(c)
+	deviceType := middleware.MustGetDeviceType(c)
+
+	h.log.Info("Getting user profile",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+		logger.String("device_type", deviceType),
+	)
+
 	profile, err := h.authService.GetProfile(c.Request.Context(), userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.log.Warn("User not found",
+				logger.Uint("user_id", userID),
+				logger.String("device_id", deviceID),
+			)
 			response.Error(c, "User not found")
 			return
 		}
+		h.log.Error("Database error getting profile",
+			logger.Uint("user_id", userID),
+			logger.Error(err),
+		)
 		response.Error(c, "Database error")
 		return
 	}
+
+	h.log.Info("User profile retrieved successfully",
+		logger.Uint("user_id", userID),
+		logger.String("device_id", deviceID),
+	)
 
 	response.Success(c, "User profile retrieved successfully", profile)
 }

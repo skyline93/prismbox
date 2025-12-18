@@ -37,9 +37,10 @@ class EndpointDiscovery {
     final client = http.Client();
 
     try {
+      final requestHeaders = await ApiService.getRequestHeaders();
       final headers = {
         'Accept': 'application/json',
-        ...ApiService.getRequestHeaders(),
+        ...requestHeaders,
       };
 
       final uri = Uri.parse('$baseUrl/.well-known/prismbox');

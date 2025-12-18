@@ -18,6 +18,8 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 	if app.AuthService != nil {
 		protected.Use(middleware.AuthMiddleware(app.AuthService))
 	}
+	// 添加设备信息中间件（强制要求设备ID和设备类型）
+	protected.Use(middleware.DeviceMiddleware())
 	{
 		// 流式同步接口
 		protected.POST("/assets/stream", handler.StreamSyncAssets)
