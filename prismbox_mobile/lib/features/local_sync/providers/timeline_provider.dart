@@ -1,7 +1,7 @@
 // lib/features/local_sync/providers/timeline_provider.dart
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
@@ -13,7 +13,7 @@ part 'timeline_provider.g.dart';
 /// 时间线数据 Provider
 /// 提供时间线数据（BaseAsset 列表）
 @riverpod
-Future<List<LocalAsset>> timelineAssets(
+Future<List<BaseAsset>> timelineAssets(
   TimelineAssetsRef ref, {
   bool forcePhotoManager = false,
 }) async {
@@ -53,8 +53,8 @@ Future<List<TimelineSection>> timelineSections(TimelineSectionsRef ref) async {
 /// [assets] - 原始资产列表
 /// [filterMode] - 筛选模式
 /// 返回过滤后的资产列表
-List<LocalAsset> _filterAssets(
-  List<LocalAsset> assets,
+List<BaseAsset> _filterAssets(
+  List<BaseAsset> assets,
   PhotoFilterModeEnum filterMode,
 ) {
   switch (filterMode) {
@@ -62,11 +62,11 @@ List<LocalAsset> _filterAssets(
       // 显示全部，不过滤
       return assets;
     case PhotoFilterModeEnum.backedUp:
-      // 仅显示已备份（remoteAssetId != null）
-      return assets.where((asset) => asset.remoteAssetId != null).toList();
+      // 仅显示已备份（有远程版本）
+      return assets.where((asset) => asset.hasRemote).toList();
     case PhotoFilterModeEnum.notBackedUp:
-      // 仅显示未备份（remoteAssetId == null）
-      return assets.where((asset) => asset.remoteAssetId == null).toList();
+      // 仅显示未备份（仅本地）
+      return assets.where((asset) => asset.isLocalOnly).toList();
   }
 }
 

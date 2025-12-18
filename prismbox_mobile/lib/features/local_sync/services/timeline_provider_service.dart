@@ -1,12 +1,17 @@
 // lib/features/local_sync/services/timeline_provider_service.dart
 
+import 'dart:convert';
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
+import 'package:prismbox/core/storage/store_key.dart';
+import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/remote_asset.dart';
 import 'package:prismbox/features/local_sync/models/data_source_type.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 
@@ -20,16 +25,16 @@ class TimelineProviderService {
   TimelineProviderService({
     required AppDatabase database,
     DataSourceSelector? dataSourceSelector,
-  })  : _database = database,
-        _dataSourceSelector = dataSourceSelector ??
-            DataSourceSelector(database: database);
+  }) : _database = database,
+       _dataSourceSelector =
+           dataSourceSelector ?? DataSourceSelector(database: database);
 
   /// 获取时间线数据
-  /// 
+  ///
   /// [forcePhotoManager] 强制使用 photo_manager 数据源
-  /// 
-  /// 返回 BaseAsset 列表（LocalAsset）
-  Future<List<LocalAsset>> getTimelineAssets({
+  ///
+  /// 返回 BaseAsset 列表（包含 LocalAsset 和 RemoteAsset）
+  Future<List<BaseAsset>> getTimelineAssets({
     bool forcePhotoManager = false,
   }) async {
     try {
@@ -41,13 +46,17 @@ class TimelineProviderService {
       if (dataSource == DataSourceType.database) {
         return await _getFromDatabase();
       } else {
-        return await _getFromPhotoManager();
+        // photo_manager 数据源仍然返回 List<LocalAsset>
+        // 因为 photo_manager 只能访问本地资源
+        final localAssets = await _getFromPhotoManager();
+        return localAssets.cast<BaseAsset>();
       }
     } catch (e, stackTrace) {
       _logger.severe('获取时间线数据失败', e, stackTrace);
       // 如果失败，尝试从 photo_manager 获取
       try {
-        return await _getFromPhotoManager();
+        final localAssets = await _getFromPhotoManager();
+        return localAssets.cast<BaseAsset>();
       } catch (e2) {
         _logger.severe('从 photo_manager 获取数据也失败', e2);
         return [];
@@ -55,40 +64,206 @@ class TimelineProviderService {
     }
   }
 
-  /// 从数据库获取数据
-  Future<List<LocalAsset>> _getFromDatabase() async {
+  /// 从数据库获取数据（合并本地和远程资产）
+  Future<List<BaseAsset>> _getFromDatabase() async {
     try {
-      final dao = LocalAssetDao(_database);
-      final assets = await dao.getAllAssets();
-      
-      // 按创建时间降序排序
-      assets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      
-      // 转换为 LocalAsset，并批量获取 remoteAssetId
+      final localDao = LocalAssetDao(_database);
       final remoteDao = RemoteAssetDao(_database);
-      final localAssets = <LocalAsset>[];
-      
-      int remoteAssetCount = 0;
-      for (final data in assets) {
-        // 如果 checksum 存在，尝试获取 remoteAssetId
-        String? remoteAssetId;
+
+      // 1. 获取当前用户ID
+      final userId = await _getCurrentUserId();
+      if (userId == null) {
+        _logger.warning('无法获取用户ID，仅返回本地资产');
+        return await _getLocalAssetsOnly(localDao, remoteDao);
+      }
+
+      // 2. 并行查询本地和远程资产
+      final localAssetsFuture = localDao.getAllAssets();
+      final remoteAssetsFuture = remoteDao.getUserAssets(userId);
+
+      final localAssetsData = await localAssetsFuture;
+      final remoteAssetsData = await remoteAssetsFuture;
+
+      // 3. 构建 checksum 到本地资产的映射（用于关联）
+      final localAssetMap = <String, LocalAssetEntityData>{};
+
+      for (final data in localAssetsData) {
         if (data.checksum != null && data.checksum!.isNotEmpty) {
-          try {
-            final remoteAsset = await remoteDao.getAssetByChecksum(data.checksum!);
-            remoteAssetId = remoteAsset?.id;
-            if (remoteAssetId != null) {
-              remoteAssetCount++;
-              _logger.fine(
-                '找到远程资产关联: assetId=${data.id}, '
-                'checksum=${data.checksum}, remoteAssetId=$remoteAssetId',
-              );
-            }
-          } catch (e) {
-            _logger.fine('获取远程资产 ID 失败: ${data.id}', e);
+          // 取第一个作为主要关联（通常 checksum 应该是唯一的）
+          if (!localAssetMap.containsKey(data.checksum!)) {
+            localAssetMap[data.checksum!] = data;
           }
         }
-        
-        localAssets.add(LocalAsset.fromData(
+      }
+
+      // 4. 构建已处理的远程资产 checksum 集合（用于去重）
+      final processedRemoteChecksums = <String>{};
+      final mergedAssets = <BaseAsset>[];
+
+      // 5. 处理远程资产（包括有本地关联和没有本地关联的）
+      for (final remoteData in remoteAssetsData) {
+        final checksum = remoteData.checksum;
+        if (checksum.isEmpty) {
+          // 没有 checksum 的远程资产，直接添加
+          mergedAssets.add(
+            RemoteAsset.fromData(
+              id: remoteData.id,
+              name: remoteData.name,
+              checksum: '',
+              ownerId: remoteData.ownerId,
+              type: remoteData.type,
+              createdAt: remoteData.createdAt,
+              updatedAt: remoteData.updatedAt,
+              width: remoteData.width,
+              height: remoteData.height,
+              durationInSeconds: remoteData.durationInSeconds,
+              isFavorite: remoteData.isFavorite,
+              thumbHash: remoteData.thumbHash,
+              visibility: remoteData.visibility,
+              livePhotoVideoId: remoteData.livePhotoVideoId,
+              stackId: remoteData.stackId,
+              localAssetId: null, // 没有本地关联
+            ),
+          );
+          continue;
+        }
+
+        // checksum 不为空，继续处理
+        final localData = localAssetMap[checksum];
+
+        if (localData != null) {
+          // 有本地关联：创建 LocalAsset（merged 状态）
+          mergedAssets.add(
+            LocalAsset.fromData(
+              id: localData.id,
+              name: localData.name,
+              checksum: localData.checksum,
+              type: localData.type,
+              createdAt: localData.createdAt,
+              updatedAt: localData.updatedAt,
+              width: localData.width,
+              height: localData.height,
+              durationInSeconds: localData.durationInSeconds,
+              isFavorite: localData.isFavorite,
+              orientation: localData.orientation,
+              remoteAssetId: remoteData.id, // 关联远程资产ID
+              assetEntity: null,
+            ),
+          );
+          processedRemoteChecksums.add(checksum);
+        } else {
+          // 没有本地关联：创建 RemoteAsset（remote 状态）
+          mergedAssets.add(
+            RemoteAsset.fromData(
+              id: remoteData.id,
+              name: remoteData.name,
+              checksum: checksum,
+              ownerId: remoteData.ownerId,
+              type: remoteData.type,
+              createdAt: remoteData.createdAt,
+              updatedAt: remoteData.updatedAt,
+              width: remoteData.width,
+              height: remoteData.height,
+              durationInSeconds: remoteData.durationInSeconds,
+              isFavorite: remoteData.isFavorite,
+              thumbHash: remoteData.thumbHash,
+              visibility: remoteData.visibility,
+              livePhotoVideoId: remoteData.livePhotoVideoId,
+              stackId: remoteData.stackId,
+              localAssetId: null, // 设备B的情况：没有本地文件
+            ),
+          );
+          processedRemoteChecksums.add(checksum);
+        }
+      }
+
+      // 6. 处理仅本地的资产（排除已有远程版本的）
+      for (final localData in localAssetsData) {
+        if (localData.checksum == null || localData.checksum!.isEmpty) {
+          // 没有 checksum，无法关联，作为仅本地资产
+          mergedAssets.add(
+            LocalAsset.fromData(
+              id: localData.id,
+              name: localData.name,
+              checksum: null,
+              type: localData.type,
+              createdAt: localData.createdAt,
+              updatedAt: localData.updatedAt,
+              width: localData.width,
+              height: localData.height,
+              durationInSeconds: localData.durationInSeconds,
+              isFavorite: localData.isFavorite,
+              orientation: localData.orientation,
+              remoteAssetId: null, // 未上传
+              assetEntity: null,
+            ),
+          );
+        } else {
+          // 检查是否已有远程版本
+          if (!processedRemoteChecksums.contains(localData.checksum!)) {
+            // 仅本地资产（未上传）
+            mergedAssets.add(
+              LocalAsset.fromData(
+                id: localData.id,
+                name: localData.name,
+                checksum: localData.checksum,
+                type: localData.type,
+                createdAt: localData.createdAt,
+                updatedAt: localData.updatedAt,
+                width: localData.width,
+                height: localData.height,
+                durationInSeconds: localData.durationInSeconds,
+                isFavorite: localData.isFavorite,
+                orientation: localData.orientation,
+                remoteAssetId: null, // 未上传
+                assetEntity: null,
+              ),
+            );
+          }
+          // 如果已有远程版本，已经在上面处理过了
+        }
+      }
+
+      // 7. 按创建时间降序排序
+      mergedAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      _logger.info(
+        '合并查询完成：本地资产 ${localAssetsData.length} 个，'
+        '远程资产 ${remoteAssetsData.length} 个，'
+        '合并后 ${mergedAssets.length} 个',
+      );
+
+      return mergedAssets;
+    } catch (e) {
+      _logger.warning('从数据库获取数据失败', e);
+      rethrow;
+    }
+  }
+
+  /// 仅获取本地资产（当无法获取用户ID时）
+  Future<List<BaseAsset>> _getLocalAssetsOnly(
+    LocalAssetDao localDao,
+    RemoteAssetDao remoteDao,
+  ) async {
+    final localAssetsData = await localDao.getAllAssets();
+    final localAssets = <BaseAsset>[];
+
+    for (final data in localAssetsData) {
+      // 尝试通过 checksum 关联远程资产
+      String? remoteAssetId;
+      if (data.checksum != null && data.checksum!.isNotEmpty) {
+        try {
+          final remoteAsset = await remoteDao.getAssetByChecksum(
+            data.checksum!,
+          );
+          remoteAssetId = remoteAsset?.id;
+        } catch (e) {
+          _logger.fine('获取远程资产 ID 失败: ${data.id}', e);
+        }
+      }
+
+      localAssets.add(
+        LocalAsset.fromData(
           id: data.id,
           name: data.name,
           checksum: data.checksum,
@@ -101,19 +276,33 @@ class TimelineProviderService {
           isFavorite: data.isFavorite,
           orientation: data.orientation,
           remoteAssetId: remoteAssetId,
-          assetEntity: null, // 延迟获取：在需要时通过 getAssetEntityById 获取
-        ));
-      }
-      
-      _logger.info(
-        '从数据库加载了 ${localAssets.length} 个资产，'
-        '其中 $remoteAssetCount 个已关联远程资产',
+          assetEntity: null,
+        ),
       );
-      
-      return localAssets;
+    }
+
+    localAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return localAssets;
+  }
+
+  /// 获取当前用户ID
+  Future<String?> _getCurrentUserId() async {
+    try {
+      final store = StoreService();
+      if (!store.isInitialized) {
+        return null;
+      }
+
+      final userJson = store.tryGet<String>(StoreKey.currentUser);
+      if (userJson == null || userJson.isEmpty) {
+        return null;
+      }
+
+      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+      return userMap['id']?.toString();
     } catch (e) {
-      _logger.warning('从数据库获取数据失败', e);
-      rethrow;
+      _logger.warning('获取用户ID失败', e);
+      return null;
     }
   }
 
@@ -128,10 +317,8 @@ class TimelineProviderService {
       }
 
       // 获取所有相册
-      final albums = await pm.PhotoManager.getAssetPathList(
-        hasAll: true,
-      );
-      
+      final albums = await pm.PhotoManager.getAssetPathList(hasAll: true);
+
       if (albums.isEmpty) {
         return [];
       }
@@ -205,7 +392,9 @@ class TimelineProviderService {
   }
 
   /// 转换 AssetEntity 为 LocalAsset
-  Future<LocalAsset> _convertAssetEntityToLocalAsset(pm.AssetEntity asset) async {
+  Future<LocalAsset> _convertAssetEntityToLocalAsset(
+    pm.AssetEntity asset,
+  ) async {
     // 转换资产类型
     // photo_manager 的 AssetType 是枚举，需要转换为我们的 AssetType
     // AssetEntity.type 返回的是 AssetType 枚举值，使用索引值判断
@@ -252,4 +441,3 @@ class TimelineProviderService {
     );
   }
 }
-

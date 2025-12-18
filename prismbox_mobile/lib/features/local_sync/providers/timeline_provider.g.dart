@@ -6,7 +6,7 @@ part of 'timeline_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$timelineAssetsHash() => r'4568eddc6a70388c5154bce741c705fa3485a95a';
+String _$timelineAssetsHash() => r'74d6cd07cd275ade34820c63be674b1e7b3da1fd';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -40,7 +40,7 @@ const timelineAssetsProvider = TimelineAssetsFamily();
 /// 提供时间线数据（BaseAsset 列表）
 ///
 /// Copied from [timelineAssets].
-class TimelineAssetsFamily extends Family<AsyncValue<List<LocalAsset>>> {
+class TimelineAssetsFamily extends Family<AsyncValue<List<BaseAsset>>> {
   /// 时间线数据 Provider
   /// 提供时间线数据（BaseAsset 列表）
   ///
@@ -88,7 +88,7 @@ class TimelineAssetsFamily extends Family<AsyncValue<List<LocalAsset>>> {
 ///
 /// Copied from [timelineAssets].
 class TimelineAssetsProvider
-    extends AutoDisposeFutureProvider<List<LocalAsset>> {
+    extends AutoDisposeFutureProvider<List<BaseAsset>> {
   /// 时间线数据 Provider
   /// 提供时间线数据（BaseAsset 列表）
   ///
@@ -126,7 +126,7 @@ class TimelineAssetsProvider
 
   @override
   Override overrideWith(
-    FutureOr<List<LocalAsset>> Function(TimelineAssetsRef provider) create,
+    FutureOr<List<BaseAsset>> Function(TimelineAssetsRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
@@ -143,7 +143,7 @@ class TimelineAssetsProvider
   }
 
   @override
-  AutoDisposeFutureProviderElement<List<LocalAsset>> createElement() {
+  AutoDisposeFutureProviderElement<List<BaseAsset>> createElement() {
     return _TimelineAssetsProviderElement(this);
   }
 
@@ -162,13 +162,13 @@ class TimelineAssetsProvider
   }
 }
 
-mixin TimelineAssetsRef on AutoDisposeFutureProviderRef<List<LocalAsset>> {
+mixin TimelineAssetsRef on AutoDisposeFutureProviderRef<List<BaseAsset>> {
   /// The parameter `forcePhotoManager` of this provider.
   bool get forcePhotoManager;
 }
 
 class _TimelineAssetsProviderElement
-    extends AutoDisposeFutureProviderElement<List<LocalAsset>>
+    extends AutoDisposeFutureProviderElement<List<BaseAsset>>
     with TimelineAssetsRef {
   _TimelineAssetsProviderElement(super.provider);
 

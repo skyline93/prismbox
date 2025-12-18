@@ -18,16 +18,16 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
     with CancellableImageProviderMixin {
   /// 资产 ID
   final String assetId;
-  
+
   /// 目标尺寸
   final Size size;
-  
+
   /// 服务器 URL（可选）
   final String? serverUrl;
-  
+
   /// 缓存管理器（可选）
   final CacheManager? cacheManager;
-  
+
   /// API 服务（用于构建 URL）
   final ApiService? apiService;
 
@@ -53,7 +53,7 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
   ) {
     // 重置取消状态
     reset();
-    
+
     final chunkEvents = StreamController<ImageChunkEvent>();
     return MultiFrameImageStreamCompleter(
       codec: _loadThumbnail(key, decode, chunkEvents),
@@ -70,16 +70,20 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
   ) async {
     // 检查是否已取消
     checkCancelled();
-    
+
     try {
       // 构建 URL
       final url = _buildUrl(key);
-      
+
       // 使用缓存管理器加载
       final cacheManager = key.cacheManager ?? ThumbnailImageCacheManager();
-      
+
       // 检查磁盘缓存（使用 ImageLoader）
-      final cachedCodec = await ImageLoader.loadImageFromCache(url, cacheManager, decode);
+      final cachedCodec = await ImageLoader.loadImageFromCache(
+        url,
+        cacheManager,
+        decode,
+      );
       if (cachedCodec != null) {
         checkCancelled();
         return cachedCodec;
@@ -91,10 +95,12 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
         cacheManager,
         decode,
         onProgress: (downloaded, total) {
-          chunkEvents.add(ImageChunkEvent(
-            cumulativeBytesLoaded: downloaded,
-            expectedTotalBytes: total,
-          ));
+          chunkEvents.add(
+            ImageChunkEvent(
+              cumulativeBytesLoaded: downloaded,
+              expectedTotalBytes: total,
+            ),
+          );
         },
         onCancel: () => isCancelled,
         onSubscription: (subscription) {
@@ -116,7 +122,9 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
             _log.info('Network error, using expired cache: $url');
             checkCancelled();
             try {
-              final buffer = await ui.ImmutableBuffer.fromFilePath(cachedFile.file.path);
+              final buffer = await ui.ImmutableBuffer.fromFilePath(
+                cachedFile.file.path,
+              );
               checkCancelled();
               return await decode(buffer);
             } catch (decodeError) {
@@ -128,7 +136,7 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
           // 忽略缓存回退失败
         }
       }
-      
+
       _log.severe('Failed to load remote thumbnail', e, stackTrace);
       rethrow;
     }
@@ -136,7 +144,26 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
 
   /// 构建缩略图 URL
   String _buildUrl(RemoteThumbProvider key) {
-    final baseUrl = key.serverUrl ?? '';
+    // 优先使用传入的 serverUrl，否则从 ApiService 获取
+    String baseUrl = key.serverUrl ?? '';
+    if (baseUrl.isEmpty) {
+      // 如果 serverUrl 为空，尝试从 ApiService 获取 endpoint
+      try {
+        final apiService = key.apiService ?? ApiService();
+        baseUrl = apiService.endpoint ?? '';
+      } catch (e) {
+        _log.warning('Failed to get endpoint from ApiService', e);
+        baseUrl = '';
+      }
+    }
+
+    // 如果仍然为空，记录警告
+    if (baseUrl.isEmpty) {
+      _log.warning(
+        'No server URL available for remote thumbnail: ${key.assetId}',
+      );
+    }
+
     final size = '${key.size.width.toInt()}x${key.size.height.toInt()}';
     return '$baseUrl/assets/${key.assetId}/thumbnail?size=$size';
   }
@@ -153,4 +180,3 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
   @override
   int get hashCode => Object.hash(assetId, size, serverUrl);
 }
-

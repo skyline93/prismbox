@@ -4,7 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
@@ -558,7 +558,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             }
 
             // 收集所有资产 ID（用于导航到媒体查看器）
-            final allAssets = <LocalAsset>[];
+            final allAssets = <BaseAsset>[];
             for (final section in sections) {
               allAssets.addAll(section.assets);
             }

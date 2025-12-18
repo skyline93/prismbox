@@ -1,6 +1,6 @@
 // lib/features/local_sync/services/timeline_grouping_service.dart
 
-import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 
 /// 时间分组服务
@@ -17,7 +17,7 @@ class TimelineGroupingService {
   /// 
   /// [assets] 已按时间降序排序的媒体资源列表
   /// 返回按时间降序排序的分组列表
-  List<TimelineSection> groupByTime(List<LocalAsset> assets) {
+  List<TimelineSection> groupByTime(List<BaseAsset> assets) {
     if (assets.isEmpty) {
       return [];
     }
@@ -26,7 +26,7 @@ class TimelineGroupingService {
     final today = DateTime(now.year, now.month, now.day);
     
     // 使用 Map 存储分组，key 为 sectionKey
-    final sectionsMap = <String, List<LocalAsset>>{};
+    final sectionsMap = <String, List<BaseAsset>>{};
 
     // 遍历资产，按时间分组
     for (final asset in assets) {

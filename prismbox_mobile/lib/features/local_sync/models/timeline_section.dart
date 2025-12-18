@@ -1,6 +1,6 @@
 // lib/features/local_sync/models/timeline_section.dart
 
-import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/base_asset.dart';
 
 /// 分组类型
 enum SectionType {
@@ -33,7 +33,7 @@ class TimelineSection {
   final DateTime dateTime;
 
   /// 该分组下的所有媒体资源
-  final List<LocalAsset> assets;
+  final List<BaseAsset> assets;
 
   /// 分组类型
   final SectionType sectionType;

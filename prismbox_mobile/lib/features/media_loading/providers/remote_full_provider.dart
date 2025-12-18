@@ -18,19 +18,19 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
     with CancellableImageProviderMixin {
   /// 资产 ID
   final String assetId;
-  
+
   /// 目标尺寸（可选）
   final Size? targetSize;
-  
+
   /// 服务器 URL（可选）
   final String? serverUrl;
-  
+
   /// 是否加载原图
   final bool loadOriginal;
-  
+
   /// 缓存管理器（可选）
   final CacheManager? cacheManager;
-  
+
   /// API 服务（用于构建 URL）
   final ApiService? apiService;
 
@@ -57,7 +57,7 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
   ) {
     // 重置取消状态
     reset();
-    
+
     final chunkEvents = StreamController<ImageChunkEvent>();
     return MultiImageStreamCompleter(
       codec: _loadImage(key, decode, chunkEvents),
@@ -74,16 +74,22 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
   ) async* {
     // 检查是否已取消
     checkCancelled();
-    
+
     try {
       final cacheManager = key.cacheManager ?? RemoteImageCacheManager();
-      final shouldLoadOriginal = key.loadOriginal || AppSetting.get(Setting.loadOriginal);
+      final shouldLoadOriginal =
+          key.loadOriginal || AppSetting.get(Setting.loadOriginal);
 
       // 阶段 1：加载预览图
       final previewUrl = _buildPreviewUrl(key);
       _log.fine('Loading preview: $previewUrl');
 
-      final previewCodec = await _loadFromUrl(previewUrl, cacheManager, decode, chunkEvents);
+      final previewCodec = await _loadFromUrl(
+        previewUrl,
+        cacheManager,
+        decode,
+        chunkEvents,
+      );
       checkCancelled();
       yield previewCodec;
 
@@ -93,7 +99,12 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
         final originalUrl = _buildOriginalUrl(key);
         _log.fine('Loading original: $originalUrl');
 
-        final originalCodec = await _loadFromUrl(originalUrl, cacheManager, decode, chunkEvents);
+        final originalCodec = await _loadFromUrl(
+          originalUrl,
+          cacheManager,
+          decode,
+          chunkEvents,
+        );
         checkCancelled();
         yield originalCodec;
       }
@@ -119,10 +130,12 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
       cacheManager,
       decode,
       onProgress: (downloaded, total) {
-        chunkEvents.add(ImageChunkEvent(
-          cumulativeBytesLoaded: downloaded,
-          expectedTotalBytes: total,
-        ));
+        chunkEvents.add(
+          ImageChunkEvent(
+            cumulativeBytesLoaded: downloaded,
+            expectedTotalBytes: total,
+          ),
+        );
       },
       onCancel: () => isCancelled,
       onSubscription: (subscription) {
@@ -132,15 +145,39 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
     );
   }
 
+  /// 获取基础 URL（优先使用 serverUrl，否则从 ApiService 获取）
+  String _getBaseUrl(RemoteFullImageProvider key) {
+    String baseUrl = key.serverUrl ?? '';
+    if (baseUrl.isEmpty) {
+      // 如果 serverUrl 为空，尝试从 ApiService 获取 endpoint
+      try {
+        final apiService = key.apiService ?? ApiService();
+        baseUrl = apiService.endpoint ?? '';
+      } catch (e) {
+        _log.warning('Failed to get endpoint from ApiService', e);
+        baseUrl = '';
+      }
+    }
+
+    // 如果仍然为空，记录警告
+    if (baseUrl.isEmpty) {
+      _log.warning(
+        'No server URL available for remote full image: ${key.assetId}',
+      );
+    }
+
+    return baseUrl;
+  }
+
   /// 构建预览图 URL
   String _buildPreviewUrl(RemoteFullImageProvider key) {
-    final baseUrl = key.serverUrl ?? '';
+    final baseUrl = _getBaseUrl(key);
     return '$baseUrl/assets/${key.assetId}/thumbnail?size=preview';
   }
 
   /// 构建原图 URL
   String _buildOriginalUrl(RemoteFullImageProvider key) {
-    final baseUrl = key.serverUrl ?? '';
+    final baseUrl = _getBaseUrl(key);
     return '$baseUrl/assets/${key.assetId}/original';
   }
 
@@ -188,10 +225,7 @@ class MultiImageStreamCompleter extends ImageStreamCompleter {
           }
         } catch (e) {
           if (!_isDisposed) {
-            reportError(
-              exception: e,
-              stack: StackTrace.current,
-            );
+            reportError(exception: e, stack: StackTrace.current);
           }
         }
       }
@@ -206,4 +240,3 @@ class MultiImageStreamCompleter extends ImageStreamCompleter {
     _isDisposed = true;
   }
 }
-
