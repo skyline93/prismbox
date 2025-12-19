@@ -26,7 +26,7 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 			uploadGroup.POST("/upload-stream", handler.UploadMedia)
 			uploadGroup.HEAD("/upload-stream", handler.ValidateUploadEndpoint)
 		}
-		
+
 		protected.GET("", handler.GetMedias)
 		protected.POST("/check_hashes", handler.CheckHashes)
 		protected.GET("/changes", handler.GetChanges)
@@ -42,5 +42,12 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 		download.GET("/:uuid/download/original", handler.DownloadOriginal)
 		download.GET("/:uuid/download/preview", handler.DownloadPreview)
 		download.GET("/:uuid/download/thumbnail", handler.DownloadThumbnail)
+	}
+
+	// 统一API路径：/api/v1/assets/:uuid/thumbnail
+	assets := rg.Group("/assets")
+	assets.Use(middleware.FlexibleAuthMiddleware(app.AuthService, app.URLSigner))
+	{
+		assets.GET("/:uuid/thumbnail", handler.DownloadThumbnail)
 	}
 }

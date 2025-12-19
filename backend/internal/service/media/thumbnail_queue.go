@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/album/backend/internal/monitoring"
 	"github.com/album/backend/pkg/logger"
 )
 
@@ -50,6 +51,14 @@ func (q *ThumbnailQueue) TryAcquire(key string, task *ThumbnailGenerationTask) (
 	// 检查是否正在生成
 	if state, exists := q.generating[key]; exists {
 		// 已有生成任务，加入等待队列
+		waitTime := time.Since(state.startedAt)
+		waitersCount := len(state.waiters)
+		q.log.Debug("thumbnail generation already in progress, adding to wait queue",
+			logger.String("storage_key", key),
+			logger.String("media_uuid", task.MediaUUID),
+			logger.Duration("generation_elapsed_ms", waitTime),
+			logger.Int("existing_waiters", waitersCount),
+		)
 		ch := make(chan error, 1)
 		state.waiters = append(state.waiters, ch)
 		return false, ch
@@ -61,6 +70,11 @@ func (q *ThumbnailQueue) TryAcquire(key string, task *ThumbnailGenerationTask) (
 		startedAt: time.Now(),
 		waiters:   make([]chan error, 0),
 	}
+	q.log.Debug("acquired thumbnail generation permission",
+		logger.String("storage_key", key),
+		logger.String("media_uuid", task.MediaUUID),
+		logger.String("size_param", task.SizeParam),
+	)
 	return true, nil
 }
 
@@ -87,15 +101,21 @@ func (q *ThumbnailQueue) Complete(key string, err error) {
 	delete(q.generating, key)
 
 	// 记录生成时间
+	duration := time.Since(state.startedAt)
+	waitersCount := len(state.waiters)
 	if err == nil {
-		duration := time.Since(state.startedAt)
-		q.log.Debug("thumbnail generation completed",
-			logger.String("key", key),
-			logger.Duration("duration", duration),
+		q.log.Info("thumbnail generation completed, notifying waiters",
+			logger.String("storage_key", key),
+			logger.String("media_uuid", state.task.MediaUUID),
+			logger.Duration("generation_duration_ms", duration),
+			logger.Int("waiters_notified", waitersCount),
 		)
 	} else {
-		q.log.Warn("thumbnail generation failed",
-			logger.String("key", key),
+		q.log.Warn("thumbnail generation failed, notifying waiters",
+			logger.String("storage_key", key),
+			logger.String("media_uuid", state.task.MediaUUID),
+			logger.Duration("generation_duration_ms", duration),
+			logger.Int("waiters_notified", waitersCount),
 			logger.Error(err),
 		)
 	}
@@ -107,9 +127,12 @@ func (q *ThumbnailQueue) Cleanup() {
 	defer q.mu.Unlock()
 
 	now := time.Now()
+	timeoutCount := 0
 	for key, state := range q.generating {
-		if now.Sub(state.startedAt) > q.maxWaitTime {
+		elapsed := now.Sub(state.startedAt)
+		if elapsed > q.maxWaitTime {
 			// 超时，通知等待者并移除
+			waitersCount := len(state.waiters)
 			for _, ch := range state.waiters {
 				select {
 				case ch <- context.DeadlineExceeded:
@@ -118,11 +141,21 @@ func (q *ThumbnailQueue) Cleanup() {
 				close(ch)
 			}
 			delete(q.generating, key)
-			q.log.Warn("thumbnail generation timeout",
-				logger.String("key", key),
-				logger.Duration("timeout", q.maxWaitTime),
+			timeoutCount++
+			q.log.Warn("thumbnail generation task timeout, removed from queue",
+				logger.String("storage_key", key),
+				logger.String("media_uuid", state.task.MediaUUID),
+				logger.Duration("elapsed_time_ms", elapsed),
+				logger.Duration("max_wait_time_ms", q.maxWaitTime),
+				logger.Int("waiters_notified", waitersCount),
 			)
 		}
+	}
+	if timeoutCount > 0 {
+		q.log.Info("thumbnail queue cleanup completed",
+			logger.Int("timeout_tasks_removed", timeoutCount),
+			logger.Int("remaining_tasks", len(q.generating)),
+		)
 	}
 }
 
@@ -147,8 +180,11 @@ func (q *ThumbnailQueue) GetStats() map[string]interface{} {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
+	length := len(q.generating)
+	monitoring.UpdateThumbnailQueueStats(length)
+
 	return map[string]interface{}{
-		"generating_count": len(q.generating),
+		"generating_count": length,
 		"max_wait_time":    q.maxWaitTime.String(),
 	}
 }

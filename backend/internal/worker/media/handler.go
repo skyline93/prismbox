@@ -101,12 +101,28 @@ func processImageHandler(
 
 		// 生成 ThumbHash（仅图片类型，失败不阻塞主流程）
 		if status == "COMPLETED" && strings.EqualFold(media.ItemType, "image") {
-			if thumbHash, err := generateThumbHash(ctx, originalPath); err == nil && thumbHash != "" {
+			thumbHashStartTime := time.Now()
+			thumbHash, err := generateThumbHash(ctx, originalPath)
+			thumbHashLatency := time.Since(thumbHashStartTime)
+			if err == nil && thumbHash != "" {
 				updates["thumb_hash"] = thumbHash
-			} else {
-				log.Warn("failed to generate thumbhash",
-					logger.Error(err),
+				log.Info("thumbhash generated successfully",
 					logger.String("media_uuid", payload.MediaUUID),
+					logger.String("original_path", originalPath),
+					logger.Duration("generation_latency_ms", thumbHashLatency),
+					logger.Int("thumbhash_length", len(thumbHash)),
+					logger.String("thumbhash_value", thumbHash),
+				)
+				log.Debug("updates map after adding thumbhash",
+					logger.String("media_uuid", payload.MediaUUID),
+					logger.String("updates", fmt.Sprintf("%+v", updates)),
+				)
+			} else {
+				log.Warn("failed to generate thumbhash (non-fatal, continuing)",
+					logger.String("media_uuid", payload.MediaUUID),
+					logger.String("original_path", originalPath),
+					logger.Duration("generation_latency_ms", thumbHashLatency),
+					logger.Error(err),
 				)
 			}
 		}

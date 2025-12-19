@@ -9,6 +9,7 @@ import (
 	"github.com/album/backend/internal/api/v1/changelog"
 	"github.com/album/backend/internal/api/v1/group"
 	"github.com/album/backend/internal/api/v1/media"
+	"github.com/album/backend/internal/api/v1/monitoring"
 	"github.com/album/backend/internal/api/v1/share"
 	"github.com/album/backend/internal/api/v1/storage"
 	"github.com/album/backend/internal/api/v1/sync"
@@ -29,7 +30,7 @@ type Router struct {
 // NewRouter 创建路由注册器
 func NewRouter(app *app.App) *Router {
 	// 设置Gin模式
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 
 	r := gin.Default()
 	return &Router{
@@ -103,6 +104,9 @@ func (r *Router) setupAPIV1() {
 
 	// 注册同步路由
 	sync.RegisterRoutes(v1, r.app)
+
+	// 注册监控路由
+	monitoring.RegisterRoutes(v1, r.app)
 
 	// 注册分享的公开路由（在根路由）
 	share.RegisterPublicRoutes(r.engine, r.app)

@@ -7,9 +7,8 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/core/cache/thumbnail_cache_manager.dart';
-import 'package:prismbox/features/media_loading/exceptions/network_image_exception.dart';
-import 'package:prismbox/features/media_loading/loaders/image_loader.dart';
 import 'package:prismbox/features/media_loading/mixins/cancellable_image_provider_mixin.dart';
+import 'package:prismbox/features/media_loading/providers/remote_full_provider.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 
 /// 远程缩略图提供者
@@ -55,20 +54,20 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
     reset();
 
     final chunkEvents = StreamController<ImageChunkEvent>();
-    return MultiFrameImageStreamCompleter(
-      codec: _loadThumbnail(key, decode, chunkEvents),
+    return MultiImageStreamCompleter(
+      codec: _loadThumbnailStream(key, decode, chunkEvents),
       scale: 1.0,
       chunkEvents: chunkEvents.stream,
     );
   }
 
-  /// 加载缩略图
-  Future<ui.Codec> _loadThumbnail(
+  /// 加载缩略图流
+  /// 使用 Stream<ui.Codec> 支持自动更新：当缓存过期时，getFileStream 会自动重新下载
+  Stream<ui.Codec> _loadThumbnailStream(
     RemoteThumbProvider key,
     ImageDecoderCallback decode,
     StreamController<ImageChunkEvent> chunkEvents,
-  ) async {
-    // 检查是否已取消
+  ) async* {
     checkCancelled();
 
     try {
@@ -78,66 +77,88 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
       // 使用缓存管理器加载
       final cacheManager = key.cacheManager ?? ThumbnailImageCacheManager();
 
-      // 检查磁盘缓存（使用 ImageLoader）
-      final cachedCodec = await ImageLoader.loadImageFromCache(
-        url,
-        cacheManager,
-        decode,
-      );
-      if (cachedCodec != null) {
-        checkCancelled();
-        return cachedCodec;
-      }
+      // 获取认证头
+      final headers = await ApiService.getRequestHeaders();
 
-      // 从网络下载（使用 ImageLoader）
-      return await ImageLoader.loadImage(
-        url,
-        cacheManager,
-        decode,
-        onProgress: (downloaded, total) {
-          chunkEvents.add(
-            ImageChunkEvent(
-              cumulativeBytesLoaded: downloaded,
-              expectedTotalBytes: total,
-            ),
-          );
-        },
-        onCancel: () => isCancelled,
-        onSubscription: (subscription) {
-          setCurrentSubscription(subscription);
-        },
-        fallbackToExpiredCache: true,
-      );
+      // 循环处理，支持占位符自动刷新
+      while (!isCancelled) {
+        // 直接使用 getFileStream，让它自动处理缓存过期
+        // 当缓存过期时（占位符30秒后），会自动重新下载
+        final stream = cacheManager.getFileStream(
+          url,
+          withProgress: true,
+          headers: headers,
+        );
+
+        bool isPlaceholder = false;
+        int? cacheAgeSeconds;
+
+        await for (final response in stream) {
+          checkCancelled();
+
+          if (response is DownloadProgress) {
+            chunkEvents.add(
+              ImageChunkEvent(
+                cumulativeBytesLoaded: response.downloaded,
+                expectedTotalBytes: response.totalSize,
+              ),
+            );
+          } else if (response is FileInfo) {
+            try {
+              final buffer = await ui.ImmutableBuffer.fromFilePath(response.file.path);
+              checkCancelled();
+              final codec = await decode(buffer);
+              yield codec; // 每次新的 FileInfo 到达时，yield 新的 Codec
+
+              // 检查缓存时间，判断是否是占位符
+              final now = DateTime.now();
+              final validTill = response.validTill;
+              final ageSeconds = validTill.difference(now).inSeconds;
+              cacheAgeSeconds = ageSeconds;
+
+              // 如果缓存时间很短（< 60秒），可能是占位符
+              if (ageSeconds > 0 && ageSeconds < 60) {
+                isPlaceholder = true;
+                _log.fine(
+                  'Detected placeholder (short cache: ${ageSeconds}s), will retry after cache expires: $url',
+                );
+              } else {
+                _log.fine('Detected actual thumbnail (long cache: ${ageSeconds}s): $url');
+              }
+            } catch (e) {
+              _log.warning('Failed to decode image: $url', e);
+              // 继续处理下一个响应
+            }
+          }
+        }
+
+        // 如果检测到占位符，等待缓存过期后重新请求
+        final ageSeconds = cacheAgeSeconds;
+        if (isPlaceholder && ageSeconds != null && ageSeconds > 0) {
+          _log.fine('Waiting for placeholder cache to expire (${ageSeconds}s): $url');
+          await Future.delayed(Duration(seconds: ageSeconds + 1));
+          
+          if (!isCancelled) {
+            _log.fine('Placeholder cache expired, removing to trigger re-download: $url');
+            // 清除缓存，触发重新下载
+            try {
+              await cacheManager.removeFile(url);
+            } catch (e) {
+              _log.warning('Failed to remove expired cache: $url', e);
+            }
+            // 继续循环，重新获取流
+            continue;
+          }
+        }
+
+        // 如果不是占位符，或者没有成功加载，退出循环
+        break;
+      }
     } on CancelledException {
       _log.fine('Thumbnail loading cancelled: ${_buildUrl(key)}');
       rethrow;
     } catch (e, stackTrace) {
-      // 如果是网络错误，尝试回退到缓存（即使过期）
-      if (e is NetworkImageException) {
-        try {
-          final url = _buildUrl(key);
-          final cacheManager = key.cacheManager ?? ThumbnailImageCacheManager();
-          final cachedFile = await cacheManager.getFileFromCache(url);
-          if (cachedFile != null) {
-            _log.info('Network error, using expired cache: $url');
-            checkCancelled();
-            try {
-              final buffer = await ui.ImmutableBuffer.fromFilePath(
-                cachedFile.file.path,
-              );
-              checkCancelled();
-              return await decode(buffer);
-            } catch (decodeError) {
-              _log.warning('Failed to decode expired cache', decodeError);
-              // 继续抛出原始网络错误
-            }
-          }
-        } catch (_) {
-          // 忽略缓存回退失败
-        }
-      }
-
-      _log.severe('Failed to load remote thumbnail', e, stackTrace);
+      _log.severe('Failed to load remote thumbnail stream', e, stackTrace);
       rethrow;
     }
   }
@@ -165,7 +186,8 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
     }
 
     final size = '${key.size.width.toInt()}x${key.size.height.toInt()}';
-    return '$baseUrl/assets/${key.assetId}/thumbnail?size=$size';
+    // 使用后端路由：/api/v1/assets/:uuid/thumbnail
+    return '$baseUrl/api/v1/assets/${key.assetId}/thumbnail?size=$size';
   }
 
   @override

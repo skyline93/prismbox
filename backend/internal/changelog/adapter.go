@@ -120,6 +120,9 @@ func extractMediaUpdates(media *models.Media) map[string]interface{} {
 	if media.BackupError != "" {
 		updates["backup_error"] = media.BackupError
 	}
+	if media.ThumbHash != "" {
+		updates["thumb_hash"] = media.ThumbHash
+	}
 
 	return updates
 }
@@ -187,7 +190,11 @@ func (r *ChangelogAwareMediaRepository) Update(ctx context.Context, uuid string,
 			if val, ok := v.(string); ok {
 				existing.BackupStatus = val
 			}
-		// ... 其他字段
+		case "thumb_hash":
+			if val, ok := v.(string); ok {
+				existing.ThumbHash = val
+			}
+			// ... 其他字段
 		}
 	}
 
@@ -250,4 +257,3 @@ func (r *ChangelogAwareMediaRepository) Purge(ctx context.Context, uuid string) 
 	// 注意：如果需要记录变更日志，应该在调用 Purge 之前先查询记录
 	return r.readableRepo.Purge(ctx, uuid)
 }
-

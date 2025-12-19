@@ -1,6 +1,7 @@
 package local
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -118,6 +119,11 @@ func NewLocalStorage(cfg *LocalStorageConfig, poolRepo repository.StoragePoolRep
 		pipeline:     pipeline,
 		log:          log,
 	}, nil
+}
+
+// GetCacheManager 获取缓存管理器
+func (ls *LocalStorage) GetCacheManager() *CacheManager {
+	return ls.cacheManager
 }
 
 // Put 上传文件
@@ -239,33 +245,71 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 	return nil
 }
 
-// Get 获取文件
+// Get 获取文件（支持缓存）
 func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, error) {
-	// 1. 解析key
+	// 1. 检查缓存（如果启用）
+	if ls.cacheManager != nil {
+		cached, err := ls.cacheManager.Get(key)
+		if err == nil && cached != nil {
+			// 缓存命中，直接返回
+			return cached, nil
+		}
+	}
+
+	// 2. 解析key
 	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("resolve key: %w", err)
 	}
 
-	// 2. 解析文件路径
+	// 3. 解析文件路径
 	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
 	if err != nil {
 		return nil, fmt.Errorf("resolve file path: %w", err)
 	}
 
-	// 3. 查找文件（在所有存储池中）
+	// 4. 查找文件（在所有存储池中）
+	var file *os.File
 	for _, pool := range ls.poolManager.snapshotPools() {
 		fullPath := filepath.Join(pool.Path, filePath)
 		if _, err := os.Stat(fullPath); err == nil {
-			file, err := os.Open(fullPath)
+			file, err = os.Open(fullPath)
 			if err != nil {
 				continue
 			}
-			return file, nil
+			break
 		}
 	}
 
-	return nil, fmt.Errorf("file not found: %s", key)
+	if file == nil {
+		return nil, fmt.Errorf("file not found: %s", key)
+	}
+
+	// 5. 如果启用缓存，读取文件内容并写入缓存
+	if ls.cacheManager != nil {
+		// 读取文件内容
+		data, err := io.ReadAll(file)
+		file.Close()
+		if err != nil {
+			return nil, fmt.Errorf("read file: %w", err)
+		}
+
+		// 写入缓存（异步，不阻塞）
+		go func() {
+			if err := ls.cacheManager.Put(key, data); err != nil {
+				ls.log.Debug("failed to cache file",
+					logger.String("key", key),
+					logger.Error(err),
+				)
+			}
+		}()
+
+		// 返回数据读取器
+		return io.NopCloser(bytes.NewReader(data)), nil
+	}
+
+	// 缓存未启用，直接返回文件句柄
+	return file, nil
 }
 
 // Delete 删除文件

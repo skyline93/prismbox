@@ -21,7 +21,7 @@ class ImageLoader {
   /// [cacheManager] 缓存管理器
   /// [decode] 图片解码回调
   /// 
-  /// 返回解码后的 Codec，如果缓存不存在则返回 null
+  /// 返回解码后的 Codec，如果缓存不存在或已过期则返回 null
   static Future<ui.Codec?> loadImageFromCache(
     String url,
     CacheManager cacheManager,
@@ -30,7 +30,20 @@ class ImageLoader {
     try {
       final cachedFile = await cacheManager.getFileFromCache(url);
       if (cachedFile != null) {
-        _log.fine('Image cache hit: $url');
+        // 检查缓存是否已过期
+        final now = DateTime.now();
+        if (cachedFile.validTill.isBefore(now)) {
+          _log.fine('Cached image expired, will re-download: $url (expired at ${cachedFile.validTill})');
+          // 删除过期缓存，返回 null 触发重新下载
+          try {
+            await cacheManager.removeFile(url);
+          } catch (_) {
+            // 忽略删除失败
+          }
+          return null;
+        }
+        
+        _log.fine('Image cache hit: $url (valid till ${cachedFile.validTill})');
         try {
           final buffer = await ui.ImmutableBuffer.fromFilePath(cachedFile.file.path);
           return await decode(buffer);

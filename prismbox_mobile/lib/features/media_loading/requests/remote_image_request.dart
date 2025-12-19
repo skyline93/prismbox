@@ -47,25 +47,37 @@ class RemoteImageRequest extends ImageRequest {
     // 检查磁盘缓存
     final cachedFile = await cacheManager.getFileFromCache(url);
     if (cachedFile != null) {
-      checkCancelled();
-      _log.fine('Image cache hit: $url');
-      try {
-        final buffer = await ui.ImmutableBuffer.fromFilePath(cachedFile.file.path);
-        checkCancelled();
-        return await decode(buffer);
-      } catch (e) {
-        // 解码错误，清理损坏的缓存
-        _log.warning('Failed to decode cached image, removing cache: $url', e);
+      // 检查缓存是否已过期
+      final now = DateTime.now();
+      if (cachedFile.validTill.isBefore(now)) {
+        _log.fine('Cached image expired, will re-download: $url (expired at ${cachedFile.validTill})');
+        // 删除过期缓存，返回 null 触发重新下载
         try {
           await cacheManager.removeFile(url);
         } catch (_) {
-          // 忽略清理失败
+          // 忽略删除失败
         }
-        throw ImageDecodeException(
-          message: 'Failed to decode cached image',
-          source: cachedFile.file.path,
-          originalException: e,
-        );
+      } else {
+        checkCancelled();
+        _log.fine('Image cache hit: $url (valid till ${cachedFile.validTill})');
+        try {
+          final buffer = await ui.ImmutableBuffer.fromFilePath(cachedFile.file.path);
+          checkCancelled();
+          return await decode(buffer);
+        } catch (e) {
+          // 解码错误，清理损坏的缓存
+          _log.warning('Failed to decode cached image, removing cache: $url', e);
+          try {
+            await cacheManager.removeFile(url);
+          } catch (_) {
+            // 忽略清理失败
+          }
+          throw ImageDecodeException(
+            message: 'Failed to decode cached image',
+            source: cachedFile.file.path,
+            originalException: e,
+          );
+        }
       }
     }
 

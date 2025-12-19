@@ -45,6 +45,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/assets/{uuid}/thumbnail": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "下载资产的缩略图（小尺寸预览），支持动态尺寸和认证或签名 URL 访问",
+                "produces": [
+                    "image/jpeg"
+                ],
+                "tags": [
+                    "Assets"
+                ],
+                "summary": "下载资产缩略图",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "资产 UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "尺寸参数：200x200, thumbnail, preview, 或单边限制如 200（默认：thumbnail）",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "缩略图内容"
+                    },
+                    "400": {
+                        "description": "资产不存在、权限不足或文件未处理完成",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/apple/login": {
             "post": {
                 "description": "使用 Apple ID 登录，返回访问令牌和刷新令牌",
@@ -1705,49 +1754,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/media/{uuid}/download/thumbnail": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "下载媒体的缩略图（小尺寸预览），支持认证或签名 URL 访问",
-                "produces": [
-                    "image/jpeg"
-                ],
-                "tags": [
-                    "Media"
-                ],
-                "summary": "下载缩略图",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "媒体 UUID",
-                        "name": "uuid",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "缩略图内容"
-                    },
-                    "400": {
-                        "description": "媒体不存在、权限不足或文件未处理完成",
-                        "schema": {
-                            "$ref": "#/definitions/response.ApiResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "未认证",
-                        "schema": {
-                            "$ref": "#/definitions/response.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/media/{uuid}/purge": {
             "delete": {
                 "security": [
@@ -1835,6 +1841,43 @@ const docTemplate = `{
                         "description": "未认证",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/monitoring/thumbnail": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "返回缩略图服务的性能监控指标，包括请求统计、性能指标、队列状态等",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "获取缩略图服务监控指标",
+                "responses": {
+                    "200": {
+                        "description": "监控指标",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -3132,6 +3175,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "processing_status": {
+                    "type": "string"
+                },
+                "thumb_hash": {
+                    "description": "ThumbHash 占位符（base64 编码）",
                     "type": "string"
                 },
                 "thumbnail_url": {

@@ -2,6 +2,7 @@
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/infrastructure/api/api_service.dart';
 
 /// 缩略图缓存管理器
 /// 用于存储远程缩略图和本地生成的缩略图
@@ -19,6 +20,7 @@ class ThumbnailImageCacheManager extends CacheManager {
             key,
             maxNrOfCacheObjects: maxNrOfCacheObjects,
             stalePeriod: stalePeriod,
+            fileService: _ThumbnailAuthenticatedHttpFileService(),
           ),
         );
 
@@ -26,6 +28,23 @@ class ThumbnailImageCacheManager extends CacheManager {
   Future<void> cleanExpiredCache() async {
     await emptyCache();
     _log.info('Thumbnail cache cleaned');
+  }
+}
+
+/// 带认证头的 HTTP 文件服务（用于缩略图）
+class _ThumbnailAuthenticatedHttpFileService extends HttpFileService {
+  @override
+  Future<FileServiceResponse> get(String url, {Map<String, String>? headers}) async {
+    // 获取认证头
+    final authHeaders = await ApiService.getRequestHeaders();
+    
+    // 合并传入的 headers 和认证头
+    final mergedHeaders = <String, String>{
+      ...authHeaders,
+      if (headers != null) ...headers,
+    };
+    
+    return super.get(url, headers: mergedHeaders);
   }
 }
 

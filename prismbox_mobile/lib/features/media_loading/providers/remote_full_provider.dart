@@ -172,13 +172,15 @@ class RemoteFullImageProvider extends ImageProvider<RemoteFullImageProvider>
   /// 构建预览图 URL
   String _buildPreviewUrl(RemoteFullImageProvider key) {
     final baseUrl = _getBaseUrl(key);
-    return '$baseUrl/assets/${key.assetId}/thumbnail?size=preview';
+    // 使用后端路由：/api/v1/media/:uuid/download/preview
+    return '$baseUrl/api/v1/media/${key.assetId}/download/preview';
   }
 
   /// 构建原图 URL
   String _buildOriginalUrl(RemoteFullImageProvider key) {
     final baseUrl = _getBaseUrl(key);
-    return '$baseUrl/assets/${key.assetId}/original';
+    // 使用后端路由：/api/v1/media/:uuid/download/original
+    return '$baseUrl/api/v1/media/${key.assetId}/download/original';
   }
 
   @override

@@ -229,6 +229,9 @@ func (s *service) sendAssetBatch(writer io.Writer, medias []*models.Media, ack s
 		if media.MediaTakenAt != nil {
 			asset["media_taken_at"] = media.MediaTakenAt.Format(time.RFC3339)
 		}
+		if media.ThumbHash != "" {
+			asset["thumb_hash"] = media.ThumbHash
+		}
 
 		assetData = append(assetData, asset)
 	}

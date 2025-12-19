@@ -51,7 +51,7 @@ type Media struct {
 	BackupError       string `gorm:"type:text"`
 
 	// ThumbHash 占位符（用于快速加载占位符）
-	ThumbHash string `gorm:"type:varchar(200)"` // base64 编码的 ThumbHash，约 100-150 字符
+	ThumbHash string `gorm:"column:thumb_hash;type:varchar(200)"` // base64 编码的 ThumbHash，约 100-150 字符
 }
 
 // TableName 指定表名

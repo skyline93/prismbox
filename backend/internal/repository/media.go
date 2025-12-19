@@ -2,20 +2,24 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/album/backend/internal/database/models"
+	"github.com/album/backend/pkg/logger"
 	"gorm.io/gorm"
 )
 
 // mediaRepository 媒体仓储实现
 type mediaRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger logger.Logger
 }
 
 // NewMediaRepository 创建媒体仓储
 func NewMediaRepository(db *gorm.DB) MediaRepository {
 	return &mediaRepository{
-		db: db,
+		db:     db,
+		logger: logger.New("repository.media"),
 	}
 }
 
@@ -48,10 +52,47 @@ func (r *mediaRepository) FindByUserID(ctx context.Context, userID uint, limit, 
 
 // Update 更新媒体记录
 func (r *mediaRepository) Update(ctx context.Context, uuid string, updates map[string]interface{}) error {
-	return r.db.WithContext(ctx).
+	// 记录更新操作日志
+	updatesJSON, _ := json.Marshal(updates)
+	r.logger.Info("updating media record",
+		logger.String("uuid", uuid),
+		logger.String("updates", string(updatesJSON)),
+		logger.Int("fields_count", len(updates)),
+	)
+
+	// 执行更新
+	result := r.db.WithContext(ctx).
 		Model(&models.Media{}).
 		Where("uuid = ?", uuid).
-		Updates(updates).Error
+		Updates(updates)
+
+	if result.Error != nil {
+		r.logger.Error("failed to update media record",
+			logger.String("uuid", uuid),
+			logger.Error(result.Error),
+		)
+		return result.Error
+	}
+
+	// 记录更新结果
+	r.logger.Info("media record updated successfully",
+		logger.String("uuid", uuid),
+		logger.Int64("rows_affected", result.RowsAffected),
+	)
+
+	// 如果更新成功，查询并打印更新后的记录
+	if result.RowsAffected > 0 {
+		var media models.Media
+		if err := r.db.WithContext(ctx).Where("uuid = ?", uuid).First(&media).Error; err == nil {
+			mediaJSON, _ := json.Marshal(media)
+			r.logger.Debug("updated media record",
+				logger.String("uuid", uuid),
+				logger.String("media", string(mediaJSON)),
+			)
+		}
+	}
+
+	return nil
 }
 
 // Delete 删除媒体记录（软删除）

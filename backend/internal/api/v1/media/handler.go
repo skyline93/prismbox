@@ -862,18 +862,19 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 }
 
 // DownloadThumbnail 下载缩略图
-// @Summary      下载缩略图
-// @Description  下载媒体的缩略图（小尺寸预览），支持动态尺寸和认证或签名 URL 访问
-// @Tags         Media
+// @Summary      下载资产缩略图
+// @Description  下载资产的缩略图（小尺寸预览），支持动态尺寸和认证或签名 URL 访问
+// @Tags         Assets
 // @Produce      image/jpeg
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
+// @Param        uuid path string true "资产 UUID"
 // @Param        size query string false "尺寸参数：200x200, thumbnail, preview, 或单边限制如 200（默认：thumbnail）"
 // @Success      200 "缩略图内容"
-// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
+// @Failure      400 {object} response.ApiResponse "资产不存在、权限不足或文件未处理完成"
 // @Failure      401 {object} response.ApiResponse "未认证"
-// @Router       /media/{uuid}/download/thumbnail [get]
+// @Router       /assets/{uuid}/thumbnail [get]
 func (h *Handler) DownloadThumbnail(c *gin.Context) {
+	requestStartTime := time.Now()
 	mediaUUID := c.Param("uuid")
 	if mediaUUID == "" {
 		apiresponse.Error(c, "Media UUID is required")
@@ -885,6 +886,11 @@ func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	if sizeParam == "" {
 		sizeParam = "thumbnail" // 默认值
 	}
+
+	h.log.Debug("thumbnail download request received",
+		logger.String("media_uuid", mediaUUID),
+		logger.String("size_param", sizeParam),
+	)
 
 	// 获取userID（可能为nil，表示通过签名URL访问）
 	var userID *uint
@@ -898,11 +904,14 @@ func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	media, err := h.mediaService.GetAuthorizedMedia(c.Request.Context(), mediaUUID, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.log.Debug("thumbnail not found or permission denied",
+				logger.String("media_uuid", mediaUUID),
+			)
 			apiresponse.Error(c, "Thumbnail not found or permission denied")
 		} else {
-			h.log.Error("failed to get authorized media",
+			h.log.Error("failed to get authorized media for thumbnail",
+				logger.String("media_uuid", mediaUUID),
 				logger.Error(err),
-				logger.String("uuid", mediaUUID),
 			)
 			apiresponse.Error(c, "Could not verify thumbnail permissions")
 		}
@@ -911,38 +920,63 @@ func (h *Handler) DownloadThumbnail(c *gin.Context) {
 
 	// 2. 检查处理状态
 	if media.ProcessingStatus != "COMPLETED" {
+		h.log.Debug("thumbnail not ready, media still processing",
+			logger.String("media_uuid", mediaUUID),
+			logger.String("processing_status", media.ProcessingStatus),
+		)
 		apiresponse.Error(c, fmt.Sprintf("Thumbnail is not ready yet. Current status: %s", media.ProcessingStatus))
 		return
 	}
 
-	// 3. 获取或生成缩略图（支持动态尺寸）
-	thumbnailReader, err := h.mediaService.GetOrGenerateThumbnail(c.Request.Context(), media, sizeParam)
+	// 3. 获取或生成缩略图（支持动态尺寸，返回详细信息）
+	thumbnailResult, err := h.mediaService.GetOrGenerateThumbnailWithInfo(c.Request.Context(), media, sizeParam)
 	if err != nil {
 		h.log.Error("failed to get or generate thumbnail",
+			logger.String("media_uuid", mediaUUID),
+			logger.String("size_param", sizeParam),
+			logger.String("item_type", media.ItemType),
+			logger.Duration("request_latency_ms", time.Since(requestStartTime)),
 			logger.Error(err),
-			logger.String("uuid", mediaUUID),
-			logger.String("size", sizeParam),
 		)
 		apiresponse.Error(c, fmt.Sprintf("Failed to get thumbnail: %v", err))
 		return
 	}
-	defer thumbnailReader.Close()
+	defer thumbnailResult.Reader.Close()
 
 	// 4. 获取缩略图的MIME类型
 	mimeType := h.mediaService.GetThumbnailMimeType(media)
 
 	// 5. 设置响应头
 	c.Header("Content-Type", mimeType)
-	c.Header("Cache-Control", "public, max-age=2592000") // 30天缓存
+	c.Header("ETag", fmt.Sprintf(`"%s"`, media.Hash)) // ETag 用于缓存验证
 
-	// 如果是占位符（通过检查 Content-Length 或特殊标记），添加 X-ThumbHash 头
-	// 注意：这里简化处理，实际可以通过检查 reader 类型来判断
-	if media.ThumbHash != "" {
-		c.Header("X-ThumbHash", media.ThumbHash) // 提供 ThumbHash 供前端使用
+	// 根据是否为占位符设置不同的缓存策略
+	if thumbnailResult.IsPlaceholder && media.ThumbHash != "" {
+		// 占位符使用短缓存 + must-revalidate
+		// must-revalidate: 缓存过期后必须重新验证，不能使用过期缓存
+		// max-age=30: 缓存30秒，鼓励客户端定期检查实际缩略图是否已生成
+		c.Header("Cache-Control", "public, max-age=30, must-revalidate")
+		c.Header("X-ThumbHash", media.ThumbHash)
+		c.Header("X-Is-Placeholder", "true")
+		h.log.Debug("serving thumbhash placeholder",
+			logger.String("media_uuid", mediaUUID),
+			logger.String("size_param", sizeParam),
+		)
+	} else {
+		// 实际缩略图使用长缓存
+		c.Header("Cache-Control", "public, max-age=2592000") // 30天缓存
 	}
 
+	totalLatency := time.Since(requestStartTime)
+	h.log.Info("thumbnail request completed successfully",
+		logger.String("media_uuid", mediaUUID),
+		logger.String("size_param", sizeParam),
+		logger.Bool("is_placeholder", thumbnailResult.IsPlaceholder),
+		logger.Duration("total_latency_ms", totalLatency),
+	)
+
 	// 6. 流式传输缩略图
-	c.DataFromReader(200, -1, mimeType, thumbnailReader, nil)
+	c.DataFromReader(200, -1, mimeType, thumbnailResult.Reader, nil)
 }
 
 // downloadFile 从存储提供文件下载

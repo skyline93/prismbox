@@ -10,7 +10,7 @@
 part of 'app_router.dart';
 
 abstract class _$AppRouter extends RootStackRouter {
-  // ignore: unused_element
+  // ignore: unused_element, unused_element_parameter
   _$AppRouter({super.navigatorKey});
 
   @override

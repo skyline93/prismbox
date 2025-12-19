@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/album/backend/internal/storage/interfaces"
+	"github.com/album/backend/internal/storage/primary/local"
 )
 
 // StorageManager 存储管理器（只负责主存储，不涉及云存储）
@@ -69,4 +70,13 @@ func (sm *StorageManager) SelectPool(size int64) (string, error) {
 // GetPoolInfo 获取存储池信息
 func (sm *StorageManager) GetPoolInfo(poolID string) (*interfaces.PoolInfo, error) {
 	return sm.primary.GetPoolInfo(poolID)
+}
+
+// GetCacheManager 获取缓存管理器（如果可用）
+func (sm *StorageManager) GetCacheManager() *local.CacheManager {
+	// 尝试获取 LocalStorage 的 CacheManager
+	if ls, ok := sm.primary.(*local.LocalStorage); ok {
+		return ls.GetCacheManager()
+	}
+	return nil
 }
