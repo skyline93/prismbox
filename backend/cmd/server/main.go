@@ -48,7 +48,14 @@ func main() {
 	flags.Parse(os.Args[1:])
 
 	// 2. 加载配置
+	// 优先级：命令行参数 > 环境变量 > 默认值
 	configPath, _ := flags.GetString("config")
+	if configPath == "" {
+		// 如果命令行未指定，尝试从环境变量读取
+		if envPath := os.Getenv("ALBUM_CONFIG_PATH"); envPath != "" {
+			configPath = envPath
+		}
+	}
 	loader := config.NewLoader(configPath)
 	loader.BindPFlags(flags) // 绑定命令行参数
 
@@ -85,7 +92,7 @@ func main() {
 
 	// 6. 创建HTTP服务器
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-	
+
 	// 设置超时时间（从配置读取，如果为0则使用默认值）
 	readTimeout := cfg.Server.ReadTimeout.Duration()
 	if readTimeout == 0 {
@@ -99,7 +106,7 @@ func main() {
 	if idleTimeout == 0 {
 		idleTimeout = 2 * time.Minute
 	}
-	
+
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      router.Engine(),

@@ -17,14 +17,13 @@ mkdir -p deploy/data/postgresql
 mkdir -p deploy/data/logs/nginx
 mkdir -p deploy/data/cert
 mkdir -p deploy/data/certbot-www/.well-known/acme-challenge
+mkdir -p deploy/data/configs
 mkdir -p deploy/public
-mkdir -p configs
 
 # 设置目录权限
 echo "设置目录权限..."
 chmod -R 755 deploy/data
 chmod -R 755 deploy/public
-chmod -R 755 configs
 
 # 设置脚本执行权限
 echo "设置脚本执行权限..."
@@ -32,8 +31,8 @@ chmod +x deploy/docker-entrypoint.sh 2>/dev/null || true
 chmod +x deploy/docker-entrypoint-backend.sh 2>/dev/null || true
 
 # 检查配置文件
-if [ ! -f "configs/config.yaml" ]; then
-    echo "提示: configs/config.yaml 不存在，将使用环境变量配置（已设置默认值）"
+if [ ! -f "deploy/data/configs/config.yaml" ]; then
+    echo "提示: deploy/data/configs/config.yaml 不存在，容器启动时会自动生成（使用环境变量配置）"
 fi
 
 # 检查环境变量文件
