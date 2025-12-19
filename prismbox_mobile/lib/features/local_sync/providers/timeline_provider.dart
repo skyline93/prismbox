@@ -25,7 +25,7 @@ Future<List<BaseAsset>> timelineAssets(
 ///
 /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
 /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
-/// 支持根据筛选模式（全部/已备份/未备份）过滤照片
+/// 支持根据筛选模式（全部/已备份/未备份/仅云端）过滤照片
 @riverpod
 Future<List<TimelineSection>> timelineSections(TimelineSectionsRef ref) async {
   // 1. 获取原始数据
@@ -67,6 +67,9 @@ List<BaseAsset> _filterAssets(
     case PhotoFilterModeEnum.notBackedUp:
       // 仅显示未备份（仅本地）
       return assets.where((asset) => asset.isLocalOnly).toList();
+    case PhotoFilterModeEnum.remoteOnly:
+      // 仅显示仅云端（仅远程存在）
+      return assets.where((asset) => asset.isRemoteOnly).toList();
   }
 }
 

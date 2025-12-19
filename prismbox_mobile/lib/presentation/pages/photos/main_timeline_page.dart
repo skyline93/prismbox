@@ -1089,7 +1089,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   /// 构建筛选模式按钮
   ///
   /// 显示当前筛选模式，点击可循环切换：全部 -> 已备份 -> 未备份 -> 全部
-  /// 使用简洁的文字按钮样式，三种模式下按钮大小保持一致
+  /// 使用简洁的文字按钮样式，四种模式下按钮大小保持一致
   Widget _buildFilterButton(BuildContext context, WidgetRef ref) {
     final filterMode = ref.watch(photoFilterModeProvider);
     final filterNotifier = ref.read(photoFilterModeProvider.notifier);
@@ -1115,6 +1115,11 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         backgroundColor = Theme.of(context).colorScheme.errorContainer;
         textColor = Theme.of(context).colorScheme.onErrorContainer;
         break;
+      case PhotoFilterModeEnum.remoteOnly:
+        text = '仅云端';
+        backgroundColor = Theme.of(context).colorScheme.secondaryContainer;
+        textColor = Theme.of(context).colorScheme.onSecondaryContainer;
+        break;
     }
 
     return GestureDetector(
@@ -1126,7 +1131,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         filterNotifier.cycle();
       },
       child: Container(
-        // 固定宽度，确保三种模式下按钮大小一致
+        // 固定宽度，确保四种模式下按钮大小一致
         width: 64,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(

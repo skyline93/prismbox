@@ -12,11 +12,14 @@ enum PhotoFilterModeEnum {
 
   /// 仅显示未备份的照片
   notBackedUp,
+
+  /// 仅显示仅云端的照片
+  remoteOnly,
 }
 
 /// 照片筛选模式 Provider
 ///
-/// 管理照片页面的筛选状态（全部/已备份/未备份）
+/// 管理照片页面的筛选状态（全部/已备份/未备份/仅云端）
 @riverpod
 class PhotoFilterMode extends _$PhotoFilterMode {
   @override
@@ -27,7 +30,7 @@ class PhotoFilterMode extends _$PhotoFilterMode {
     state = mode;
   }
 
-  /// 切换到下一个模式（循环：全部 -> 已备份 -> 未备份 -> 全部）
+  /// 切换到下一个模式（循环：全部 -> 已备份 -> 未备份 -> 仅云端 -> 全部）
   void cycle() {
     switch (state) {
       case PhotoFilterModeEnum.all:
@@ -37,6 +40,9 @@ class PhotoFilterMode extends _$PhotoFilterMode {
         state = PhotoFilterModeEnum.notBackedUp;
         break;
       case PhotoFilterModeEnum.notBackedUp:
+        state = PhotoFilterModeEnum.remoteOnly;
+        break;
+      case PhotoFilterModeEnum.remoteOnly:
         state = PhotoFilterModeEnum.all;
         break;
     }
@@ -51,6 +57,8 @@ class PhotoFilterMode extends _$PhotoFilterMode {
         return '已备份';
       case PhotoFilterModeEnum.notBackedUp:
         return '未备份';
+      case PhotoFilterModeEnum.remoteOnly:
+        return '仅云端';
     }
   }
 }

@@ -183,7 +183,7 @@ String _$timelineSectionsHash() => r'038781495d2516c189de12f1441d8176ce8d5eb0';
 ///
 /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
 /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
-/// 支持根据筛选模式（全部/已备份/未备份）过滤照片
+/// 支持根据筛选模式（全部/已备份/未备份/仅云端）过滤照片
 ///
 /// Copied from [timelineSections].
 @ProviderFor(timelineSections)

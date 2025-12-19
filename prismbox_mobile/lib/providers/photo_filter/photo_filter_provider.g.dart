@@ -6,11 +6,11 @@ part of 'photo_filter_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$photoFilterModeHash() => r'e6275c537f5bb938a8ea221974929a72e2eb2b5a';
+String _$photoFilterModeHash() => r'3424affde06303ac40185778fca666446664c2de';
 
 /// 照片筛选模式 Provider
 ///
-/// 管理照片页面的筛选状态（全部/已备份/未备份）
+/// 管理照片页面的筛选状态（全部/已备份/未备份/仅云端）
 ///
 /// Copied from [PhotoFilterMode].
 @ProviderFor(PhotoFilterMode)

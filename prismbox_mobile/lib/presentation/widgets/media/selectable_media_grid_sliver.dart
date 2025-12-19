@@ -98,6 +98,9 @@ class _SelectableMediaGridSliverState
           return VisibilityDetector(
             key: Key('selectable_media_${asset.id}'),  // 使用 asset.id 而不是 index，确保每个资产都有唯一且稳定的 key
             onVisibilityChanged: (info) {
+              // 检查 widget 是否仍然挂载，避免在 dispose 后调用 setState
+              if (!mounted) return;
+              
               final isVisible = info.visibleFraction > 0;
               setState(() {
                 if (isVisible) {

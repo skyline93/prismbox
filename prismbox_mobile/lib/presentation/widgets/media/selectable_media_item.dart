@@ -177,10 +177,11 @@ class _SelectedIcon extends StatelessWidget {
 
 /// 上传状态图标组件
 /// 根据资产上传状态显示不同的图标：
-/// - 未上传：云朵关闭图标（cloud_off_outlined）
+/// - 仅存在于服务端：云朵图标（cloud_outlined，中间没有勾）
+/// - 未上传：云朵关闭图标（cloud_off_outlined，白色）
 /// - 上传中：云朵上传图标（cloud_upload_outlined），带旋转动画
 /// - 已上传：云朵完成图标（cloud_done_outlined）
-/// - 上传失败：云朵队列图标（cloud_queue_outlined）
+/// - 上传失败：云朵关闭图标（cloud_off_outlined，红色）
 class _UploadStatusIcon extends ConsumerWidget {
   final BaseAsset asset;
   
@@ -188,6 +189,15 @@ class _UploadStatusIcon extends ConsumerWidget {
   
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 如果仅存在于服务端，直接显示云朵图标（没有勾）
+    if (asset.isRemoteOnly) {
+      return Positioned(
+        top: 4,
+        right: 4,
+        child: _buildRemoteOnlyIcon(),
+      );
+    }
+    
     // 获取资产的唯一标识符
     final assetId = asset.localId ?? asset.id;
     final hasRemote = asset.hasRemote;
@@ -230,6 +240,22 @@ class _UploadStatusIcon extends ConsumerWidget {
       top: 4,
       right: 4,
       child: iconWidget,
+    );
+  }
+  
+  /// 仅存在于服务端图标（云朵图标，中间没有勾）
+  Widget _buildRemoteOnlyIcon() {
+    return Icon(
+      Icons.cloud_outlined,
+      color: const Color.fromRGBO(255, 255, 255, 0.8),
+      size: 16,
+      shadows: const [
+        Shadow(
+          blurRadius: 5.0,
+          color: Color.fromRGBO(0, 0, 0, 0.6),
+          offset: Offset(0.0, 0.0),
+        ),
+      ],
     );
   }
   
@@ -301,11 +327,11 @@ class _UploadStatusIcon extends ConsumerWidget {
     );
   }
   
-  /// 上传失败图标
+  /// 上传失败图标（使用未上传图标，但颜色为红色）
   Widget _buildFailedIcon() {
     return Icon(
-      Icons.cloud_queue_outlined,
-      color: const Color.fromRGBO(255, 255, 255, 0.8),
+      Icons.cloud_off_outlined,
+      color: Colors.red,
       size: 16,
       shadows: const [
         Shadow(
