@@ -246,6 +246,9 @@ func (l *Loader) defaultConfig() *Config {
 			Host:          "0.0.0.0",
 			Port:          8080,
 			PublicBaseURL: "http://10.168.1.161:8080",
+			ReadTimeout:   types.Duration(1 * time.Hour),
+			WriteTimeout:  types.Duration(1 * time.Hour),
+			IdleTimeout:   types.Duration(2 * time.Minute),
 		},
 		Database: &database.Config{
 			Type: "postgres",

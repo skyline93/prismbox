@@ -30,10 +30,10 @@ cat > /etc/nginx/snippets/common.conf << 'EOF'
 client_body_buffer_size 1M;
 client_header_buffer_size 512k;
 large_client_header_buffers 4 512k;
-client_body_timeout 300s;
-client_header_timeout 300s;
-keepalive_timeout 300s;
-send_timeout 300s;
+client_body_timeout 3600s;
+client_header_timeout 3600s;
+keepalive_timeout 3600s;
+send_timeout 3600s;
 EOF
 
 # 2. 代理通用配置片段
@@ -49,9 +49,9 @@ proxy_redirect off;
 proxy_buffering off;
 proxy_request_buffering off;
 proxy_max_temp_file_size 0;
-proxy_connect_timeout 300s;
-proxy_send_timeout 300s;
-proxy_read_timeout 300s;
+proxy_connect_timeout 3600s;
+proxy_send_timeout 3600s;
+proxy_read_timeout 3600s;
 proxy_http_version 1.1;
 EOF
 

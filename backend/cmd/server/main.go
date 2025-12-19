@@ -85,12 +85,27 @@ func main() {
 
 	// 6. 创建HTTP服务器
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	
+	// 设置超时时间（从配置读取，如果为0则使用默认值）
+	readTimeout := cfg.Server.ReadTimeout.Duration()
+	if readTimeout == 0 {
+		readTimeout = 1 * time.Hour
+	}
+	writeTimeout := cfg.Server.WriteTimeout.Duration()
+	if writeTimeout == 0 {
+		writeTimeout = 1 * time.Hour
+	}
+	idleTimeout := cfg.Server.IdleTimeout.Duration()
+	if idleTimeout == 0 {
+		idleTimeout = 2 * time.Minute
+	}
+	
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      router.Engine(),
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	// 7. 启动HTTP服务器（后台运行）

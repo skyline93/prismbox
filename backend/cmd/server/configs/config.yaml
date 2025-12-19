@@ -2,6 +2,9 @@ server:
   host: 0.0.0.0
   port: 8080
   public_base_url: http://10.168.1.161:8080
+  read_timeout: 1h0m0s
+  write_timeout: 1h0m0s
+  idle_timeout: 2m0s
 database:
   type: postgres
   dsn: host=127.0.0.1 user=album password=album@2025 dbname=album port=15432 sslmode=disable TimeZone=Asia/Shanghai
