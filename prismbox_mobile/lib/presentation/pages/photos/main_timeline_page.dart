@@ -702,8 +702,15 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         );
       },
       loading: () => [
-        const SliverFillRemaining(
-          child: Center(child: CircularProgressIndicator()),
+        // 使用骨架屏效果，而不是简单的加载指示器
+        // 这样可以让用户感觉页面已经在加载内容，而不是完全空白
+        SliverFillRemaining(
+          child: Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
         ),
       ],
       error: (error, stackTrace) => [

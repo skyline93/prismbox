@@ -11,7 +11,6 @@ import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
-import 'package:prismbox/providers/permission/photo_permission_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 
 /// TabShell 容器页面
@@ -26,7 +25,6 @@ class TabShellPage extends ConsumerStatefulWidget {
 
 class _TabShellPageState extends ConsumerState<TabShellPage> 
     with WidgetsBindingObserver {
-  bool _hasRequestedPermission = false;
   bool _hasStartedSync = false;
   final _log = Logger('TabShellPage');
 
@@ -36,9 +34,10 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
     // 添加生命周期监听器
     WidgetsBinding.instance.addObserver(this);
     
-    // 页面渲染完成后请求权限并启动自动同步
+    // 页面渲染完成后启动自动同步
+    // 注意：移除了权限请求，因为 MainTimelinePage 已经在检查权限了
+    // 这样可以避免重复请求权限，减少不必要的加载状态
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _requestPhotoPermission();
       _startAutoSync();
     });
   }
@@ -83,30 +82,13 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
     }
   }
 
-  /// 请求相册权限
-  Future<void> _requestPhotoPermission() async {
-    if (_hasRequestedPermission) return;
-    _hasRequestedPermission = true;
-
-    // 延迟一下，确保页面完全加载
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!mounted) return;
-
-    // 请求权限
-    final permissionNotifier = ref.read(
-      photoPermissionNotifierProvider.notifier,
-    );
-    await permissionNotifier.requestPermission();
-  }
-
   /// 启动自动同步
-  /// 根据设计文档，应用启动后延迟 2 秒启动后台同步任务
+  /// 根据设计文档，应用启动后延迟启动后台同步任务
   Future<void> _startAutoSync() async {
     if (_hasStartedSync) return;
     _hasStartedSync = true;
 
-    // 延迟一下，确保权限已请求和页面完全加载
+    // 延迟一下，确保页面完全加载
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;

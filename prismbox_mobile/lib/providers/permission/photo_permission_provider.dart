@@ -30,8 +30,27 @@ class PhotoPermissionPermanentlyDenied extends PhotoPermissionState {
 class PhotoPermissionNotifier extends _$PhotoPermissionNotifier {
   @override
   Future<PhotoPermissionState> build() async {
-    // 初始化时不请求权限，返回未授权状态
-    return const PhotoPermissionDenied();
+    // 初始化时检查当前权限状态
+    // 如果权限已授予，requestPermissionExtend 不会弹出对话框，直接返回当前状态
+    // 如果权限未授予，也不会弹出对话框（只有在用户主动请求时才会弹出）
+    try {
+      final permission = await PhotoManager.requestPermissionExtend();
+      
+      if (permission.isAuth) {
+        return const PhotoPermissionGranted();
+      } else {
+        // 检查是否为永久拒绝
+        final isPermanentlyDenied =
+            !permission.hasAccess && !permission.isLimited;
+        
+        return isPermanentlyDenied
+            ? const PhotoPermissionPermanentlyDenied()
+            : const PhotoPermissionDenied();
+      }
+    } catch (e) {
+      // 如果检查失败，默认返回未授权状态
+      return const PhotoPermissionDenied();
+    }
   }
 
   /// 请求权限
