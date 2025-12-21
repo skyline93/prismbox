@@ -78,9 +78,6 @@ class SelectableMediaGridSliver extends StatefulWidget {
 
 class _SelectableMediaGridSliverState
     extends State<SelectableMediaGridSliver> {
-  /// 可见的索引集合
-  final Set<int> _visibleIndices = {};
-
   @override
   Widget build(BuildContext context) {
     return SliverGrid(
@@ -95,20 +92,14 @@ class _SelectableMediaGridSliverState
           final asset = widget.assets[index];
           final isSelected = widget.selectedIds.contains(asset.id);
 
-          return VisibilityDetector(
+          // 性能优化：使用 RepaintBoundary 隔离每个网格项的绘制
+          return RepaintBoundary(
+            child: VisibilityDetector(
             key: Key('selectable_media_${asset.id}'),  // 使用 asset.id 而不是 index，确保每个资产都有唯一且稳定的 key
-            onVisibilityChanged: (info) {
-              // 检查 widget 是否仍然挂载，避免在 dispose 后调用 setState
-              if (!mounted) return;
-              
-              final isVisible = info.visibleFraction > 0;
-              setState(() {
-                if (isVisible) {
-                  _visibleIndices.add(index);
-                } else {
-                  _visibleIndices.remove(index);
-                }
-              });
+            // 性能优化：移除不必要的可见性状态跟踪，避免频繁 setState
+            // 如果将来需要跟踪可见性，可以使用 ValueNotifier 或其他方式
+            onVisibilityChanged: (_) {
+              // 当前不需要跟踪可见性，保留回调以避免 VisibilityDetector 警告
             },
             child: AssetIndexWrapper(
               assetIndex: index,
@@ -129,6 +120,7 @@ class _SelectableMediaGridSliverState
               serverUrl: widget.serverUrl,
               assetEntityLoader: widget.assetEntityLoader,
               ),
+            ),
             ),
           );
         },

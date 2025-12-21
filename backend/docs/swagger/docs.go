@@ -1455,7 +1455,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "文件 SHA256 哈希值（64位十六进制字符串）",
+                        "description": "文件 MD5 哈希值（32位十六进制字符串）",
                         "name": "hash",
                         "in": "formData",
                         "required": true

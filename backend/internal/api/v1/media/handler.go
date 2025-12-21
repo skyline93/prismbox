@@ -44,7 +44,7 @@ func NewHandler(mediaService mediaservice.Service, app *appctx.App) *Handler {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        file formData file true "媒体文件"
-// @Param        hash formData string true "文件 SHA256 哈希值（64位十六进制字符串）"
+// @Param        hash formData string true "文件 MD5 哈希值（32位十六进制字符串）"
 // @Param        item_type formData string true "媒体类型" Enums(image, video)
 // @Param        cloud_uuid formData string true "客户端生成的 UUID"
 // @Param        original_filename formData string false "原始文件名"
@@ -72,9 +72,9 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		apiresponse.Error(c, "Form field 'hash' is required")
 		return
 	}
-	// 验证Hash格式（SHA256应该是64个字符的十六进制字符串）
-	if len(hash) != 64 {
-		apiresponse.Error(c, "Invalid 'hash' format. Must be a 64-character hexadecimal string (SHA256)")
+	// 验证Hash格式（MD5应该是32个字符的十六进制字符串）
+	if len(hash) != 32 {
+		apiresponse.Error(c, "Invalid 'hash' format. Must be a 32-character hexadecimal string (MD5)")
 		return
 	}
 	if cloudUUID == "" {
@@ -401,15 +401,15 @@ func (h *Handler) CheckHashes(c *gin.Context) {
 		return
 	}
 
-	// 4. 哈希格式验证：SHA256 应该是 64 位十六进制字符串
+	// 4. 哈希格式验证：MD5 应该是 32 位十六进制字符串
 	for i, hash := range req.Hashes {
-		if len(hash) != 64 {
+		if len(hash) != 32 {
 			h.log.Warn("invalid hash format",
 				logger.Uint("user_id", userID),
 				logger.Int("index", i),
 				logger.Int("hash_length", len(hash)),
 			)
-			apiresponse.Error(c, fmt.Sprintf("Invalid hash format at index %d. Hash must be a 64-character hexadecimal string (SHA256)", i))
+			apiresponse.Error(c, fmt.Sprintf("Invalid hash format at index %d. Hash must be a 32-character hexadecimal string (MD5)", i))
 			return
 		}
 		// 验证是否为有效的十六进制字符串

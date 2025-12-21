@@ -3,7 +3,6 @@ package local
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/primary/local/processor"
+	"github.com/album/backend/pkg/hashutil"
 	"github.com/album/backend/pkg/logger"
 	"github.com/gabriel-vasile/mimetype"
 )
@@ -176,9 +176,13 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 			return fmt.Errorf("copy data for hash: %w", err)
 		}
 
-		// 计算hash
+		// 计算hash（使用 MD5 算法）
 		tempFile.Seek(0, 0)
-		hash = generateHash(tempFile)
+		hashValue, err := hashutil.CalculateHashMD5(tempFile)
+		if err != nil {
+			return fmt.Errorf("calculate hash: %w", err)
+		}
+		hash = hashValue
 
 		// 重置文件指针，准备后续写入
 		tempFile.Seek(0, 0)
@@ -528,13 +532,6 @@ func (ls *LocalStorage) ReconcilePools(ctx context.Context, req *interfaces.Pool
 	return &interfaces.PoolOperationResult{
 		Message: "storage pool reconcile completed",
 	}, nil
-}
-
-// generateHash 生成Hash（简化实现）
-func generateHash(data io.Reader) string {
-	hash := sha256.New()
-	io.Copy(hash, data)
-	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
 // detectContentType 从文件内容检测ContentType（使用magic bytes）

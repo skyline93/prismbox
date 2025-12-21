@@ -47,7 +47,9 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
         ? primaryColor.darken(amount: 0.6)
         : primaryColor.lighten(amount: 0.8);
 
-    return GestureDetector(
+    // 性能优化：使用 RepaintBoundary 隔离绘制，避免局部重绘影响整树
+    return RepaintBoundary(
+      child: GestureDetector(
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
       child: Stack(
@@ -105,6 +107,7 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
           _UploadStatusIcon(asset: widget.asset),
         ],
       ),
+      ),
     );
   }
 }
@@ -139,15 +142,14 @@ class _ImageContent extends StatelessWidget {
     }
 
     // 选中时添加圆角和背景色，实现向内缩进的效果
-    return DecoratedBox(
+    // 性能优化：使用 Container 的 decoration 替代 ClipRRect，避免 saveLayer 开销
+    // 注意：如果图片需要溢出裁剪，可以考虑预处理图片或使用其他方案
+    return Container(
       decoration: BoxDecoration(
         color: assetContainerColor,
         borderRadius: const BorderRadius.all(Radius.circular(15.0)),
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.all(Radius.circular(15.0)),
-        child: image,
-      ),
+      child: image,
     );
   }
 }

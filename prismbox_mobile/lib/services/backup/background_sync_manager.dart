@@ -1,8 +1,6 @@
 // lib/services/backup/background_sync_manager.dart
 
 import 'dart:async';
-import 'dart:io';
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
@@ -13,6 +11,7 @@ import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
+import 'package:prismbox/utils/file_hash_util.dart';
 
 /// 后台同步结果
 class BackgroundSyncResult {
@@ -78,6 +77,9 @@ class BackgroundSyncManager {
   final AppDatabase _database;
   final LocalSyncService _localSyncService;
   final ApiService _apiService;
+  // 注意：_pathResolver 当前未使用，但保留以保持接口一致性（Provider 仍在传递）
+  // 如果将来需要路径解析功能，可以继续使用
+  // ignore: unused_field
   final AssetPathResolver _pathResolver;
   final Logger _logger = Logger('BackgroundSyncManager');
 
@@ -537,14 +539,24 @@ class BackgroundSyncManager {
                 return;
               }
 
-              // 检查文件是否存在
-              if (!await _pathResolver.validateFileExists(asset.path)) {
-                _logger.warning('File not found for hash calculation: ${asset.path}');
+              // 验证文件
+              final validation = await FileHashUtil.validateFileForHashing(asset.path);
+              if (!validation.isValid) {
+                if (validation.fileSize == 0) {
+                  _logger.warning('File not found or empty: ${asset.path}');
+                }
                 return;
               }
 
-              // 计算哈希值（使用 SHA256）
-              final checksum = await _calculateFileChecksum(asset.path);
+              // 使用统一工具类计算 checksum（带错误处理）
+              final checksum = await FileHashUtil.calculateFileChecksumSafe(
+                asset.path,
+                logContext: 'assetId=$assetId',
+              );
+
+              if (checksum == null) {
+                return;
+              }
 
               // 更新数据库
               final updatedAsset = asset.copyWith(
@@ -579,21 +591,5 @@ class BackgroundSyncManager {
     }
   }
 
-  /// 计算文件 checksum（SHA256）
-  /// 
-  /// **参数**：
-  /// - [filePath] - 文件路径
-  /// 
-  /// **返回**：SHA256 哈希值（十六进制字符串）
-  /// 
-  /// **注意**：
-  /// - 对于大文件，此操作可能耗时较长
-  /// - 建议在后台 Isolate 中执行（当前实现为同步，后续可优化）
-  Future<String> _calculateFileChecksum(String filePath) async {
-    final file = File(filePath);
-    final bytes = await file.readAsBytes();
-    final hash = sha256.convert(bytes);
-    return hash.toString();
-  }
 }
 

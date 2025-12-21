@@ -2,8 +2,6 @@ package media
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +15,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 
 	"github.com/album/backend/internal/cli/remote"
+	"github.com/album/backend/pkg/hashutil"
 )
 
 // RunFileUpload 执行单文件上传
@@ -157,17 +156,8 @@ func prepareUploadTask(filePath string, overrides *UploadTask) (PreparedTask, er
 }
 
 func computeFileHash(filePath string) (string, error) {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return "", fmt.Errorf("打开文件失败: %w", err)
-	}
-	defer f.Close()
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, f); err != nil {
-		return "", fmt.Errorf("计算文件 hash 失败: %w", err)
-	}
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	// 使用统一的哈希工具类（默认 MD5）
+	return hashutil.CalculateFileHashMD5(filePath)
 }
 
 func printPreparedTask(task PreparedTask, jsonOutput bool) {

@@ -22,6 +22,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  // 性能优化：提取 RegExp 为静态常量，避免在 build 中重复创建
+  static final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -146,8 +149,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   if (value == null || value.isEmpty) {
                     return '请输入邮箱';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                      .hasMatch(value)) {
+                  if (!_emailRegex.hasMatch(value)) {
                     return '请输入有效的邮箱地址';
                   }
                   return null;

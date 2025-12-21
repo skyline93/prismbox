@@ -1,7 +1,5 @@
 // lib/services/backup/asset_sync_service.dart
 
-import 'dart:io';
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
@@ -10,6 +8,7 @@ import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
+import 'package:prismbox/utils/file_hash_util.dart';
 
 /// 资产同步服务
 ///
@@ -33,12 +32,16 @@ class AssetSyncService {
   })  : _database = database,
         _apiService = apiService ?? ApiService();
 
-  /// 计算文件 checksum
+  /// 计算文件 checksum（委托给统一工具类）
+  /// 
+  /// **参数**：
+  /// - [filePath] - 文件路径
+  /// 
+  /// **返回**：MD5 哈希值（十六进制字符串，默认算法）
+  /// 
+  /// **注意**：此方法保留用于向后兼容，实际实现委托给 FileHashUtil
   Future<String> calculateFileChecksum(String filePath) async {
-    final file = File(filePath);
-    final bytes = await file.readAsBytes();
-    final hash = sha256.convert(bytes);
-    return hash.toString();
+    return FileHashUtil.calculateFileChecksum(filePath);
   }
 
   /// 更新本地资产的 checksum
@@ -89,6 +92,11 @@ class AssetSyncService {
   /// - [filePath] - 文件路径（如果本地资产没有 checksum，则计算）
   ///
   /// **返回**：checksum 值，如果失败返回 null
+  /// 
+  /// **性能优化**：
+  /// - 使用流式读取计算 checksum，避免大文件导致内存溢出
+  /// - 添加文件大小检查，对大文件进行警告
+  /// - 详细的错误处理和日志记录
   Future<String?> getOrCalculateChecksum({
     required String assetId,
     required String filePath,
@@ -105,16 +113,24 @@ class AssetSyncService {
         return localAsset.checksum;
       }
 
-      // 2. 计算 checksum
-      final file = File(filePath);
-      if (!await file.exists()) {
-        _logger.warning('File not found for checksum calculation: $filePath');
+      // 2. 验证文件
+      final validation = await FileHashUtil.validateFileForHashing(filePath);
+      if (!validation.isValid) {
+        _logger.warning('File not valid for checksum calculation: $filePath');
         return null;
       }
 
-      final checksum = await calculateFileChecksum(filePath);
+      // 3. 使用统一工具类计算 checksum（带错误处理）
+      final checksum = await FileHashUtil.calculateFileChecksumSafe(
+        filePath,
+        logContext: 'assetId=$assetId',
+      );
 
-      // 3. 更新本地资产的 checksum
+      if (checksum == null) {
+        return null;
+      }
+
+      // 4. 更新本地资产的 checksum
       await updateLocalAssetChecksum(assetId: assetId, checksum: checksum);
 
       return checksum;

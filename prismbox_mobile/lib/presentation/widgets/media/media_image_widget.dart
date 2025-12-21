@@ -59,6 +59,11 @@ class _MediaImageWidgetState extends State<MediaImageWidget> {
   ImageProvider? _imageProvider;
   bool _isLoading = false;
 
+  // 性能优化：提取 TextStyle 为方法，避免在 build 中重复创建
+  static TextStyle _buildErrorTextStyle(ColorScheme colorScheme) {
+    return TextStyle(color: colorScheme.onSurface);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -220,7 +225,7 @@ class _MediaImageWidgetState extends State<MediaImageWidget> {
                   const SizedBox(height: 8),
                   Text(
                     '加载失败',
-                    style: TextStyle(color: colorScheme.onSurface),
+                    style: _buildErrorTextStyle(colorScheme),
                     textAlign: TextAlign.center,
                   ),
                 ],

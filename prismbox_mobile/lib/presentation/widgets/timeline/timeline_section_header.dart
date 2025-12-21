@@ -54,7 +54,9 @@ class TimelineSectionHeader extends StatelessWidget {
     // 确保选择模式下高度不变，避免布局变化导致滚动位置变动
     const double fixedHeight = 48.0;
 
-    return Container(
+    // 性能优化：使用 RepaintBoundary 隔离绘制，避免标题重绘影响列表
+    return RepaintBoundary(
+      child: Container(
       height: fixedHeight,  // 固定高度，确保选择模式下高度不变
       padding: effectivePadding,
       color: backgroundColor ?? theme.scaffoldBackgroundColor,
@@ -101,6 +103,7 @@ class TimelineSectionHeader extends StatelessWidget {
             // 非选择模式下使用占位符保持布局一致（如果将来可能显示复选框）
             const SizedBox(width: 0),  // 当前非选择模式不显示，所以宽度为0
         ],
+      ),
       ),
     );
   }

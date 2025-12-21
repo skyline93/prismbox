@@ -2,12 +2,13 @@ package urlsigner
 
 import (
 	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/album/backend/pkg/hashutil"
 )
 
 // Signer 用于生成和验证签名 URL。
@@ -83,7 +84,9 @@ func (s *Signer) Validate(fullURL string) (string, bool) {
 }
 
 func (s *Signer) calculateSignature(data string) string {
-	h := hmac.New(sha256.New, s.secretKey)
+	// 使用统一的哈希工具包获取 SHA256 构造函数（用于 HMAC 签名）
+	hasherFunc := hashutil.GetHasherFunc(hashutil.HashSHA256)
+	h := hmac.New(hasherFunc, s.secretKey)
 	h.Write([]byte(data))
 	return hex.EncodeToString(h.Sum(nil))
 }
