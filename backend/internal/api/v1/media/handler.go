@@ -329,8 +329,13 @@ func (h *Handler) GetMedias(c *gin.Context) {
 
 	// 4. 转换为响应格式
 	medias := make([]*dto.MediaResponse, 0, len(result.Medias))
+	publicBaseURL := ""
+	if h.app != nil && h.app.Config != nil && h.app.Config.Server != nil {
+		publicBaseURL = h.app.Config.Server.PublicBaseURL
+	}
+
 	for _, media := range result.Medias {
-		medias = append(medias, &dto.MediaResponse{
+		response := &dto.MediaResponse{
 			UUID:             media.UUID,
 			UserID:           media.UserID,
 			Hash:             media.Hash,
@@ -343,8 +348,26 @@ func (h *Handler) GetMedias(c *gin.Context) {
 			LocalPath:        media.LocalPath,
 			BackupStatus:     media.BackupStatus,
 			CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:        media.UpdatedAt.Format(time.RFC3339),
+			Width:            media.Width,
+			Height:           media.Height,
 			ThumbHash:        media.ThumbHash,
-		})
+		}
+
+		// 处理可选的 MediaTakenAt 字段
+		if media.MediaTakenAt != nil {
+			takenAt := media.MediaTakenAt.Format(time.RFC3339)
+			response.MediaTakenAt = &takenAt
+		}
+
+		// 构建URL（仅在处理完成时提供）
+		if media.ProcessingStatus == "COMPLETED" && publicBaseURL != "" {
+			response.ThumbnailURL = fmt.Sprintf("%s/api/v1/media/%s/download/thumbnail", publicBaseURL, media.UUID)
+			response.PreviewURL = fmt.Sprintf("%s/api/v1/media/%s/download/preview", publicBaseURL, media.UUID)
+			response.DownloadURL = fmt.Sprintf("%s/api/v1/media/%s/download/original", publicBaseURL, media.UUID)
+		}
+
+		medias = append(medias, response)
 	}
 
 	response := &dto.GetMediasResponse{
