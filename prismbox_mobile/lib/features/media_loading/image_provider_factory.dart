@@ -96,6 +96,10 @@ Future<ImageProvider?> getThumbnailImageProviderAsync(
 /// 根据资源类型和用户偏好自动选择本地或远程提供者
 /// 
 /// 使用策略模式进行资源选择
+/// 
+/// [assetEntityLoader] 可选，用于延迟加载 LocalAsset 的 AssetEntity
+/// 当 LocalAsset 的 assetEntity 为 null 时，如果提供了 assetEntityLoader，
+/// 将使用延迟加载策略异步获取 AssetEntity
 ImageProvider getFullImageProvider(
   BaseAsset asset, {
   Size size = const Size(1080, 1920),
@@ -104,6 +108,7 @@ ImageProvider getFullImageProvider(
   ApiService? apiService,
   RemoteImageCacheManager? remoteImageCacheManager,
   ResourceSelectionStrategy? strategy,
+  AssetEntityLoader? assetEntityLoader,
 }) {
   try {
     // 使用提供的策略或默认策略
@@ -119,6 +124,7 @@ ImageProvider getFullImageProvider(
       size: size,
       loadOriginal: loadOriginal,
       serverUrl: serverUrl,
+      assetEntityLoader: assetEntityLoader,
     );
   } catch (e) {
     // 如果策略无法提供提供者，回退到渐变占位符

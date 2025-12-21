@@ -7,6 +7,7 @@ import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
+import 'package:prismbox/features/media_loading/providers/lazy_local_full_provider.dart';
 import 'package:prismbox/features/media_loading/providers/local_full_provider.dart';
 import 'package:prismbox/features/media_loading/providers/local_thumb_provider.dart';
 import 'package:prismbox/features/media_loading/providers/remote_full_provider.dart';
@@ -31,6 +32,7 @@ abstract class ResourceSelectionStrategy {
     required Size size,
     bool loadOriginal = false,
     String? serverUrl,
+    AssetEntityLoader? assetEntityLoader,
   });
   
   /// 异步选择缩略图提供者（新增）
@@ -119,19 +121,36 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
     required Size size,
     bool loadOriginal = false,
     String? serverUrl,
+    AssetEntityLoader? assetEntityLoader,
   }) {
     if (shouldUseLocalAsset(asset)) {
       // 使用本地资源
-      if (asset is LocalAsset && asset.assetEntity != null) {
-        return LocalFullImageProvider(
-          asset: asset.assetEntity!,
-          targetSize: size,
-          userId: userIdGetter?.call(asset),
-          checksum: asset.checksum,
-        );
+      if (asset is LocalAsset) {
+        if (asset.assetEntity != null) {
+          // 有 assetEntity，直接使用 LocalFullImageProvider
+          return LocalFullImageProvider(
+            asset: asset.assetEntity!,
+            targetSize: size,
+            userId: userIdGetter?.call(asset),
+            checksum: asset.checksum,
+            cacheManager: thumbnailCacheManager,
+            loadOriginal: loadOriginal,
+          );
+        } else if (assetEntityLoader != null) {
+          // assetEntity 为 null，使用延迟加载的提供者
+          return LazyLocalFullImageProvider(
+            asset: asset,
+            assetEntityLoader: assetEntityLoader,
+            targetSize: size,
+            userId: userIdGetter?.call(asset),
+            cacheManager: thumbnailCacheManager,
+            loadOriginal: loadOriginal,
+          );
+        }
+        // 如果没有 AssetEntityLoader，无法加载本地资源
       }
-      // 本地资源不存在，回退到远程
-      if (asset is RemoteAsset) {
+      // LocalAsset 的 assetEntity 为 null 且没有 AssetEntityLoader，尝试回退到远程
+      if (asset.hasRemote && asset is RemoteAsset) {
         return RemoteFullImageProvider(
           assetId: asset.id,
           targetSize: size,

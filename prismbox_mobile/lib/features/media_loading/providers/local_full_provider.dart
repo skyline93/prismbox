@@ -29,6 +29,9 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
   
   /// 文件校验和（可选）
   final String? checksum;
+  
+  /// 是否加载原图（可选，如果为 true 则在渐进式加载的最后阶段加载原图）
+  final bool loadOriginal;
 
   final Logger _log = Logger('LocalFullImageProvider');
 
@@ -38,6 +41,7 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
     this.cacheManager,
     this.userId,
     this.checksum,
+    this.loadOriginal = false,
   });
 
   @override
@@ -59,10 +63,12 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
   /// 加载图片（支持渐进式加载）
   /// 阶段 1：加载缩略图（从缓存或生成）
   /// 阶段 2：加载适配设备分辨率的图片
-  /// 阶段 3：根据 loadOriginal 设置决定是否加载原图
+  /// 阶段 3：根据 loadOriginal 参数或全局设置决定是否加载原图
   Stream<ui.Codec> _loadImage(LocalFullImageProvider key, ImageDecoderCallback decode) async* {
     try {
-      final shouldLoadOriginal = AppSetting.get(Setting.loadOriginal);
+      // 如果 loadOriginal 为 true，强制加载原图；否则使用全局设置
+      // 这样既支持显式控制（当需要查看细节时），也支持全局配置
+      final shouldLoadOriginal = key.loadOriginal || AppSetting.get(Setting.loadOriginal);
       final cacheManager = key.cacheManager ?? ThumbnailImageCacheManager();
       
       if (key.asset.type == AssetType.image) {
@@ -74,7 +80,7 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
         final adaptedCodec = await _loadAdaptedImage(key, decode);
         yield adaptedCodec;
         
-        // 阶段 3：根据设置决定是否加载原图
+        // 阶段 3：根据 loadOriginal 参数或全局设置决定是否加载原图
         if (shouldLoadOriginal) {
           final originalCodec = await _loadOriginalImage(key, decode);
           yield originalCodec;
@@ -210,10 +216,11 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
           asset.id == other.asset.id &&
           targetSize == other.targetSize &&
           userId == other.userId &&
-          checksum == other.checksum;
+          checksum == other.checksum &&
+          loadOriginal == other.loadOriginal;
 
   @override
-  int get hashCode => Object.hash(asset.id, targetSize, userId, checksum);
+  int get hashCode => Object.hash(asset.id, targetSize, userId, checksum, loadOriginal);
 }
 
 /// 多图片流完成器
