@@ -14,6 +14,7 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import androidx.concurrent.futures.ResolvableFuture
 import com.google.common.util.concurrent.ListenableFuture
+import java.util.concurrent.Future
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -217,7 +218,7 @@ class BackupWorker(
      * 等待前台服务设置完成
      */
     private fun waitOnSetForegroundAsync() {
-        val fg = this.fgFuture
+        val fg: Future<Void>? = this.fgFuture
         if (fg != null && !fg.isCancelled && !fg.isDone) {
             try {
                 fg.get(500, java.util.concurrent.TimeUnit.MILLISECONDS)

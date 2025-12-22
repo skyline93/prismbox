@@ -4,13 +4,17 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
+
+import 'package:chewie/chewie.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:photo_view/photo_view_gallery.dart';
+import 'package:video_player/video_player.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';
+import 'package:prismbox/features/media_loading/video_provider.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
 
 /// 媒体查看器页面
@@ -35,13 +39,19 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   bool _showControls = true;
   bool _isZoomed = false;
   Timer? _controlsTimer;
-  
+
   // 缓存 assetId 到 BaseAsset 的映射
   Map<String, BaseAsset>? _assetMap;
   // 缓存的服务器 URL
   String? _serverUrl;
   // 缓存的 AssetEntityLoader
   AssetEntityLoader? _assetEntityLoader;
+
+  // 视频播放器控制器缓存（按 assetId）
+  final Map<String, VideoPlayerController> _videoControllers = {};
+  final Map<String, ChewieController> _chewieControllers = {};
+  // 当前播放的视频 assetId
+  String? _currentVideoAssetId;
 
   @override
   void initState() {
@@ -54,14 +64,42 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
     // 自动隐藏控制栏
     _startControlsTimer();
+
+    // 如果初始项是视频，标记为当前视频（会在 build 后自动播放）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_assetMap != null && _initialIndex < widget.assetIds.length) {
+        final assetId = widget.assetIds[_initialIndex];
+        final asset = _assetMap?[assetId];
+        if (asset != null && asset.isVideo) {
+          _currentVideoAssetId = assetId;
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _controlsTimer?.cancel();
     _pageController.dispose();
+
+    // 释放所有视频播放器资源
+    _disposeAllVideoControllers();
+
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
+  }
+
+  /// 释放所有视频播放器资源
+  void _disposeAllVideoControllers() {
+    for (final chewieController in _chewieControllers.values) {
+      chewieController.dispose();
+    }
+    _chewieControllers.clear();
+
+    for (final videoController in _videoControllers.values) {
+      videoController.dispose();
+    }
+    _videoControllers.clear();
   }
 
   @override
@@ -70,17 +108,15 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     final assetsAsync = ref.watch(timelineAssetsProvider());
     // 获取 AssetEntityLoader（用于延迟加载 AssetEntity）
     final assetEntityLoaderAsync = ref.watch(assetEntityLoaderProvider);
-    
+
     return assetsAsync.when(
       data: (allAssets) {
         // 构建 assetId 到 BaseAsset 的映射
-        _assetMap ??= {
-          for (final asset in allAssets) asset.id: asset,
-        };
-        
+        _assetMap ??= {for (final asset in allAssets) asset.id: asset};
+
         // 获取服务器 URL（仅在第一次获取时）
         _serverUrl ??= _getServerUrl();
-        
+
         // 获取 AssetEntityLoader
         return assetEntityLoaderAsync.when(
           data: (loader) {
@@ -89,9 +125,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
           },
           loading: () => const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+            body: Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
           error: (error, stack) => Scaffold(
             backgroundColor: Colors.black,
@@ -99,7 +133,11 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 48,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     '加载失败: $error',
@@ -113,9 +151,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       },
       loading: () => const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
       ),
       error: (error, stack) => Scaffold(
         backgroundColor: Colors.black,
@@ -148,82 +184,35 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
-            // 图片查看器
-            PhotoViewGallery.builder(
-              pageController: _pageController,
+            // 混合媒体查看器（支持图片和视频）
+            PageView.builder(
+              controller: _pageController,
               itemCount: widget.assetIds.length,
-              scrollPhysics: _isZoomed
+              physics: _isZoomed
                   ? const NeverScrollableScrollPhysics()
                   : (Platform.isIOS
-                      ? const BouncingScrollPhysics()
-                      : const ClampingScrollPhysics()),
-              // 在 gallery 级别监听缩放状态变化
-              scaleStateChangedCallback: (PhotoViewScaleState state) {
-                setState(() {
-                  _isZoomed = state != PhotoViewScaleState.initial;
-                  if (_isZoomed) {
-                    _hideControls();
-                  } else {
-                    _startControlsTimer();
-                  }
-                });
-              },
-              builder: (context, index) {
-                final assetId = widget.assetIds[index];
-                return PhotoViewGalleryPageOptions(
-                  imageProvider: _getImageProvider(assetId),
-                  heroAttributes: PhotoViewHeroAttributes(
-                    tag: 'asset_$assetId',
-                    transitionOnUserGestures: true,
-                  ),
-                  initialScale: PhotoViewComputedScale.contained * 0.99,
-                  minScale: PhotoViewComputedScale.contained * 0.99,
-                  maxScale: PhotoViewComputedScale.covered * 4.0,
-                  onTapDown: (_, __, ___) => _toggleControls(),
-                  errorBuilder: (context, error, stackTrace) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '加载失败',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+                        ? const BouncingScrollPhysics()
+                        : const ClampingScrollPhysics()),
               onPageChanged: (index) {
                 // 页面切换时的处理
-                setState(() {
-                  _isZoomed = false;
-                });
-                _resetControlsTimer();
+                _handlePageChanged(index);
               },
-              loadingBuilder: (context, event) {
-                if (event == null) {
+              itemBuilder: (context, index) {
+                final assetId = widget.assetIds[index];
+                final asset = _assetMap?[assetId];
+
+                if (asset == null) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
+                    child: CircularProgressIndicator(color: Colors.white),
                   );
                 }
-                final value = event.cumulativeBytesLoaded /
-                    (event.expectedTotalBytes ?? 1);
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: value,
-                    color: Colors.white,
-                  ),
-                );
+
+                // 根据资产类型显示不同的内容
+                if (asset.isVideo) {
+                  return _buildVideoPlayer(asset, assetId);
+                } else {
+                  return _buildImageViewer(asset, assetId);
+                }
               },
             ),
 
@@ -243,6 +232,203 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     } catch (e) {
       // 忽略错误，返回 null（RemoteFullImageProvider 会自己处理）
       return null;
+    }
+  }
+
+  /// 处理页面切换
+  void _handlePageChanged(int index) {
+    // 停止当前播放的视频
+    if (_currentVideoAssetId != null) {
+      _pauseVideo(_currentVideoAssetId!);
+    }
+
+    // 更新当前视频 assetId
+    if (index < widget.assetIds.length) {
+      final assetId = widget.assetIds[index];
+      final asset = _assetMap?[assetId];
+      if (asset != null && asset.isVideo) {
+        _currentVideoAssetId = assetId;
+        // 自动播放新视频
+        _playVideo(assetId);
+      } else {
+        _currentVideoAssetId = null;
+      }
+    }
+
+    setState(() {
+      _isZoomed = false;
+    });
+    _resetControlsTimer();
+  }
+
+  /// 构建图片查看器
+  Widget _buildImageViewer(BaseAsset asset, String assetId) {
+    return PhotoView(
+      imageProvider: _getImageProvider(assetId),
+      heroAttributes: PhotoViewHeroAttributes(
+        tag: 'asset_$assetId',
+        transitionOnUserGestures: true,
+      ),
+      initialScale: PhotoViewComputedScale.contained * 0.99,
+      minScale: PhotoViewComputedScale.contained * 0.99,
+      maxScale: PhotoViewComputedScale.covered * 4.0,
+      onTapDown: (_, __, ___) => _toggleControls(),
+      scaleStateChangedCallback: (PhotoViewScaleState state) {
+        setState(() {
+          _isZoomed = state != PhotoViewScaleState.initial;
+          if (_isZoomed) {
+            _hideControls();
+          } else {
+            _startControlsTimer();
+          }
+        });
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const SizedBox(height: 16),
+              Text('加载失败', style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        );
+      },
+      loadingBuilder: (context, event) {
+        if (event == null) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
+        }
+        final value =
+            event.cumulativeBytesLoaded / (event.expectedTotalBytes ?? 1);
+        return Center(
+          child: CircularProgressIndicator(value: value, color: Colors.white),
+        );
+      },
+    );
+  }
+
+  /// 构建视频播放器
+  Widget _buildVideoPlayer(BaseAsset asset, String assetId) {
+    // 如果已有控制器，直接使用
+    if (_chewieControllers.containsKey(assetId)) {
+      return Chewie(controller: _chewieControllers[assetId]!);
+    }
+
+    // 异步加载视频源并创建播放器
+    return FutureBuilder<VideoSource?>(
+      future: VideoProvider.getVideoSource(
+        asset,
+        serverUrl: _serverUrl,
+        assetEntityLoader: _assetEntityLoader,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                const SizedBox(height: 16),
+                Text('视频加载失败', style: TextStyle(color: Colors.white70)),
+              ],
+            ),
+          );
+        }
+
+        final videoSource = snapshot.data!;
+        return _createVideoPlayer(videoSource, assetId);
+      },
+    );
+  }
+
+  /// 创建视频播放器
+  Widget _createVideoPlayer(VideoSource videoSource, String assetId) {
+    // 创建 VideoPlayerController
+    final videoController = videoSource.type == VideoSourceType.file
+        ? VideoPlayerController.file(File(videoSource.source))
+        : VideoPlayerController.networkUrl(Uri.parse(videoSource.source));
+
+    _videoControllers[assetId] = videoController;
+
+    // 创建 ChewieController（初始宽高比，后续会根据视频调整）
+    var chewieController = ChewieController(
+      videoPlayerController: videoController,
+      autoPlay: assetId == _currentVideoAssetId, // 如果是当前视频，自动播放
+      looping: true, // 启用循环播放
+      allowFullScreen: true,
+      allowMuting: true,
+      showControls: _showControls,
+      aspectRatio: 16 / 9, // 默认宽高比，实际会根据视频调整
+      errorBuilder: (context, errorMessage) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                '播放失败: $errorMessage',
+                style: const TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    _chewieControllers[assetId] = chewieController;
+
+    // 初始化视频控制器
+    videoController
+        .initialize()
+        .then((_) {
+          if (mounted && videoController.value.isInitialized) {
+            // 更新宽高比：先释放旧的，再创建新的
+            _chewieControllers[assetId]?.dispose();
+            final aspectRatio = videoController.value.aspectRatio;
+            chewieController = ChewieController(
+              videoPlayerController: videoController,
+              autoPlay: assetId == _currentVideoAssetId,
+              looping: true, // 启用循环播放
+              allowFullScreen: true,
+              allowMuting: true,
+              showControls: _showControls,
+              aspectRatio: aspectRatio,
+            );
+            _chewieControllers[assetId] = chewieController;
+            setState(() {});
+          }
+        })
+        .catchError((error) {
+          // 错误已在 errorBuilder 中处理
+        });
+
+    return Chewie(controller: chewieController);
+  }
+
+  /// 播放视频
+  void _playVideo(String assetId) {
+    final chewieController = _chewieControllers[assetId];
+    if (chewieController != null && !chewieController.isPlaying) {
+      chewieController.play();
+    }
+  }
+
+  /// 暂停视频
+  void _pauseVideo(String assetId) {
+    final chewieController = _chewieControllers[assetId];
+    if (chewieController != null && chewieController.isPlaying) {
+      chewieController.pause();
     }
   }
 
@@ -375,4 +561,3 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     );
   }
 }
-

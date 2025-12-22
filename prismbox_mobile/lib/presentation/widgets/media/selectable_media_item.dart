@@ -8,6 +8,7 @@ import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/presentation/widgets/media/media_image_widget.dart';
 import 'package:prismbox/services/backup/providers/asset_upload_status_provider.dart';
 import 'package:prismbox/utils/color_extensions.dart';
+import 'package:prismbox/utils/duration_formatter.dart';
 
 /// 可选择的媒体项组件
 /// 支持显示选中状态（向内缩进效果 + 选中标记）
@@ -20,7 +21,6 @@ class SelectableMediaItem extends StatefulWidget {
   final VoidCallback? onLongPress;
   final String? serverUrl;
   final AssetEntityLoader? assetEntityLoader;
-  
 
   const SelectableMediaItem({
     super.key,
@@ -50,63 +50,70 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
     // 性能优化：使用 RepaintBoundary 隔离绘制，避免局部重绘影响整树
     return RepaintBoundary(
       child: GestureDetector(
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 使用 AnimatedContainer 实现选中时的边框效果（向内缩进）
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.decelerate,
-            decoration: BoxDecoration(
-              color: widget.selectionActive && widget.isSelected ? assetContainerColor : Colors.transparent,
-              border: widget.selectionActive && widget.isSelected
-                  ? Border.all(
-                      color: assetContainerColor,
-                      width: 8,
-                    )
-                  : const Border(),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 媒体图片（选中时添加圆角）
-                _ImageContent(
-                  asset: widget.asset,
-                  isSelected: widget.selectionActive && widget.isSelected,
-                  serverUrl: widget.serverUrl,
-                  assetEntityLoader: widget.assetEntityLoader,
-                  assetContainerColor: assetContainerColor,
-                ),
-              ],
-            ),
-          ),
-
-          // 选中标记（左上角）
-          if (widget.selectionActive)
-            widget.isSelected
-                ? const Padding(
-                    padding: EdgeInsets.all(3.0),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: _SelectedIcon(),
-                    ),
-                  )
-                : const Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Icon(
-                      Icons.circle_outlined,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 使用 AnimatedContainer 实现选中时的边框效果（向内缩进）
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.decelerate,
+              decoration: BoxDecoration(
+                color: widget.selectionActive && widget.isSelected
+                    ? assetContainerColor
+                    : Colors.transparent,
+                border: widget.selectionActive && widget.isSelected
+                    ? Border.all(color: assetContainerColor, width: 8)
+                    : const Border(),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 媒体图片（选中时添加圆角）
+                  _ImageContent(
+                    asset: widget.asset,
+                    isSelected: widget.selectionActive && widget.isSelected,
+                    serverUrl: widget.serverUrl,
+                    assetEntityLoader: widget.assetEntityLoader,
+                    assetContainerColor: assetContainerColor,
                   ),
-          
-          // 上传状态图标（右上角）
-          _UploadStatusIcon(asset: widget.asset),
-        ],
-      ),
+                ],
+              ),
+            ),
+
+            // 选中标记（左上角）
+            if (widget.selectionActive)
+              widget.isSelected
+                  ? const Padding(
+                      padding: EdgeInsets.all(3.0),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: _SelectedIcon(),
+                      ),
+                    )
+                  : const Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Icon(
+                        Icons.circle_outlined,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+
+            // 上传状态图标（右上角）
+            _UploadStatusIcon(asset: widget.asset),
+
+            // 视频标识（右下角，仅视频显示）
+            if (widget.asset.isVideo)
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: _VideoIndicatorWithAsset(asset: widget.asset),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -168,11 +175,7 @@ class _SelectedIcon extends StatelessWidget {
         shape: BoxShape.circle,
         color: Colors.white,
       ),
-      child: Icon(
-        Icons.check_circle_rounded,
-        color: googleBlue,
-        size: 16,
-      ),
+      child: Icon(Icons.check_circle_rounded, color: googleBlue, size: 16),
     );
   }
 }
@@ -186,33 +189,29 @@ class _SelectedIcon extends StatelessWidget {
 /// - 上传失败：云朵关闭图标（cloud_off_outlined，红色）
 class _UploadStatusIcon extends ConsumerWidget {
   final BaseAsset asset;
-  
+
   const _UploadStatusIcon({required this.asset});
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 如果仅存在于服务端，直接显示云朵图标（没有勾）
     if (asset.isRemoteOnly) {
-      return Positioned(
-        top: 4,
-        right: 4,
-        child: _buildRemoteOnlyIcon(),
-      );
+      return Positioned(top: 4, right: 4, child: _buildRemoteOnlyIcon());
     }
-    
+
     // 获取资产的唯一标识符
     final assetId = asset.localId ?? asset.id;
     final hasRemote = asset.hasRemote;
     final checksum = asset.checksum; // 获取 checksum，用于查询远程资产表
-    
+
     // 使用 Provider 获取上传状态（使用唯一标识符作为 family 参数）
     final statusAsync = ref.watch(
       assetUploadStatusProvider(assetId, hasRemote, checksum),
     );
-    
+
     // 根据状态显示不同图标
     Widget iconWidget;
-    
+
     if (statusAsync.isLoading) {
       // 加载中，显示默认图标（未上传）
       iconWidget = _buildNotUploadedIcon();
@@ -221,7 +220,7 @@ class _UploadStatusIcon extends ConsumerWidget {
       iconWidget = _buildNotUploadedIcon();
     } else {
       final statusInfo = statusAsync.value!;
-      
+
       switch (statusInfo.status) {
         case AssetUploadStatus.notUploaded:
           iconWidget = _buildNotUploadedIcon();
@@ -237,14 +236,10 @@ class _UploadStatusIcon extends ConsumerWidget {
           break;
       }
     }
-    
-    return Positioned(
-      top: 4,
-      right: 4,
-      child: iconWidget,
-    );
+
+    return Positioned(top: 4, right: 4, child: iconWidget);
   }
-  
+
   /// 仅存在于服务端图标（云朵图标，中间没有勾）
   Widget _buildRemoteOnlyIcon() {
     return Icon(
@@ -260,7 +255,7 @@ class _UploadStatusIcon extends ConsumerWidget {
       ],
     );
   }
-  
+
   /// 未上传图标
   Widget _buildNotUploadedIcon() {
     return Icon(
@@ -276,7 +271,7 @@ class _UploadStatusIcon extends ConsumerWidget {
       ],
     );
   }
-  
+
   /// 上传中图标（带旋转动画）
   /// 使用 Stack 组合静态云图标和外围旋转圆环
   Widget _buildUploadingIcon(double? progress) {
@@ -312,7 +307,7 @@ class _UploadStatusIcon extends ConsumerWidget {
       ],
     );
   }
-  
+
   /// 已上传图标
   Widget _buildUploadedIcon() {
     return Icon(
@@ -328,7 +323,7 @@ class _UploadStatusIcon extends ConsumerWidget {
       ],
     );
   }
-  
+
   /// 上传失败图标（使用未上传图标，但颜色为红色）
   Widget _buildFailedIcon() {
     return Icon(
@@ -346,4 +341,80 @@ class _UploadStatusIcon extends ConsumerWidget {
   }
 }
 
+/// 视频标识组件
+/// 显示播放图标和视频时长（右下角）
+class _VideoIndicatorWithAsset extends StatelessWidget {
+  final BaseAsset asset;
 
+  const _VideoIndicatorWithAsset({required this.asset});
+
+  // 性能优化：使用静态常量
+  static const _iconSize = 16.0;
+  static const _textSize = 12.0;
+  static const _padding = EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0);
+  static const _iconColor = Color.fromRGBO(255, 255, 255, 1.0);
+  static const _textColor = Color.fromRGBO(255, 255, 255, 1.0);
+  static const _backgroundColor = Color.fromRGBO(0, 0, 0, 0.6);
+  static const _shadow = Shadow(
+    blurRadius: 2.0,
+    color: Color.fromRGBO(0, 0, 0, 0.8),
+    offset: Offset(0.0, 1.0),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    // 格式化视频时长
+    final durationText = DurationFormatter.formatDuration(
+      asset.durationInSeconds,
+    );
+
+    // 如果没有时长信息，只显示播放图标
+    if (durationText.isEmpty) {
+      return Container(
+        padding: _padding,
+        decoration: const BoxDecoration(
+          color: _backgroundColor,
+          borderRadius: BorderRadius.all(Radius.circular(4.0)),
+        ),
+        child: const Icon(
+          Icons.play_arrow_rounded,
+          color: _iconColor,
+          size: _iconSize,
+          shadows: [_shadow],
+        ),
+      );
+    }
+
+    // 显示播放图标和时长
+    // 性能优化：使用 Row 而不是 Stack，避免不必要的层级
+    // 使用 Color.fromARGB 替代 Opacity，避免 saveLayer
+    return Container(
+      padding: _padding,
+      decoration: const BoxDecoration(
+        color: _backgroundColor,
+        borderRadius: BorderRadius.all(Radius.circular(4.0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.play_arrow_rounded,
+            color: _iconColor,
+            size: _iconSize,
+            shadows: [_shadow],
+          ),
+          const SizedBox(width: 2),
+          Text(
+            durationText,
+            style: const TextStyle(
+              color: _textColor,
+              fontSize: _textSize,
+              fontWeight: FontWeight.w500,
+              shadows: [_shadow],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

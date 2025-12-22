@@ -50,4 +50,7 @@ dependencies {
     
     // Concurrent futures for ResolvableFuture
     implementation("androidx.concurrent:concurrent-futures-ktx:1.1.0")
+    
+    // Google Guava for ListenableFuture (required by WorkManager)
+    implementation("com.google.guava:guava:31.1-android")
 }
