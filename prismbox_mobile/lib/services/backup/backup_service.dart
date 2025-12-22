@@ -14,6 +14,8 @@ import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/services/backup/backup_config_validator.dart';
 import 'package:prismbox/services/backup/task_factory.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
+import 'package:prismbox/core/storage/store_service.dart';
+import 'package:prismbox/core/storage/store_key.dart';
 
 /// 备份状态
 class BackupStatus {
@@ -218,6 +220,31 @@ class BackupService {
   /// 5. 调用 UploadService 执行上传
   Future<void> startAutoBackup(String userId) async {
     _logger.info('Starting auto backup: userId=$userId');
+
+    // 0. 检查触发频率（避免频繁触发）
+    final storeService = StoreService();
+    final lastTriggerTime = storeService.get<DateTime?>(
+      StoreKey.lastAutoBackupTriggerTime,
+      null,
+    );
+    
+    if (lastTriggerTime != null) {
+      final timeSinceLastTrigger = DateTime.now().difference(lastTriggerTime);
+      if (timeSinceLastTrigger.inMinutes < 5) {
+        _logger.info(
+          'Auto backup triggered too frequently, '
+          'last trigger was ${timeSinceLastTrigger.inMinutes} minutes ago. '
+          'Skipping this trigger.',
+        );
+        return;
+      }
+    }
+    
+    // 更新最后触发时间
+    await storeService.put(
+      StoreKey.lastAutoBackupTriggerTime,
+      DateTime.now(),
+    );
 
     // 1. 获取备份配置
     final backupStatus = await BackupQueryBuilder(

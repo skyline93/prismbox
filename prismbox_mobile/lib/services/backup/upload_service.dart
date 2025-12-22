@@ -459,22 +459,26 @@ class UploadService implements TaskUpdateService {
   /// 
   /// **返回**：List<UploadTaskDetail>（上传任务详情列表）
   /// 
-  /// **注意**：包含 uploading 和 pending 状态的任务
+  /// **注意**：包含 uploading、pending 和 queued 状态的任务
   Future<List<UploadTaskDetail>> getActiveUploadTasks(String userId) async {
     final dao = _database.uploadTaskDao;
     
-    // 1. 查询状态为 uploading 和 pending 的任务
+    // 1. 查询状态为 uploading、pending 和 queued 的任务
     final uploadingTasks = await dao.getTasksByUserIdAndStatus(
       userId,
       UploadTaskStatus.uploading,
+    );
+    final queuedTasks = await dao.getTasksByUserIdAndStatus(
+      userId,
+      UploadTaskStatus.queued,
     );
     final pendingTasks = await dao.getTasksByUserIdAndStatus(
       userId,
       UploadTaskStatus.pending,
     );
     
-    // 合并任务列表，优先显示 uploading 的任务
-    final tasks = [...uploadingTasks, ...pendingTasks];
+    // 合并任务列表，优先显示 uploading 的任务，然后是 queued，最后是 pending
+    final tasks = [...uploadingTasks, ...queuedTasks, ...pendingTasks];
     
     // 2. 转换为 UploadTaskDetail
     final details = <UploadTaskDetail>[];

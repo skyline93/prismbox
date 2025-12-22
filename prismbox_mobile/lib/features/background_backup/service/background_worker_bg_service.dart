@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/connection.dart';
+import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 import 'package:prismbox/platform/background_worker_api.g.dart';
 import 'package:prismbox/core/storage/store_service.dart';
@@ -55,6 +56,12 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
   
   /// 是否已清理
   bool _isCleanedUp = false;
+  
+  /// 进度更新定时器
+  Timer? _progressUpdateTimer;
+  
+  /// 总任务数（用于进度计算）
+  int _totalTaskCount = 0;
 
   /// 构造函数
   BackgroundWorkerBgService()
@@ -311,26 +318,173 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
 
     // 3. 执行上传编排
     _logger.info('Starting upload orchestration');
-    final uploadResult = await _uploadService!.startUpload(
-      userId: userId,
-      cancellationToken: _cancellationToken,
-      onProgress: (current, total) {
-        _logger.fine('Upload progress: $current/$total');
-        // 通过 Pigeon API 更新进度
+    
+    // 先查询总任务数
+    try {
+      if (_database != null) {
+        final pendingTasks = await _database!.uploadTaskDao
+            .getPendingTasksByUserId(userId);
+        _totalTaskCount = pendingTasks.length;
+        _logger.info('Total tasks to upload: $_totalTaskCount');
+        
+        // 立即发送初始进度（0/total）
         _backgroundHostApi.updateProgress(
-          current,
-          total,
-          null, // 当前文件名（可选，后续可以从任务中获取）
+          0,
+          _totalTaskCount,
+          null,
         ).catchError((error) {
-          _logger.warning('Failed to update progress: $error');
+          _logger.warning('Failed to send initial progress: $error');
         });
+      }
+    } catch (e) {
+      _logger.warning('Failed to get total task count: $e');
+    }
+    
+    // 启动定期进度更新（每2秒更新一次）
+    _startProgressUpdateTimer(userId);
+    
+    // 用于跟踪当前正在上传的文件名
+    String? currentFileName;
+    
+    try {
+      final uploadResult = await _uploadService!.startUpload(
+        userId: userId,
+        cancellationToken: _cancellationToken,
+        onProgress: (current, total) async {
+          _logger.fine('Upload progress callback: $current/$total');
+          
+          // 更新总任务数（以防任务数变化）
+          _totalTaskCount = total;
+          
+          // 尝试获取当前正在上传的文件名
+          if (currentFileName == null || current > 0) {
+            try {
+              // 从数据库中查询当前正在上传的任务
+              if (_database != null) {
+                final uploadingTasks = await _database!.uploadTaskDao
+                    .getTasksByUserIdAndStatus(userId, UploadTaskStatus.uploading);
+                
+                if (uploadingTasks.isNotEmpty) {
+                  final currentTask = uploadingTasks.first;
+                  // 从本地路径中提取文件名
+                  final pathParts = currentTask.localPath.split('/');
+                  currentFileName = pathParts.isNotEmpty ? pathParts.last : null;
+                }
+              }
+            } catch (e) {
+              _logger.warning('Failed to get current file name: $e');
+            }
+          }
+          
+          // 通过 Pigeon API 更新进度
+          _backgroundHostApi.updateProgress(
+            current,
+            total,
+            currentFileName,
+          ).catchError((error) {
+            _logger.warning('Failed to update progress: $error');
+          });
+        },
+      );
+
+      _logger.info(
+        'Upload completed: success=${uploadResult.successCount}, '
+        'failed=${uploadResult.failedCount}',
+      );
+    } finally {
+      // 停止进度更新定时器
+      _stopProgressUpdateTimer();
+    }
+  }
+
+  /// 启动进度更新定时器
+  /// 定期查询任务状态并更新通知
+  void _startProgressUpdateTimer(String userId) {
+    // 如果已有定时器，先停止
+    _stopProgressUpdateTimer();
+    
+    _logger.info('Starting progress update timer');
+    
+    // 每2秒更新一次进度
+    _progressUpdateTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (timer) async {
+        if (_isCleanedUp || _cancellationToken.isCancelled) {
+          timer.cancel();
+          return;
+        }
+        
+        try {
+          await _updateProgressFromDatabase(userId);
+        } catch (e) {
+          _logger.warning('Failed to update progress from database: $e');
+        }
       },
     );
-
-    _logger.info(
-      'Upload completed: success=${uploadResult.successCount}, '
-      'failed=${uploadResult.failedCount}',
-    );
+  }
+  
+  /// 停止进度更新定时器
+  void _stopProgressUpdateTimer() {
+    _progressUpdateTimer?.cancel();
+    _progressUpdateTimer = null;
+    _logger.info('Stopped progress update timer');
+  }
+  
+  /// 从数据库查询任务状态并更新进度
+  Future<void> _updateProgressFromDatabase(String userId) async {
+    if (_database == null) {
+      return;
+    }
+    
+    try {
+      // 查询已完成的任务数
+      final completedTasks = await _database!.uploadTaskDao
+          .getTasksByUserIdAndStatus(userId, UploadTaskStatus.completed);
+      final completedCount = completedTasks.length;
+      
+      // 如果总任务数为0，尝试重新查询
+      if (_totalTaskCount == 0) {
+        final pendingTasks = await _database!.uploadTaskDao
+            .getPendingTasksByUserId(userId);
+        final uploadingTasks = await _database!.uploadTaskDao
+            .getTasksByUserIdAndStatus(userId, UploadTaskStatus.uploading);
+        final queuedTasks = await _database!.uploadTaskDao
+            .getTasksByUserIdAndStatus(userId, UploadTaskStatus.queued);
+        _totalTaskCount = pendingTasks.length + uploadingTasks.length + 
+                         queuedTasks.length + completedCount;
+      }
+      
+      // 如果总任务数仍为0，不更新
+      if (_totalTaskCount == 0) {
+        return;
+      }
+      
+      // 获取当前正在上传的文件名
+      String? currentFileName;
+      final uploadingTasks = await _database!.uploadTaskDao
+          .getTasksByUserIdAndStatus(userId, UploadTaskStatus.uploading);
+      
+      if (uploadingTasks.isNotEmpty) {
+        final currentTask = uploadingTasks.first;
+        final pathParts = currentTask.localPath.split('/');
+        currentFileName = pathParts.isNotEmpty ? pathParts.last : null;
+      }
+      
+      // 更新进度通知
+      _backgroundHostApi.updateProgress(
+        completedCount,
+        _totalTaskCount,
+        currentFileName,
+      ).catchError((error) {
+        _logger.warning('Failed to update progress from timer: $error');
+      });
+      
+      _logger.fine(
+        'Progress updated from database: $completedCount/$_totalTaskCount',
+      );
+    } catch (e) {
+      _logger.warning('Error updating progress from database: $e');
+    }
   }
 
   /// 获取当前用户 ID
@@ -415,11 +569,21 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
       //   _database = null;
       // }
 
-      // 3. 释放 ProviderContainer
+      // 3. 停止进度更新定时器
+      _stopProgressUpdateTimer();
+
+      // 4. 释放 ProviderContainer
       _container?.dispose();
       _container = null;
 
-      // 4. 通知原生层任务完成
+      // 5. 清理服务引用
+      _backupService = null;
+      _syncManager = null;
+      _uploadService = null;
+      _database = null;
+      _totalTaskCount = 0;
+
+      // 6. 通知原生层任务完成
       await _backgroundHostApi.onCompleted();
 
       _logger.info('Background worker resources cleaned up');

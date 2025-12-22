@@ -7,7 +7,7 @@ part of 'photo_permission_provider.dart';
 // **************************************************************************
 
 String _$photoPermissionNotifierHash() =>
-    r'647dc0fa7f9088d398b53ef2a8c6a3744535792b';
+    r'9dca6e7db33b5be515b6c55b99e668c0799a71a7';
 
 /// 权限状态管理器
 ///

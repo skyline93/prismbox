@@ -7,6 +7,8 @@ import app.prismbox.HttpSSLOptionsPlugin
 import app.prismbox.StoragePlugin
 import app.prismbox.background.BackgroundWorkerApiImpl
 import app.prismbox.background.BackgroundWorkerFgHostApi
+import app.prismbox.connectivity.ConnectivityApiImpl
+import app.prismbox.connectivity.ConnectivityApi
 
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -23,6 +25,12 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             BackgroundWorkerApiImpl(this)
         )
+        
+        // 注册网络连接检查 API
+        ConnectivityApi.setUp(
+            flutterEngine.dartExecutor.binaryMessenger,
+            ConnectivityApiImpl(this) as ConnectivityApi
+        )
     }
     
     companion object {
@@ -33,6 +41,12 @@ class MainActivity : FlutterActivity() {
             BackgroundWorkerFgHostApi.setUp(
                 engine.dartExecutor.binaryMessenger,
                 BackgroundWorkerApiImpl(ctx)
+            )
+            
+            // 注册网络连接检查 API（供后台 Engine 使用）
+            ConnectivityApi.setUp(
+                engine.dartExecutor.binaryMessenger,
+                ConnectivityApiImpl(ctx) as ConnectivityApi
             )
         }
     }

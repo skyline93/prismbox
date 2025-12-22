@@ -4,30 +4,30 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
-import 'package:prismbox/providers/services/auth_service_provider.dart';
-import 'package:prismbox/services/backup/backup_service.dart';
+import 'package:prismbox/providers/auth/auth_state_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
 import 'package:prismbox/services/backup/providers/backup_state_provider.dart';
 
 /// 备份状态指示器
 /// 显示在 AppBar 中，显示备份状态图标
+/// 参考 Immich 和 Google Photos 的设计，使用 Badge 组件显示动态状态
 class BackupStatusIndicator extends ConsumerWidget {
   const BackupStatusIndicator({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authServiceAsync = ref.watch(authServiceProvider);
+    // 使用已缓存的 authNotifierProvider，避免频繁调用 getProfile()
+    final authStateAsync = ref.watch(authNotifierProvider);
 
-    return authServiceAsync.when(
-      data: (authService) => FutureBuilder<String>(
-        future: authService.getProfile().then((p) => p.id.toString()),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const SizedBox.shrink();
-          }
-          return _BackupIndicatorContent(userId: snapshot.data!);
-        },
-      ),
+    return authStateAsync.when(
+      data: (authState) {
+        // 从已认证状态中提取 userId，避免重复调用 API
+        if (authState is AuthStateAuthenticated) {
+          return _BackupIndicatorContent(userId: authState.user.id.toString());
+        }
+        // 未认证或错误状态，不显示备份指示器
+        return const SizedBox.shrink();
+      },
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );
@@ -47,187 +47,195 @@ class _BackupIndicatorContent extends ConsumerWidget {
     return servicesReadyAsync.when(
       data: (_) {
         // 服务已准备好，可以安全使用 backupStateProvider
-        final backupState = ref.watch(backupStateProvider(userId));
+        // 使用 select 精准订阅，只监听 isBackingUp 和 hasError
+        final isBackingUp = ref.watch(
+          backupStateProvider(userId).select((state) => state.isBackingUp),
+        );
+        final hasError = ref.watch(
+          backupStateProvider(userId).select((state) => state.hasError),
+        );
+        
         final backupServiceAsync = ref.watch(backupServiceProvider);
 
         return backupServiceAsync.when(
-          data: (backupService) => FutureBuilder<BackupStatus?>(
-            future: backupService.getBackupStatus(userId),
-            builder: (context, snapshot) {
-              final backupStatus = snapshot.data;
-              final isEnabled = backupStatus?.enabled ?? false;
-              final isBackingUp = backupState.isBackingUp;
-              final hasError = backupState.hasError;
+          data: (backupService) {
+            // 使用 FutureProvider 替代 FutureBuilder，避免频繁重建
+            final backupStatusAsync = ref.watch(
+              FutureProvider((ref) => backupService.getBackupStatus(userId)),
+            );
 
-              final indicatorIcon = _getBackupBadgeIcon(
-                context,
-                isEnabled,
-                isBackingUp,
-                hasError,
-              );
+            return backupStatusAsync.when(
+              data: (backupStatus) {
+                final isEnabled = backupStatus?.enabled ?? false;
 
-              final backgroundColor = _getBackgroundColor(
-                context,
-                isEnabled,
-                isBackingUp,
-                hasError,
-              );
-
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    // 跳转到备份设置页面
-                    context.router.push(const BackupSettingsRoute());
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: backgroundColor != null
-                        ? BoxDecoration(
-                            color: backgroundColor,
-                            borderRadius: BorderRadius.circular(20),
-                          )
-                        : null,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // 主图标
-                        Icon(
-                          _getMainIcon(isEnabled, isBackingUp, hasError),
-                          size: 24,
-                          color: _getIconColor(
-                            context,
-                            isEnabled,
-                            isBackingUp,
-                            hasError,
-                          ),
-                        ),
-                        // 状态指示器（右上角小点）
-                        if (indicatorIcon != null)
-                          Positioned(top: 5, right: 5, child: indicatorIcon),
-                      ],
+                // 使用 RepaintBoundary 隔离动画区域，避免整树重绘
+                return RepaintBoundary(
+                  child: InkWell(
+                    onTap: () {
+                      context.router.push(const BackupSettingsRoute());
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Badge(
+                      label: _BackupBadgeIcon(
+                        isEnabled: isEnabled,
+                        isBackingUp: isBackingUp,
+                        hasError: hasError,
+                      ),
+                      backgroundColor: Colors.transparent,
+                      alignment: Alignment.bottomRight,
+                      isLabelVisible: isBackingUp || hasError || !isEnabled,
+                      offset: const Offset(-2, -12),
+                      child: Icon(
+                        Icons.backup_rounded,
+                        size: 24.0,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+                );
+              },
+              // loading 时也显示主图标，只是不显示 badge
+              loading: () => _buildMainIcon(context),
+              // error 时也显示主图标，只是不显示 badge
+              error: (_, __) => _buildMainIcon(context),
+            );
+          },
+          // loading 时也显示主图标
+          loading: () => _buildMainIcon(context),
+          // error 时也显示主图标
+          error: (_, __) => _buildMainIcon(context),
         );
       },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      // loading 时也显示主图标
+      loading: () => _buildMainIcon(context),
+      // error 时也显示主图标
+      error: (_, __) => _buildMainIcon(context),
     );
   }
 
-  /// 获取主图标
-  /// 统一使用 backup_rounded 图标，通过颜色和状态指示器区分不同状态
-  IconData _getMainIcon(bool isEnabled, bool isBackingUp, bool hasError) {
-    return Icons.backup_rounded;
-  }
-
-  /// 获取图标颜色
-  Color _getIconColor(
-    BuildContext context,
-    bool isEnabled,
-    bool isBackingUp,
-    bool hasError,
-  ) {
-    if (hasError) {
-      return Theme.of(context).colorScheme.error;
-    }
-    if (!isEnabled) {
-      return Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
-    }
-    if (isBackingUp) {
-      return Theme.of(context).colorScheme.primary;
-    }
-    return Theme.of(context).colorScheme.primary;
-  }
-
-  /// 获取背景颜色
-  /// 使用更简洁的设计，只在必要时显示背景
-  Color? _getBackgroundColor(
-    BuildContext context,
-    bool isEnabled,
-    bool isBackingUp,
-    bool hasError,
-  ) {
-    // 只在备份中或错误时显示背景，其他情况透明
-    if (hasError) {
-      return Theme.of(context).colorScheme.errorContainer.withOpacity(0.15);
-    }
-    if (isBackingUp) {
-      return Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2);
-    }
-    return null; // 透明背景，更简洁
-  }
-
-  /// 获取状态指示器图标（右上角小点）
-  Widget? _getBackupBadgeIcon(
-    BuildContext context,
-    bool isEnabled,
-    bool isBackingUp,
-    bool hasError,
-  ) {
-    if (hasError) {
-      return Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.error,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.error.withOpacity(0.5),
-              blurRadius: 4,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (!isEnabled) {
-      return null; // 未启用时不显示指示器
-    }
-
-    if (isBackingUp) {
-      return Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-              blurRadius: 4,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 已备份状态：显示绿色小点
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: Colors.green,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withOpacity(0.5),
-            blurRadius: 4,
-            spreadRadius: 1,
-          ),
-        ],
+  /// 构建主图标（不包含 badge）
+  Widget _buildMainIcon(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        context.router.push(const BackupSettingsRoute());
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Icon(
+        Icons.backup_rounded,
+        size: 24.0,
+        color: Theme.of(context).colorScheme.primary,
       ),
+    );
+  }
+}
+
+/// 备份徽章图标组件
+/// 独立组件，使用 const 优化，避免频繁重建
+class _BackupBadgeIcon extends StatelessWidget {
+  final bool isEnabled;
+  final bool isBackingUp;
+  final bool hasError;
+
+  const _BackupBadgeIcon({
+    required this.isEnabled,
+    required this.isBackingUp,
+    required this.hasError,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 调试日志：检查状态
+    debugPrint('BackupStatusIndicator: isEnabled=$isEnabled, isBackingUp=$isBackingUp, hasError=$hasError');
+    
+    final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDarkTheme ? Colors.white : Colors.black;
+    const badgeSize = 15.0;
+
+    // 1. 错误状态：显示警告图标
+    if (hasError) {
+      return _BadgeLabel(
+        Icon(
+          Icons.warning_rounded,
+          size: badgeSize,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        backgroundColor: Theme.of(context).colorScheme.errorContainer,
+      );
+    }
+
+    // 2. 未启用状态：显示云关闭图标
+    if (!isEnabled) {
+      return _BadgeLabel(
+        Icon(
+          Icons.cloud_off_rounded,
+          size: 9,
+          color: iconColor,
+        ),
+      );
+    }
+
+    // 3. 备份中状态：显示动态进度指示器
+    if (isBackingUp) {
+      return _BadgeLabel(
+        // 使用 SizedBox 明确指定尺寸，确保有足够空间
+        SizedBox(
+          width: badgeSize,
+          height: badgeSize,
+          child: Padding(
+            padding: const EdgeInsets.all(2.0), // 减小 padding，从 3.5 改为 2.0
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              strokeCap: StrokeCap.round,
+              valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+              // 不设置 value，显示无限旋转动画
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 4. 已备份状态：显示勾选图标
+    return _BadgeLabel(
+      Icon(
+        Icons.check_outlined,
+        size: 9,
+        color: iconColor,
+      ),
+    );
+  }
+}
+
+/// 徽章标签组件
+/// 参考 Immich 的 _BadgeLabel 设计
+class _BadgeLabel extends StatelessWidget {
+  final Widget indicator;
+  final Color? backgroundColor;
+
+  const _BadgeLabel(
+    this.indicator, {
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const badgeSize = 15.0;
+    final defaultBackgroundColor = backgroundColor ??
+        Theme.of(context).colorScheme.surfaceContainer;
+
+    return Container(
+      width: badgeSize,
+      height: badgeSize,
+      decoration: BoxDecoration(
+        color: defaultBackgroundColor,
+        border: Border.all(
+          color: Theme.of(context)
+              .colorScheme
+              .outline
+              .withOpacity(0.3),
+        ),
+        borderRadius: BorderRadius.circular(badgeSize / 2),
+      ),
+      child: indicator,
     );
   }
 }

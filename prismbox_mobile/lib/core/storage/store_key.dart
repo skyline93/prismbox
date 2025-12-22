@@ -25,6 +25,7 @@ enum StoreKey<T> {
   autoBackup<bool>._(40),
   backupRequireWifi<bool>._(41),
   backupRequireCharging<bool>._(42),
+  lastAutoBackupTriggerTime<DateTime>._(43),
 
   // 用户设置
   preferRemoteImage<bool>._(100),

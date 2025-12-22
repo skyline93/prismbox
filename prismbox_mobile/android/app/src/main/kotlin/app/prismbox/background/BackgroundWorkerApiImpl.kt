@@ -5,8 +5,10 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
+import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
@@ -29,6 +31,9 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
         // 启用媒体观察器 Worker（监听媒体库变化）
         enqueueMediaObserver(ctx)
         
+        // 启用定期备份 Worker（每 15 分钟触发一次）
+        enqueuePeriodicWorker(ctx)
+        
         // 如果需要立即执行，可以手动触发一次备份任务
         if (immediate) {
             enqueueBackgroundWorker(ctx)
@@ -48,6 +53,9 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
         
         // 重新调度 Worker 以应用新配置
         enqueueMediaObserver(ctx)
+        
+        // 重新调度定期 Worker 以应用新配置
+        enqueuePeriodicWorker(ctx)
     }
 
     override fun disable() {
@@ -60,6 +68,7 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
         WorkManager.getInstance(ctx).apply {
             cancelUniqueWork(OBSERVER_WORKER_NAME)
             cancelUniqueWork(BACKGROUND_WORKER_NAME)
+            cancelUniqueWork(PERIODIC_WORKER_NAME)
         }
         
         Log.i(TAG, "Cancelled background upload tasks")
@@ -68,6 +77,7 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
     companion object {
         private const val BACKGROUND_WORKER_NAME = "prismbox/BackgroundWorkerV1"
         private const val OBSERVER_WORKER_NAME = "prismbox/MediaObserverV1"
+        private const val PERIODIC_WORKER_NAME = "prismbox/PeriodicBackupV1"
         const val ENGINE_CACHE_KEY = "prismbox_background_worker_engine"
 
         /// 启用媒体观察器 Worker
@@ -171,6 +181,52 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
 
             Log.i(TAG, "Cancelled background upload task")
         }
+        
+        /// 启用定期备份 Worker
+        /// 每 15 分钟触发一次备份检查
+        fun enqueuePeriodicWorker(ctx: Context) {
+            val settings = BackgroundWorkerPreferences(ctx).getSettings()
+            
+            val constraints = Constraints.Builder().apply {
+                setRequiresCharging(settings.requiresCharging)
+                setRequiresBatteryNotLow(settings.requiresBatteryNotLow)
+                
+                if (settings.requiresNetworkType) {
+                    setRequiredNetworkType(androidx.work.NetworkType.UNMETERED) // WiFi
+                } else {
+                    setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                }
+            }.build()
+            
+            // 使用 PeriodicWorkRequest，最小间隔 15 分钟
+            val periodicWork = PeriodicWorkRequest.Builder(
+                BackupWorker::class.java,
+                15, // 间隔时间（分钟）
+                TimeUnit.MINUTES
+            )
+                .setConstraints(constraints)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    1,
+                    TimeUnit.MINUTES
+                )
+                .build()
+            
+            WorkManager.getInstance(ctx)
+                .enqueueUniquePeriodicWork(
+                    PERIODIC_WORKER_NAME,
+                    ExistingPeriodicWorkPolicy.UPDATE, // 更新现有任务
+                    periodicWork
+                )
+            
+            Log.i(TAG, "Enqueued periodic backup worker with interval: 15 minutes")
+        }
+        
+        /// 取消定期备份 Worker
+        fun cancelPeriodicWorker(ctx: Context) {
+            WorkManager.getInstance(ctx).cancelUniqueWork(PERIODIC_WORKER_NAME)
+            Log.i(TAG, "Cancelled periodic backup worker")
+        }
     }
 }
 
@@ -182,6 +238,7 @@ private class BackgroundWorkerPreferences(private val context: Context) {
     )
     
     private val SERVICE_ENABLED_KEY = "service_enabled"
+    private val LAST_BACKUP_TRIGGER_TIME_KEY = "last_backup_trigger_time"
 
     fun getSettings(): BackgroundWorkerSettings {
         return BackgroundWorkerSettings(
@@ -224,6 +281,19 @@ private class BackgroundWorkerPreferences(private val context: Context) {
     fun setServiceEnabled(enabled: Boolean) {
         prefs.edit()
             .putBoolean(SERVICE_ENABLED_KEY, enabled)
+            .apply()
+    }
+    
+    /// 获取最后备份触发时间
+    fun getLastBackupTriggerTime(): Long? {
+        val time = prefs.getLong(LAST_BACKUP_TRIGGER_TIME_KEY, 0)
+        return if (time > 0) time else null
+    }
+    
+    /// 设置最后备份触发时间
+    fun setLastBackupTriggerTime(time: Long) {
+        prefs.edit()
+            .putLong(LAST_BACKUP_TRIGGER_TIME_KEY, time)
             .apply()
     }
 }
@@ -272,7 +342,30 @@ class MediaObserverWorker(
                 Log.d(TAG, "Changed content URI: $uri")
             }
             
-            // 3. 触发后台备份 Worker（无延迟，立即执行）
+            // 3. 节流检查（避免频繁触发）
+            val prefs = BackgroundWorkerPreferences(applicationContext)
+            val lastTriggerTime = prefs.getLastBackupTriggerTime()
+            
+            if (lastTriggerTime != null) {
+                val timeSinceLastTrigger = System.currentTimeMillis() - lastTriggerTime
+                val minIntervalMs = 30 * 1000 // 30 秒
+                
+                if (timeSinceLastTrigger < minIntervalMs) {
+                    Log.d(
+                        TAG,
+                        "MediaObserver triggered too soon (${timeSinceLastTrigger}ms ago), "
+                        + "throttling backup trigger"
+                    )
+                    // 重新注册自己以继续监听
+                    BackgroundWorkerApiImpl.enqueueMediaObserver(applicationContext)
+                    return androidx.work.ListenableWorker.Result.success()
+                }
+            }
+            
+            // 更新最后触发时间
+            prefs.setLastBackupTriggerTime(System.currentTimeMillis())
+            
+            // 4. 触发后台备份 Worker（无延迟，立即执行）
             BackgroundWorkerApiImpl.enqueueBackgroundWorker(applicationContext)
         } else {
             Log.d(TAG, "MediaObserverWorker triggered but no content changes detected")

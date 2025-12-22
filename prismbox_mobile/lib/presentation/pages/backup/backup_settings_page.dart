@@ -14,6 +14,7 @@ import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
 import 'package:prismbox/services/backup/backup_service.dart';
 import 'package:prismbox/services/backup/backup_config_validator.dart';
+import 'package:prismbox/features/background_backup/providers/background_worker_providers.dart';
 
 /// 备份设置页面
 @RoutePage()
@@ -85,7 +86,12 @@ class _BackupSettingsContent extends ConsumerWidget {
               const Divider(height: 1),
 
               // 全局自动备份开关
-              _GlobalAutoBackupSwitch(storeService: storeService),
+              _GlobalAutoBackupSwitch(
+                storeService: storeService,
+                userId: userId,
+                backupService: backupService,
+                ref: ref,
+              ),
 
               const Divider(height: 1),
 
@@ -111,8 +117,16 @@ class _BackupSettingsContent extends ConsumerWidget {
 /// 全局自动备份开关
 class _GlobalAutoBackupSwitch extends ConsumerStatefulWidget {
   final StoreService storeService;
+  final String userId;
+  final BackupService backupService;
+  final WidgetRef ref;
 
-  const _GlobalAutoBackupSwitch({required this.storeService});
+  const _GlobalAutoBackupSwitch({
+    required this.storeService,
+    required this.userId,
+    required this.backupService,
+    required this.ref,
+  });
 
   @override
   ConsumerState<_GlobalAutoBackupSwitch> createState() =>
@@ -146,6 +160,50 @@ class _GlobalAutoBackupSwitchState
     setState(() {
       _autoBackup = value;
     });
+    
+    // 根据全局开关状态更新后台任务
+    final backgroundWorkerFgService = ref.read(backgroundWorkerFgServiceProvider);
+    
+    if (value) {
+      // 检查当前用户是否启用了自动备份
+      try {
+        final backupStatus = await widget.backupService.getBackupStatus(widget.userId);
+        
+        if (backupStatus != null && backupStatus.enabled) {
+          // 如果当前用户启用了自动备份，则启用后台任务
+          final storeService = StoreService();
+          final requireWifi = storeService.get<bool>(
+            StoreKey.backupRequireWifi,
+            true,
+          );
+          final requireCharging = storeService.get<bool>(
+            StoreKey.backupRequireCharging,
+            false,
+          );
+          
+          await backgroundWorkerFgService.enableAndConfigure(
+            notificationTitle: '后台备份',
+            immediate: false,
+            requiresCharging: requireCharging,
+            requiresBatteryNotLow: true,
+            minimumDelaySeconds: 300, // 5 分钟
+            requiresNetworkType: requireWifi,
+          );
+        } else {
+          // 当前用户未启用自动备份，只配置但不启用
+          // 实际的启用逻辑在用户备份配置中
+        }
+      } catch (e) {
+        // 忽略错误，避免影响UI
+      }
+    } else {
+      // 禁用后台任务
+      try {
+        await backgroundWorkerFgService.disable();
+      } catch (e) {
+        // 忽略错误，避免影响UI
+      }
+    }
   }
 
   @override
@@ -219,6 +277,34 @@ class _NetworkSettingsSectionState
             setState(() {
               _requireWifi = value;
             });
+            
+            // 同步更新后台任务配置
+            final backgroundWorkerFgService = ref.read(backgroundWorkerFgServiceProvider);
+            final storeService = StoreService();
+            
+            // 检查是否启用了自动备份
+            final globalAutoBackup = storeService.get<bool>(
+              StoreKey.autoBackup,
+              false,
+            );
+            
+            if (globalAutoBackup) {
+              final requireCharging = storeService.get<bool>(
+                StoreKey.backupRequireCharging,
+                false,
+              );
+              
+              try {
+                await backgroundWorkerFgService.configure(
+                  requiresCharging: requireCharging,
+                  requiresBatteryNotLow: true,
+                  minimumDelaySeconds: 300,
+                  requiresNetworkType: value,
+                );
+              } catch (e) {
+                // 忽略错误，避免影响UI
+              }
+            }
           },
         ),
         SwitchListTile(
@@ -233,6 +319,34 @@ class _NetworkSettingsSectionState
             setState(() {
               _requireCharging = value;
             });
+            
+            // 同步更新后台任务配置
+            final backgroundWorkerFgService = ref.read(backgroundWorkerFgServiceProvider);
+            final storeService = StoreService();
+            
+            // 检查是否启用了自动备份
+            final globalAutoBackup = storeService.get<bool>(
+              StoreKey.autoBackup,
+              false,
+            );
+            
+            if (globalAutoBackup) {
+              final requireWifi = storeService.get<bool>(
+                StoreKey.backupRequireWifi,
+                true,
+              );
+              
+              try {
+                await backgroundWorkerFgService.configure(
+                  requiresCharging: value,
+                  requiresBatteryNotLow: true,
+                  minimumDelaySeconds: 300,
+                  requiresNetworkType: requireWifi,
+                );
+              } catch (e) {
+                // 忽略错误，避免影响UI
+              }
+            }
           },
         ),
       ],
@@ -323,6 +437,56 @@ class _UserBackupSettingsSectionState
         widget.userId,
         companion,
       );
+
+      // 根据启用状态调用后台任务服务
+      final backgroundWorkerFgService = widget.ref.read(backgroundWorkerFgServiceProvider);
+      final storeService = StoreService();
+      
+      // 检查全局自动备份开关
+      final globalAutoBackup = storeService.get<bool>(
+        StoreKey.autoBackup,
+        false,
+      );
+      
+      if (_enabled && globalAutoBackup) {
+        // 启用并配置后台任务
+        final requireWifi = storeService.get<bool>(
+          StoreKey.backupRequireWifi,
+          true,
+        );
+        final requireCharging = storeService.get<bool>(
+          StoreKey.backupRequireCharging,
+          false,
+        );
+        
+        try {
+          await backgroundWorkerFgService.enableAndConfigure(
+            notificationTitle: '后台备份',
+            immediate: false,
+            requiresCharging: requireCharging,
+            requiresBatteryNotLow: true,
+            minimumDelaySeconds: 300, // 5 分钟
+            requiresNetworkType: requireWifi,
+          );
+        } catch (e) {
+          // 记录错误但不影响配置保存
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('配置已保存，但后台任务启动失败: $e'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      } else {
+        // 禁用后台任务
+        try {
+          await backgroundWorkerFgService.disable();
+        } catch (e) {
+          // 忽略错误
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

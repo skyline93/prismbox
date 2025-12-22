@@ -7,11 +7,14 @@ import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/remote_sync/providers/remote_sync_providers.dart';
+import 'package:prismbox/services/backup/providers/backup_providers.dart';
+import 'package:prismbox/utils/network_checker.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
+import 'package:prismbox/providers/permission/notification_permission_provider.dart';
 
 /// TabShell 容器页面
 /// 管理四个核心标签页的导航
@@ -76,9 +79,85 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
       if (userId != null) {
         final remoteCoordinator = await ref.read(remoteSyncCoordinatorProvider.future);
         remoteCoordinator.checkAndSyncOnResume(userId: userId);
+        
+        // 检查并触发自动备份
+        await _checkAndTriggerAutoBackup(userId);
       }
     } catch (e, stackTrace) {
       _log.warning('应用恢复时同步检查失败', e, stackTrace);
+    }
+  }
+  
+  /// 检查并触发自动备份
+  Future<void> _checkAndTriggerAutoBackup(String userId) async {
+    try {
+      final storeService = StoreService();
+      
+      // 检查全局自动备份开关
+      final globalAutoBackup = storeService.get<bool>(
+        StoreKey.autoBackup,
+        false,
+      );
+      
+      if (!globalAutoBackup) {
+        _log.info('全局自动备份已禁用，跳过检查');
+        return;
+      }
+      
+      // 检查用户自动备份配置
+      final backupService = await ref.read(backupServiceProvider.future);
+      final backupStatus = await backupService.getBackupStatus(userId);
+      
+      if (backupStatus == null || !backupStatus.enabled) {
+        _log.info('用户自动备份已禁用，跳过检查');
+        return;
+      }
+      
+      // 检查触发频率（避免频繁触发）
+      final lastTriggerTime = storeService.get<DateTime?>(
+        StoreKey.lastAutoBackupTriggerTime,
+        null,
+      );
+      
+      if (lastTriggerTime != null) {
+        final timeSinceLastTrigger = DateTime.now().difference(lastTriggerTime);
+        if (timeSinceLastTrigger.inMinutes < 5) {
+          _log.info(
+            '距离上次触发仅 ${timeSinceLastTrigger.inMinutes} 分钟，跳过触发',
+          );
+          return;
+        }
+      }
+      
+      // 检查网络条件
+      final requireWifi = storeService.get<bool>(
+        StoreKey.backupRequireWifi,
+        true,
+      );
+      
+      if (requireWifi) {
+        // 检查当前网络类型
+        final isWifi = await NetworkChecker.isWifiConnected();
+        if (!isWifi) {
+          _log.info('要求 WiFi 但当前不是 WiFi 网络，跳过触发');
+          return;
+        }
+      }
+      
+      // 检查是否有网络连接
+      final hasNetwork = await NetworkChecker.hasNetworkConnection();
+      if (!hasNetwork) {
+        _log.info('无网络连接，跳过触发');
+        return;
+      }
+      
+      // 触发自动备份
+      _log.info('应用恢复时触发自动备份');
+      await backupService.startAutoBackup(userId);
+      
+      // 更新最后触发时间（已在 startAutoBackup 中更新，这里不需要重复更新）
+    } catch (e, stackTrace) {
+      _log.warning('应用恢复时自动备份检查失败', e, stackTrace);
     }
   }
 
@@ -94,6 +173,17 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
     if (!mounted) return;
 
     try {
+      // 请求通知权限（用于后台备份进度通知）
+      _log.info('检查并请求通知权限');
+      try {
+        final notificationNotifier = ref.read(notificationPermissionNotifierProvider.notifier);
+        await notificationNotifier.hasOrRequestPermission();
+        _log.info('通知权限检查完成');
+      } catch (e) {
+        _log.warning('请求通知权限失败: $e');
+        // 不阻塞主流程，继续执行
+      }
+
       // 启动本地媒体同步服务
       _log.info('启动本地媒体同步服务');
       final coordinator = await ref.read(syncCoordinatorProvider.future);

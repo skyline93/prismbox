@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -7,6 +8,11 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // 配置通知中心 delegate（iOS 10+）
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
+    }
+    
     GeneratedPluginRegistrant.register(with: self)
     
     // 注册存储插件
@@ -15,6 +21,13 @@ import UIKit
     // 注册后台任务处理器
     // 必须在应用启动时注册，否则后台任务无法执行
     BackgroundWorkerApiImpl.registerBackgroundWorkers()
+    
+    // 注册网络连接检查 API
+    let connectivityRegistrar = registrar(forPlugin: "ConnectivityApi")!
+    ConnectivityApiSetup.setUp(
+      binaryMessenger: connectivityRegistrar.messenger(),
+      api: ConnectivityApiImpl()
+    )
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -26,6 +39,12 @@ import UIKit
     BackgroundWorkerFgHostApiSetup.setUp(
       binaryMessenger: engine.binaryMessenger,
       api: BackgroundWorkerApiImpl()
+    )
+    
+    // 注册网络连接检查 API
+    ConnectivityApiSetup.setUp(
+      binaryMessenger: engine.binaryMessenger,
+      api: ConnectivityApiImpl()
     )
   }
 }
