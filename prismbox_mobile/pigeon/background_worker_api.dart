@@ -76,6 +76,10 @@ abstract class BackgroundWorkerBgHostApi {
   /// [totalCount] - 总数量
   /// [currentFileName] - 当前文件名（可选）
   void updateProgress(int uploadedCount, int totalCount, String? currentFileName);
+
+  /// 检查内容是否已变化（Android 专用）
+  /// 返回 true 表示在备份执行期间有新内容变化
+  bool hasContentChanged();
 }
 
 /// Flutter API

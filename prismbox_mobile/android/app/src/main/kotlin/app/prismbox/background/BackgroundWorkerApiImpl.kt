@@ -1,14 +1,13 @@
 package app.prismbox.background
 
 import android.content.Context
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
-import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
@@ -31,9 +30,6 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
         // 启用媒体观察器 Worker（监听媒体库变化）
         enqueueMediaObserver(ctx)
         
-        // 启用定期备份 Worker（每 15 分钟触发一次）
-        enqueuePeriodicWorker(ctx)
-        
         // 如果需要立即执行，可以手动触发一次备份任务
         if (immediate) {
             enqueueBackgroundWorker(ctx)
@@ -53,9 +49,6 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
         
         // 重新调度 Worker 以应用新配置
         enqueueMediaObserver(ctx)
-        
-        // 重新调度定期 Worker 以应用新配置
-        enqueuePeriodicWorker(ctx)
     }
 
     override fun disable() {
@@ -68,7 +61,6 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
         WorkManager.getInstance(ctx).apply {
             cancelUniqueWork(OBSERVER_WORKER_NAME)
             cancelUniqueWork(BACKGROUND_WORKER_NAME)
-            cancelUniqueWork(PERIODIC_WORKER_NAME)
         }
         
         Log.i(TAG, "Cancelled background upload tasks")
@@ -77,7 +69,6 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
     companion object {
         private const val BACKGROUND_WORKER_NAME = "prismbox/BackgroundWorkerV1"
         private const val OBSERVER_WORKER_NAME = "prismbox/MediaObserverV1"
-        private const val PERIODIC_WORKER_NAME = "prismbox/PeriodicBackupV1"
         const val ENGINE_CACHE_KEY = "prismbox_background_worker_engine"
 
         /// 启用媒体观察器 Worker
@@ -222,18 +213,18 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
             Log.i(TAG, "Enqueued periodic backup worker with interval: 15 minutes")
         }
         
-        /// 取消定期备份 Worker
-        fun cancelPeriodicWorker(ctx: Context) {
-            WorkManager.getInstance(ctx).cancelUniqueWork(PERIODIC_WORKER_NAME)
-            Log.i(TAG, "Cancelled periodic backup worker")
-        }
     }
 }
 
 /// 后台 Worker 配置和通知设置的存储类
-private class BackgroundWorkerPreferences(private val context: Context) {
+class BackgroundWorkerPreferences(private val context: Context) {
+    companion object {
+        const val SHARED_PREF_NAME = "prismboxBackgroundService"
+        const val SHARED_PREF_LAST_CHANGE = "lastChange"
+    }
+    
     private val prefs = context.getSharedPreferences(
-        "background_worker_prefs",
+        SHARED_PREF_NAME,
         Context.MODE_PRIVATE
     )
     
@@ -362,8 +353,15 @@ class MediaObserverWorker(
                 }
             }
             
-            // 更新最后触发时间
-            prefs.setLastBackupTriggerTime(System.currentTimeMillis())
+            // 更新最后变化时间（用于内容变化检查）
+            val sharedPrefs = applicationContext.getSharedPreferences(
+                BackgroundWorkerPreferences.SHARED_PREF_NAME,
+                Context.MODE_PRIVATE
+            )
+            sharedPrefs.edit().putLong(
+                BackgroundWorkerPreferences.SHARED_PREF_LAST_CHANGE,
+                SystemClock.uptimeMillis()
+            ).apply()
             
             // 4. 触发后台备份 Worker（无延迟，立即执行）
             BackgroundWorkerApiImpl.enqueueBackgroundWorker(applicationContext)

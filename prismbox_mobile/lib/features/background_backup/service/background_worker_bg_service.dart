@@ -2,7 +2,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' show Timeline;
+import 'dart:isolate';
+import 'dart:ui' show IsolateNameServer;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
@@ -48,8 +52,14 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
   /// 后台 Host API（用于通知原生层）
   final BackgroundWorkerBgHostApi _backgroundHostApi;
   
+  /// 后台通信通道（用于接收系统停止信号）
+  static const MethodChannel _backgroundChannel = MethodChannel('prismbox/backgroundChannel');
+  
   /// 取消令牌，用于取消正在执行的任务
   final CancellationToken _cancellationToken = CancellationToken();
+  
+  /// 是否被系统取消
+  bool _canceledBySystem = false;
   
   /// 日志记录器
   final Logger _logger = Logger('BackgroundWorkerBgService');
@@ -62,6 +72,13 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
   
   /// 总任务数（用于进度计算）
   int _totalTaskCount = 0;
+  
+  /// 锁相关变量（用于防止前台和后台同时执行备份）
+  static const String _portNameLock = "prismboxLock";
+  bool _hasLock = false;
+  int _wantsLockTime = 0;
+  SendPort? _waitingIsolate;
+  ReceivePort? _rp;
 
   /// 构造函数
   BackgroundWorkerBgService()
@@ -77,16 +94,20 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
   /// - 创建独立的 ProviderContainer
   /// - 配置 API 客户端
   /// - 初始化同步和上传服务（后续实现）
+  /// - 设置后台通道监听
   /// - 通知原生层初始化完成
   Future<void> init() async {
     try {
       _logger.info('Initializing background worker service');
 
-      // 1. 初始化数据库连接
+      // 1. 设置后台通道监听（用于接收系统停止信号）
+      _backgroundChannel.setMethodCallHandler(_callHandler);
+
+      // 2. 初始化数据库连接
       // 在后台 Engine 中，数据库连接会连接到主应用创建的 Isolate
       _database = await DatabaseConnection.getInstance();
       
-      // 2. 创建独立的 ProviderContainer
+      // 3. 创建独立的 ProviderContainer
       // 这允许我们在后台 Engine 中使用 Riverpod Provider
       _container = ProviderContainer(
         overrides: [
@@ -95,7 +116,7 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
         ],
       );
 
-      // 3. 初始化服务（通过 Provider 获取）
+      // 4. 初始化服务（通过 Provider 获取）
       // 注意：这些 providers 是 AutoDisposeFutureProvider，需要使用 .future 获取 Future
       _syncManager = await _container!.read(backup.backgroundSyncManagerProvider.future);
       _uploadService = await _container!.read(backup.uploadServiceProvider.future);
@@ -116,86 +137,66 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
       rethrow;
     }
   }
+  
+  /// 处理后台通道的方法调用
+  Future<dynamic> _callHandler(MethodCall call) async {
+    switch (call.method) {
+      case "systemStop":
+        _logger.warning('Received systemStop signal from native');
+        _canceledBySystem = true;
+        _cancellationToken.cancel();
+        return true;
+      default:
+        _logger.warning('Unknown method: ${call.method}');
+        return false;
+    }
+  }
 
   /// Android 后台上传任务执行
   /// 
   /// 由原生平台通过 BackgroundWorkerFlutterApi.onAndroidUpload() 调用
   /// 
   /// **执行流程**：
-  /// 1. 获取当前用户 ID
-  /// 2. 检查备份是否启用
-  /// 3. 执行三阶段同步（本地同步、远程同步、哈希计算）
-  /// 4. 执行自动备份
-  /// 5. 执行上传编排
-  /// 6. 更新备份状态
+  /// 1. 获取锁（防止前台和后台同时执行）
+  /// 2. 获取当前用户 ID
+  /// 3. 检查备份是否启用
+  /// 4. 循环执行备份，直到没有新内容变化
+  /// 5. 释放锁
   @override
   Future<void> onAndroidUpload() async {
     _logger.info('Android background upload started');
     final stopwatch = Stopwatch()..start();
     
     try {
-      // 1. 获取当前用户 ID
-      final userId = await _getCurrentUserId();
-      if (userId == null) {
-        _logger.warning('No authenticated user, skipping backup');
+      // 1. 获取锁（防止前台和后台同时执行备份）
+      final hasLock = await acquireLock();
+      if (!hasLock) {
+        _logger.warning('Could not acquire lock, another backup may be running');
         return;
       }
 
-      // 2. 检查备份是否启用
-      final backupStatus = await _backupService!.getBackupStatus(userId);
-      if (backupStatus == null || !backupStatus.enabled) {
-        _logger.info('Backup is disabled for userId=$userId');
-        return;
+      try {
+        // 2. 循环执行备份，直到没有新内容变化
+        do {
+          final bool backupOk = await _executeBackup();
+          if (!backupOk) {
+            break; // 备份失败，退出循环
+          }
+          
+          // 检查是否有新内容变化（Android 专用）
+          final hasChanged = await _backgroundHostApi.hasContentChanged();
+          if (!hasChanged) {
+            break; // 没有新内容，退出循环
+          }
+          
+          _logger.info('New content detected during backup, continuing...');
+        } while (true);
+        
+        _logger.info('Android background upload completed successfully');
+      } finally {
+        // 释放锁
+        releaseLock();
       }
-
-      // 3. 执行三阶段同步
-      _logger.info('Starting three-phase sync');
-      final syncResult = await _syncManager!.syncAll(
-        cancellationToken: _cancellationToken,
-      );
-      _logger.info(
-        'Sync completed: added=${syncResult.addedCount}, '
-        'updated=${syncResult.updatedCount}, deleted=${syncResult.deletedCount}',
-      );
-
-      if (_cancellationToken.isCancelled) {
-        _logger.info('Backup cancelled after sync');
-        return;
-      }
-
-      // 4. 执行自动备份（创建上传任务）
-      _logger.info('Starting auto backup');
-      await _backupService!.startAutoBackup(userId);
-
-      if (_cancellationToken.isCancelled) {
-        _logger.info('Backup cancelled after creating tasks');
-        return;
-      }
-
-      // 5. 执行上传编排
-      _logger.info('Starting upload orchestration');
-      final uploadResult = await _uploadService!.startUpload(
-        userId: userId,
-        cancellationToken: _cancellationToken,
-        onProgress: (current, total) {
-          _logger.fine('Upload progress: $current/$total');
-          // 通过 Pigeon API 更新进度
-          _backgroundHostApi.updateProgress(
-            current,
-            total,
-            null, // 当前文件名（可选，后续可以从任务中获取）
-          ).catchError((error) {
-            _logger.warning('Failed to update progress: $error');
-          });
-        },
-      );
-
-      _logger.info(
-        'Upload completed: success=${uploadResult.successCount}, '
-        'failed=${uploadResult.failedCount}',
-      );
-
-      _logger.info('Android background upload completed successfully');
     } catch (error, stackTrace) {
       _logger.severe(
         'Failed to complete Android background upload',
@@ -209,6 +210,78 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
       );
       await _cleanup();
     }
+  }
+  
+  /// 执行备份流程
+  Future<bool> _executeBackup() async {
+    // 检查是否被系统取消
+    if (_canceledBySystem) {
+      _logger.info('Backup cancelled by system');
+      return false;
+    }
+    
+    // 1. 获取当前用户 ID
+    final userId = await _getCurrentUserId();
+    if (userId == null) {
+      _logger.warning('No authenticated user, skipping backup');
+      return false;
+    }
+
+    // 2. 检查备份是否启用
+    final backupStatus = await _backupService!.getBackupStatus(userId);
+    if (backupStatus == null || !backupStatus.enabled) {
+      _logger.info('Backup is disabled for userId=$userId');
+      return false;
+    }
+
+    // 3. 执行三阶段同步
+    _logger.info('Starting three-phase sync');
+    final syncResult = await _syncManager!.syncAll(
+      cancellationToken: _cancellationToken,
+    );
+    _logger.info(
+      'Sync completed: added=${syncResult.addedCount}, '
+      'updated=${syncResult.updatedCount}, deleted=${syncResult.deletedCount}',
+    );
+
+    if (_cancellationToken.isCancelled || _canceledBySystem) {
+      _logger.info('Backup cancelled after sync');
+      return false;
+    }
+
+    // 4. 执行自动备份（创建上传任务）
+    _logger.info('Starting auto backup');
+    await _backupService!.startAutoBackup(userId);
+
+    if (_cancellationToken.isCancelled || _canceledBySystem) {
+      _logger.info('Backup cancelled after creating tasks');
+      return false;
+    }
+
+    // 5. 执行上传编排
+    _logger.info('Starting upload orchestration');
+    final uploadResult = await _uploadService!.startUpload(
+      userId: userId,
+      cancellationToken: _cancellationToken,
+      onProgress: (current, total) {
+        _logger.fine('Upload progress: $current/$total');
+        // 通过 Pigeon API 更新进度
+        _backgroundHostApi.updateProgress(
+          current,
+          total,
+          null, // 当前文件名（可选，后续可以从任务中获取）
+        ).catchError((error) {
+          _logger.warning('Failed to update progress: $error');
+        });
+      },
+    );
+
+    _logger.info(
+      'Upload completed: success=${uploadResult.successCount}, '
+      'failed=${uploadResult.failedCount}',
+    );
+    
+    return uploadResult.successCount > 0 || uploadResult.failedCount == 0;
   }
 
   /// iOS 后台上传任务执行
@@ -531,6 +604,7 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
     _logger.warning('Background worker cancelled');
     try {
       _cancellationToken.cancel();
+      releaseLock(); // 释放锁
       await _cleanup();
     } catch (error, stackTrace) {
       _logger.severe(
@@ -539,6 +613,102 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
         stackTrace,
       );
     }
+  }
+  
+  /// 获取锁（防止前台和后台同时执行备份）
+  Future<bool> acquireLock() async {
+    if (_hasLock) {
+      _logger.warning('Lock already acquired');
+      return true;
+    }
+    
+    final int lockTime = Timeline.now;
+    _wantsLockTime = lockTime;
+    final ReceivePort rp = ReceivePort(_portNameLock);
+    _rp = rp;
+    final SendPort sp = rp.sendPort;
+
+    while (!IsolateNameServer.registerPortWithName(sp, _portNameLock)) {
+      try {
+        await _checkLockReleasedWithHeartbeat(lockTime);
+      } catch (error) {
+        _logger.warning('Error checking lock: $error');
+        return false;
+      }
+      if (_wantsLockTime != lockTime) {
+        return false;
+      }
+    }
+    _hasLock = true;
+    rp.listen(_heartbeatListener);
+    _logger.info('Lock acquired successfully');
+    return true;
+  }
+
+  /// 检查锁是否已释放（通过心跳机制）
+  Future<void> _checkLockReleasedWithHeartbeat(final int lockTime) async {
+    SendPort? other = IsolateNameServer.lookupPortByName(_portNameLock);
+    if (other != null) {
+      final ReceivePort tempRp = ReceivePort();
+      final SendPort tempSp = tempRp.sendPort;
+      final bs = tempRp.asBroadcastStream();
+      
+      while (_wantsLockTime == lockTime) {
+        other.send(tempSp);
+        final dynamic answer = await bs.first.timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+        
+        if (_wantsLockTime != lockTime) {
+          break;
+        }
+        
+        if (answer == null) {
+          // 其他 isolate 没有响应，假设它已退出但没有释放锁
+          if (other == IsolateNameServer.lookupPortByName(_portNameLock)) {
+            IsolateNameServer.removePortNameMapping(_portNameLock);
+          }
+          break;
+        } else if (answer == true) {
+          // 其他 isolate 释放了锁
+          break;
+        } else if (answer == false) {
+          // 其他 isolate 仍在运行
+        }
+        
+        final dynamic isFinished = await bs.first.timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => false,
+        );
+        if (isFinished == true) {
+          break;
+        }
+      }
+      tempRp.close();
+    }
+  }
+
+  /// 心跳监听器
+  void _heartbeatListener(dynamic msg) {
+    if (msg is SendPort) {
+      _waitingIsolate = msg;
+      msg.send(false); // 表示仍在运行
+    }
+  }
+
+  /// 释放锁
+  void releaseLock() {
+    _wantsLockTime = 0;
+    if (_hasLock) {
+      IsolateNameServer.removePortNameMapping(_portNameLock);
+      _waitingIsolate?.send(true); // 通知等待的 isolate 锁已释放
+      _waitingIsolate = null;
+      _hasLock = false;
+      _logger.info('Lock released');
+    }
+    _rp?.close();
+    _rp = null;
   }
 
   /// 清理资源
@@ -582,8 +752,11 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
       _uploadService = null;
       _database = null;
       _totalTaskCount = 0;
+      
+      // 6. 释放锁（如果还有）
+      releaseLock();
 
-      // 6. 通知原生层任务完成
+      // 7. 通知原生层任务完成
       await _backgroundHostApi.onCompleted();
 
       _logger.info('Background worker resources cleaned up');

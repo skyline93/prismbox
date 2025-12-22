@@ -144,6 +144,16 @@ class BackgroundWorker: BackgroundWorkerBgHostApi {
     }
     
     /**
+     * 检查内容是否已变化（Android 专用）
+     * iOS 上总是返回 false，因为 iOS 使用不同的机制
+     */
+    func hasContentChanged() throws -> Bool {
+        // iOS 不需要这个功能，因为 iOS 使用 BGTaskScheduler 来调度任务
+        // 而不是基于内容变化触发
+        return false
+    }
+    
+    /**
      * Cancels the currently running background task, either due to timeout or external request.
      * Sends a cancel signal to the Flutter side and sets up a fallback timer to ensure
      * the completion handler is eventually called even if Flutter doesn't respond.
@@ -170,7 +180,7 @@ class BackgroundWorker: BackgroundWorkerBgHostApi {
      *
      * - Parameter result: The result returned from a Flutter API call
      */
-    private func handleHostResult(result: Result<Void, PigeonError>) {
+    private func handleHostResult(result: Result<Void, BackgroundWorkerError>) {
         if isComplete {
             return
         }
@@ -178,7 +188,8 @@ class BackgroundWorker: BackgroundWorkerBgHostApi {
         switch result {
         case .success:
             complete(success: true)
-        case .failure:
+        case .failure(let error):
+            print("BackgroundWorker: Task failed with error: \(error.code) - \(error.message ?? "unknown")")
             complete(success: false)
         }
     }

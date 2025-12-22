@@ -1,5 +1,6 @@
 import BackgroundTasks
 import Flutter
+import Network
 
 class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
     
@@ -68,6 +69,12 @@ class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
     private static func scheduleProcessingWorker() {
         let backgroundProcessing = BGProcessingTaskRequest(identifier: processingTaskID)
         backgroundProcessing.requiresNetworkConnectivity = true
+        
+        // 检查是否需要充电
+        let defaults = UserDefaults.standard
+        let requireCharging = defaults.bool(forKey: "require_charging")
+        backgroundProcessing.requiresExternalPower = requireCharging
+        
         backgroundProcessing.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 分钟后
         
         do {
@@ -80,7 +87,36 @@ class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
     
     /// 处理刷新任务（短时间运行，约 30 秒）
     private static func handleBackgroundRefresh(task: BGAppRefreshTask) {
-        // 重新调度下一次刷新任务
+        // 先重新调度下一次刷新任务
+        scheduleRefreshWorker()
+        
+        // 检查充电状态
+        let defaults = UserDefaults.standard
+        let requireCharging = defaults.bool(forKey: "require_charging")
+        if requireCharging {
+            UIDevice.current.isBatteryMonitoringEnabled = true
+            if UIDevice.current.batteryState == .unplugged {
+                // 设备未充电且要求充电，直接完成任务
+                print("BackgroundWorkerApiImpl: Device is unplugged and charging is required, skipping refresh task")
+                task.setTaskCompleted(success: true)
+                return
+            }
+        }
+        
+        // 检查 WiFi 状态
+        let requireWifi = defaults.bool(forKey: "require_wifi")
+        if requireWifi {
+            let wifiMonitor = NWPathMonitor(requiredInterfaceType: .wifi)
+            let isExpensive = wifiMonitor.currentPath.isExpensive
+            if isExpensive {
+                // 网络是计费的且要求 WiFi，直接完成任务
+                print("BackgroundWorkerApiImpl: Network is expensive and WiFi is required, skipping refresh task")
+                task.setTaskCompleted(success: true)
+                return
+            }
+        }
+        
+        // 再次重新调度（Immich 的做法）
         scheduleRefreshWorker()
         
         // 使用信号量防止并发执行（带超时，避免无限等待）
@@ -96,8 +132,34 @@ class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
     
     /// 处理处理任务（长时间运行，系统决定何时终止）
     private static func handleBackgroundProcessing(task: BGProcessingTask) {
-        // 重新调度下一次处理任务
+        // 先重新调度下一次处理任务
         scheduleProcessingWorker()
+        
+        // 检查充电状态
+        let defaults = UserDefaults.standard
+        let requireCharging = defaults.bool(forKey: "require_charging")
+        if requireCharging {
+            UIDevice.current.isBatteryMonitoringEnabled = true
+            if UIDevice.current.batteryState == .unplugged {
+                // 设备未充电且要求充电，直接完成任务
+                print("BackgroundWorkerApiImpl: Device is unplugged and charging is required, skipping processing task")
+                task.setTaskCompleted(success: true)
+                return
+            }
+        }
+        
+        // 检查 WiFi 状态
+        let requireWifi = defaults.bool(forKey: "require_wifi")
+        if requireWifi {
+            let wifiMonitor = NWPathMonitor(requiredInterfaceType: .wifi)
+            let isExpensive = wifiMonitor.currentPath.isExpensive
+            if isExpensive {
+                // 网络是计费的且要求 WiFi，直接完成任务
+                print("BackgroundWorkerApiImpl: Network is expensive and WiFi is required, skipping processing task")
+                task.setTaskCompleted(success: true)
+                return
+            }
+        }
         
         // 使用信号量防止并发执行（带超时，避免无限等待）
         // 如果另一个任务正在运行，等待最多 5 秒

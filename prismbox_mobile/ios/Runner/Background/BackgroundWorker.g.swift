@@ -11,25 +11,11 @@ import Foundation
   #error("Unsupported platform.")
 #endif
 
-/// Error class for Pigeon communication
-struct PigeonError: Error {
-  let code: String
-  let message: String?
-  let details: String?
-}
-
 private func wrapResult(_ result: Any?) -> [Any?] {
   return [result]
 }
 
 private func wrapError(_ error: Any) -> [Any?] {
-  if let pigeonError = error as? PigeonError {
-    return [
-      pigeonError.code,
-      pigeonError.message,
-      pigeonError.details,
-    ]
-  }
   if let flutterError = error as? FlutterError {
     return [
       flutterError.code,
@@ -44,8 +30,27 @@ private func wrapError(_ error: Any) -> [Any?] {
   ]
 }
 
-private func createConnectionError(withChannelName channelName: String) -> PigeonError {
-  return PigeonError(code: "channel-error", message: "Unable to establish connection on channel: '\(channelName)'.", details: "")
+/// 错误类型，用于包装 FlutterError 以符合 Error 协议
+struct BackgroundWorkerError: Error {
+  let code: String
+  let message: String?
+  let details: Any?
+  
+  init(code: String, message: String?, details: Any?) {
+    self.code = code
+    self.message = message
+    self.details = details
+  }
+  
+  init(flutterError: FlutterError) {
+    self.code = flutterError.code
+    self.message = flutterError.message
+    self.details = flutterError.details
+  }
+}
+
+private func createConnectionError(withChannelName channelName: String) -> BackgroundWorkerError {
+  return BackgroundWorkerError(code: "channel-error", message: "Unable to establish connection on channel: '\(channelName)'.", details: nil)
 }
 
 private func isNullish(_ value: Any?) -> Bool {
@@ -241,6 +246,9 @@ protocol BackgroundWorkerBgHostApi {
   /// [totalCount] - 总数量
   /// [currentFileName] - 当前文件名（可选）
   func updateProgress(uploadedCount: Int64, totalCount: Int64, currentFileName: String?) throws
+  /// 检查内容是否已变化（Android 专用）
+  /// 返回 true 表示在备份执行期间有新内容变化
+  func hasContentChanged() throws -> Bool
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -300,6 +308,21 @@ class BackgroundWorkerBgHostApiSetup {
     } else {
       updateProgressChannel.setMessageHandler(nil)
     }
+    /// 检查内容是否已变化（Android 专用）
+    /// 返回 true 表示在备份执行期间有新内容变化
+    let hasContentChangedChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.prismbox.BackgroundWorkerBgHostApi.hasContentChanged\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      hasContentChangedChannel.setMessageHandler { _, reply in
+        do {
+          let result = try api.hasContentChanged()
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      hasContentChangedChannel.setMessageHandler(nil)
+    }
   }
 }
 /// Flutter API
@@ -310,11 +333,11 @@ protocol BackgroundWorkerFlutterApiProtocol {
   /// iOS 专用：iOS 后台上传触发
   /// [isRefresh] - 是否为刷新任务（BGAppRefreshTask）
   /// [maxSeconds] - 最大执行时间（秒），BGProcessingTask 使用
-  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, PigeonError>) -> Void)
+  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void)
   /// Android 专用：Android 后台上传触发
-  func onAndroidUpload(completion: @escaping (Result<Void, PigeonError>) -> Void)
+  func onAndroidUpload(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void)
   /// 取消任务
-  func cancel(completion: @escaping (Result<Void, PigeonError>) -> Void)
+  func cancel(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void)
 }
 class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
   private let binaryMessenger: FlutterBinaryMessenger
@@ -329,7 +352,7 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
   /// iOS 专用：iOS 后台上传触发
   /// [isRefresh] - 是否为刷新任务（BGAppRefreshTask）
   /// [maxSeconds] - 最大执行时间（秒），BGProcessingTask 使用
-  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, PigeonError>) -> Void) {
+  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void) {
     let channelName: String = "dev.flutter.pigeon.prismbox.BackgroundWorkerFlutterApi.onIosUpload\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage([isRefreshArg, maxSecondsArg] as [Any?]) { response in
@@ -341,14 +364,14 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
         let code: String = listResponse[0] as! String
         let message: String? = nilOrValue(listResponse[1])
         let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(PigeonError(code: code, message: message, details: details)))
+        completion(.failure(BackgroundWorkerError(code: code, message: message, details: details)))
       } else {
         completion(.success(Void()))
       }
     }
   }
   /// Android 专用：Android 后台上传触发
-  func onAndroidUpload(completion: @escaping (Result<Void, PigeonError>) -> Void) {
+  func onAndroidUpload(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void) {
     let channelName: String = "dev.flutter.pigeon.prismbox.BackgroundWorkerFlutterApi.onAndroidUpload\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage(nil) { response in
@@ -360,14 +383,14 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
         let code: String = listResponse[0] as! String
         let message: String? = nilOrValue(listResponse[1])
         let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(PigeonError(code: code, message: message, details: details)))
+        completion(.failure(BackgroundWorkerError(code: code, message: message, details: details)))
       } else {
         completion(.success(Void()))
       }
     }
   }
   /// 取消任务
-  func cancel(completion: @escaping (Result<Void, PigeonError>) -> Void) {
+  func cancel(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void) {
     let channelName: String = "dev.flutter.pigeon.prismbox.BackgroundWorkerFlutterApi.cancel\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage(nil) { response in
@@ -379,7 +402,7 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
         let code: String = listResponse[0] as! String
         let message: String? = nilOrValue(listResponse[1])
         let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(PigeonError(code: code, message: message, details: details)))
+        completion(.failure(BackgroundWorkerError(code: code, message: message, details: details)))
       } else {
         completion(.success(Void()))
       }

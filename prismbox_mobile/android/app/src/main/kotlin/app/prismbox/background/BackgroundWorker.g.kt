@@ -38,18 +38,6 @@ private fun createConnectionError(channelName: String): FlutterError {
   return FlutterError("channel-error",  "Unable to establish connection on channel: '$channelName'.", "")}
 
 /**
- * Error class for passing custom error details to Flutter via a thrown PlatformException.
- * @property code The error code.
- * @property message The error message.
- * @property details The error details. Must be a datatype supported by the api codec.
- */
-class FlutterError (
-  val code: String,
-  override val message: String? = null,
-  val details: Any? = null
-) : Throwable()
-
-/**
  * 后台任务配置设置
  *
  * Generated class from Pigeon that represents data sent in messages.
@@ -235,6 +223,11 @@ interface BackgroundWorkerBgHostApi {
    * [currentFileName] - 当前文件名（可选）
    */
   fun updateProgress(uploadedCount: Long, totalCount: Long, currentFileName: String?)
+  /**
+   * 检查内容是否已变化（Android 专用）
+   * 返回 true 表示在备份执行期间有新内容变化
+   */
+  fun hasContentChanged(): Boolean
 
   companion object {
     /** The codec used by BackgroundWorkerBgHostApi. */
@@ -288,6 +281,21 @@ interface BackgroundWorkerBgHostApi {
             val wrapped: List<Any?> = try {
               api.updateProgress(uploadedCountArg, totalCountArg, currentFileNameArg)
               listOf(null)
+            } catch (exception: Throwable) {
+              wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.prismbox.BackgroundWorkerBgHostApi.hasContentChanged$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.hasContentChanged())
             } catch (exception: Throwable) {
               wrapError(exception)
             }

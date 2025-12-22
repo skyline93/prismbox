@@ -9,9 +9,11 @@ import android.os.Build
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
+import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
+import androidx.concurrent.futures.ResolvableFuture
+import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -19,9 +21,8 @@ import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.embedding.engine.loader.FlutterLoader
 import android.os.Handler
 import android.os.Looper
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.withTimeoutOrNull
+import android.os.SystemClock
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * 后台备份 Worker
@@ -34,11 +35,12 @@ import kotlinx.coroutines.withTimeoutOrNull
  * - 注册 Pigeon API
  * - 启动后台任务入口点
  * - 管理 Engine 生命周期
+ * - 处理系统强制停止
  */
 class BackupWorker(
     context: Context,
     params: WorkerParameters
-) : CoroutineWorker(context, params), BackgroundWorkerBgHostApi {
+) : ListenableWorker(context, params), BackgroundWorkerBgHostApi, MethodChannel.MethodCallHandler {
 
     companion object {
         private const val TAG = "BackupWorker"
@@ -64,11 +66,20 @@ class BackupWorker(
     /// Flutter API（用于调用 Flutter 侧方法）
     private var flutterApi: BackgroundWorkerFlutterApi? = null
     
-    /// 任务完成信号
-    private var taskCompleted = CompletableDeferred<Result>()
+    /// 后台通信通道
+    private var backgroundChannel: MethodChannel? = null
+    
+    /// 任务完成 Future
+    private val resolvableFuture = ResolvableFuture.create<Result>()
     
     /// 是否已初始化
     private var isInitialized = false
+    
+    /// 备份开始时间
+    private var timeBackupStarted: Long = 0L
+    
+    /// 前台服务 Future（用于等待前台服务设置完成）
+    private var fgFuture: ListenableFuture<Void>? = null
     
     /// 通知管理器
     private val notificationManager = 
@@ -80,10 +91,10 @@ class BackupWorker(
     /// 通知构建器（复用以提高性能）
     private var notificationBuilder: NotificationCompat.Builder? = null
 
-    override suspend fun doWork(): Result {
+    override fun startWork(): ListenableFuture<Result> {
         Log.i(TAG, "Starting background backup worker")
 
-        return try {
+        try {
             // 1. 创建通知渠道
             createNotificationChannel()
             
@@ -98,17 +109,22 @@ class BackupWorker(
             
             // 如果忽略电池优化，将 Worker 提升为前台服务
             if (isIgnoringBatteryOptimizations) {
-                setForeground(
-                    ForegroundInfo(
-                        NOTIFICATION_ID,
-                        initialNotification,
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                fgFuture = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    setForegroundAsync(
+                        ForegroundInfo(
+                            NOTIFICATION_ID,
+                            initialNotification,
                             FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                        } else {
-                            0
-                        }
+                        )
                     )
-                )
+                } else {
+                    setForegroundAsync(
+                        ForegroundInfo(
+                            NOTIFICATION_ID,
+                            initialNotification
+                        )
+                    )
+                }
                 Log.i(TAG, "Backup worker promoted to foreground service")
             } else {
                 // 即使没有忽略电池优化，也显示通知（普通通知）
@@ -123,80 +139,134 @@ class BackupWorker(
                 loader.startInitialization(applicationContext)
             }
 
-            // 4. 等待 Flutter 初始化完成
-            loader.ensureInitializationComplete(applicationContext, null)
-
-            // 5. 创建独立的 Flutter Engine
-            engine = FlutterEngine(applicationContext)
-            
-            // 6. 将 Engine 添加到缓存
-            FlutterEngineCache.getInstance().put(ENGINE_CACHE_KEY, engine!!)
-
-            // 7. 注册插件
-            // 注册必要的插件到后台 Engine
-            com.u163.glf9832.prismbox.MainActivity.registerPlugins(applicationContext, engine!!)
-
-            // 8. 设置 Pigeon API
-            flutterApi = BackgroundWorkerFlutterApi(
-                binaryMessenger = engine!!.dartExecutor.binaryMessenger
-            )
-            BackgroundWorkerBgHostApi.setUp(
-                binaryMessenger = engine!!.dartExecutor.binaryMessenger,
-                api = this
-            )
-
-            // 9. 启动 Dart 入口点
-            engine!!.dartExecutor.executeDartEntrypoint(
-                DartExecutor.DartEntrypoint(
-                    loader.findAppBundlePath(),
-                    ENTRY_POINT_LIBRARY,
-                    ENTRY_POINT_FUNCTION
-                )
-            )
-
-            // 10. 等待任务完成
-            // 注意：实际的任务执行在 Flutter 侧，通过 onInitialized() 触发
-            // 任务完成后通过 onCompleted() 通知，这里等待任务完成信号
-            return taskCompleted.await()
-            
+            // 4. 等待 Flutter 初始化完成（异步）
+            loader.ensureInitializationCompleteAsync(
+                applicationContext,
+                null,
+                Handler(Looper.getMainLooper())
+            ) {
+                runDart()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Background backup worker failed", e)
-            if (!taskCompleted.isCompleted) {
-                taskCompleted.complete(Result.failure())
+            if (!resolvableFuture.isDone) {
+                resolvableFuture.set(Result.failure())
             }
-            return taskCompleted.await()
-        } finally {
-            // 清理资源
-            cleanup()
+        }
+
+        return resolvableFuture
+    }
+    
+    /**
+     * 启动 Dart 运行时/引擎并调用入口点函数
+     */
+    private fun runDart() {
+        val loader = FlutterInjector.instance().flutterLoader()
+        
+        // 创建独立的 Flutter Engine
+        engine = FlutterEngine(applicationContext)
+        
+        // 将 Engine 添加到缓存
+        FlutterEngineCache.getInstance().put(ENGINE_CACHE_KEY, engine!!)
+
+        // 注册插件
+        com.u163.glf9832.prismbox.MainActivity.registerPlugins(applicationContext, engine!!)
+
+        // 设置后台通信通道
+        backgroundChannel = MethodChannel(engine!!.dartExecutor, "prismbox/backgroundChannel")
+        backgroundChannel?.setMethodCallHandler(this)
+
+        // 设置 Pigeon API
+        flutterApi = BackgroundWorkerFlutterApi(
+            binaryMessenger = engine!!.dartExecutor.binaryMessenger
+        )
+        BackgroundWorkerBgHostApi.setUp(
+            binaryMessenger = engine!!.dartExecutor.binaryMessenger,
+            api = this
+        )
+
+        // 启动 Dart 入口点
+        engine!!.dartExecutor.executeDartEntrypoint(
+            DartExecutor.DartEntrypoint(
+                loader.findAppBundlePath(),
+                ENTRY_POINT_LIBRARY,
+                ENTRY_POINT_FUNCTION
+            )
+        )
+    }
+    
+    /**
+     * 处理系统强制停止
+     */
+    override fun onStopped() {
+        Log.d(TAG, "onStopped - system is stopping the worker")
+        // 当系统需要停止此 worker 时调用（约束不再满足或系统需要资源）
+        Handler(Looper.getMainLooper()).postAtFrontOfQueue {
+            backgroundChannel?.invokeMethod("systemStop", null)
+        }
+        waitOnSetForegroundAsync()
+        // 不能 await/get(block) resolvableFuture，因为它已经被取消（会抛出 CancellationException）
+        // 相反，等待 5 秒后强制停止备份工作
+        Handler(Looper.getMainLooper()).postDelayed({
+            stopEngine(null)
+        }, 5000)
+    }
+    
+    /**
+     * 等待前台服务设置完成
+     */
+    private fun waitOnSetForegroundAsync() {
+        val fg = this.fgFuture
+        if (fg != null && !fg.isCancelled && !fg.isDone) {
+            try {
+                fg.get(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+            } catch (e: Exception) {
+                // 忽略，没有需要做的
+            }
+        }
+    }
+    
+    /**
+     * 停止引擎并设置结果
+     */
+    private fun stopEngine(result: Result?) {
+        clearBackgroundNotification()
+        engine?.destroy()
+        engine = null
+        backgroundChannel = null
+        if (result != null) {
+            Log.d(TAG, "stopEngine result=${result}")
+            if (!resolvableFuture.isDone) {
+                resolvableFuture.set(result)
+            }
+        }
+        waitOnSetForegroundAsync()
+    }
+    
+    /**
+     * 清除后台通知
+     */
+    private fun clearBackgroundNotification() {
+        notificationManager.cancel(NOTIFICATION_ID)
+    }
+    
+    /**
+     * 处理后台通道的方法调用
+     */
+    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "systemStop" -> {
+                Log.d(TAG, "Received systemStop from Flutter")
+                // 通知 Flutter 侧取消任务
+                flutterApi?.cancel { _ ->
+                    // 忽略结果
+                }
+                result.success(null)
+            }
+            else -> result.notImplemented()
         }
     }
 
-    /// 清理资源
-    private fun cleanup() {
-        try {
-            Log.i(TAG, "Cleaning up background worker resources")
-
-            // 取消通知
-            notificationManager.cancel(NOTIFICATION_ID)
-
-            // 从缓存中移除 Engine
-            FlutterEngineCache.getInstance().remove(ENGINE_CACHE_KEY)
-
-            // 销毁 Engine
-            engine?.destroy()
-            engine = null
-
-            // 清理 Flutter API
-            flutterApi = null
-
-            // 清理通知构建器
-            notificationBuilder = null
-
-            Log.i(TAG, "Background worker resources cleaned up")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error during cleanup", e)
-        }
-    }
 
     /**
      * BackgroundWorkerBgHostApi 接口实现
@@ -209,6 +279,7 @@ class BackupWorker(
         }
         
         isInitialized = true
+        timeBackupStarted = SystemClock.uptimeMillis()
         Log.i(TAG, "Background worker initialized, starting upload")
         
         // 调用 Flutter 侧的上传方法
@@ -216,14 +287,14 @@ class BackupWorker(
             result.fold(
                 onSuccess = {
                     Log.i(TAG, "Android upload completed successfully")
-                    if (!taskCompleted.isCompleted) {
-                        taskCompleted.complete(Result.success())
+                    if (!resolvableFuture.isDone) {
+                        resolvableFuture.set(Result.success())
                     }
                 },
                 onFailure = { exception ->
                     Log.e(TAG, "Android upload failed", exception)
-                    if (!taskCompleted.isCompleted) {
-                        taskCompleted.complete(Result.failure())
+                    if (!resolvableFuture.isDone) {
+                        resolvableFuture.set(Result.failure())
                     }
                 }
             )
@@ -232,9 +303,23 @@ class BackupWorker(
 
     override fun onCompleted() {
         Log.i(TAG, "Background worker task completed")
-        if (!taskCompleted.isCompleted) {
-            taskCompleted.complete(Result.success())
+        if (!resolvableFuture.isDone) {
+            resolvableFuture.set(Result.success())
         }
+    }
+    
+    override fun hasContentChanged(): Boolean {
+        val prefs = applicationContext.getSharedPreferences(
+            BackgroundWorkerPreferences.SHARED_PREF_NAME,
+            Context.MODE_PRIVATE
+        )
+        val lastChange = prefs.getLong(
+            BackgroundWorkerPreferences.SHARED_PREF_LAST_CHANGE,
+            timeBackupStarted
+        )
+        val hasContentChanged = lastChange > timeBackupStarted
+        timeBackupStarted = SystemClock.uptimeMillis()
+        return hasContentChanged
     }
 
     override fun updateProgress(
