@@ -6,8 +6,10 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
+import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
@@ -69,6 +71,7 @@ class BackgroundWorkerApiImpl(private val context: Context) : BackgroundWorkerFg
     companion object {
         private const val BACKGROUND_WORKER_NAME = "prismbox/BackgroundWorkerV1"
         private const val OBSERVER_WORKER_NAME = "prismbox/MediaObserverV1"
+        private const val PERIODIC_WORKER_NAME = "prismbox/PeriodicWorkerV1"
         const val ENGINE_CACHE_KEY = "prismbox_background_worker_engine"
 
         /// 启用媒体观察器 Worker

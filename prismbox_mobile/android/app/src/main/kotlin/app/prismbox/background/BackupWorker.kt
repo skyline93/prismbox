@@ -22,6 +22,7 @@ import io.flutter.embedding.engine.loader.FlutterLoader
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 /**
