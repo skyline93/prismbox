@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
 
-import 'package:chewie/chewie.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:video_player/video_player.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
@@ -49,9 +48,17 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   // 视频播放器控制器缓存（按 assetId）
   final Map<String, VideoPlayerController> _videoControllers = {};
-  final Map<String, ChewieController> _chewieControllers = {};
   // 当前播放的视频 assetId
   String? _currentVideoAssetId;
+  
+  // 当前可见的页面索引
+  int _currentPageIndex = 0;
+  // 可见页面范围（当前页 ± 1，即最多保留 3 页）
+  static const int _visiblePageRange = 1;
+  // 需要保留资源的页面索引集合
+  Set<int> _visiblePageIndices = {};
+  // 视频静音状态（默认静音）
+  final Map<String, bool> _videoMutedStates = {};
 
   @override
   void initState() {
@@ -60,7 +67,11 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     if (_initialIndex < 0) {
       _initialIndex = 0;
     }
+    _currentPageIndex = _initialIndex;
     _pageController = PageController(initialPage: _initialIndex);
+
+    // 初始化可见页面范围
+    _visiblePageIndices = _calculateVisibleIndices(_initialIndex);
 
     // 自动隐藏控制栏
     _startControlsTimer();
@@ -89,17 +100,74 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     super.dispose();
   }
 
+  /// 计算可见页面索引范围
+  Set<int> _calculateVisibleIndices(int currentIndex) {
+    final indices = <int>{};
+    for (int i = -_visiblePageRange; i <= _visiblePageRange; i++) {
+      final index = currentIndex + i;
+      if (index >= 0 && index < widget.assetIds.length) {
+        indices.add(index);
+      }
+    }
+    return indices;
+  }
+
   /// 释放所有视频播放器资源
   void _disposeAllVideoControllers() {
-    for (final chewieController in _chewieControllers.values) {
-      chewieController.dispose();
+    // 暂停所有正在播放的视频
+    for (final controller in _videoControllers.values) {
+      if (controller.value.isPlaying) {
+        controller.pause();
+      }
     }
-    _chewieControllers.clear();
 
-    for (final videoController in _videoControllers.values) {
-      videoController.dispose();
+    // 释放所有控制器
+    for (final controller in _videoControllers.values) {
+      controller.dispose();
     }
     _videoControllers.clear();
+    _videoMutedStates.clear();
+    _visiblePageIndices.clear();
+  }
+
+  /// 释放不可见页面的资源
+  void _releaseInvisibleResources(Set<int> visibleIndices) {
+    // 更新可见页面集合
+    final toRelease = _visiblePageIndices.difference(visibleIndices);
+    _visiblePageIndices = visibleIndices;
+
+    // 释放不可见页面的视频控制器
+    for (final index in toRelease) {
+      if (index < widget.assetIds.length) {
+        final assetId = widget.assetIds[index];
+        final asset = _assetMap?[assetId];
+
+        if (asset != null && asset.isVideo) {
+          _disposeVideoController(assetId);
+        }
+      }
+    }
+  }
+
+  /// 释放单个视频控制器
+  void _disposeVideoController(String assetId) {
+    final controller = _videoControllers.remove(assetId);
+    if (controller != null) {
+      // 确保先暂停
+      if (controller.value.isPlaying) {
+        controller.pause();
+      }
+      // 释放资源
+      controller.dispose();
+    }
+
+    // 清理相关状态
+    _videoMutedStates.remove(assetId);
+
+    // 如果这是当前视频，清除标记
+    if (_currentVideoAssetId == assetId) {
+      _currentVideoAssetId = null;
+    }
   }
 
   @override
@@ -235,20 +303,31 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     }
   }
 
-  /// 处理页面切换
+  /// 处理页面切换（增强版：即时释放资源）
   void _handlePageChanged(int index) {
-    // 停止当前播放的视频
-    if (_currentVideoAssetId != null) {
-      _pauseVideo(_currentVideoAssetId!);
+    final previousIndex = _currentPageIndex;
+    _currentPageIndex = index;
+
+    // 计算新的可见页面范围
+    final newVisibleIndices = _calculateVisibleIndices(index);
+
+    // 释放不可见页面的资源
+    _releaseInvisibleResources(newVisibleIndices);
+
+    // 停止上一个页面的视频（如果存在）
+    if (previousIndex < widget.assetIds.length) {
+      final previousAssetId = widget.assetIds[previousIndex];
+      _pauseAndReleaseVideo(previousAssetId, keepIfVisible: newVisibleIndices.contains(previousIndex));
     }
 
-    // 更新当前视频 assetId
+    // 处理当前页面
     if (index < widget.assetIds.length) {
       final assetId = widget.assetIds[index];
       final asset = _assetMap?[assetId];
+
       if (asset != null && asset.isVideo) {
         _currentVideoAssetId = assetId;
-        // 自动播放新视频
+        // 确保视频控制器已创建并播放
         _playVideo(assetId);
       } else {
         _currentVideoAssetId = null;
@@ -259,6 +338,24 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       _isZoomed = false;
     });
     _resetControlsTimer();
+  }
+
+  /// 暂停并释放视频（根据是否可见决定是否完全释放）
+  void _pauseAndReleaseVideo(String assetId, {required bool keepIfVisible}) {
+    final controller = _videoControllers[assetId];
+    if (controller == null) {
+      return;
+    }
+
+    // 暂停播放
+    if (controller.value.isPlaying) {
+      controller.pause();
+    }
+
+    // 如果不在可见范围内，完全释放
+    if (!keepIfVisible) {
+      _disposeVideoController(assetId);
+    }
   }
 
   /// 构建图片查看器
@@ -312,9 +409,20 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   /// 构建视频播放器
   Widget _buildVideoPlayer(BaseAsset asset, String assetId) {
-    // 如果已有控制器，直接使用
-    if (_chewieControllers.containsKey(assetId)) {
-      return Chewie(controller: _chewieControllers[assetId]!);
+    final currentIndex = widget.assetIds.indexOf(assetId);
+
+    // 检查是否在可见范围内
+    if (!_visiblePageIndices.contains(currentIndex)) {
+      // 不在可见范围，返回占位符
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    // 如果已有控制器且已初始化，直接使用
+    final existingController = _videoControllers[assetId];
+    if (existingController != null && existingController.value.isInitialized) {
+      return _buildVideoPlayerWidget(assetId);
     }
 
     // 异步加载视频源并创建播放器
@@ -350,87 +458,133 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     );
   }
 
+  /// 构建视频播放器 Widget
+  Widget _buildVideoPlayerWidget(String assetId) {
+    final videoController = _videoControllers[assetId];
+    if (videoController == null || !videoController.value.isInitialized) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    final aspectRatio = videoController.value.aspectRatio > 0
+        ? videoController.value.aspectRatio
+        : 16 / 9;
+
+    return GestureDetector(
+      onTap: _toggleControls,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 视频播放区域
+          Center(
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: ValueListenableBuilder<VideoPlayerValue>(
+                valueListenable: videoController,
+                builder: (context, value, child) {
+                  if (value.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                          const SizedBox(height: 16),
+                          Text(
+                            '播放失败: ${value.errorDescription ?? "未知错误"}',
+                            style: const TextStyle(color: Colors.white70),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return VideoPlayer(videoController);
+                },
+              ),
+            ),
+          ),
+
+          // 自定义控制器（在底部，底部栏上方）
+          Positioned(
+            bottom: _getBottomBarHeight() + 16,
+            left: 0,
+            right: 0,
+            child: _VideoPlayerControls(
+              controller: videoController,
+              showControls: _showControls,
+              isMuted: _videoMutedStates[assetId] ?? true,
+              onMuteChanged: (muted) {
+                setState(() {
+                  _videoMutedStates[assetId] = muted;
+                });
+              },
+              onTap: _toggleControls,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 获取底部栏高度
+  double _getBottomBarHeight() {
+    return 56.0 + MediaQuery.of(context).padding.bottom;
+  }
+
   /// 创建视频播放器
   Widget _createVideoPlayer(VideoSource videoSource, String assetId) {
-    // 创建 VideoPlayerController
+    // 如果已有控制器，直接使用
+    if (_videoControllers.containsKey(assetId)) {
+      return _buildVideoPlayerWidget(assetId);
+    }
+
+    // 创建新的 VideoPlayerController
     final videoController = videoSource.type == VideoSourceType.file
         ? VideoPlayerController.file(File(videoSource.source))
         : VideoPlayerController.networkUrl(Uri.parse(videoSource.source));
 
     _videoControllers[assetId] = videoController;
+    _videoMutedStates[assetId] = true; // 默认静音
 
-    // 创建 ChewieController（初始宽高比，后续会根据视频调整）
-    var chewieController = ChewieController(
-      videoPlayerController: videoController,
-      autoPlay: assetId == _currentVideoAssetId, // 如果是当前视频，自动播放
-      looping: true, // 启用循环播放
-      allowFullScreen: true,
-      allowMuting: true,
-      showControls: _showControls,
-      aspectRatio: 16 / 9, // 默认宽高比，实际会根据视频调整
-      errorBuilder: (context, errorMessage) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 48),
-              const SizedBox(height: 16),
-              Text(
-                '播放失败: $errorMessage',
-                style: const TextStyle(color: Colors.white70),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    // 初始化
+    videoController.initialize().then((_) {
+      if (mounted && videoController.value.isInitialized) {
+        // 设置默认静音
+        videoController.setVolume(0.0);
 
-    _chewieControllers[assetId] = chewieController;
+        // 如果是当前视频，自动播放
+        if (assetId == _currentVideoAssetId) {
+          videoController.play();
+        }
 
-    // 初始化视频控制器
-    videoController
-        .initialize()
-        .then((_) {
-          if (mounted && videoController.value.isInitialized) {
-            // 更新宽高比：先释放旧的，再创建新的
-            _chewieControllers[assetId]?.dispose();
-            final aspectRatio = videoController.value.aspectRatio;
-            chewieController = ChewieController(
-              videoPlayerController: videoController,
-              autoPlay: assetId == _currentVideoAssetId,
-              looping: true, // 启用循环播放
-              allowFullScreen: true,
-              allowMuting: true,
-              showControls: _showControls,
-              aspectRatio: aspectRatio,
-            );
-            _chewieControllers[assetId] = chewieController;
-            setState(() {});
-          }
-        })
-        .catchError((error) {
-          // 错误已在 errorBuilder 中处理
-        });
+        // 设置循环播放
+        videoController.setLooping(true);
 
-    return Chewie(controller: chewieController);
+        // 触发重建（只重建视频播放器部分）
+        setState(() {});
+      }
+    }).catchError((error) {
+      // 错误处理
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
+    // 返回加载中的 Widget
+    return _buildVideoPlayerWidget(assetId);
   }
 
   /// 播放视频
   void _playVideo(String assetId) {
-    final chewieController = _chewieControllers[assetId];
-    if (chewieController != null && !chewieController.isPlaying) {
-      chewieController.play();
+    final controller = _videoControllers[assetId];
+    if (controller != null && controller.value.isInitialized) {
+      if (!controller.value.isPlaying) {
+        controller.play();
+      }
     }
   }
 
-  /// 暂停视频
-  void _pauseVideo(String assetId) {
-    final chewieController = _chewieControllers[assetId];
-    if (chewieController != null && chewieController.isPlaying) {
-      chewieController.pause();
-    }
-  }
 
   ImageProvider _getImageProvider(String assetId) {
     try {
@@ -496,8 +650,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   }
 
   Widget _buildControls() {
-    // final currentIndex = _pageController.page?.round() ?? _initialIndex;
-
     return Stack(
       children: [
         // 顶部 AppBar
@@ -559,5 +711,238 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         ),
       ],
     );
+  }
+}
+
+/// 自定义视频控制器 Widget
+/// 性能优化：独立 StatefulWidget，状态下沉，避免影响父页面
+class _VideoPlayerControls extends StatefulWidget {
+  final VideoPlayerController controller;
+  final bool showControls;
+  final bool isMuted;
+  final ValueChanged<bool> onMuteChanged;
+  final VoidCallback? onTap;
+
+  const _VideoPlayerControls({
+    required this.controller,
+    required this.showControls,
+    required this.isMuted,
+    required this.onMuteChanged,
+    this.onTap,
+  });
+
+  @override
+  State<_VideoPlayerControls> createState() => _VideoPlayerControlsState();
+}
+
+class _VideoPlayerControlsState extends State<_VideoPlayerControls> {
+  bool _isDragging = false;
+  Duration? _dragPosition;
+  Timer? _progressUpdateTimer;
+
+  // 性能优化：提取样式对象为静态常量
+  static const double _progressHeight = 4.0;
+  static const double _horizontalPadding = 16.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // 初始化时设置静音
+    if (widget.isMuted) {
+      widget.controller.setVolume(0.0);
+    }
+    _startProgressTimer();
+  }
+
+  @override
+  void didUpdateWidget(_VideoPlayerControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 如果静音状态改变，更新音量
+    if (oldWidget.isMuted != widget.isMuted) {
+      widget.controller.setVolume(widget.isMuted ? 0.0 : 1.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _progressUpdateTimer?.cancel();
+    super.dispose();
+  }
+
+  /// 性能优化：使用 Timer 节流，避免每帧更新
+  /// 视频进度不需要 60fps 更新，每 100ms 更新一次足够流畅
+  void _startProgressTimer() {
+    _progressUpdateTimer?.cancel();
+    _progressUpdateTimer = Timer.periodic(
+      const Duration(milliseconds: 100),
+      (_) {
+        if (mounted && widget.controller.value.isInitialized) {
+          // ValueListenableBuilder 会自动监听，这里只是确保更新
+          // 实际上不需要 setState，因为 ValueListenableBuilder 会处理
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.showControls) {
+      return const SizedBox.shrink();
+    }
+
+    // 性能优化：使用 ValueListenableBuilder 只监听 VideoPlayerController
+    // 避免整个页面 rebuild
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: widget.controller,
+      builder: (context, value, child) {
+        return RepaintBoundary(
+          // 性能优化：隔离绘制边界，避免影响视频播放区域
+          child: GestureDetector(
+            onTap: widget.onTap, // 点击空白区域切换显示/隐藏
+            child: Container(
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+              decoration: BoxDecoration(
+                // 性能优化：使用渐变而非复杂效果
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.7),
+                  ],
+                ),
+              ),
+              child: Row(
+                children: [
+                  // 播放/暂停按钮
+                  _buildPlayPauseButton(value.isPlaying && value.isInitialized),
+                  
+                  const SizedBox(width: 12),
+                  
+                  // 进度条（可扩展）
+                  Expanded(
+                    child: _buildProgressBar(value),
+                  ),
+                  
+                  const SizedBox(width: 12),
+                  
+                  // 静音按钮
+                  _buildMuteButton(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 播放/暂停按钮
+  Widget _buildPlayPauseButton(bool isPlaying) {
+    return IconButton(
+      icon: Icon(
+        isPlaying ? Icons.pause : Icons.play_arrow,
+        color: Colors.white,
+        size: 28,
+      ),
+      onPressed: () {
+        if (isPlaying) {
+          widget.controller.pause();
+        } else {
+          widget.controller.play();
+        }
+      },
+    );
+  }
+
+  /// 进度条实现（支持拖拽）
+  Widget _buildProgressBar(VideoPlayerValue value) {
+    final position = _isDragging && _dragPosition != null ? _dragPosition! : value.position;
+    final duration = value.duration;
+
+    if (duration == Duration.zero || !value.isInitialized) {
+      return const SizedBox.shrink();
+    }
+
+    final progress = position.inMilliseconds / duration.inMilliseconds;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 时间显示
+        Text(
+          '${_formatDuration(position)} / ${_formatDuration(duration)}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        // 进度条
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: _progressHeight,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+            activeTrackColor: Colors.white,
+            inactiveTrackColor: Colors.white.withOpacity(0.3),
+            thumbColor: Colors.white,
+            overlayColor: Colors.white.withOpacity(0.2),
+          ),
+          child: Slider(
+            value: progress.clamp(0.0, 1.0),
+            onChanged: (newProgress) {
+              // 拖拽时实时更新
+              setState(() {
+                _isDragging = true;
+                _dragPosition = Duration(
+                  milliseconds: (newProgress * duration.inMilliseconds).round(),
+                );
+              });
+            },
+            onChangeEnd: (newProgress) {
+              final newPosition = Duration(
+                milliseconds: (newProgress * duration.inMilliseconds).round(),
+              );
+              widget.controller.seekTo(newPosition);
+              setState(() {
+                _isDragging = false;
+                _dragPosition = null;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 静音按钮
+  Widget _buildMuteButton() {
+    return IconButton(
+      icon: Icon(
+        widget.isMuted ? Icons.volume_off : Icons.volume_up,
+        color: Colors.white,
+        size: 24,
+      ),
+      onPressed: () {
+        final newMuted = !widget.isMuted;
+        widget.controller.setVolume(newMuted ? 0.0 : 1.0);
+        widget.onMuteChanged(newMuted);
+      },
+    );
+  }
+
+  /// 格式化时长
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
   }
 }

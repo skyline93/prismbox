@@ -74,7 +74,6 @@ dependencies:
 
   # 视频播放器
   video_player: ^2.8.2
-  chewie: ^1.7.4
 
   # 本地相册资源访问
   photo_manager: ^3.7.1
