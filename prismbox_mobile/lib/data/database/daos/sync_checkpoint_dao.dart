@@ -39,10 +39,10 @@ class SyncCheckpointDao extends DatabaseAccessor<AppDatabase>
       await (update(syncCheckpointEntity)
             ..where((t) =>
                 t.userId.equals(userId) & t.syncType.equals(syncType)))
-          .write(SyncCheckpointEntityCompanion(
-            ack: Value(ack),
-            updatedAt: Value(now),
-          ));
+        .write(SyncCheckpointEntityCompanion(
+          ack: Value(ack),
+          updatedAt: Value(now),
+        ));
     } else {
       // 插入新记录，需要设置 createdAt 和 updatedAt
       await into(syncCheckpointEntity).insert(SyncCheckpointEntityCompanion(
@@ -51,6 +51,41 @@ class SyncCheckpointDao extends DatabaseAccessor<AppDatabase>
         ack: Value(ack),
         createdAt: Value(now),
         updatedAt: Value(now),
+      ));
+    }
+  }
+
+  /// 设置检查点并记录同步时间
+  Future<void> setCheckpointWithSyncTime(
+    String userId,
+    String syncType,
+    String ack,
+    DateTime syncTime,
+  ) async {
+    final now = DateTime.now();
+    
+    // 先尝试获取现有记录
+    final existing = await getCheckpoint(userId, syncType);
+    
+    if (existing != null) {
+      // 更新现有记录（更新 ack、updatedAt 和 lastSyncTime）
+      await (update(syncCheckpointEntity)
+            ..where((t) =>
+                t.userId.equals(userId) & t.syncType.equals(syncType)))
+        .write(SyncCheckpointEntityCompanion(
+          ack: Value(ack),
+          updatedAt: Value(now),
+          lastSyncTime: Value(syncTime),
+        ));
+    } else {
+      // 插入新记录
+      await into(syncCheckpointEntity).insert(SyncCheckpointEntityCompanion(
+        userId: Value(userId),
+        syncType: Value(syncType),
+        ack: Value(ack),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+        lastSyncTime: Value(syncTime),
       ));
     }
   }

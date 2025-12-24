@@ -11,7 +11,6 @@ import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
 import 'package:prismbox/services/backup/upload_task_manager.dart';
 import 'package:prismbox/services/backup/backup_config_validator.dart';
 import 'package:prismbox/services/backup/backup_service.dart';
-import 'package:prismbox/services/backup/background_sync_manager.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
 import 'package:prismbox/services/backup/auto_recovery_manager.dart';
 import 'package:prismbox/services/backup/network_optimizer.dart';
@@ -22,8 +21,11 @@ import 'package:prismbox/services/backup/task_factory.dart';
 import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
+// 使用新的同步模块 Provider
+import 'package:prismbox/services/sync/providers/sync_providers.dart' as sync;
+// 向后兼容：重新导出（通过兼容层）
 import 'package:prismbox/services/backup/asset_sync_service.dart';
-import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
+import 'package:prismbox/services/backup/background_sync_manager.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart' as infra;
 
@@ -61,14 +63,12 @@ Future<BackupCandidateSelector> backupCandidateSelector(
 }
 
 /// AssetSyncService Provider
+/// 
+/// 向后兼容：委托给新的同步模块 Provider
 @riverpod
 Future<AssetSyncService> assetSyncService(AssetSyncServiceRef ref) async {
-  final database = await ref.watch(infra.databaseProvider.future);
-  final apiService = ref.watch(infra.apiServiceProvider);
-  return AssetSyncService(
-    database: database,
-    apiService: apiService,
-  );
+  // 委托给新的同步模块 Provider
+  return await ref.watch(sync.assetSyncServiceProvider.future);
 }
 
 /// UploadOrchestrator Provider
@@ -185,20 +185,15 @@ Future<BackupService> backupService(BackupServiceRef ref) async {
 }
 
 /// BackgroundSyncManager Provider
+/// 
+/// 向后兼容：委托给新的同步模块 Provider
+/// 注意：新的 BackgroundSyncManager 不再需要 pathResolver 参数
 @riverpod
 Future<BackgroundSyncManager> backgroundSyncManager(
   BackgroundSyncManagerRef ref,
 ) async {
-  final database = await ref.watch(infra.databaseProvider.future);
-  final localSyncService = await ref.watch(localSyncServiceProvider.future);
-  final apiService = ref.watch(infra.apiServiceProvider);
-  final pathResolver = await ref.watch(assetPathResolverProvider.future);
-  return BackgroundSyncManager(
-    database: database,
-    localSyncService: localSyncService,
-    apiService: apiService,
-    pathResolver: pathResolver,
-  );
+  // 委托给新的同步模块 Provider
+  return await ref.watch(sync.backgroundSyncManagerProvider.future);
 }
 
 /// UploadTaskManager Provider

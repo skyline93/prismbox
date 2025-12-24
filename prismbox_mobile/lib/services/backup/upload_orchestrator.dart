@@ -16,7 +16,7 @@ import 'package:prismbox/services/backup/upload_task_manager.dart';
 import 'package:prismbox/services/backup/api_endpoint_validator.dart';
 import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
-import 'package:prismbox/services/backup/asset_sync_service.dart';
+import 'package:prismbox/services/sync/asset_sync_service.dart';
 import 'package:prismbox/services/backup/task_update_service.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
 import 'package:prismbox/utils/cancellation_token.dart';

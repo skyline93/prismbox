@@ -20,10 +20,10 @@ class CheckpointStore {
   }
 
   /// 获取检查点
-  /// 
+  ///
   /// [userId] 用户 ID
   /// [syncType] 同步类型（如 "assets_v1"）
-  /// 
+  ///
   /// 返回检查点 ID，如果不存在则返回 null
   Future<String?> getCheckpoint(String userId, String syncType) async {
     try {
@@ -36,15 +36,11 @@ class CheckpointStore {
   }
 
   /// 设置检查点
-  /// 
+  ///
   /// [userId] 用户 ID
   /// [syncType] 同步类型（如 "assets_v1"）
   /// [ack] 检查点 ID
-  Future<void> setCheckpoint(
-    String userId,
-    String syncType,
-    String ack,
-  ) async {
+  Future<void> setCheckpoint(String userId, String syncType, String ack) async {
     try {
       await _checkpointDao.setCheckpoint(userId, syncType, ack);
       _logger.fine('设置检查点成功: $syncType = $ack');
@@ -54,8 +50,50 @@ class CheckpointStore {
     }
   }
 
+  /// 设置检查点并记录同步时间
+  ///
+  /// [userId] 用户 ID
+  /// [syncType] 同步类型（如 "assets_v1"）
+  /// [ack] 检查点 ID
+  /// [syncTime] 同步完成时间
+  Future<void> setCheckpointWithSyncTime(
+    String userId,
+    String syncType,
+    String ack,
+    DateTime syncTime,
+  ) async {
+    try {
+      await _checkpointDao.setCheckpointWithSyncTime(
+        userId,
+        syncType,
+        ack,
+        syncTime,
+      );
+      _logger.fine('设置检查点并记录同步时间成功: $syncType = $ack, syncTime=$syncTime');
+    } catch (e, stackTrace) {
+      _logger.severe('设置检查点并记录同步时间失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// 获取最后同步时间
+  ///
+  /// [userId] 用户 ID
+  /// [syncType] 同步类型（如 "assets_v1"）
+  ///
+  /// 返回最后同步时间，如果不存在则返回 null
+  Future<DateTime?> getLastSyncTime(String userId, String syncType) async {
+    try {
+      final checkpoint = await _checkpointDao.getCheckpoint(userId, syncType);
+      return checkpoint?.lastSyncTime;
+    } catch (e, stackTrace) {
+      _logger.severe('获取最后同步时间失败', e, stackTrace);
+      return null;
+    }
+  }
+
   /// 清除检查点
-  /// 
+  ///
   /// [userId] 用户 ID
   /// [syncType] 同步类型（如 "assets_v1"）
   Future<void> clearCheckpoint(String userId, String syncType) async {
@@ -69,7 +107,7 @@ class CheckpointStore {
   }
 
   /// 清除用户的所有检查点
-  /// 
+  ///
   /// [userId] 用户 ID
   Future<void> clearAllCheckpoints(String userId) async {
     try {
@@ -81,4 +119,3 @@ class CheckpointStore {
     }
   }
 }
-

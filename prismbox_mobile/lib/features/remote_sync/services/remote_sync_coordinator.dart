@@ -17,36 +17,47 @@ class RemoteSyncCoordinator {
   final AppDatabase _database;
   final CheckpointStore _checkpointStore;
   final Logger _logger = Logger('RemoteSyncCoordinator');
-  
+
   /// 同步状态流控制器
   final _statusController = StreamController<RemoteSyncStatusInfo>.broadcast();
-  
+
   /// 远程同步完成通知流控制器
-  final _remoteSyncCompleteController = StreamController<RemoteSyncResult>.broadcast();
-  
+  final _remoteSyncCompleteController =
+      StreamController<RemoteSyncResult>.broadcast();
+
   /// 同步锁（确保同一时间只有一个同步任务）
   final _syncLock = Lock();
-  
+
   /// 当前同步状态
   RemoteSyncStatusInfo _currentStatus = RemoteSyncStatusInfo();
-  
+
+  /// 定时轮询定时器
+  Timer? _pollingTimer;
+
+  /// 当前轮询的用户 ID
+  String? _pollingUserId;
+
   /// 数据新鲜度阈值（30分钟）
-  static const Duration _dataFreshnessThreshold = Duration(minutes: 30);
+  static const Duration _dataFreshnessThreshold = Duration(minutes: 1);
+
+  /// 定时轮询间隔（30秒）
+  static const Duration _pollingInterval = Duration(seconds: 30);
 
   RemoteSyncCoordinator({
     required RemoteSyncService syncService,
     required AppDatabase database,
     required CheckpointStore checkpointStore,
-  })  : _syncService = syncService,
-        _database = database,
-        _checkpointStore = checkpointStore;
+  }) : _syncService = syncService,
+       _database = database,
+       _checkpointStore = checkpointStore;
 
   /// 同步状态流
   Stream<RemoteSyncStatusInfo> get statusStream => _statusController.stream;
 
   /// 远程同步完成通知流
   /// 当远程同步完成后，会发出通知，包含同步结果
-  Stream<RemoteSyncResult> get remoteSyncCompleteStream => _remoteSyncCompleteController.stream;
+  Stream<RemoteSyncResult> get remoteSyncCompleteStream =>
+      _remoteSyncCompleteController.stream;
 
   /// 获取当前同步状态
   RemoteSyncStatusInfo get currentStatus => _currentStatus;
@@ -57,6 +68,8 @@ class RemoteSyncCoordinator {
     Future.delayed(const Duration(seconds: 2), () {
       if (userId != null) {
         _checkAndSync(userId: userId);
+        // 启动定时轮询
+        startPolling(userId: userId);
       }
     });
   }
@@ -66,11 +79,54 @@ class RemoteSyncCoordinator {
     _logger.info('应用恢复，检查数据新鲜度');
     if (userId != null) {
       _checkAndSync(userId: userId);
+      // 确保定时轮询正在运行
+      if (_pollingTimer == null || _pollingUserId != userId) {
+        startPolling(userId: userId);
+      }
+    }
+  }
+
+  /// 启动定时轮询
+  ///
+  /// [userId] 用户 ID
+  /// [interval] 轮询间隔（默认30秒）
+  void startPolling({required String userId, Duration? interval}) {
+    // 如果已经在轮询相同的用户，不需要重新启动
+    if (_pollingTimer != null && _pollingUserId == userId) {
+      _logger.fine('定时轮询已在运行: userId=$userId');
+      return;
+    }
+
+    // 停止旧的轮询
+    stopPolling();
+
+    _pollingUserId = userId;
+    final effectiveInterval = interval ?? _pollingInterval;
+
+    final intervalSeconds = effectiveInterval.inSeconds;
+    final intervalDisplay = intervalSeconds >= 60
+        ? '${intervalSeconds ~/ 60}分钟'
+        : '$intervalSeconds秒';
+    _logger.info('启动定时轮询: userId=$userId, interval=$intervalDisplay');
+
+    _pollingTimer = Timer.periodic(effectiveInterval, (_) {
+      _logger.fine('定时轮询触发: userId=$userId');
+      _checkAndSync(userId: userId);
+    });
+  }
+
+  /// 停止定时轮询
+  void stopPolling() {
+    if (_pollingTimer != null) {
+      _logger.info('停止定时轮询: userId=$_pollingUserId');
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
+      _pollingUserId = null;
     }
   }
 
   /// 手动触发同步
-  /// 
+  ///
   /// [userId] 用户 ID
   /// [full] 是否全量同步
   Future<RemoteSyncResult> syncManually({
@@ -97,32 +153,48 @@ class RemoteSyncCoordinator {
   }
 
   /// 检查数据是否新鲜
+  ///
+  /// **修复**：使用最后同步时间而不是本地资产更新时间
+  /// 这样可以正确检测服务器上的新资产（其他设备上传的）
   Future<bool> _isDataFresh(String userId) async {
     try {
-      final remoteDao = RemoteAssetDao(_database);
-      final assets = await remoteDao.getUserAssets(userId);
-      
-      if (assets.isEmpty) {
-        // 如果没有数据，需要全量同步
-        return false;
-      }
-
-      // 检查最后同步时间
-      final checkpoint = await _checkpointStore.getCheckpoint(userId, 'assets_v1');
+      // 1. 检查是否有 checkpoint（表示曾经同步过）
+      final checkpoint = await _checkpointStore.getCheckpoint(
+        userId,
+        'assets_v1',
+      );
       if (checkpoint == null) {
         // 没有 checkpoint，需要同步
+        _logger.fine('没有 checkpoint，需要同步');
         return false;
       }
 
-      // 检查是否有最近更新的资产
-      final now = DateTime.now();
-      final recentAssets = assets.where((asset) {
-        final timeSinceUpdate = now.difference(asset.updatedAt);
-        return timeSinceUpdate < _dataFreshnessThreshold;
-      });
+      // 2. 检查最后同步时间（从状态中获取）
+      final lastSyncTime = _currentStatus.lastSyncTime;
+      if (lastSyncTime == null) {
+        // 没有最后同步时间，需要同步
+        _logger.fine('没有最后同步时间，需要同步');
+        return false;
+      }
 
-      // 如果有最近更新的资产，数据可能不新鲜
-      return recentAssets.isEmpty;
+      // 3. 检查距离最后同步时间是否超过阈值（30分钟）
+      final now = DateTime.now();
+      final timeSinceLastSync = now.difference(lastSyncTime);
+      final isFresh = timeSinceLastSync < _dataFreshnessThreshold;
+
+      if (isFresh) {
+        _logger.fine(
+          '数据新鲜，距离最后同步时间: ${timeSinceLastSync.inMinutes}分钟 '
+          '(阈值: ${_dataFreshnessThreshold.inMinutes}分钟)',
+        );
+      } else {
+        _logger.fine(
+          '数据不新鲜，距离最后同步时间: ${timeSinceLastSync.inMinutes}分钟 '
+          '(阈值: ${_dataFreshnessThreshold.inMinutes}分钟)',
+        );
+      }
+
+      return isFresh;
     } catch (e, stackTrace) {
       _logger.warning('检查数据新鲜度失败', e, stackTrace);
       // 出错时认为数据不新鲜，触发同步
@@ -141,7 +213,7 @@ class RemoteSyncCoordinator {
       // 检查是否正在同步
       if (_currentStatus.isSyncing) {
         _logger.info('同步已在进行中，跳过');
-        return _currentStatus.lastResult ?? 
+        return _currentStatus.lastResult ??
             RemoteSyncResult(duration: Duration.zero);
       }
 
@@ -154,15 +226,18 @@ class RemoteSyncCoordinator {
         // 这种情况下应该强制全量同步（reset=true）
         final remoteDao = RemoteAssetDao(_database);
         final localAssets = await remoteDao.getUserAssets(userId);
-        final localCheckpoint = await _checkpointStore.getCheckpoint(userId, 'assets_v1');
-        
+        final localCheckpoint = await _checkpointStore.getCheckpoint(
+          userId,
+          'assets_v1',
+        );
+
         // 如果是首次安装（本地没有数据且没有检查点），强制全量同步
         // 这样可以确保即使服务端有检查点，也会被清除并重新同步所有数据
         final isFirstInstall = localAssets.isEmpty && localCheckpoint == null;
-        
+
         // 如果用户明确要求全量同步，或者检测到首次安装，使用 reset=true
         final shouldReset = full || isFirstInstall;
-        
+
         if (isFirstInstall) {
           _logger.info('检测到首次安装（本地无数据且无检查点），强制全量同步');
         }
@@ -170,14 +245,28 @@ class RemoteSyncCoordinator {
         _logger.info('开始${shouldReset ? '全量' : '增量'}同步: userId=$userId');
 
         // 获取上次同步时间（用于增量同步）
+        // **修复**：使用真正的最后同步时间，而不是当前时间减去阈值
         DateTime? updatedAfter;
         if (!shouldReset) {
-          final checkpoint = await _checkpointStore.getCheckpoint(userId, 'assets_v1');
-          if (checkpoint != null) {
-            // 如果有 checkpoint，使用增量同步
-            // 注意：这里简化处理，实际应该从 checkpoint 解析时间戳
-            // 暂时使用当前时间减去阈值作为增量同步起点
-            updatedAfter = DateTime.now().subtract(_dataFreshnessThreshold);
+          // 优先级1：使用状态中保存的最后同步时间（最快，但应用重启后会丢失）
+          final lastSyncTime = _currentStatus.lastSyncTime;
+          if (lastSyncTime != null) {
+            updatedAfter = lastSyncTime;
+            _logger.fine('使用状态中的最后同步时间: $lastSyncTime');
+          } else {
+            // 优先级2：从 checkpoint 的 lastSyncTime 获取（持久化，最可靠）
+            final persistedSyncTime = await _checkpointStore.getLastSyncTime(
+              userId,
+              'assets_v1',
+            );
+            if (persistedSyncTime != null) {
+              updatedAfter = persistedSyncTime;
+              _logger.fine('使用持久化的最后同步时间: $updatedAfter');
+            } else {
+              // 最后备选：使用当前时间减去阈值（临时方案）
+              updatedAfter = DateTime.now().subtract(_dataFreshnessThreshold);
+              _logger.warning('无法获取最后同步时间，使用临时方案: $updatedAfter');
+            }
           }
         }
 
@@ -191,34 +280,52 @@ class RemoteSyncCoordinator {
           },
         );
 
+        // 记录同步完成时间
+        final syncTime = DateTime.now();
+
         // 更新状态：同步完成
         _updateStatus(
           isSyncing: false,
-          lastSyncTime: DateTime.now(),
+          lastSyncTime: syncTime,
           lastResult: result,
         );
 
+        // 保存同步时间到 checkpoint（如果同步成功）
+        if (result.isSuccess) {
+          final checkpoint = await _checkpointStore.getCheckpoint(
+            userId,
+            'assets_v1',
+          );
+          if (checkpoint != null) {
+            // 更新 checkpoint 的 lastSyncTime
+            await _checkpointStore.setCheckpointWithSyncTime(
+              userId,
+              'assets_v1',
+              checkpoint,
+              syncTime,
+            );
+            _logger.fine('已保存同步时间到 checkpoint: $syncTime');
+          }
+        }
+
         _logger.info('同步完成: $result');
-        
+
         // 发送远程同步完成通知
         if (!_remoteSyncCompleteController.isClosed) {
           _remoteSyncCompleteController.add(result);
         }
-        
+
         return result;
       } catch (e, stackTrace) {
         _logger.severe('同步失败', e, stackTrace);
-        
+
         // 更新状态：同步失败
         final errorResult = RemoteSyncResult(
           errors: [e.toString()],
           duration: Duration.zero,
         );
-        _updateStatus(
-          isSyncing: false,
-          lastResult: errorResult,
-        );
-        
+        _updateStatus(isSyncing: false, lastResult: errorResult);
+
         return errorResult;
       }
     });
@@ -247,9 +354,9 @@ class RemoteSyncCoordinator {
 
   /// 释放资源
   void dispose() {
+    stopPolling();
     _statusController.close();
     _remoteSyncCompleteController.close();
     cancel();
   }
 }
-

@@ -59,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -120,6 +120,13 @@ class AppDatabase extends _$AppDatabase {
       case 4:
         // 添加同步检查点表
         await m.createTable(syncCheckpointEntity);
+        break;
+      case 5:
+        // 为同步检查点表添加 lastSyncTime 字段
+        await m.addColumn(
+          syncCheckpointEntity,
+          syncCheckpointEntity.lastSyncTime,
+        );
         break;
       // ... 其他版本迁移
       default:

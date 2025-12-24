@@ -11,8 +11,8 @@ class SyncCheckpointEntity extends Table with DriftDefaultsMixin {
   const SyncCheckpointEntity();
 
   /// 用户 ID
-  TextColumn get userId => text()
-      .references(UserEntity, #id, onDelete: KeyAction.cascade)();
+  TextColumn get userId =>
+      text().references(UserEntity, #id, onDelete: KeyAction.cascade)();
 
   /// 同步类型（如 "assets_v1"）
   TextColumn get syncType => text()();
@@ -26,7 +26,10 @@ class SyncCheckpointEntity extends Table with DriftDefaultsMixin {
   /// 更新时间
   DateTimeColumn get updatedAt => dateTime()();
 
+  /// 最后同步时间（专门用于增量同步）
+  /// 记录每次同步完成的时间，用于增量同步的 updatedAfter 参数
+  DateTimeColumn get lastSyncTime => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {userId, syncType};
 }
-

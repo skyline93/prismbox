@@ -4457,9 +4457,15 @@ class $SyncCheckpointEntityTable extends SyncCheckpointEntity
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _lastSyncTimeMeta =
+      const VerificationMeta('lastSyncTime');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncTime = GeneratedColumn<DateTime>(
+      'last_sync_time', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [userId, syncType, ack, createdAt, updatedAt];
+      [userId, syncType, ack, createdAt, updatedAt, lastSyncTime];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4501,6 +4507,12 @@ class $SyncCheckpointEntityTable extends SyncCheckpointEntity
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('last_sync_time')) {
+      context.handle(
+          _lastSyncTimeMeta,
+          lastSyncTime.isAcceptableOrUnknown(
+              data['last_sync_time']!, _lastSyncTimeMeta));
+    }
     return context;
   }
 
@@ -4521,6 +4533,8 @@ class $SyncCheckpointEntityTable extends SyncCheckpointEntity
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      lastSyncTime: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_sync_time']),
     );
   }
 
@@ -4549,12 +4563,17 @@ class SyncCheckpointEntityData extends DataClass
 
   /// 更新时间
   final DateTime updatedAt;
+
+  /// 最后同步时间（专门用于增量同步）
+  /// 记录每次同步完成的时间，用于增量同步的 updatedAfter 参数
+  final DateTime? lastSyncTime;
   const SyncCheckpointEntityData(
       {required this.userId,
       required this.syncType,
       required this.ack,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      this.lastSyncTime});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4563,6 +4582,9 @@ class SyncCheckpointEntityData extends DataClass
     map['ack'] = Variable<String>(ack);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || lastSyncTime != null) {
+      map['last_sync_time'] = Variable<DateTime>(lastSyncTime);
+    }
     return map;
   }
 
@@ -4573,6 +4595,9 @@ class SyncCheckpointEntityData extends DataClass
       ack: Value(ack),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      lastSyncTime: lastSyncTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncTime),
     );
   }
 
@@ -4585,6 +4610,7 @@ class SyncCheckpointEntityData extends DataClass
       ack: serializer.fromJson<String>(json['ack']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      lastSyncTime: serializer.fromJson<DateTime?>(json['lastSyncTime']),
     );
   }
   @override
@@ -4596,6 +4622,7 @@ class SyncCheckpointEntityData extends DataClass
       'ack': serializer.toJson<String>(ack),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'lastSyncTime': serializer.toJson<DateTime?>(lastSyncTime),
     };
   }
 
@@ -4604,13 +4631,16 @@ class SyncCheckpointEntityData extends DataClass
           String? syncType,
           String? ack,
           DateTime? createdAt,
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          Value<DateTime?> lastSyncTime = const Value.absent()}) =>
       SyncCheckpointEntityData(
         userId: userId ?? this.userId,
         syncType: syncType ?? this.syncType,
         ack: ack ?? this.ack,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        lastSyncTime:
+            lastSyncTime.present ? lastSyncTime.value : this.lastSyncTime,
       );
   SyncCheckpointEntityData copyWithCompanion(
       SyncCheckpointEntityCompanion data) {
@@ -4620,6 +4650,9 @@ class SyncCheckpointEntityData extends DataClass
       ack: data.ack.present ? data.ack.value : this.ack,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      lastSyncTime: data.lastSyncTime.present
+          ? data.lastSyncTime.value
+          : this.lastSyncTime,
     );
   }
 
@@ -4630,13 +4663,15 @@ class SyncCheckpointEntityData extends DataClass
           ..write('syncType: $syncType, ')
           ..write('ack: $ack, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastSyncTime: $lastSyncTime')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(userId, syncType, ack, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(userId, syncType, ack, createdAt, updatedAt, lastSyncTime);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4645,7 +4680,8 @@ class SyncCheckpointEntityData extends DataClass
           other.syncType == this.syncType &&
           other.ack == this.ack &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.lastSyncTime == this.lastSyncTime);
 }
 
 class SyncCheckpointEntityCompanion
@@ -4655,12 +4691,14 @@ class SyncCheckpointEntityCompanion
   final Value<String> ack;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> lastSyncTime;
   const SyncCheckpointEntityCompanion({
     this.userId = const Value.absent(),
     this.syncType = const Value.absent(),
     this.ack = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.lastSyncTime = const Value.absent(),
   });
   SyncCheckpointEntityCompanion.insert({
     required String userId,
@@ -4668,6 +4706,7 @@ class SyncCheckpointEntityCompanion
     required String ack,
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.lastSyncTime = const Value.absent(),
   })  : userId = Value(userId),
         syncType = Value(syncType),
         ack = Value(ack),
@@ -4679,6 +4718,7 @@ class SyncCheckpointEntityCompanion
     Expression<String>? ack,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? lastSyncTime,
   }) {
     return RawValuesInsertable({
       if (userId != null) 'user_id': userId,
@@ -4686,6 +4726,7 @@ class SyncCheckpointEntityCompanion
       if (ack != null) 'ack': ack,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (lastSyncTime != null) 'last_sync_time': lastSyncTime,
     });
   }
 
@@ -4694,13 +4735,15 @@ class SyncCheckpointEntityCompanion
       Value<String>? syncType,
       Value<String>? ack,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? lastSyncTime}) {
     return SyncCheckpointEntityCompanion(
       userId: userId ?? this.userId,
       syncType: syncType ?? this.syncType,
       ack: ack ?? this.ack,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastSyncTime: lastSyncTime ?? this.lastSyncTime,
     );
   }
 
@@ -4722,6 +4765,9 @@ class SyncCheckpointEntityCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (lastSyncTime.present) {
+      map['last_sync_time'] = Variable<DateTime>(lastSyncTime.value);
+    }
     return map;
   }
 
@@ -4732,7 +4778,8 @@ class SyncCheckpointEntityCompanion
           ..write('syncType: $syncType, ')
           ..write('ack: $ack, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastSyncTime: $lastSyncTime')
           ..write(')'))
         .toString();
   }
@@ -6839,6 +6886,7 @@ typedef $$SyncCheckpointEntityTableCreateCompanionBuilder
   required String ack,
   required DateTime createdAt,
   required DateTime updatedAt,
+  Value<DateTime?> lastSyncTime,
 });
 typedef $$SyncCheckpointEntityTableUpdateCompanionBuilder
     = SyncCheckpointEntityCompanion Function({
@@ -6847,6 +6895,7 @@ typedef $$SyncCheckpointEntityTableUpdateCompanionBuilder
   Value<String> ack,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> lastSyncTime,
 });
 
 class $$SyncCheckpointEntityTableTableManager extends RootTableManager<
@@ -6872,6 +6921,7 @@ class $$SyncCheckpointEntityTableTableManager extends RootTableManager<
             Value<String> ack = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> lastSyncTime = const Value.absent(),
           }) =>
               SyncCheckpointEntityCompanion(
             userId: userId,
@@ -6879,6 +6929,7 @@ class $$SyncCheckpointEntityTableTableManager extends RootTableManager<
             ack: ack,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            lastSyncTime: lastSyncTime,
           ),
           createCompanionCallback: ({
             required String userId,
@@ -6886,6 +6937,7 @@ class $$SyncCheckpointEntityTableTableManager extends RootTableManager<
             required String ack,
             required DateTime createdAt,
             required DateTime updatedAt,
+            Value<DateTime?> lastSyncTime = const Value.absent(),
           }) =>
               SyncCheckpointEntityCompanion.insert(
             userId: userId,
@@ -6893,6 +6945,7 @@ class $$SyncCheckpointEntityTableTableManager extends RootTableManager<
             ack: ack,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            lastSyncTime: lastSyncTime,
           ),
         ));
 }
@@ -6917,6 +6970,11 @@ class $$SyncCheckpointEntityTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
       column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get lastSyncTime => $state.composableBuilder(
+      column: $state.table.lastSyncTime,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6953,6 +7011,11 @@ class $$SyncCheckpointEntityTableOrderingComposer
 
   ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
       column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get lastSyncTime => $state.composableBuilder(
+      column: $state.table.lastSyncTime,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

@@ -9,7 +9,7 @@ import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
-import 'package:prismbox/services/backup/asset_sync_service.dart';
+import 'package:prismbox/services/sync/asset_sync_service.dart';
 import 'package:prismbox/utils/async_mutex.dart';
 
 /// 同步协调器

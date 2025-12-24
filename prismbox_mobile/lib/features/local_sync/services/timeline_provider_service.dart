@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path_lib;
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
@@ -411,6 +412,22 @@ class TimelineProviderService {
       assetType = AssetType.other;
     }
 
+    // 获取文件路径并提取原始文件名
+    final file = await asset.originFile;
+    if (file == null) {
+      throw Exception('无法获取文件对象: assetId=${asset.id}');
+    }
+    final path = file.path;
+    if (path.isEmpty) {
+      throw Exception('文件路径为空: assetId=${asset.id}');
+    }
+
+    // 从文件路径提取原始文件名
+    final originalFileName = path_lib.basename(path);
+    if (originalFileName.isEmpty) {
+      throw Exception('无法从路径提取文件名: path=$path, assetId=${asset.id}');
+    }
+
     // 尝试从数据库获取关联的远程资产 ID
     String? remoteAssetId;
     try {
@@ -426,7 +443,7 @@ class TimelineProviderService {
 
     return LocalAsset.fromData(
       id: asset.id,
-      name: asset.title ?? asset.id, // 如果标题为空，使用 ID
+      name: originalFileName, // 使用从路径提取的原始文件名
       checksum: null, // photo_manager 不提供 checksum
       type: assetType,
       createdAt: asset.createDateTime,

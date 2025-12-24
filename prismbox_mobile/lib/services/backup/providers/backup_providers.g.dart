@@ -66,9 +66,11 @@ final backupCandidateSelectorProvider =
 
 typedef BackupCandidateSelectorRef
     = AutoDisposeFutureProviderRef<BackupCandidateSelector>;
-String _$assetSyncServiceHash() => r'45e85cf6f81e84af6f259b2ac41fc4576c91862c';
+String _$assetSyncServiceHash() => r'8e1b80fefce37f9a9280d816b8bbb620aa961d71';
 
 /// AssetSyncService Provider
+///
+/// 向后兼容：委托给新的同步模块 Provider
 ///
 /// Copied from [assetSyncService].
 @ProviderFor(assetSyncService)
@@ -234,9 +236,12 @@ final backupServiceProvider = AutoDisposeFutureProvider<BackupService>.internal(
 
 typedef BackupServiceRef = AutoDisposeFutureProviderRef<BackupService>;
 String _$backgroundSyncManagerHash() =>
-    r'93d3f73f56aac9169589dfb0ef8031c1dbf7bd8f';
+    r'cb9f8ad1da43c0b9448d0ded6b9b39fa2abdca53';
 
 /// BackgroundSyncManager Provider
+///
+/// 向后兼容：委托给新的同步模块 Provider
+/// 注意：新的 BackgroundSyncManager 不再需要 pathResolver 参数
 ///
 /// Copied from [backgroundSyncManager].
 @ProviderFor(backgroundSyncManager)

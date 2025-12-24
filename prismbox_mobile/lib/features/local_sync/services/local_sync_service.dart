@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path_lib;
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
@@ -14,22 +15,20 @@ import 'package:prismbox/features/local_sync/models/sync_result.dart';
 class LocalSyncService {
   final AppDatabase _database;
   final Logger _logger = Logger('LocalSyncService');
-  
+
   /// 批量处理大小
   static const int _batchSize = 100;
-  
+
   /// 取消令牌
   CancelToken? _cancelToken;
 
-  LocalSyncService({
-    required AppDatabase database,
-  }) : _database = database;
+  LocalSyncService({required AppDatabase database}) : _database = database;
 
   /// 同步本地媒体库到数据库
-  /// 
+  ///
   /// [full] 是否全量同步（false 时尝试增量同步）
   /// [onProgress] 进度回调 (current, total)
-  /// 
+  ///
   /// 返回同步结果
   Future<SyncResult> syncLocal({
     bool full = false,
@@ -37,7 +36,7 @@ class LocalSyncService {
   }) async {
     try {
       _cancelToken = CancelToken();
-      
+
       // 检查权限
       final permission = await pm.PhotoManager.requestPermissionExtend();
       if (!permission.isAuth) {
@@ -45,10 +44,10 @@ class LocalSyncService {
       }
 
       final dao = LocalAssetDao(_database);
-      
+
       // 决定同步类型
       final shouldFullSync = full || await _shouldFullSync(dao);
-      
+
       if (shouldFullSync) {
         return await _fullSync(dao, onProgress);
       } else {
@@ -87,13 +86,11 @@ class LocalSyncService {
     void Function(int current, int total)? onProgress,
   ) async {
     _logger.info('开始全量同步');
-    
+
     try {
       // 获取所有相册
-      final albums = await pm.PhotoManager.getAssetPathList(
-        hasAll: true,
-      );
-      
+      final albums = await pm.PhotoManager.getAssetPathList(hasAll: true);
+
       if (albums.isEmpty) {
         _logger.warning('未找到相册');
         return SyncResult.success();
@@ -163,7 +160,7 @@ class LocalSyncService {
                 }
               } catch (e2) {
                 // 检查是否是 UNIQUE constraint 错误
-                if (e2.toString().contains('UNIQUE constraint') || 
+                if (e2.toString().contains('UNIQUE constraint') ||
                     e2.toString().contains('1555')) {
                   // 如果是唯一约束错误，说明记录已存在，尝试更新
                   try {
@@ -205,7 +202,7 @@ class LocalSyncService {
     void Function(int current, int total)? onProgress,
   ) async {
     _logger.info('开始增量同步');
-    
+
     try {
       // 获取数据库中的资产
       final existingAssets = await dao.getAllAssets();
@@ -221,10 +218,8 @@ class LocalSyncService {
           .reduce((a, b) => a.isAfter(b) ? a : b);
 
       // 获取所有相册
-      final albums = await pm.PhotoManager.getAssetPathList(
-        hasAll: true,
-      );
-      
+      final albums = await pm.PhotoManager.getAssetPathList(hasAll: true);
+
       if (albums.isEmpty) {
         return SyncResult.success();
       }
@@ -236,7 +231,7 @@ class LocalSyncService {
 
       // 获取系统相册元数据
       final systemAssetCount = await allPhotosAlbum.assetCountAsync;
-      
+
       // 快速路径：比较元数据
       // 如果资产数量相同且数据库最后修改时间较新，可能没有变化
       // 注意：这是一个优化，不能完全依赖，因为系统相册可能被外部修改
@@ -247,7 +242,7 @@ class LocalSyncService {
       }
 
       final totalCount = systemAssetCount;
-      
+
       // 创建现有资产的 ID 集合（用于快速查找）
       final existingIds = <String>{};
       final existingMap = <String, LocalAssetEntityData>{};
@@ -262,7 +257,9 @@ class LocalSyncService {
 
       // 使用最后同步时间过滤（只处理修改时间在最后同步时间之后的资产）
       // 注意：photo_manager 可能不支持直接按修改时间过滤，所以我们需要获取所有资产后过滤
-      final lastSyncTime = dbLastModified.subtract(const Duration(seconds: 1)); // 稍微提前一点，避免边界问题
+      final lastSyncTime = dbLastModified.subtract(
+        const Duration(seconds: 1),
+      ); // 稍微提前一点，避免边界问题
 
       // 分批处理
       for (int start = 0; start < totalCount; start += _batchSize) {
@@ -286,7 +283,7 @@ class LocalSyncService {
             // 优化：只处理修改时间在最后同步时间之后的资产，或者是新资产
             final isNewAsset = !existingIds.contains(asset.id);
             final isModified = asset.modifiedDateTime.isAfter(lastSyncTime);
-            
+
             if (!isNewAsset && !isModified) {
               // 跳过未修改的现有资产
               continue;
@@ -294,7 +291,7 @@ class LocalSyncService {
 
             final entity = await _convertToEntity(asset);
             final existing = existingMap[entity.id];
-            
+
             if (existing == null) {
               // 新增
               toInsert.add(entity);
@@ -323,7 +320,7 @@ class LocalSyncService {
                 added++;
               } catch (e2) {
                 // 检查是否是 UNIQUE constraint 错误
-                if (e2.toString().contains('UNIQUE constraint') || 
+                if (e2.toString().contains('UNIQUE constraint') ||
                     e2.toString().contains('1555')) {
                   // 如果是唯一约束错误，说明记录已存在，尝试更新
                   try {
@@ -375,7 +372,19 @@ class LocalSyncService {
     // 注意：originFile 返回原始文件的永久路径，不会被系统清理
     // file 可能返回处理后的临时文件（如应用 EXIF 旋转），路径可能包含 _exif.jpg 后缀
     final file = await asset.originFile;
-    final path = file?.path ?? '';
+    if (file == null) {
+      throw Exception('无法获取文件对象: assetId=${asset.id}');
+    }
+    final path = file.path;
+    if (path.isEmpty) {
+      throw Exception('文件路径为空: assetId=${asset.id}');
+    }
+
+    // 从文件路径提取原始文件名
+    final originalFileName = path_lib.basename(path);
+    if (originalFileName.isEmpty) {
+      throw Exception('无法从路径提取文件名: path=$path, assetId=${asset.id}');
+    }
 
     // 转换资产类型
     // photo_manager 的 AssetType 是枚举，需要转换为我们的 AssetType
@@ -395,7 +404,7 @@ class LocalSyncService {
 
     return LocalAssetEntityData(
       id: asset.id,
-      name: asset.title ?? asset.id, // 如果标题为空，使用 ID
+      name: originalFileName, // 使用从路径提取的原始文件名
       checksum: null, // checksum 在后台计算
       type: assetType,
       createdAt: asset.createDateTime,
@@ -423,7 +432,7 @@ class LocalSyncService {
       // 获取当前系统相册中的所有资产 ID
       final totalCount = await album.assetCountAsync;
       final systemAssetIds = <String>{};
-      
+
       // 分批获取系统资产 ID
       for (int start = 0; start < totalCount; start += _batchSize) {
         final end = (start + _batchSize).clamp(0, totalCount);
@@ -464,4 +473,3 @@ class CancelToken {
     _isCanceled = true;
   }
 }
-
