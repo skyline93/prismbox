@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:logging/logging.dart';
-import 'package:path/path.dart' as path_lib;
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
@@ -412,21 +411,17 @@ class TimelineProviderService {
       assetType = AssetType.other;
     }
 
-    // 获取文件路径并提取原始文件名
+    // 验证文件对象可访问（但不使用其路径来获取文件名）
     final file = await asset.originFile;
     if (file == null) {
       throw Exception('无法获取文件对象: assetId=${asset.id}');
     }
-    final path = file.path;
-    if (path.isEmpty) {
-      throw Exception('文件路径为空: assetId=${asset.id}');
-    }
 
-    // 从文件路径提取原始文件名
-    final originalFileName = path_lib.basename(path);
-    if (originalFileName.isEmpty) {
-      throw Exception('无法从路径提取文件名: path=$path, assetId=${asset.id}');
-    }
+    // 获取原始文件名 - 使用 asset.title（推荐方式）
+    // Android: asset.title 通常就是原始文件名
+    // iOS 14+: asset.title 基本可靠
+    // 注意：不要使用 originFile.path 来解析文件名，因为它在 iOS 上是临时文件，文件名是随机的
+    final originalFileName = asset.title ?? '';
 
     // 尝试从数据库获取关联的远程资产 ID
     String? remoteAssetId;
@@ -443,7 +438,7 @@ class TimelineProviderService {
 
     return LocalAsset.fromData(
       id: asset.id,
-      name: originalFileName, // 使用从路径提取的原始文件名
+      name: originalFileName, // 使用 asset.title 获取的原始文件名
       checksum: null, // photo_manager 不提供 checksum
       type: assetType,
       createdAt: asset.createDateTime,

@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'package:logging/logging.dart';
-import 'package:path/path.dart' as path_lib;
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
@@ -381,11 +380,11 @@ class LocalSyncService {
       throw Exception('文件路径为空: assetId=${asset.id}');
     }
 
-    // 从文件路径提取原始文件名
-    final originalFileName = path_lib.basename(path);
-    if (originalFileName.isEmpty) {
-      throw Exception('无法从路径提取文件名: path=$path, assetId=${asset.id}');
-    }
+    // 获取原始文件名 - 使用 asset.title（推荐方式）
+    // Android: asset.title 通常就是原始文件名
+    // iOS 14+: asset.title 基本可靠
+    // 注意：不要使用 originFile.path 来解析文件名，因为它在 iOS 上是临时文件，文件名是随机的
+    final originalFileName = asset.title ?? '';
 
     // 转换资产类型
     // photo_manager 的 AssetType 是枚举，需要转换为我们的 AssetType
@@ -405,7 +404,7 @@ class LocalSyncService {
 
     return LocalAssetEntityData(
       id: asset.id,
-      name: originalFileName, // 使用从路径提取的原始文件名
+      name: originalFileName, // 使用 asset.title 获取的原始文件名
       checksum: null, // checksum 在后台计算
       type: assetType,
       createdAt: asset.createDateTime,
