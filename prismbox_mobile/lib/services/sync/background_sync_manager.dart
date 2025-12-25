@@ -54,9 +54,17 @@ class BackgroundSyncResult {
 
 /// 后台同步管理器
 ///
+/// **用途**：专门用于后台任务（BackgroundWorkerBgService）的三阶段同步
+///
+/// **与前台同步的区别**：
+/// - 使用分页 API (`/api/v1/media/list`) 而非流式 API (`/api/v1/sync/assets/stream`)
+/// - 不依赖 checkpoint 机制
+/// - 设计为在后台 Engine 中运行
+/// - 用于备份流程中的同步阶段
+///
 /// **职责**：
 /// - 同步本地媒体库到数据库
-/// - 同步远程服务器资产列表
+/// - 同步远程服务器资产列表（使用分页 API）
 /// - 计算资产哈希值（用于去重）
 ///
 /// **三阶段设计**：
@@ -66,7 +74,7 @@ class BackgroundSyncResult {
 ///    - 更新本地数据库
 ///
 /// 2. **阶段二：远程同步（syncRemote）**
-///    - 调用服务器 API 获取已上传资产列表
+///    - 调用服务器分页 API (`/api/v1/media/list`) 获取已上传资产列表
 ///    - 更新本地数据库中的远程资产信息
 ///    - 用于后续去重判断
 ///
@@ -74,6 +82,10 @@ class BackgroundSyncResult {
 ///    - 计算待上传资产的哈希值（checksum）
 ///    - 支持超时机制，避免阻塞备份流程
 ///    - 使用后台 Isolate 进行计算
+///
+/// **注意**：
+/// - 前台同步应使用 `RemoteSyncService`（流式 API）和 `RemoteSyncCoordinator`
+/// - 本类主要用于后台备份任务，不适用于前台 UI 交互
 class BackgroundSyncManager {
   final AppDatabase _database;
   final LocalSyncService _localSyncService;

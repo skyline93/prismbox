@@ -2,21 +2,26 @@
 
 import 'dart:async';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/config/sync_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
-import 'package:prismbox/data/database/daos/local_asset_dao.dart';
-import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
+import 'package:prismbox/features/local_sync/services/checksum_matching_service.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
-import 'package:prismbox/services/sync/asset_sync_service.dart';
 import 'package:prismbox/utils/async_mutex.dart';
 
 /// 同步协调器
-/// 协调后台同步任务，不阻塞 UI
+/// 
+/// **职责**：
+/// - 协调后台本地同步任务，不阻塞 UI
+/// - 管理同步状态
+/// - 支持自动同步和手动同步
+/// - 协调数据源切换和 checksum 匹配任务
 class SyncCoordinator {
   final LocalSyncService _syncService;
   final AppDatabase _database;
+  final ChecksumMatchingService _checksumMatchingService;
   final Logger _logger = Logger('SyncCoordinator');
   
   /// 同步状态流控制器
@@ -36,21 +41,14 @@ class SyncCoordinator {
   
   /// 最后触发时间（用于去重）
   DateTime? _lastTriggerTime;
-  
-  /// 数据新鲜度阈值（1小时）
-  static const Duration _freshnessThreshold = Duration(hours: 1);
-  
-  /// 启动延迟（2秒）
-  static const Duration _startDelay = Duration(seconds: 2);
-  
-  /// 触发防抖时间（3秒）
-  static const Duration _triggerDebounce = Duration(seconds: 3);
 
   SyncCoordinator({
     required LocalSyncService syncService,
     required AppDatabase database,
+    required ChecksumMatchingService checksumMatchingService,
   })  : _syncService = syncService,
-        _database = database;
+        _database = database,
+        _checksumMatchingService = checksumMatchingService;
 
   /// 同步状态流
   Stream<SyncStatusInfo> get statusStream => _statusController.stream;
@@ -69,8 +67,8 @@ class SyncCoordinator {
 
   /// 应用启动时自动同步（延迟执行）
   void startAutoSyncOnLaunch() {
-    _logger.info('计划延迟自动同步（${_startDelay.inSeconds}秒后）');
-    Future.delayed(_startDelay, () {
+    _logger.info('计划延迟自动同步（${SyncConfig.startDelay.inSeconds}秒后）');
+    Future.delayed(SyncConfig.startDelay, () {
       _checkAndSync();
     });
   }
@@ -98,10 +96,10 @@ class SyncCoordinator {
 
   /// 统一的同步触发入口（带去重）
   Future<void> _checkAndSync({bool force = false}) async {
-    // 去重：如果最近3秒内已触发，跳过
+    // 去重：如果最近已触发，跳过
     if (!force && _lastTriggerTime != null) {
       final timeSinceLastTrigger = DateTime.now().difference(_lastTriggerTime!);
-      if (timeSinceLastTrigger < _triggerDebounce) {
+      if (timeSinceLastTrigger < SyncConfig.triggerDebounce) {
         _logger.info('最近已触发同步，跳过（去重）');
         return;
       }
@@ -112,7 +110,7 @@ class SyncCoordinator {
     try {
       // 检查数据新鲜度
       final isFresh = _lastSyncedAt != null &&
-          DateTime.now().difference(_lastSyncedAt!) < _freshnessThreshold;
+          DateTime.now().difference(_lastSyncedAt!) < SyncConfig.localFreshnessThreshold;
 
       if (isFresh) {
         _logger.info('数据新鲜，跳过同步');
@@ -243,82 +241,13 @@ class SyncCoordinator {
   }
 
   /// 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
-  /// 这是一个耗时的操作，在后台异步执行，不阻塞同步流程
+  /// 
+  /// **注意**：这是一个耗时的操作，在后台异步执行，不阻塞同步流程
   void _startChecksumMatchingTask() {
     // 在后台执行，不等待完成
     Future(() async {
       try {
-        _logger.info('启动后台任务：计算 checksum 并匹配远程资产');
-        final localDao = LocalAssetDao(_database);
-        final remoteDao = RemoteAssetDao(_database);
-        final assetSyncService = AssetSyncService(database: _database);
-        
-        // 获取所有没有 checksum 的本地资产
-        final localAssets = await localDao.getAllAssets();
-        final assetsWithoutChecksum = localAssets
-            .where((asset) => asset.checksum == null || asset.checksum!.isEmpty)
-            .toList();
-        
-        if (assetsWithoutChecksum.isEmpty) {
-          _logger.info('所有本地资产都有 checksum，跳过匹配任务');
-          return;
-        }
-        
-        _logger.info('找到 ${assetsWithoutChecksum.length} 个没有 checksum 的本地资产，开始计算并匹配');
-        
-        int matchedCount = 0;
-        int processedCount = 0;
-        
-        // 分批处理，避免一次性处理太多
-        const batchSize = 10;
-        for (int i = 0; i < assetsWithoutChecksum.length; i += batchSize) {
-          final batch = assetsWithoutChecksum
-              .skip(i)
-              .take(batchSize)
-              .toList();
-          
-          for (final localAsset in batch) {
-            try {
-              // 计算 checksum
-              final checksum = await assetSyncService.getOrCalculateChecksum(
-                assetId: localAsset.id,
-                filePath: localAsset.path,
-              );
-              
-              if (checksum != null && checksum.isNotEmpty) {
-                // 查找匹配的远程资产
-                final remoteAsset = await remoteDao.getAssetByChecksum(checksum);
-                if (remoteAsset != null) {
-                  matchedCount++;
-                  _logger.fine(
-                    '匹配到远程资产: localId=${localAsset.id}, '
-                    'remoteId=${remoteAsset.id}, checksum=$checksum',
-                  );
-                }
-              }
-              
-              processedCount++;
-              
-              // 每处理 10 个资产记录一次日志
-              if (processedCount % 10 == 0) {
-                _logger.info(
-                  'Checksum 匹配进度: $processedCount/${assetsWithoutChecksum.length}, '
-                  '已匹配: $matchedCount',
-                );
-              }
-            } catch (e) {
-              _logger.warning(
-                '处理资产失败: assetId=${localAsset.id}',
-                e,
-              );
-            }
-          }
-        }
-        
-        _logger.info(
-          'Checksum 匹配任务完成: 处理了 $processedCount 个资产，'
-          '匹配到 $matchedCount 个远程资产',
-        );
+        final matchedCount = await _checksumMatchingService.startMatchingTask();
         
         // 如果匹配到了远程资产，通知 UI 刷新
         if (matchedCount > 0 && !_checksumMatchCompleteController.isClosed) {

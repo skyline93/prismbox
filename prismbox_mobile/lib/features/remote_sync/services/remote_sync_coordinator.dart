@@ -2,13 +2,14 @@
 
 import 'dart:async';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/config/sync_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/features/remote_sync/models/remote_sync_result.dart';
 import 'package:prismbox/features/remote_sync/models/remote_sync_status.dart';
 import 'package:prismbox/features/remote_sync/services/checkpoint_store.dart';
 import 'package:prismbox/features/remote_sync/services/remote_sync_service.dart';
-import 'package:synchronized/synchronized.dart';
+import 'package:prismbox/utils/async_mutex.dart';
 
 /// 远程同步协调器
 /// 负责协调后台同步任务，管理同步状态
@@ -25,8 +26,8 @@ class RemoteSyncCoordinator {
   final _remoteSyncCompleteController =
       StreamController<RemoteSyncResult>.broadcast();
 
-  /// 同步锁（确保同一时间只有一个同步任务）
-  final _syncLock = Lock();
+  /// 同步互斥锁（确保同一时间只有一个同步任务）
+  final AsyncMutex _syncMutex = AsyncMutex();
 
   /// 当前同步状态
   RemoteSyncStatusInfo _currentStatus = RemoteSyncStatusInfo();
@@ -36,12 +37,6 @@ class RemoteSyncCoordinator {
 
   /// 当前轮询的用户 ID
   String? _pollingUserId;
-
-  /// 数据新鲜度阈值（30分钟）
-  static const Duration _dataFreshnessThreshold = Duration(minutes: 1);
-
-  /// 定时轮询间隔（30秒）
-  static const Duration _pollingInterval = Duration(seconds: 30);
 
   RemoteSyncCoordinator({
     required RemoteSyncService syncService,
@@ -64,8 +59,8 @@ class RemoteSyncCoordinator {
 
   /// 应用启动时自动同步（延迟执行）
   void startAutoSyncOnLaunch({String? userId}) {
-    _logger.info('计划延迟自动同步（2秒后）');
-    Future.delayed(const Duration(seconds: 2), () {
+    _logger.info('计划延迟自动同步（${SyncConfig.startDelay.inSeconds}秒后）');
+    Future.delayed(SyncConfig.startDelay, () {
       if (userId != null) {
         _checkAndSync(userId: userId);
         // 启动定时轮询
@@ -89,7 +84,7 @@ class RemoteSyncCoordinator {
   /// 启动定时轮询
   ///
   /// [userId] 用户 ID
-  /// [interval] 轮询间隔（默认30秒）
+  /// [interval] 轮询间隔（默认使用 SyncConfig.remotePollingInterval）
   void startPolling({required String userId, Duration? interval}) {
     // 如果已经在轮询相同的用户，不需要重新启动
     if (_pollingTimer != null && _pollingUserId == userId) {
@@ -101,7 +96,7 @@ class RemoteSyncCoordinator {
     stopPolling();
 
     _pollingUserId = userId;
-    final effectiveInterval = interval ?? _pollingInterval;
+    final effectiveInterval = interval ?? SyncConfig.remotePollingInterval;
 
     final intervalSeconds = effectiveInterval.inSeconds;
     final intervalDisplay = intervalSeconds >= 60
@@ -177,20 +172,20 @@ class RemoteSyncCoordinator {
         return false;
       }
 
-      // 3. 检查距离最后同步时间是否超过阈值（30分钟）
+      // 3. 检查距离最后同步时间是否超过阈值
       final now = DateTime.now();
       final timeSinceLastSync = now.difference(lastSyncTime);
-      final isFresh = timeSinceLastSync < _dataFreshnessThreshold;
+      final isFresh = timeSinceLastSync < SyncConfig.remoteFreshnessThreshold;
 
       if (isFresh) {
         _logger.fine(
           '数据新鲜，距离最后同步时间: ${timeSinceLastSync.inMinutes}分钟 '
-          '(阈值: ${_dataFreshnessThreshold.inMinutes}分钟)',
+          '(阈值: ${SyncConfig.remoteFreshnessThreshold.inMinutes}分钟)',
         );
       } else {
         _logger.fine(
           '数据不新鲜，距离最后同步时间: ${timeSinceLastSync.inMinutes}分钟 '
-          '(阈值: ${_dataFreshnessThreshold.inMinutes}分钟)',
+          '(阈值: ${SyncConfig.remoteFreshnessThreshold.inMinutes}分钟)',
         );
       }
 
@@ -208,8 +203,8 @@ class RemoteSyncCoordinator {
     bool full = false,
     bool force = false,
   }) async {
-    // 使用锁确保同一时间只有一个同步任务
-    return await _syncLock.synchronized(() async {
+    // 使用 AsyncMutex 确保同一时间只有一个同步任务
+    return await _syncMutex.run(() async {
       // 检查是否正在同步
       if (_currentStatus.isSyncing) {
         _logger.info('同步已在进行中，跳过');
@@ -264,7 +259,7 @@ class RemoteSyncCoordinator {
               _logger.fine('使用持久化的最后同步时间: $updatedAfter');
             } else {
               // 最后备选：使用当前时间减去阈值（临时方案）
-              updatedAfter = DateTime.now().subtract(_dataFreshnessThreshold);
+              updatedAfter = DateTime.now().subtract(SyncConfig.remoteFreshnessThreshold);
               _logger.warning('无法获取最后同步时间，使用临时方案: $updatedAfter');
             }
           }
