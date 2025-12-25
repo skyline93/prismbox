@@ -69,14 +69,14 @@ class SyncCoordinator {
   void startAutoSyncOnLaunch() {
     _logger.info('计划延迟自动同步（${SyncConfig.startDelay.inSeconds}秒后）');
     Future.delayed(SyncConfig.startDelay, () {
-      _checkAndSync();
+      _checkAndSyncLocal();
     });
   }
 
   /// 应用恢复时检查并同步
   void checkAndSyncOnResume() {
     _logger.info('应用恢复，检查数据新鲜度');
-    _checkAndSync();
+    _checkAndSyncLocal();
   }
 
   /// 手动触发同步
@@ -94,8 +94,8 @@ class SyncCoordinator {
     return await _sync(full: full);
   }
 
-  /// 统一的同步触发入口（带去重）
-  Future<void> _checkAndSync({bool force = false}) async {
+  /// 统一的本地同步触发入口（带去重）
+  Future<void> _checkAndSyncLocal({bool force = false}) async {
     // 去重：如果最近已触发，跳过
     if (!force && _lastTriggerTime != null) {
       final timeSinceLastTrigger = DateTime.now().difference(_lastTriggerTime!);

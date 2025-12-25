@@ -19,7 +19,6 @@ import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/domain/entities/user_profile.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart' as backup;
 import 'package:prismbox/services/backup/backup_service.dart';
-import 'package:prismbox/services/backup/background_sync_manager.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 
@@ -42,9 +41,6 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
   
   /// 备份服务
   BackupService? _backupService;
-  
-  /// 同步管理器
-  BackgroundSyncManager? _syncManager;
   
   /// 上传服务
   UploadService? _uploadService;
@@ -118,7 +114,7 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
 
       // 4. 初始化服务（通过 Provider 获取）
       // 注意：这些 providers 是 AutoDisposeFutureProvider，需要使用 .future 获取 Future
-      _syncManager = await _container!.read(backup.backgroundSyncManagerProvider.future);
+      // 不再需要 BackgroundSyncManager，因为前台同步已负责填充数据库表
       _uploadService = await _container!.read(backup.uploadServiceProvider.future);
       _backupService = await _container!.read(backup.backupServiceProvider.future);
 
@@ -234,18 +230,17 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
       return false;
     }
 
-    // 3. 执行三阶段同步
-    _logger.info('Starting three-phase sync');
-    final syncResult = await _syncManager!.syncAll(
-      cancellationToken: _cancellationToken,
-    );
-    _logger.info(
-      'Sync completed: added=${syncResult.addedCount}, '
-      'updated=${syncResult.updatedCount}, deleted=${syncResult.deletedCount}',
-    );
+    // 3. 跳过同步阶段 - 前台同步已经负责填充 local_asset_entity 和 remote_asset_entity 表
+    // 后台备份只需要基于这些表执行备份即可
+    _logger.info('Skipping sync phase - relying on foreground sync data');
+
+    // 可选：记录数据库状态（用于调试）
+    final localDao = _database!.localAssetDao;
+    final localAssetCount = (await localDao.getAllAssets()).length;
+    _logger.fine('Local assets in database: $localAssetCount');
 
     if (_cancellationToken.isCancelled || _canceledBySystem) {
-      _logger.info('Backup cancelled after sync');
+      _logger.info('Backup cancelled before backup phase');
       return false;
     }
 
@@ -322,11 +317,9 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
       Future<void> backupFuture;
 
       if (isRefresh) {
-        // 刷新任务：只执行快速同步
-        _logger.info('Executing quick sync for refresh task');
-        backupFuture = _syncManager!.syncLocal(
-          cancellationToken: _cancellationToken,
-        ).then((_) => null);
+        // 刷新任务：跳过同步步骤 - 前台同步会定期执行，后台刷新任务不需要再次同步
+        _logger.info('Skipping sync for refresh task - relying on foreground sync');
+        backupFuture = Future.value(null);
       } else {
         // 处理任务：执行完整备份流程
         _logger.info('Executing full backup for processing task');
@@ -365,18 +358,16 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
 
   /// 执行完整备份流程
   Future<void> _executeFullBackup(String userId) async {
-    // 1. 执行三阶段同步
-    _logger.info('Starting three-phase sync');
-    final syncResult = await _syncManager!.syncAll(
-      cancellationToken: _cancellationToken,
-    );
-    _logger.info(
-      'Sync completed: added=${syncResult.addedCount}, '
-      'updated=${syncResult.updatedCount}, deleted=${syncResult.deletedCount}',
-    );
+    // 1. 跳过同步阶段 - 前台同步已经负责填充数据库表
+    _logger.info('Skipping sync phase - relying on foreground sync data');
+
+    // 可选：记录数据库状态（用于调试）
+    final localDao = _database!.localAssetDao;
+    final localAssetCount = (await localDao.getAllAssets()).length;
+    _logger.fine('Local assets in database: $localAssetCount');
 
     if (_cancellationToken.isCancelled) {
-      _logger.info('Backup cancelled after sync');
+      _logger.info('Backup cancelled before backup phase');
       return;
     }
 
@@ -748,7 +739,6 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
 
       // 5. 清理服务引用
       _backupService = null;
-      _syncManager = null;
       _uploadService = null;
       _database = null;
       _totalTaskCount = 0;

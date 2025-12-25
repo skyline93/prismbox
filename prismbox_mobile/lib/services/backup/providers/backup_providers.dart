@@ -25,7 +25,6 @@ import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/services/sync/providers/sync_providers.dart' as sync;
 // 向后兼容：重新导出（通过兼容层）
 import 'package:prismbox/services/backup/asset_sync_service.dart';
-import 'package:prismbox/services/backup/background_sync_manager.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart' as infra;
 
@@ -182,18 +181,6 @@ Future<BackupService> backupService(BackupServiceRef ref) async {
     apiService: apiService,
     taskFactory: taskFactory,
   );
-}
-
-/// BackgroundSyncManager Provider
-/// 
-/// 向后兼容：委托给新的同步模块 Provider
-/// 注意：新的 BackgroundSyncManager 不再需要 pathResolver 参数
-@riverpod
-Future<BackgroundSyncManager> backgroundSyncManager(
-  BackgroundSyncManagerRef ref,
-) async {
-  // 委托给新的同步模块 Provider
-  return await ref.watch(sync.backgroundSyncManagerProvider.future);
 }
 
 /// UploadTaskManager Provider

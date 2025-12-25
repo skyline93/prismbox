@@ -62,7 +62,7 @@ class RemoteSyncCoordinator {
     _logger.info('计划延迟自动同步（${SyncConfig.startDelay.inSeconds}秒后）');
     Future.delayed(SyncConfig.startDelay, () {
       if (userId != null) {
-        _checkAndSync(userId: userId);
+        _checkAndSyncRemote(userId: userId);
         // 启动定时轮询
         startPolling(userId: userId);
       }
@@ -73,7 +73,7 @@ class RemoteSyncCoordinator {
   void checkAndSyncOnResume({String? userId}) {
     _logger.info('应用恢复，检查数据新鲜度');
     if (userId != null) {
-      _checkAndSync(userId: userId);
+      _checkAndSyncRemote(userId: userId);
       // 确保定时轮询正在运行
       if (_pollingTimer == null || _pollingUserId != userId) {
         startPolling(userId: userId);
@@ -106,7 +106,7 @@ class RemoteSyncCoordinator {
 
     _pollingTimer = Timer.periodic(effectiveInterval, (_) {
       _logger.fine('定时轮询触发: userId=$userId');
-      _checkAndSync(userId: userId);
+      _checkAndSyncRemote(userId: userId);
     });
   }
 
@@ -131,8 +131,8 @@ class RemoteSyncCoordinator {
     return await _sync(userId: userId, full: full, force: true);
   }
 
-  /// 统一的同步触发入口
-  Future<void> _checkAndSync({
+  /// 统一的远程同步触发入口
+  Future<void> _checkAndSyncRemote({
     required String userId,
     bool force = false,
   }) async {

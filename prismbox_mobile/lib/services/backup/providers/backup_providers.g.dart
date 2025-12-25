@@ -235,29 +235,6 @@ final backupServiceProvider = AutoDisposeFutureProvider<BackupService>.internal(
 );
 
 typedef BackupServiceRef = AutoDisposeFutureProviderRef<BackupService>;
-String _$backgroundSyncManagerHash() =>
-    r'cb9f8ad1da43c0b9448d0ded6b9b39fa2abdca53';
-
-/// BackgroundSyncManager Provider
-///
-/// 向后兼容：委托给新的同步模块 Provider
-/// 注意：新的 BackgroundSyncManager 不再需要 pathResolver 参数
-///
-/// Copied from [backgroundSyncManager].
-@ProviderFor(backgroundSyncManager)
-final backgroundSyncManagerProvider =
-    AutoDisposeFutureProvider<BackgroundSyncManager>.internal(
-  backgroundSyncManager,
-  name: r'backgroundSyncManagerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$backgroundSyncManagerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef BackgroundSyncManagerRef
-    = AutoDisposeFutureProviderRef<BackgroundSyncManager>;
 String _$uploadTaskManagerHash() => r'81d2d9ad4597e5c2097d6f1c31176dcc945e9cac';
 
 /// UploadTaskManager Provider

@@ -9,6 +9,7 @@ import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/features/local_sync/exceptions/sync_exception.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
+import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 本地同步服务
 /// 负责扫描系统相册并同步到数据库
@@ -20,7 +21,7 @@ class LocalSyncService {
   static const int _batchSize = 100;
 
   /// 取消令牌
-  CancelToken? _cancelToken;
+  CancellationToken? _cancellationToken;
 
   LocalSyncService({required AppDatabase database}) : _database = database;
 
@@ -35,7 +36,7 @@ class LocalSyncService {
     void Function(int current, int total)? onProgress,
   }) async {
     try {
-      _cancelToken = CancelToken();
+      _cancellationToken = CancellationToken();
 
       // 检查权限
       final permission = await pm.PhotoManager.requestPermissionExtend();
@@ -59,14 +60,14 @@ class LocalSyncService {
       _logger.severe('同步失败', e, stackTrace);
       return SyncResult.failure('同步失败: ${e.toString()}');
     } finally {
-      _cancelToken = null;
+      _cancellationToken = null;
     }
   }
 
   /// 取消同步
   void cancel() {
-    _cancelToken?.cancel();
-    _cancelToken = null;
+    _cancellationToken?.cancel();
+    _cancellationToken = null;
   }
 
   /// 判断是否需要全量同步
@@ -117,7 +118,7 @@ class LocalSyncService {
       // 分批处理
       for (int start = 0; start < totalCount; start += _batchSize) {
         // 检查取消
-        if (_cancelToken?.isCanceled ?? false) {
+        if (_cancellationToken?.isCancelled ?? false) {
           _logger.info('同步已取消');
           break;
         }
@@ -264,7 +265,7 @@ class LocalSyncService {
       // 分批处理
       for (int start = 0; start < totalCount; start += _batchSize) {
         // 检查取消
-        if (_cancelToken?.isCanceled ?? false) {
+        if (_cancellationToken?.isCancelled ?? false) {
           _logger.info('同步已取消');
           break;
         }
@@ -460,16 +461,5 @@ class LocalSyncService {
       _logger.warning('检测已删除资产失败', e);
       return 0;
     }
-  }
-}
-
-/// 取消令牌
-class CancelToken {
-  bool _isCanceled = false;
-
-  bool get isCanceled => _isCanceled;
-
-  void cancel() {
-    _isCanceled = true;
   }
 }

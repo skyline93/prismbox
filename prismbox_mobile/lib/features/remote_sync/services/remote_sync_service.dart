@@ -12,6 +12,7 @@ import 'package:prismbox/features/remote_sync/models/remote_sync_result.dart';
 import 'package:prismbox/features/remote_sync/services/checkpoint_store.dart';
 import 'package:prismbox/features/remote_sync/services/sync_stream_handler.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
+import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 远程同步服务
 /// 负责从服务器同步远程媒体资源到本地数据库
@@ -25,7 +26,7 @@ class RemoteSyncService {
   static const int _batchSize = 100;
   
   /// 取消令牌
-  bool _isCancelled = false;
+  CancellationToken? _cancellationToken;
   StreamSubscription? _subscription;
 
   RemoteSyncService({
@@ -60,7 +61,7 @@ class RemoteSyncService {
         duration: Duration.zero,
       );
     }
-    _isCancelled = false;
+    _cancellationToken = CancellationToken();
     final stopwatch = Stopwatch()..start();
     var addedCount = 0;
     var updatedCount = 0;
@@ -110,7 +111,7 @@ class RemoteSyncService {
 
       // 流式读取响应
       await for (final chunk in response.stream.transform(utf8.decoder)) {
-        if (_isCancelled) {
+        if (_cancellationToken?.isCancelled ?? false) {
           _logger.info('同步已取消');
           break;
         }
@@ -119,7 +120,7 @@ class RemoteSyncService {
         final events = handler.processChunk(chunk);
 
         for (final event in events) {
-          if (_isCancelled) {
+          if (_cancellationToken?.isCancelled ?? false) {
             break;
           }
 
@@ -159,6 +160,7 @@ class RemoteSyncService {
 
       client.close();
       handler.clear();
+      _cancellationToken = null;
 
       // 如果收到重置事件，重新发起同步请求以获取所有数据
       if (shouldResync) {
@@ -190,6 +192,7 @@ class RemoteSyncService {
       );
     } catch (e, stackTrace) {
       _logger.severe('远程同步失败', e, stackTrace);
+      _cancellationToken = null;
       return RemoteSyncResult(
         addedCount: addedCount,
         updatedCount: updatedCount,
@@ -438,8 +441,9 @@ class RemoteSyncService {
 
   /// 取消同步
   void cancel() {
-    _isCancelled = true;
+    _cancellationToken?.cancel();
     _subscription?.cancel();
+    _cancellationToken = null;
     _logger.info('同步已取消');
   }
 }
