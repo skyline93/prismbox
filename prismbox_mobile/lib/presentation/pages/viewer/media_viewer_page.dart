@@ -297,7 +297,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
           },
           onVerticalDragEnd: _isZoomed ? null : (details) {
             final screenHeight = MediaQuery.of(context).size.height;
-            final threshold = screenHeight * 0.2; // 20% 的屏幕高度作为阈值
+            final threshold = screenHeight * 0.03; // 20% 的屏幕高度作为阈值
             
             // 如果向下滑动距离超过阈值，则执行退出动画
             if (_verticalDragOffset > threshold) {
