@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
+import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/services/sync/asset_sync_service.dart';
 
 /// Checksum 匹配服务
@@ -19,13 +20,16 @@ import 'package:prismbox/services/sync/asset_sync_service.dart';
 class ChecksumMatchingService {
   final AppDatabase _database;
   final AssetSyncService _assetSyncService;
+  final AssetPathResolver _pathResolver;
   final Logger _logger = Logger('ChecksumMatchingService');
 
   ChecksumMatchingService({
     required AppDatabase database,
     required AssetSyncService assetSyncService,
+    required AssetPathResolver pathResolver,
   })  : _database = database,
-        _assetSyncService = assetSyncService;
+        _assetSyncService = assetSyncService,
+        _pathResolver = pathResolver;
 
   /// 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
   /// 
@@ -63,10 +67,21 @@ class ChecksumMatchingService {
 
         for (final localAsset in batch) {
           try {
-            // 计算 checksum
+            // 使用 AssetPathResolver 解析文件路径（与上传时保持一致）
+            // 确保匹配时使用的文件路径与上传时相同
+            final actualPath = await _pathResolver.resolveAssetPath(localAsset);
+            if (actualPath == null) {
+              _logger.warning(
+                '无法解析文件路径: assetId=${localAsset.id}, path=${localAsset.path}',
+              );
+              processedCount++;
+              continue;
+            }
+
+            // 计算 checksum（使用解析后的实际路径）
             final checksum = await _assetSyncService.getOrCalculateChecksum(
               assetId: localAsset.id,
-              filePath: localAsset.path,
+              filePath: actualPath,
             );
 
             if (checksum != null && checksum.isNotEmpty) {
