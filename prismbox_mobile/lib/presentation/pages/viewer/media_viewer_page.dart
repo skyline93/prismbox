@@ -32,12 +32,20 @@ class MediaViewerPage extends ConsumerStatefulWidget {
   ConsumerState<MediaViewerPage> createState() => _MediaViewerPageState();
 }
 
-class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
+class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
+    with SingleTickerProviderStateMixin {
   late PageController _pageController;
   late int _initialIndex;
   bool _showControls = true;
   bool _isZoomed = false;
   Timer? _controlsTimer;
+
+  // 垂直拖动相关状态（用于下滑退出预览）
+  double _verticalDragOffset = 0.0;
+  double _verticalDragStartY = 0.0;
+  // 添加动画控制器用于平滑动画
+  late AnimationController _dismissAnimationController;
+  Animation<double>? _dismissAnimation;
 
   // 缓存 assetId 到 BaseAsset 的映射
   Map<String, BaseAsset>? _assetMap;
@@ -73,6 +81,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     // 初始化可见页面范围
     _visiblePageIndices = _calculateVisibleIndices(_initialIndex);
 
+    // 初始化退出动画控制器
+    _dismissAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
     // 自动隐藏控制栏
     _startControlsTimer();
 
@@ -92,6 +106,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   void dispose() {
     _controlsTimer?.cancel();
     _pageController.dispose();
+    _dismissAnimationController.dispose(); // 释放动画控制器
 
     // 释放所有视频播放器资源
     _disposeAllVideoControllers();
@@ -241,6 +256,19 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   }
 
   Widget _buildGallery() {
+    // 计算动画进度（0.0 到 1.0）
+    final screenHeight = MediaQuery.of(context).size.height;
+    final dragProgress = (_verticalDragOffset / screenHeight).clamp(0.0, 1.0);
+    
+    // 计算缩放比例（从 1.0 缩小到 0.3）
+    final scale = 1.0 - (dragProgress * 0.7);
+    
+    // 计算背景透明度（从 1.0 到 0.0，让后面的页面可见）
+    final backgroundOpacity = 1.0 - dragProgress;
+    
+    // 计算内容透明度（从 1.0 到 0.5）
+    final contentOpacity = 1.0 - (dragProgress * 0.5);
+
     return PopScope(
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) {
@@ -248,45 +276,87 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.black.withOpacity(backgroundOpacity),
         extendBodyBehindAppBar: true,
-        body: Stack(
-          children: [
-            // 混合媒体查看器（支持图片和视频）
-            PageView.builder(
-              controller: _pageController,
-              itemCount: widget.assetIds.length,
-              physics: _isZoomed
-                  ? const NeverScrollableScrollPhysics()
-                  : (Platform.isIOS
-                        ? const BouncingScrollPhysics()
-                        : const ClampingScrollPhysics()),
-              onPageChanged: (index) {
-                // 页面切换时的处理
-                _handlePageChanged(index);
-              },
-              itemBuilder: (context, index) {
-                final assetId = widget.assetIds[index];
-                final asset = _assetMap?[assetId];
+        body: GestureDetector(
+          // 只在未放大时响应垂直滑动
+          onVerticalDragStart: _isZoomed ? null : (details) {
+            setState(() {
+              _verticalDragStartY = details.globalPosition.dy;
+              _verticalDragOffset = 0.0;
+            });
+          },
+          onVerticalDragUpdate: _isZoomed ? null : (details) {
+            // 只响应向下滑动
+            final delta = details.globalPosition.dy - _verticalDragStartY;
+            if (delta > 0) {
+              setState(() {
+                _verticalDragOffset = delta;
+              });
+            }
+          },
+          onVerticalDragEnd: _isZoomed ? null : (details) {
+            final screenHeight = MediaQuery.of(context).size.height;
+            final threshold = screenHeight * 0.2; // 20% 的屏幕高度作为阈值
+            
+            // 如果向下滑动距离超过阈值，则执行退出动画
+            if (_verticalDragOffset > threshold) {
+              _dismissWithAnimation();
+            } else {
+              // 否则重置偏移量，添加回弹动画
+              _resetDismissAnimation();
+            }
+          },
+          // 使用 translucent 行为，确保不会拦截子组件的手势
+          behavior: HitTestBehavior.translucent,
+          child: Stack(
+            children: [
+              // 混合媒体查看器（支持图片和视频）
+              Transform.translate(
+                offset: Offset(0, _verticalDragOffset),
+                child: Transform.scale(
+                  scale: scale,
+                  alignment: Alignment.topCenter,
+                  child: Opacity(
+                    opacity: contentOpacity,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: widget.assetIds.length,
+                      physics: _isZoomed
+                          ? const NeverScrollableScrollPhysics()
+                          : (Platform.isIOS
+                                ? const BouncingScrollPhysics()
+                                : const ClampingScrollPhysics()),
+                      onPageChanged: (index) {
+                        // 页面切换时的处理
+                        _handlePageChanged(index);
+                      },
+                      itemBuilder: (context, index) {
+                        final assetId = widget.assetIds[index];
+                        final asset = _assetMap?[assetId];
 
-                if (asset == null) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  );
-                }
+                        if (asset == null) {
+                          return const Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          );
+                        }
 
-                // 根据资产类型显示不同的内容
-                if (asset.isVideo) {
-                  return _buildVideoPlayer(asset, assetId);
-                } else {
-                  return _buildImageViewer(asset, assetId);
-                }
-              },
-            ),
+                        // 根据资产类型显示不同的内容
+                        if (asset.isVideo) {
+                          return _buildVideoPlayer(asset, assetId);
+                        } else {
+                          return _buildImageViewer(asset, assetId);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
 
-            // 控制栏
-            if (_showControls) _buildControls(),
-          ],
+              // 控制栏
+              if (_showControls) _buildControls(),
+            ],
+          ),
         ),
       ),
     );
@@ -336,8 +406,76 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
     setState(() {
       _isZoomed = false;
+      _verticalDragOffset = 0.0; // 重置垂直拖动偏移量
     });
     _resetControlsTimer();
+  }
+
+  /// 执行退出动画
+  void _dismissWithAnimation() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final startOffset = _verticalDragOffset;
+    final endOffset = screenHeight;
+    
+    // 移除之前的监听器（如果有）
+    _dismissAnimationController.removeListener(_animationListener);
+    
+    // 创建动画
+    _dismissAnimation = Tween<double>(
+      begin: startOffset,
+      end: endOffset,
+    ).animate(CurvedAnimation(
+      parent: _dismissAnimationController,
+      curve: Curves.easeOut,
+    ));
+
+    // 添加监听器
+    _dismissAnimationController.addListener(_animationListener);
+
+    _dismissAnimationController.forward().then((_) {
+      // 动画完成后退出
+      if (mounted) {
+        _dismissAnimationController.removeListener(_animationListener);
+        context.router.pop();
+      }
+    });
+  }
+
+  /// 重置退出动画
+  void _resetDismissAnimation() {
+    // 移除之前的监听器（如果有）
+    _dismissAnimationController.removeListener(_animationListener);
+    
+    _dismissAnimationController.reset();
+    _dismissAnimation = Tween<double>(
+      begin: _verticalDragOffset,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _dismissAnimationController,
+      curve: Curves.easeOut,
+    ));
+
+    // 添加监听器
+    _dismissAnimationController.addListener(_animationListener);
+
+    _dismissAnimationController.forward().then((_) {
+      if (mounted) {
+        _dismissAnimationController.removeListener(_animationListener);
+        setState(() {
+          _verticalDragOffset = 0.0;
+        });
+        _dismissAnimationController.reset();
+      }
+    });
+  }
+
+  /// 动画监听器回调
+  void _animationListener() {
+    if (mounted && _dismissAnimation != null) {
+      setState(() {
+        _verticalDragOffset = _dismissAnimation!.value;
+      });
+    }
   }
 
   /// 暂停并释放视频（根据是否可见决定是否完全释放）
