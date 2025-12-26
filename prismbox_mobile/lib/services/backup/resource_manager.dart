@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:prismbox/data/database/app_database.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 
 /// 资源管理器
 /// 

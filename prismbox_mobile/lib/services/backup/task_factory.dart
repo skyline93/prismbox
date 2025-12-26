@@ -4,7 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
 
 /// 任务工厂

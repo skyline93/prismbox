@@ -9,9 +9,7 @@ import 'package:prismbox/features/local_sync/services/sync_coordinator.dart';
 import 'package:prismbox/features/local_sync/services/timeline_provider_service.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart'
     as infra;
-import 'package:prismbox/services/backup/providers/backup_providers.dart'
-    as backup;
-import 'package:prismbox/services/sync/providers/sync_providers.dart' as sync;
+import 'package:prismbox/providers/infrastructure/asset_providers.dart' as infra_asset;
 
 part 'local_sync_providers.g.dart';
 
@@ -48,13 +46,11 @@ Future<ChecksumMatchingService> checksumMatchingService(
   ChecksumMatchingServiceRef ref,
 ) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  final assetSyncService = await ref.watch(
-    sync.assetSyncServiceProvider.future,
-  );
-  final pathResolver = await ref.watch(backup.assetPathResolverProvider.future);
+  final checksumService = await ref.watch(infra_asset.checksumServiceProvider.future);
+  final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   return ChecksumMatchingService(
     database: database,
-    assetSyncService: assetSyncService,
+    checksumService: checksumService,
     pathResolver: pathResolver,
   );
 }

@@ -66,28 +66,8 @@ final backupCandidateSelectorProvider =
 
 typedef BackupCandidateSelectorRef
     = AutoDisposeFutureProviderRef<BackupCandidateSelector>;
-String _$assetSyncServiceHash() => r'8e1b80fefce37f9a9280d816b8bbb620aa961d71';
-
-/// AssetSyncService Provider
-///
-/// 向后兼容：委托给新的同步模块 Provider
-///
-/// Copied from [assetSyncService].
-@ProviderFor(assetSyncService)
-final assetSyncServiceProvider =
-    AutoDisposeFutureProvider<AssetSyncService>.internal(
-  assetSyncService,
-  name: r'assetSyncServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$assetSyncServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef AssetSyncServiceRef = AutoDisposeFutureProviderRef<AssetSyncService>;
 String _$uploadOrchestratorHash() =>
-    r'874e86fe6134ca476c335a16ae9a2c0b8b3ca200';
+    r'bb5c4dd5a31e916bc7d314a2f9a11c5e59e4b447';
 
 /// UploadOrchestrator Provider
 ///
@@ -164,25 +144,7 @@ final fileMetadataExtractorProvider =
 
 typedef FileMetadataExtractorRef
     = AutoDisposeProviderRef<FileMetadataExtractor>;
-String _$assetPathResolverHash() => r'34790b6143b52a38555373aee88f219c57ae49b1';
-
-/// AssetPathResolver Provider
-///
-/// Copied from [assetPathResolver].
-@ProviderFor(assetPathResolver)
-final assetPathResolverProvider =
-    AutoDisposeFutureProvider<AssetPathResolver>.internal(
-  assetPathResolver,
-  name: r'assetPathResolverProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$assetPathResolverHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef AssetPathResolverRef = AutoDisposeFutureProviderRef<AssetPathResolver>;
-String _$taskFactoryHash() => r'10e4901397311091c4f034b5b4fa1a55e8cd628f';
+String _$taskFactoryHash() => r'704623bfc11d77b34ab8c19dfed34a5f0e8f05ae';
 
 /// TaskFactory Provider
 ///
@@ -273,7 +235,7 @@ final backupErrorHandlerProvider =
 
 typedef BackupErrorHandlerRef = AutoDisposeProviderRef<BackupErrorHandler>;
 String _$autoRecoveryManagerHash() =>
-    r'd50e36f28c62c5cb8c04ab5c9a57601522498ea4';
+    r'8062ada401e3214306c35668924414262b5decbf';
 
 /// AutoRecoveryManager Provider
 ///
@@ -309,7 +271,7 @@ final networkOptimizerProvider = AutoDisposeProvider<NetworkOptimizer>.internal(
 );
 
 typedef NetworkOptimizerRef = AutoDisposeProviderRef<NetworkOptimizer>;
-String _$resourceManagerHash() => r'af23b016dbe9eaeeffa7c444584bfcdd5c1d185e';
+String _$resourceManagerHash() => r'b770075b89acb570c90f8e40949d5d6b4ff46621';
 
 /// ResourceManager Provider
 ///

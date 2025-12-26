@@ -4,8 +4,8 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
-import 'package:prismbox/services/sync/asset_sync_service.dart';
+import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
+import 'package:prismbox/infrastructure/asset/checksum_service.dart';
 
 /// Checksum 匹配服务
 /// 
@@ -19,16 +19,16 @@ import 'package:prismbox/services/sync/asset_sync_service.dart';
 /// - 用于识别哪些本地资产已经在服务器上存在（通过 checksum 匹配）
 class ChecksumMatchingService {
   final AppDatabase _database;
-  final AssetSyncService _assetSyncService;
+  final ChecksumService _checksumService;
   final AssetPathResolver _pathResolver;
   final Logger _logger = Logger('ChecksumMatchingService');
 
   ChecksumMatchingService({
     required AppDatabase database,
-    required AssetSyncService assetSyncService,
+    required ChecksumService checksumService,
     required AssetPathResolver pathResolver,
   })  : _database = database,
-        _assetSyncService = assetSyncService,
+        _checksumService = checksumService,
         _pathResolver = pathResolver;
 
   /// 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
@@ -79,7 +79,7 @@ class ChecksumMatchingService {
             }
 
             // 计算 checksum（使用解析后的实际路径）
-            final checksum = await _assetSyncService.getOrCalculateChecksum(
+            final checksum = await _checksumService.getOrCalculateChecksum(
               assetId: localAsset.id,
               filePath: actualPath,
             );

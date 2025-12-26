@@ -1,16 +1,20 @@
-// lib/services/backup/asset_path_resolver.dart
+// lib/infrastructure/asset/asset_path_resolver.dart
 
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/data/database/app_database.dart';
 
-/// 资产路径解析器
+/// 资产路径解析器（基础设施层）
 ///
 /// **职责**：
 /// - 解析资产的文件路径
 /// - 处理文件不存在的情况（通过 photo_manager 重新获取）
 /// - 验证文件存在性
+///
+/// **职责边界**：
+/// - ✅ **负责**：通用的资产路径解析功能
+/// - ❌ **不负责**：业务逻辑编排（由业务模块负责）
 class AssetPathResolver {
   final AppDatabase? _database;
   final Logger _logger = Logger('AssetPathResolver');

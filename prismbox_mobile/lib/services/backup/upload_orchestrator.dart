@@ -14,9 +14,9 @@ import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
 import 'package:prismbox/services/backup/upload_task_manager.dart';
 import 'package:prismbox/services/backup/api_endpoint_validator.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
-import 'package:prismbox/services/sync/asset_sync_service.dart';
+import 'package:prismbox/infrastructure/asset/checksum_service.dart';
 import 'package:prismbox/services/backup/task_update_service.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
@@ -76,7 +76,7 @@ class UploadOrchestrator {
   final ApiEndpointValidator _endpointValidator;
   final AssetPathResolver _pathResolver;
   final FileMetadataExtractor _metadataExtractor;
-  final AssetSyncService _assetSyncService;
+  final ChecksumService _checksumService;
   final TaskUpdateService? _taskUpdateService; // 可选，用于更新任务信息
   final BackupErrorHandler _errorHandler; // 必需，用于统一错误处理
   final Logger _logger = Logger('UploadOrchestrator');
@@ -106,7 +106,7 @@ class UploadOrchestrator {
     ApiEndpointValidator? endpointValidator,
     required AssetPathResolver pathResolver,
     required FileMetadataExtractor metadataExtractor,
-    required AssetSyncService assetSyncService,
+    required ChecksumService checksumService,
     required BackupErrorHandler errorHandler, // 必需，用于统一错误处理
     TaskUpdateService? taskUpdateService, // 可选，用于更新任务信息
   })  : _database = database,
@@ -124,7 +124,7 @@ class UploadOrchestrator {
             ApiEndpointValidator(apiService: apiService ?? ApiService()),
         _pathResolver = pathResolver,
         _metadataExtractor = metadataExtractor,
-        _assetSyncService = assetSyncService,
+        _checksumService = checksumService,
         _errorHandler = errorHandler,
         _taskUpdateService = taskUpdateService;
 
@@ -444,8 +444,8 @@ class UploadOrchestrator {
 
     for (final task in tasks) {
       try {
-        // 使用 AssetSyncService 获取或计算 checksum
-        final checksum = await _assetSyncService.getOrCalculateChecksum(
+        // 使用 ChecksumService 获取或计算 checksum
+        final checksum = await _checksumService.getOrCalculateChecksum(
           assetId: task.assetId,
           filePath: task.localPath,
         );
@@ -700,8 +700,8 @@ class UploadOrchestrator {
         fileSize = await _metadataExtractor.extractFileSize(actualPath);
       }
 
-      // 4. 获取或计算 checksum（使用 AssetSyncService）
-      final checksum = await _assetSyncService.getOrCalculateChecksum(
+      // 4. 获取或计算 checksum（使用 ChecksumService）
+      final checksum = await _checksumService.getOrCalculateChecksum(
         assetId: task.assetId,
         filePath: actualPath,
       );
@@ -853,19 +853,13 @@ class UploadOrchestrator {
             'Task completed: taskId=$taskId, '
             'elapsed=${elapsed.inSeconds}s, polls=$pollCount',
           );
-          // 任务成功完成，同步资产（使用 AssetSyncService）
-          _assetSyncService.syncAssetAfterUpload(task).then((_) {
-            // 发出上传完成通知，通知 UI 刷新上传状态图标
-            _logger.info(
-              'Sending upload complete notification: assetId=${task.assetId}',
-            );
-            _uploadCompleteController.add(task.assetId);
-          }).catchError((error) {
-            _logger.warning(
-              'Failed to sync asset after upload: taskId=$taskId, error=$error',
-            );
-            // 不阻塞上传流程，记录错误即可
-          });
+          // 任务成功完成，发出上传完成通知
+          // 注意：不再立即同步资产，由同步模块定时处理
+          _logger.info(
+            'Task completed: assetId=${task.assetId}, '
+            'sync will be handled by sync module',
+          );
+          _uploadCompleteController.add(task.assetId);
           return; // 任务成功完成
 
         case UploadTaskStatus.failed:

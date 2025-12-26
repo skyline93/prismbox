@@ -18,13 +18,9 @@ import 'package:prismbox/services/backup/resource_manager.dart';
 import 'package:prismbox/services/backup/queue_size_manager.dart';
 import 'package:prismbox/services/backup/task_cleanup_scheduler.dart';
 import 'package:prismbox/services/backup/task_factory.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
-// 使用新的同步模块 Provider
-import 'package:prismbox/services/sync/providers/sync_providers.dart' as sync;
-// 向后兼容：重新导出（通过兼容层）
-import 'package:prismbox/services/backup/asset_sync_service.dart';
+import 'package:prismbox/providers/infrastructure/asset_providers.dart' as infra_asset;
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart' as infra;
 
@@ -61,14 +57,6 @@ Future<BackupCandidateSelector> backupCandidateSelector(
   );
 }
 
-/// AssetSyncService Provider
-/// 
-/// 向后兼容：委托给新的同步模块 Provider
-@riverpod
-Future<AssetSyncService> assetSyncService(AssetSyncServiceRef ref) async {
-  // 委托给新的同步模块 Provider
-  return await ref.watch(sync.assetSyncServiceProvider.future);
-}
 
 /// UploadOrchestrator Provider
 /// 
@@ -84,9 +72,9 @@ Future<UploadOrchestrator> uploadOrchestrator(
   final uploadTaskManager = await ref.watch(uploadTaskManagerProvider.future);
   final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
   final concurrencyController = UploadConcurrencyController();
-  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   final metadataExtractor = ref.watch(fileMetadataExtractorProvider);
-  final assetSyncService = await ref.watch(assetSyncServiceProvider.future);
+  final checksumService = await ref.watch(infra_asset.checksumServiceProvider.future);
   // 注意：taskUpdateService 会在 uploadServiceProvider 中设置
   // 这里先传入 null，后续通过 setTaskUpdateService 设置
   return UploadOrchestrator(
@@ -97,7 +85,7 @@ Future<UploadOrchestrator> uploadOrchestrator(
     uploadTaskManager: uploadTaskManager,
     pathResolver: pathResolver,
     metadataExtractor: metadataExtractor,
-    assetSyncService: assetSyncService,
+    checksumService: checksumService,
     errorHandler: errorHandler, // 注入错误处理器
     taskUpdateService: null, // 延迟设置
   );
@@ -139,17 +127,11 @@ FileMetadataExtractor fileMetadataExtractor(FileMetadataExtractorRef ref) {
   return FileMetadataExtractor();
 }
 
-/// AssetPathResolver Provider
-@riverpod
-Future<AssetPathResolver> assetPathResolver(AssetPathResolverRef ref) async {
-  final database = await ref.watch(infra.databaseProvider.future);
-  return AssetPathResolver(database: database);
-}
 
 /// TaskFactory Provider
 @riverpod
 Future<TaskFactory> taskFactory(TaskFactoryRef ref) async {
-  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   final metadataExtractor = ref.watch(fileMetadataExtractorProvider);
   return TaskFactory(
     pathResolver: pathResolver,
@@ -226,7 +208,7 @@ Future<AutoRecoveryManager> autoRecoveryManager(
   AutoRecoveryManagerRef ref,
 ) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   final stateMachine = await ref.watch(uploadTaskStateMachineProvider.future);
   return AutoRecoveryManager(
     database: database,
@@ -246,7 +228,7 @@ NetworkOptimizer networkOptimizer(NetworkOptimizerRef ref) {
 @riverpod
 Future<ResourceManager> resourceManager(ResourceManagerRef ref) async {
   final database = await ref.watch(infra.databaseProvider.future);
-  final pathResolver = await ref.watch(assetPathResolverProvider.future);
+  final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   return ResourceManager(
     database: database,
     pathResolver: pathResolver,

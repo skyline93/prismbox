@@ -6,7 +6,7 @@ import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 
 /// 自动恢复管理器

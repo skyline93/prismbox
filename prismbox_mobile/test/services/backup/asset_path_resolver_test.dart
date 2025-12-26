@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
-import 'package:prismbox/services/backup/asset_path_resolver.dart';
+import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 
 void main() {
   group('AssetPathResolver', () {
