@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
 
-/// 资料库页面
+/// 圈子页面
 @RoutePage()
 class LibraryPage extends StatelessWidget {
   const LibraryPage({super.key});
@@ -11,7 +11,7 @@ class LibraryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('资料库'),
+        title: const Text('圈子'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 20.0),
@@ -19,10 +19,7 @@ class LibraryPage extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text('资料库页面'),
-      ),
+      body: const Center(child: Text('圈子页面')),
     );
   }
 }
-
