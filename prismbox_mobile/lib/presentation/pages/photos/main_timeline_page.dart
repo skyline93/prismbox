@@ -15,6 +15,7 @@ import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.d
 import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart'
     show DragSelectionRegion, AssetIndex, ScrollDirection;
 import 'package:prismbox/presentation/widgets/backup/backup_status_indicator.dart';
+import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_grid_columns_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
@@ -487,6 +488,10 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: BackupStatusIndicator(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20.0),
+                          child: UserProfileIndicator(),
                         ),
                       ],
                     ),

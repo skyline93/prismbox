@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 
 /// 搜索页面
@@ -47,6 +48,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             border: InputBorder.none,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 20.0),
+            child: UserProfileIndicator(),
+          ),
+        ],
       ),
       body: const Center(
         child: Text('搜索页面'),
