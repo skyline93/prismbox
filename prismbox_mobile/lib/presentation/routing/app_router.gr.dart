@@ -33,6 +33,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const BackupSettingsPage(),
       );
     },
+    LanguageRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const LanguagePage(),
+      );
+    },
     LibraryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -68,6 +74,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const PermissionPage(),
       );
     },
+    PreferencesRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const PreferencesPage(),
+      );
+    },
     RegisterRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -78,6 +90,12 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const SearchPage(),
+      );
+    },
+    SettingsRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SettingsPage(),
       );
     },
     SplashRoute.name: (routeData) {
@@ -139,6 +157,20 @@ class BackupSettingsRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'BackupSettingsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [LanguagePage]
+class LanguageRoute extends PageRouteInfo<void> {
+  const LanguageRoute({List<PageRouteInfo>? children})
+      : super(
+          LanguageRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'LanguageRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -243,6 +275,20 @@ class PermissionRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [PreferencesPage]
+class PreferencesRoute extends PageRouteInfo<void> {
+  const PreferencesRoute({List<PageRouteInfo>? children})
+      : super(
+          PreferencesRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'PreferencesRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [RegisterPage]
 class RegisterRoute extends PageRouteInfo<void> {
   const RegisterRoute({List<PageRouteInfo>? children})
@@ -266,6 +312,20 @@ class SearchRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'SearchRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SettingsPage]
+class SettingsRoute extends PageRouteInfo<void> {
+  const SettingsRoute({List<PageRouteInfo>? children})
+      : super(
+          SettingsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SettingsRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

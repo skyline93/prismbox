@@ -31,11 +31,14 @@ enum StoreKey<T> {
   preferRemoteImage<bool>._(100),
   loadPreview<bool>._(101),
   loadOriginal<bool>._(102),
-  
+
   // 本地同步设置
-  dataSourceThreshold<int>._(110); // 数据源切换阈值（数据库资产数量）
+  dataSourceThreshold<int>._(110), // 数据源切换阈值（数据库资产数量）
+
+  // 应用外观设置
+  themeColor<String>._(200), // 主题色（如 "blue", "green", "purple" 等）
+  language<String>._(201); // 语言（如 "zh_CN", "en"）
 
   final int id;
   const StoreKey._(this.id);
 }
-

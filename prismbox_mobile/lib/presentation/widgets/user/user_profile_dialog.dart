@@ -427,10 +427,7 @@ class UserProfileDialog extends ConsumerWidget {
             label: '设置',
             onTap: () {
               Navigator.of(context).pop();
-              // TODO: 跳转到设置页面
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('设置页面开发中')));
+              context.router.push(const SettingsRoute());
             },
           ),
           Divider(height: 1, color: Colors.grey[200], indent: 44),

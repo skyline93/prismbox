@@ -177,7 +177,7 @@ class _TimelineAssetsProviderElement
       (origin as TimelineAssetsProvider).forcePhotoManager;
 }
 
-String _$timelineSectionsHash() => r'038781495d2516c189de12f1441d8176ce8d5eb0';
+String _$timelineSectionsHash() => r'a3836a0084496b7c15924c71f29bc42383871160';
 
 /// 时间线分组数据 Provider
 ///

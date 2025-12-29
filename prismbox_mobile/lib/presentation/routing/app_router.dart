@@ -14,6 +14,9 @@ import 'package:prismbox/presentation/pages/viewer/media_viewer_page.dart';
 import 'package:prismbox/presentation/pages/backup/backup_settings_page.dart';
 import 'package:prismbox/presentation/pages/backup/backup_management_page.dart';
 import 'package:prismbox/presentation/pages/backup/upload_detail_page.dart';
+import 'package:prismbox/presentation/pages/settings/settings_page.dart';
+import 'package:prismbox/presentation/pages/settings/preferences_page.dart';
+import 'package:prismbox/presentation/pages/settings/language_page.dart';
 import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
 import 'package:prismbox/presentation/routing/guards/duplicate_guard.dart';
 import 'package:prismbox/presentation/routing/guards/permission_guard.dart';
@@ -127,6 +130,27 @@ class AppRouter extends _$AppRouter {
         AutoRoute(
           page: UploadDetailRoute.page,
           path: '/backup/upload-detail',
+          guards: [_authGuard],
+        ),
+
+        // 设置页面（需要认证）
+        AutoRoute(
+          page: SettingsRoute.page,
+          path: '/settings',
+          guards: [_authGuard],
+        ),
+
+        // 偏好设置页面（需要认证）
+        AutoRoute(
+          page: PreferencesRoute.page,
+          path: '/settings/preferences',
+          guards: [_authGuard],
+        ),
+
+        // 语言设置页面（需要认证）
+        AutoRoute(
+          page: LanguageRoute.page,
+          path: '/settings/language',
           guards: [_authGuard],
         ),
       ];

@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   drift: ^2.11.0
   sqlite3_flutter_libs: ^0.5.18
   path_provider: ^2.1.1
@@ -57,7 +59,7 @@ dependencies:
   json_annotation: ^4.8.1
 
   # 国际化（OpenAPI客户端需要）
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # 集合工具（OpenAPI客户端需要）
   collection: ^1.18.0

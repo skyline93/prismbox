@@ -11,6 +11,9 @@ import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/data/database/connection.dart';
 import 'package:prismbox/services/debug/storage_inspector_service.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart' as backup;
+import 'package:prismbox/providers/settings/theme_provider.dart';
+import 'package:prismbox/providers/settings/locale_provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   // 使用自定义 WidgetsFlutterBinding 以启用 CustomImageCache
@@ -132,14 +135,25 @@ class _MyAppState extends ConsumerState<MyApp> {
   Widget build(BuildContext context) {
     // 通过 Provider 获取 AppRouter 实例
     final router = ref.watch(appRouterProvider);
+    // 获取主题数据
+    final theme = ref.watch(themeDataProvider);
+    // 获取语言设置
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'PrismBox',
       debugShowCheckedModeBanner: false, // 隐藏右上角的 DEBUG 标识
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: theme,
+      locale: locale,
+      supportedLocales: const [
+        Locale('zh', 'CN'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: router.config(),
     );
   }
