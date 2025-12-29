@@ -33,6 +33,25 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// 批量根据 ID 获取资产
+  /// 返回 Map<assetId, LocalAssetEntityData>
+  Future<Map<String, LocalAssetEntityData>> getAssetsByIds(List<String> ids) {
+    if (ids.isEmpty) {
+      return Future.value({});
+    }
+
+    return (select(localAssetEntity)
+          ..where((t) => t.id.isIn(ids)))
+        .get()
+        .then((assets) {
+          final map = <String, LocalAssetEntityData>{};
+          for (final asset in assets) {
+            map[asset.id] = asset;
+          }
+          return map;
+        });
+  }
+
   /// 插入资产
   Future<void> insertAsset(LocalAssetEntityData asset) {
     return into(localAssetEntity).insert(asset);

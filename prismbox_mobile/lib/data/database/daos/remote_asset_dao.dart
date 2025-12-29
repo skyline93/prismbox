@@ -53,6 +53,33 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// 批量根据 checksum 获取远程资产
+  /// 返回 Map<checksum, RemoteAssetEntityData>
+  /// 如果同一个 checksum 有多个资产，取第一个（通常应该是唯一的）
+  Future<Map<String, RemoteAssetEntityData>> getAssetsByChecksums(
+    List<String> checksums,
+  ) {
+    if (checksums.isEmpty) {
+      return Future.value({});
+    }
+
+    return (select(remoteAssetEntity)
+          ..where((t) => 
+              t.checksum.isIn(checksums) & 
+              t.deletedAt.isNull()))
+        .get()
+        .then((assets) {
+          final map = <String, RemoteAssetEntityData>{};
+          // 如果同一个 checksum 有多个资产，取第一个
+          for (final asset in assets) {
+            if (!map.containsKey(asset.checksum)) {
+              map[asset.checksum] = asset;
+            }
+          }
+          return map;
+        });
+  }
+
   /// 插入资产
   Future<void> insertAsset(RemoteAssetEntityData asset) {
     return into(remoteAssetEntity).insert(asset);

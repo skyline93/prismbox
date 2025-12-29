@@ -335,26 +335,74 @@ class TimelineProviderService {
         return [];
       }
 
-      // 获取资产列表（限制数量，避免一次性加载太多）
+      // 获取资产列表
       final assets = await allPhotosAlbum.getAssetListRange(
         start: 0,
         end: totalCount,
       );
 
-      // 转换为 LocalAsset
-      final localAssets = <LocalAsset>[];
-      for (final asset in assets) {
-        try {
-          final localAsset = await _convertAssetEntityToLocalAsset(asset);
-          localAssets.add(localAsset);
-        } catch (e) {
-          _logger.warning('转换资产失败: ${asset.id}', e);
-          // 继续处理其他资产
+      // ========== 优化：批量查询远程资产 ID ==========
+      // 1. 批量获取所有本地资产数据（一次查询）
+      final assetIds = assets.map((a) => a.id).toList();
+      final localDao = LocalAssetDao(_database);
+      final localAssetsMap = await localDao.getAssetsByIds(assetIds);
+
+      // 2. 收集所有需要查询的 checksum（批量查询远程资产）
+      final checksumsToQuery = <String>[];
+      final assetIdToChecksumMap = <String, String>{};
+
+      for (final entry in localAssetsMap.entries) {
+        final checksum = entry.value.checksum;
+        if (checksum != null && checksum.isNotEmpty) {
+          checksumsToQuery.add(checksum);
+          assetIdToChecksumMap[entry.key] = checksum;
         }
       }
 
+      // 3. 批量查询远程资产 ID（一次查询）
+      final remoteDao = RemoteAssetDao(_database);
+      final remoteAssetsMap = checksumsToQuery.isEmpty
+          ? <String, RemoteAssetEntityData>{}
+          : await remoteDao.getAssetsByChecksums(checksumsToQuery);
+
+      // 4. 构建 assetId -> remoteAssetId 映射
+      final assetIdToRemoteAssetIdMap = <String, String>{};
+      for (final entry in assetIdToChecksumMap.entries) {
+        final checksum = entry.value;
+        final remoteAsset = remoteAssetsMap[checksum];
+        if (remoteAsset != null) {
+          assetIdToRemoteAssetIdMap[entry.key] = remoteAsset.id;
+        }
+      }
+      // ========== 批量查询优化结束 ==========
+
+      // 5. 并行转换资产（不包含数据库查询）
+      final localAssetsResults = await Future.wait(
+        assets.map((asset) async {
+          try {
+            return await _convertAssetEntityToLocalAsset(
+              asset,
+              remoteAssetId: assetIdToRemoteAssetIdMap[asset.id],
+            );
+          } catch (e) {
+            _logger.warning('转换资产失败: ${asset.id}', e);
+            return null;
+          }
+        }),
+      );
+
+      // 过滤掉转换失败的结果
+      final localAssets = localAssetsResults
+          .whereType<LocalAsset>()
+          .toList();
+
       // 按创建时间降序排序
       localAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      _logger.info(
+        '从 photo_manager 加载 ${localAssets.length} 个资产，'
+        '批量查询了 ${remoteAssetsMap.length} 个远程资产关联',
+      );
 
       return localAssets;
     } catch (e) {
@@ -374,27 +422,12 @@ class TimelineProviderService {
     }
   }
 
-  /// 获取关联的远程资产 ID（通过 checksum 查询）
-  Future<String?> _getRemoteAssetId(String? checksum) async {
-    if (checksum == null || checksum.isEmpty) {
-      return null;
-    }
-
-    try {
-      final remoteDao = RemoteAssetDao(_database);
-      // 通过 checksum 查询远程资产（不限制用户）
-      final remoteAsset = await remoteDao.getAssetByChecksum(checksum);
-      return remoteAsset?.id;
-    } catch (e) {
-      _logger.warning('查询远程资产 ID 失败: $checksum', e);
-      return null;
-    }
-  }
-
-  /// 转换 AssetEntity 为 LocalAsset
+  /// 转换 AssetEntity 为 LocalAsset（优化版本）
+  /// [remoteAssetId] 预先查询好的远程资产 ID，避免在转换时再次查询数据库
   Future<LocalAsset> _convertAssetEntityToLocalAsset(
-    pm.AssetEntity asset,
-  ) async {
+    pm.AssetEntity asset, {
+    String? remoteAssetId,
+  }) async {
     // 转换资产类型
     // photo_manager 的 AssetType 是枚举，需要转换为我们的 AssetType
     // AssetEntity.type 返回的是 AssetType 枚举值，使用索引值判断
@@ -423,18 +456,7 @@ class TimelineProviderService {
     // 注意：不要使用 originFile.path 来解析文件名，因为它在 iOS 上是临时文件，文件名是随机的
     final originalFileName = asset.title ?? '';
 
-    // 尝试从数据库获取关联的远程资产 ID
-    String? remoteAssetId;
-    try {
-      final dao = LocalAssetDao(_database);
-      final localAsset = await dao.getAssetById(asset.id);
-      if (localAsset != null && localAsset.checksum != null) {
-        remoteAssetId = await _getRemoteAssetId(localAsset.checksum);
-      }
-    } catch (e) {
-      // 忽略错误
-      _logger.fine('获取远程资产 ID 失败: ${asset.id}', e);
-    }
+    // 注意：remoteAssetId 已经从批量查询中获取，不再需要单独查询数据库
 
     return LocalAsset.fromData(
       id: asset.id,
@@ -448,7 +470,7 @@ class TimelineProviderService {
       durationInSeconds: asset.duration,
       isFavorite: false,
       orientation: asset.orientation,
-      remoteAssetId: remoteAssetId,
+      remoteAssetId: remoteAssetId, // 使用预先查询的结果
       assetEntity: asset, // photo_manager 数据源包含 AssetEntity
     );
   }

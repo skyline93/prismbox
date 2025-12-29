@@ -28,23 +28,28 @@ Future<List<BaseAsset>> timelineAssets(
 /// 支持根据筛选模式（全部/已备份/未备份/仅云端）过滤照片
 @riverpod
 Future<List<TimelineSection>> timelineSections(TimelineSectionsRef ref) async {
-  // 1. 获取原始数据
+  // 1. 获取筛选模式（先 watch，确保筛选模式变化时触发重新计算）
+  final filterMode = ref.watch(photoFilterModeProvider);
+  
+  // 2. 获取原始数据
+  // 使用固定的参数调用 timelineAssetsProvider，确保始终使用同一个 provider 实例
+  // 直接 await provider 的 future，Riverpod 会自动等待数据加载完成
+  // 这种方式确保数据已经加载完成后再进行筛选，避免在数据加载过程中筛选导致的问题
   final assets = await ref.watch(timelineAssetsProvider().future);
 
-  // 2. 获取筛选模式并过滤数据
-  final filterMode = ref.watch(photoFilterModeProvider);
+  // 3. 根据筛选模式过滤数据
   final filteredAssets = _filterAssets(assets, filterMode);
 
-  // 3. 如果过滤后没有数据，直接返回空列表（避免不必要的分组操作）
+  // 4. 如果过滤后没有数据，直接返回空列表（避免不必要的分组操作）
   if (filteredAssets.isEmpty) {
     return [];
   }
 
-  // 4. 执行分组转换
+  // 5. 执行分组转换
   final groupingService = TimelineGroupingService();
   final sections = groupingService.groupByTime(filteredAssets);
 
-  // 5. 移除空分组（过滤后可能产生空分组）
+  // 6. 移除空分组（过滤后可能产生空分组）
   return sections.where((section) => section.assets.isNotEmpty).toList();
 }
 
