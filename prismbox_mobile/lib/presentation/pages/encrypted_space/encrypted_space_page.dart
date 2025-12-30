@@ -9,7 +9,6 @@ import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dialog.dart';
-import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
 import 'package:prismbox/presentation/widgets/media/selectable_media_grid_sliver.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart';
@@ -60,11 +59,23 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
       // 检查是否已设置密码
       final hasPassword = await _checkPasswordSet(encryptedSpaceService, albumId);
       
-      // 检查是否已解锁
+      // 检查是否有有效的会话令牌
       final accessControlService = AlbumAccessControlService(
         sessionStorage: sessionStorage,
       );
-      final isUnlocked = accessControlService.isAlbumUnlocked(albumId);
+      final hasValidToken = await sessionStorage.isSessionTokenValid(albumId);
+      
+      // 如果有有效令牌，自动解锁
+      bool isUnlocked = false;
+      if (hasValidToken) {
+        try {
+          await accessControlService.unlockAlbum(albumId, useBiometric: false);
+          isUnlocked = true;
+        } catch (e) {
+          // 解锁失败，保持锁定状态
+          isUnlocked = false;
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -73,10 +84,11 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
           _isUnlocked = isUnlocked;
           _isLoading = false;
         });
-
-        // 不自动弹出对话框，让用户主动点击解锁按钮
-        // 如果已设置密码但未解锁，页面会显示解锁按钮
-        // 如果未设置密码，页面会显示设置密码提示
+        
+        // setState 之后，再加载资产列表（此时 _albumId 已经设置）
+        if (isUnlocked) {
+          await _loadAssets();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -120,71 +132,8 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
     );
   }
 
-  Future<bool?> _showPasswordVerifyDialog(
-    EncryptedSpaceService encryptedSpaceService,
-    AlbumAccessControlService accessControlService,
-  ) async {
-    if (_albumId == null) return false;
-
-    return await PasswordVerifyDialog.show(
-      context,
-      albumId: _albumId!,
-      encryptedSpaceService: encryptedSpaceService,
-      accessControlService: accessControlService,
-    );
-  }
-
-  Future<void> _handleUnlock() async {
-    if (_albumId == null) return;
-
-    // 防止重复显示对话框
-    if (_isShowingDialog) return;
-    
-    setState(() {
-      _isShowingDialog = true;
-    });
-
-    try {
-    final database = await ref.read(databaseProvider.future);
-    final apiService = ref.read(apiServiceProvider);
-    final sessionStorage = SessionStorageService();
-    final encryptedSpaceService = EncryptedSpaceService(
-      database: database,
-      apiService: apiService,
-      sessionStorage: sessionStorage,
-    );
-    final accessControlService = AlbumAccessControlService(
-      sessionStorage: sessionStorage,
-    );
-
-      final result = await _showPasswordVerifyDialog(encryptedSpaceService, accessControlService);
-      
-      if (result == true && mounted) {
-        setState(() {
-          _isUnlocked = true;
-          _isShowingDialog = false;
-        });
-        // 解锁后加载资产列表
-        await _loadAssets();
-      } else if (mounted) {
-        setState(() {
-          _isShowingDialog = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isShowingDialog = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('解锁失败: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+  // 移除了 _showPasswordVerifyDialog 和 _handleUnlock 方法
+  // 因为现在从合集页面进入时已经验证过了，不需要在页面内再次验证
 
   Future<void> _handleChangePassword() async {
     if (_albumId == null) return;
@@ -271,6 +220,42 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
   }
 
   Widget _buildLockedContent() {
+    // 如果有密码但未解锁，说明验证失败，显示提示信息
+    // 这种情况不应该发生（因为从合集页面进入时已经验证过了）
+    if (_hasPassword) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '会话已过期',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '请返回并重新验证以访问加密空间',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // 如果没有密码，显示设置密码提示
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -282,7 +267,7 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
           ),
           const SizedBox(height: 24),
           Text(
-            _hasPassword ? '加密空间已锁定' : '加密空间未设置密码',
+            '加密空间未设置密码',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w500,
@@ -291,9 +276,7 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            _hasPassword
-                ? '请输入密码以访问您的私密照片和视频'
-                : '请设置密码以保护您的私密照片和视频',
+            '请设置密码以保护您的私密照片和视频',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
@@ -302,9 +285,9 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: _isShowingDialog ? null : (_hasPassword ? _handleUnlock : _handleSetupPassword),
-            icon: Icon(_hasPassword ? Icons.lock_open : Icons.lock),
-            label: Text(_hasPassword ? '解锁' : '设置密码'),
+            onPressed: _isShowingDialog ? null : _handleSetupPassword,
+            icon: const Icon(Icons.lock),
+            label: const Text('设置密码'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(
                 horizontal: 32,

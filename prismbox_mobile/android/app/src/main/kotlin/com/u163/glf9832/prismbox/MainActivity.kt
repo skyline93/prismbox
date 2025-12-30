@@ -1,7 +1,7 @@
 package com.u163.glf9832.prismbox
 
 import android.content.Context
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import app.prismbox.HttpSSLOptionsPlugin
 import app.prismbox.StoragePlugin
@@ -10,7 +10,7 @@ import app.prismbox.background.BackgroundWorkerFgHostApi
 import app.prismbox.connectivity.ConnectivityApiImpl
 import app.prismbox.connectivity.ConnectivityApi
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         

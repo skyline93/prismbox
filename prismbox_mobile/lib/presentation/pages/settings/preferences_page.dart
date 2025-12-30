@@ -5,6 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
+import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+import 'package:prismbox/presentation/widgets/encrypted_space/password_verification_dialog.dart';
+import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
+import 'package:prismbox/providers/infrastructure/database_provider.dart';
 
 /// 偏好设置页面
 @RoutePage()
@@ -18,13 +23,42 @@ class PreferencesPage extends ConsumerStatefulWidget {
 class _PreferencesPageState extends ConsumerState<PreferencesPage> {
   String _selectedThemeColor = 'blue';
   bool _biometricEnabled = false;
-  bool _isCheckingBiometric = false;
   bool _biometricSupported = false;
+  String? _encryptedSpaceAlbumId;
+  EncryptedSpaceService? _encryptedSpaceService;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _initializeEncryptedSpace();
+  }
+
+  /// 初始化加密空间服务
+  Future<void> _initializeEncryptedSpace() async {
+    try {
+      final database = await ref.read(databaseProvider.future);
+      final apiService = ref.read(apiServiceProvider);
+      final sessionStorage = SessionStorageService();
+      final encryptedSpaceService = EncryptedSpaceService(
+        database: database,
+        apiService: apiService,
+        sessionStorage: sessionStorage,
+      );
+
+      // 获取或创建加密空间相册
+      final albumId = await encryptedSpaceService.getOrCreateEncryptedSpaceAlbum();
+
+      if (mounted) {
+        setState(() {
+          _encryptedSpaceAlbumId = albumId;
+          _encryptedSpaceService = encryptedSpaceService;
+        });
+      }
+    } catch (e) {
+      // 初始化失败不影响页面显示
+      // 在需要使用时再处理错误
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -47,41 +81,48 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
     try {
       final biometricAuthService = BiometricAuthService();
       final supported = await biometricAuthService.isDeviceSupported();
-      setState(() {
-        _biometricSupported = supported;
-        _isCheckingBiometric = false;
-      });
+      if (mounted) {
+        setState(() {
+          _biometricSupported = supported;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _biometricSupported = false;
-        _isCheckingBiometric = false;
-      });
+      if (mounted) {
+        setState(() {
+          _biometricSupported = false;
+        });
+      }
     }
   }
 
   Future<void> _onBiometricEnabledChanged(bool value) async {
-    if (value && !_biometricSupported) {
-      // 如果设备不支持，提示用户
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('您的设备不支持生物识别'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
-    }
-
-    // 如果启用生物识别，先测试一下是否可用
+    // 1. 如果开启生物识别
     if (value) {
-      setState(() {
-        _isCheckingBiometric = true;
-      });
-      
+      // 1.1 检查设备支持
+      if (!_biometricSupported) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('您的设备不支持生物识别'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 1.2 验证密码
+      final passwordVerified = await _verifyPasswordForEnable();
+      if (!passwordVerified) {
+        // 用户取消或验证失败，不更新开关
+        return;
+      }
+
+      // 1.3 检查生物识别可用性（不更新UI状态，避免闪烁）
+      bool available = false;
       try {
         final biometricAuthService = BiometricAuthService();
-        final available = await biometricAuthService.canCheckBiometrics();
+        available = await biometricAuthService.canCheckBiometrics();
         if (!available) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -91,9 +132,6 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
               ),
             );
           }
-          setState(() {
-            _isCheckingBiometric = false;
-          });
           return;
         }
       } catch (e) {
@@ -105,28 +143,124 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
             ),
           );
         }
-        setState(() {
-          _isCheckingBiometric = false;
-        });
         return;
+      }
+
+      // 1.4 所有验证通过，保存设置（一次性更新UI，避免闪烁）
+      await AppSetting.set(Setting.encryptedSpaceBiometricEnabled, true);
+      if (mounted) {
+        setState(() {
+          _biometricEnabled = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('已启用生物识别解锁'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } 
+    // 2. 如果关闭生物识别
+    else {
+      // 2.1 进行生物识别验证
+      final biometricVerified = await _verifyBiometricForDisable();
+      if (!biometricVerified) {
+        // 验证失败或取消，不更新开关
+        return;
+      }
+
+      // 2.2 验证通过，保存设置
+      await AppSetting.set(Setting.encryptedSpaceBiometricEnabled, false);
+      if (mounted) {
+        setState(() {
+          _biometricEnabled = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('已禁用生物识别解锁'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 验证密码（用于开启生物识别）
+  Future<bool> _verifyPasswordForEnable() async {
+    // 确保加密空间服务已初始化
+    if (_encryptedSpaceService == null || _encryptedSpaceAlbumId == null) {
+      try {
+        await _initializeEncryptedSpace();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('初始化加密空间失败: $e'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        return false;
       }
     }
 
-    await AppSetting.set(Setting.encryptedSpaceBiometricEnabled, value);
-    setState(() {
-      _biometricEnabled = value;
-      _isCheckingBiometric = false;
-    });
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value 
-            ? '已启用生物识别解锁，设置密码后可使用生物识别快速解锁' 
-            : '已禁用生物识别解锁'),
-          duration: const Duration(seconds: 2),
-        ),
+    if (_encryptedSpaceService == null || _encryptedSpaceAlbumId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('无法获取加密空间信息'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return false;
+    }
+
+    // 显示密码验证对话框
+    final verified = await PasswordVerificationDialog.show(
+      context,
+      encryptedSpaceService: _encryptedSpaceService!,
+      albumId: _encryptedSpaceAlbumId!,
+    );
+
+    return verified;
+  }
+
+  /// 验证生物识别（用于关闭生物识别）
+  Future<bool> _verifyBiometricForDisable() async {
+    try {
+      final biometricAuthService = BiometricAuthService();
+      
+      // 检查设备支持
+      final supported = await biometricAuthService.isDeviceSupported();
+      if (!supported) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('您的设备不支持生物识别'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return false;
+      }
+
+      // 执行生物识别认证
+      final result = await biometricAuthService.authenticate(
+        reason: '请使用生物识别验证以关闭生物识别解锁',
       );
+
+      return result;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('生物识别验证失败: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return false;
     }
   }
 
@@ -238,19 +372,12 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
                   ),
                 ],
               ),
-              if (_isCheckingBiometric)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                Switch(
-                  value: _biometricEnabled && _biometricSupported,
-                  onChanged: _biometricSupported 
-                    ? _onBiometricEnabledChanged 
-                    : null,
-                ),
+              Switch(
+                value: _biometricEnabled && _biometricSupported,
+                onChanged: _biometricSupported 
+                  ? _onBiometricEnabledChanged 
+                  : null,
+              ),
             ],
           ),
           if (!_biometricSupported) ...[

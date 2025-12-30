@@ -49,9 +49,11 @@
 		<string>我们需要访问您的照片库以同步和管理您的照片和视频</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>我们需要保存照片和视频到您的照片库</string>
-		<key>NSUserNotificationsUsageDescription</key>
-		<string>我们需要通知权限以在后台备份时显示进度和状态</string>
-		<key>NSAppTransportSecurity</key>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>我们需要通知权限以在后台备份时显示进度和状态</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>我们需要使用 Face ID 或 Touch ID 来安全地解锁加密空间</string>
+	<key>NSAppTransportSecurity</key>
 		<dict>
 			<!-- 开发环境：允许所有连接（包括 HTTP） -->
 			<!-- ⚠️ 警告：仅用于开发/测试环境，生产环境应使用 HTTPS -->

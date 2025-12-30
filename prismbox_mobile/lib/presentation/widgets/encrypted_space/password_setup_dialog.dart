@@ -3,13 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
+import 'package:prismbox/presentation/widgets/encrypted_space/pin_input_widget.dart';
 
-/// 密码设置对话框
-/// 用于首次设置或更改加密空间密码
+/// PIN设置对话框
+/// 用于首次设置或更改加密空间PIN
 class PasswordSetupDialog extends StatefulWidget {
   final String albumId;
   final EncryptedSpaceService encryptedSpaceService;
-  final bool isChangePassword; // 是否为更改密码
+  final bool isChangePassword;
 
   const PasswordSetupDialog({
     super.key,
@@ -18,7 +19,6 @@ class PasswordSetupDialog extends StatefulWidget {
     this.isChangePassword = false,
   });
 
-  /// 显示密码设置对话框
   static Future<bool?> show(
     BuildContext context, {
     required String albumId,
@@ -41,30 +41,64 @@ class PasswordSetupDialog extends StatefulWidget {
 }
 
 class _PasswordSetupDialogState extends State<PasswordSetupDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _confirmPinController = TextEditingController();
+  final GlobalKey<State<PinInputWidget>> _pinInputKey = GlobalKey();
+  final GlobalKey<State<PinInputWidget>> _confirmPinInputKey = GlobalKey();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _showConfirmPin = false;
 
   @override
   void dispose() {
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _pinController.dispose();
+    _confirmPinController.dispose();
     super.dispose();
   }
 
+  void _onPinCompleted(String pin) {
+    if (pin.length == 6) {
+      setState(() {
+        _showConfirmPin = true;
+        _errorMessage = null;
+      });
+      // 聚焦到确认PIN输入框
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        (_confirmPinInputKey.currentState as dynamic)?.focusFirst();
+      });
+    }
+  }
+
+  void _onConfirmPinCompleted(String confirmPin) {
+    if (confirmPin.length == 6) {
+      _handleSubmit();
+    }
+  }
+
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) {
+    final pin = _pinController.text;
+    final confirmPin = _confirmPinController.text;
+
+    if (pin.length != 6) {
+      setState(() {
+        _errorMessage = '请输入6位PIN';
+      });
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (confirmPin.length != 6) {
       setState(() {
-        _errorMessage = '两次输入的密码不一致';
+        _errorMessage = '请确认6位PIN';
       });
+      return;
+    }
+
+    if (pin != confirmPin) {
+      setState(() {
+        _errorMessage = '两次输入的PIN不一致';
+      });
+      _confirmPinController.clear();
+      (_confirmPinInputKey.currentState as dynamic)?.clear();
       return;
     }
 
@@ -76,17 +110,16 @@ class _PasswordSetupDialogState extends State<PasswordSetupDialog> {
     try {
       await widget.encryptedSpaceService.setEncryptionPassword(
         albumId: widget.albumId,
-        password: _passwordController.text,
+        password: pin,
       );
 
       if (mounted) {
         Navigator.of(context).pop(true);
         
-        // 检查是否启用了生物识别
         final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
         final message = biometricEnabled
-          ? '密码设置成功！您已启用生物识别，后续可以使用生物识别快速解锁'
-          : (widget.isChangePassword ? '密码更改成功' : '密码设置成功');
+          ? 'PIN设置成功！您已启用生物识别，后续可以使用生物识别快速解锁'
+          : (widget.isChangePassword ? 'PIN更改成功' : 'PIN设置成功');
           
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -99,7 +132,7 @@ class _PasswordSetupDialogState extends State<PasswordSetupDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '设置密码失败: $e';
+          _errorMessage = '设置PIN失败: $e';
           _isLoading = false;
         });
       }
@@ -109,96 +142,86 @@ class _PasswordSetupDialogState extends State<PasswordSetupDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.isChangePassword ? '更改密码' : '设置密码'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      title: Text(widget.isChangePassword ? '更改PIN' : '设置PIN'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.isChangePassword
+                  ? '请输入新的6位PIN'
+                  : '为加密空间设置6位PIN，用于保护您的私密照片和视频',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'PIN',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            PinInputWidget(
+              key: _pinInputKey,
+              controller: _pinController,
+              autofocus: true,
+              enabled: !_isLoading,
+              hasError: _errorMessage != null && !_showConfirmPin,
+              onCompleted: _onPinCompleted,
+              onChanged: (pin) {
+                if (pin.length < 6) {
+                  setState(() {
+                    _showConfirmPin = false;
+                    _errorMessage = null;
+                  });
+                }
+              },
+            ),
+            if (_showConfirmPin) ...[
+              const SizedBox(height: 24),
               Text(
-                widget.isChangePassword
-                    ? '请输入新密码'
-                    : '为加密空间设置密码，用于保护您的私密照片和视频',
+                '确认PIN',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 20),
-              // 密码输入
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: '密码',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '请输入密码';
+              const SizedBox(height: 8),
+              PinInputWidget(
+                key: _confirmPinInputKey,
+                controller: _confirmPinController,
+                enabled: !_isLoading,
+                hasError: _errorMessage != null && _errorMessage!.contains('不一致'),
+                onCompleted: _onConfirmPinCompleted,
+                onChanged: (pin) {
+                  if (pin.length < 6 && _errorMessage != null) {
+                    setState(() {
+                      _errorMessage = null;
+                    });
                   }
-                  if (value.length < 8) {
-                    return '密码至少需要8个字符';
-                  }
-                  return null;
                 },
               ),
-              const SizedBox(height: 16),
-              // 确认密码输入
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: '确认密码',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(
-                          () => _obscureConfirmPassword = !_obscureConfirmPassword);
-                    },
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '请确认密码';
-                  }
-                  if (value != _passwordController.text) {
-                    return '两次输入的密码不一致';
-                  }
-                  return null;
-                },
-              ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
             ],
-          ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ],
         ),
       ),
       actions: [
@@ -206,18 +229,18 @@ class _PasswordSetupDialogState extends State<PasswordSetupDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
           child: const Text('取消'),
         ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _handleSubmit,
-          child: _isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(widget.isChangePassword ? '更改' : '设置'),
-        ),
+        if (_showConfirmPin)
+          ElevatedButton(
+            onPressed: _isLoading ? null : _handleSubmit,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(widget.isChangePassword ? '更改' : '设置'),
+          ),
       ],
     );
   }
 }
-

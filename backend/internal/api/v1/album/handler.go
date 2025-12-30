@@ -3,6 +3,7 @@ package album
 import (
 	"errors"
 	"net/http"
+	"regexp"
 
 	"github.com/album/backend/internal/api/middleware"
 	"github.com/album/backend/internal/api/response"
@@ -39,20 +40,20 @@ func NewHandler(
 	}
 }
 
-// SetPasswordInput 设置密码请求
+// SetPasswordInput 设置PIN请求
 type SetPasswordInput struct {
-	Password string `json:"password" binding:"required,min=8" example:"password123"` // 密码（至少8位）
+	Password string `json:"password" binding:"required,min=6,max=6,numeric" example:"123456"` // PIN（6位数字）
 }
 
-// ChangePasswordInput 更改密码请求
+// ChangePasswordInput 更改PIN请求
 type ChangePasswordInput struct {
-	OldPassword string `json:"old_password" binding:"required" example:"oldpassword123"`       // 旧密码
-	NewPassword string `json:"new_password" binding:"required,min=8" example:"newpassword123"` // 新密码（至少8位）
+	OldPassword string `json:"old_password" binding:"required,min=6,max=6" example:"123456"` // 旧PIN（6位数字）
+	NewPassword string `json:"new_password" binding:"required,min=6,max=6" example:"654321"` // 新PIN（6位数字）
 }
 
-// VerifyPasswordInput 验证密码请求
+// VerifyPasswordInput 验证PIN请求
 type VerifyPasswordInput struct {
-	Password string `json:"password" binding:"required" example:"password123"` // 密码
+	Password string `json:"password" binding:"required,min=6,max=6,numeric" example:"123456"` // PIN（6位数字）
 }
 
 // VerifyPasswordResponse 验证密码响应
@@ -94,6 +95,16 @@ func (h *Handler) SetPassword(c *gin.Context) {
 		return
 	}
 
+	// 验证PIN为6位数字
+	if len(input.Password) != 6 {
+		response.Error(c, "PIN must be exactly 6 digits")
+		return
+	}
+	if matched, _ := regexp.MatchString(`^\d{6}$`, input.Password); !matched {
+		response.Error(c, "PIN must contain only digits")
+		return
+	}
+
 	ctx := c.Request.Context()
 	if err := h.albumEncryptionService.SetPassword(ctx, albumID, userID, input.Password); err != nil {
 		if errors.Is(err, albumencryption.ErrAlbumNotFound) {
@@ -105,21 +116,21 @@ func (h *Handler) SetPassword(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, "Password set successfully", nil)
+	response.Success(c, "PIN set successfully", nil)
 }
 
-// ChangePassword 更改相册密码
-// @Summary      更改相册密码
-// @Description  更改加密空间相册的密码。需要提供旧密码进行验证。更改密码后，所有现有会话令牌将被撤销。
+// ChangePassword 更改相册PIN
+// @Summary      更改相册PIN
+// @Description  更改加密空间相册的PIN。需要提供旧PIN进行验证。更改PIN后，所有现有会话令牌将被撤销。
 // @Tags         Album
 // @Accept       json
 // @Produce      json
 // @Param        albumId path string true "相册ID"
-// @Param        input body ChangePasswordInput true "密码信息"
-// @Success      200 {object} response.ApiResponse "密码更改成功"
+// @Param        input body ChangePasswordInput true "PIN信息"
+// @Success      200 {object} response.ApiResponse "PIN更改成功"
 // @Failure      400 {object} response.ApiResponse "请求参数错误"
 // @Failure      401 {object} response.ApiResponse "未授权"
-// @Failure      403 {object} response.ApiResponse "旧密码错误"
+// @Failure      403 {object} response.ApiResponse "旧PIN错误"
 // @Failure      404 {object} response.ApiResponse "相册不存在"
 // @Router       /albums/{albumId}/password/change [post]
 func (h *Handler) ChangePassword(c *gin.Context) {
@@ -132,6 +143,17 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
+	// 验证PIN为6位数字
+	pinRegex := regexp.MustCompile(`^\d{6}$`)
+	if !pinRegex.MatchString(input.OldPassword) {
+		response.Error(c, "Old PIN must be exactly 6 digits")
+		return
+	}
+	if !pinRegex.MatchString(input.NewPassword) {
+		response.Error(c, "New PIN must be exactly 6 digits")
+		return
+	}
+
 	ctx := c.Request.Context()
 	if err := h.albumEncryptionService.ChangePassword(ctx, albumID, userID, input.OldPassword, input.NewPassword); err != nil {
 		if errors.Is(err, albumencryption.ErrAlbumNotFound) {
@@ -139,7 +161,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 			return
 		}
 		if errors.Is(err, albumencryption.ErrInvalidPassword) {
-			response.ErrorWithStatus(c, http.StatusForbidden, "Invalid old password")
+			response.ErrorWithStatus(c, http.StatusForbidden, "Invalid old PIN")
 			return
 		}
 		if errors.Is(err, albumencryption.ErrPasswordNotSet) {
@@ -155,22 +177,22 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, "Password changed successfully", nil)
+	response.Success(c, "PIN changed successfully", nil)
 }
 
-// VerifyPassword 验证密码并获取会话令牌
-// @Summary      验证密码
-// @Description  验证加密空间相册的密码，验证成功后返回会话令牌。
+// VerifyPassword 验证PIN并获取会话令牌
+// @Summary      验证PIN
+// @Description  验证加密空间相册的PIN，验证成功后返回会话令牌。
 // @Tags         Album
 // @Accept       json
 // @Produce      json
 // @Param        albumId path string true "相册ID"
-// @Param        input body VerifyPasswordInput true "密码信息"
+// @Param        input body VerifyPasswordInput true "PIN信息"
 // @Success      200 {object} response.ApiResponse{data=VerifyPasswordResponse} "验证成功，返回会话令牌"
 // @Failure      400 {object} response.ApiResponse "请求参数错误"
 // @Failure      401 {object} response.ApiResponse "未授权"
 // @Failure      404 {object} response.ApiResponse "相册不存在"
-// @Failure      403 {object} response.ApiResponse "密码错误或相册未加密"
+// @Failure      403 {object} response.ApiResponse "PIN错误或相册未加密"
 // @Router       /albums/{albumId}/verify-password [post]
 func (h *Handler) VerifyPassword(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -182,6 +204,13 @@ func (h *Handler) VerifyPassword(c *gin.Context) {
 		return
 	}
 
+	// 验证PIN为6位数字
+	pinRegex := regexp.MustCompile(`^\d{6}$`)
+	if !pinRegex.MatchString(input.Password) {
+		response.Error(c, "PIN must be exactly 6 digits")
+		return
+	}
+
 	ctx := c.Request.Context()
 	sessionToken, err := h.albumEncryptionService.VerifyPassword(ctx, albumID, userID, input.Password)
 	if err != nil {
@@ -190,11 +219,11 @@ func (h *Handler) VerifyPassword(c *gin.Context) {
 			return
 		}
 		if errors.Is(err, albumencryption.ErrInvalidPassword) {
-			response.ErrorWithStatus(c, http.StatusForbidden, "Invalid password")
+			response.ErrorWithStatus(c, http.StatusForbidden, "Invalid PIN")
 			return
 		}
 		if errors.Is(err, albumencryption.ErrPasswordNotSet) {
-			response.ErrorWithStatus(c, http.StatusForbidden, "Password not set for this album")
+			response.ErrorWithStatus(c, http.StatusForbidden, "PIN not set for this album")
 			return
 		}
 		if errors.Is(err, albumencryption.ErrAlbumNotEncrypted) {
@@ -206,7 +235,7 @@ func (h *Handler) VerifyPassword(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, "Password verified successfully", VerifyPasswordResponse{
+	response.Success(c, "PIN verified successfully", VerifyPasswordResponse{
 		Token:     sessionToken.Token,
 		ExpiresAt: sessionToken.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
 	})

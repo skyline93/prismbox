@@ -263,6 +263,42 @@ class EncryptedSpaceService {
     }
   }
 
+  /// 检查PIN是否已设置
+  /// 通过尝试调用验证API，如果返回"PIN not set"错误，说明未设置
+  /// 如果返回其他错误（如"Invalid PIN"），说明PIN已设置，只是输入错误
+  Future<bool> checkIfPinIsSet({
+    required String albumId,
+  }) async {
+    try {
+      // 尝试验证一个无效的PIN
+      // 如果返回"PIN not set"错误，说明PIN未设置
+      // 如果返回"Invalid PIN"错误，说明PIN已设置，只是输入错误
+      await _apiService.dio.post(
+        '/api/v1/albums/$albumId/verify-password',
+        data: {'password': '000000'}, // 使用一个无效的PIN
+      );
+      // 如果验证成功（不应该发生），说明PIN已设置
+      return true;
+    } on DioException catch (e) {
+      // 检查错误消息或状态码
+      if (e.response?.statusCode == 403) {
+        final errorMessage = e.response?.data?.toString().toLowerCase() ?? '';
+        // 如果错误消息包含"PIN not set"或"not set for this album"，说明PIN未设置
+        if (errorMessage.contains('pin not set') || 
+            errorMessage.contains('not set for this album') ||
+            errorMessage.contains('password not set')) {
+          return false; // PIN未设置
+        }
+      }
+      // 其他错误（如"Invalid PIN"、400等）说明PIN已设置，只是输入错误或格式错误
+      return true;
+    } catch (e) {
+      // 未知错误，默认假设PIN已设置（保守策略）
+      _log.warning('Failed to check if PIN is set, assuming it is set', e);
+      return true;
+    }
+  }
+
   /// 添加资产到加密空间
   /// 支持三种类型的资产：
   /// 1. 仅本地资产：迁移文件到私有空间

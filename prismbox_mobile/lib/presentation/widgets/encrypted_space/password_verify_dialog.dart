@@ -1,13 +1,15 @@
 // lib/presentation/widgets/encrypted_space/password_verify_dialog.dart
 
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+import 'package:prismbox/presentation/widgets/encrypted_space/pin_input_widget.dart';
 
-/// 密码验证对话框
+/// PIN验证对话框
 /// 用于解锁加密空间
 class PasswordVerifyDialog extends StatefulWidget {
   final String albumId;
@@ -44,73 +46,88 @@ class PasswordVerifyDialog extends StatefulWidget {
 }
 
 class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final Logger _log = Logger('PasswordVerifyDialog');
+  final TextEditingController _pinController = TextEditingController();
+  final GlobalKey<State<PinInputWidget>> _pinInputKey = GlobalKey();
   bool _isLoading = false;
+  bool _showPinInput = false;
+  bool _isCheckingBiometric = false;
   String? _errorMessage;
-  bool _showPasswordInput = false; // 是否显示密码输入框
-  bool _isCheckingBiometric = false; // 是否正在检查生物识别
 
   @override
   void initState() {
     super.initState();
-    _checkBiometricFirst();
+    // 使用 addPostFrameCallback 确保对话框完全初始化后再执行生物识别
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkBiometricFirst();
+    });
   }
 
   @override
   void dispose() {
-    _passwordController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
   /// 首先尝试使用生物识别
   Future<void> _checkBiometricFirst() async {
+    // 确保 Widget 已挂载
+    if (!mounted) return;
+    
     // 检查是否启用了生物识别
     final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
     if (!biometricEnabled) {
-      setState(() {
-        _showPasswordInput = true;
-      });
+      if (mounted) {
+        setState(() {
+          _showPinInput = true;
+        });
+      }
       return;
     }
 
     // 检查设备是否支持
     final biometricAuthService = BiometricAuthService();
-    final supported = await biometricAuthService.isDeviceSupported();
-    if (!supported) {
-      setState(() {
-        _showPasswordInput = true;
-      });
-      return;
-    }
-
-    // 尝试生物识别认证
-    setState(() {
-      _isCheckingBiometric = true;
-    });
-
     try {
+      final supported = await biometricAuthService.isDeviceSupported();
+      if (!supported || !mounted) {
+        if (mounted) {
+          setState(() {
+            _showPinInput = true;
+          });
+        }
+        return;
+      }
+
+      // 尝试生物识别认证
+      if (mounted) {
+        setState(() {
+          _isCheckingBiometric = true;
+        });
+      }
+
       final result = await biometricAuthService.authenticate(
         reason: '请使用生物识别验证以访问加密空间',
       );
 
-      if (result) {
+      if (result && mounted) {
         // 生物识别成功，直接解锁
         await _unlockWithBiometric();
-      } else {
-        // 用户取消或失败，显示密码输入框
+      } else if (mounted) {
+        // 用户取消或失败，显示PIN输入框
         setState(() {
-          _showPasswordInput = true;
+          _showPinInput = true;
           _isCheckingBiometric = false;
         });
       }
-    } catch (e) {
-      // 生物识别出错，显示密码输入框
-      setState(() {
-        _showPasswordInput = true;
-        _isCheckingBiometric = false;
-      });
+    } catch (e, stackTrace) {
+      // 生物识别出错，显示PIN输入框
+      _log.warning('Biometric authentication error', e, stackTrace);
+      if (mounted) {
+        setState(() {
+          _showPinInput = true;
+          _isCheckingBiometric = false;
+        });
+      }
     }
   }
 
@@ -122,11 +139,11 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
       final hasValidToken = await sessionStorage.isSessionTokenValid(widget.albumId);
       
       if (!hasValidToken) {
-        // 令牌已过期，需要重新输入密码
+        // 令牌已过期，需要重新输入PIN
         setState(() {
-          _showPasswordInput = true;
+          _showPinInput = true;
           _isCheckingBiometric = false;
-          _errorMessage = '会话已过期，请重新输入密码';
+          _errorMessage = '会话已过期，请重新输入PIN';
         });
         return;
       }
@@ -143,7 +160,7 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _showPasswordInput = true;
+          _showPinInput = true;
           _isCheckingBiometric = false;
           _errorMessage = '解锁失败: $e';
         });
@@ -181,16 +198,23 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
           _isCheckingBiometric = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _isCheckingBiometric = false;
-        _errorMessage = '生物识别失败: $e';
-      });
+    } catch (e, stackTrace) {
+      _log.warning('Biometric authentication error in _tryBiometricAgain', e, stackTrace);
+      if (mounted) {
+        setState(() {
+          _isCheckingBiometric = false;
+          _errorMessage = '生物识别失败: $e';
+        });
+      }
     }
   }
 
   Future<void> _handleVerify() async {
-    if (!_formKey.currentState!.validate()) {
+    final pin = _pinController.text;
+    if (pin.length != 6) {
+      setState(() {
+        _errorMessage = '请输入6位PIN';
+      });
       return;
     }
 
@@ -200,13 +224,13 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
     });
 
     try {
-      // 验证密码并获取会话令牌
+      // 验证PIN并获取会话令牌
       await widget.encryptedSpaceService.verifyPassword(
         albumId: widget.albumId,
-        password: _passwordController.text,
+        password: pin,
       );
 
-      // 解锁相册（不使用生物识别，因为用户已经输入了密码）
+      // 解锁相册（不使用生物识别，因为用户已经输入了PIN）
       await widget.accessControlService.unlockAlbum(
         widget.albumId,
         useBiometric: false,
@@ -218,11 +242,12 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '密码错误，请重试';
+          _errorMessage = 'PIN错误，请重试';
           _isLoading = false;
         });
-        // 清空密码输入框
-        _passwordController.clear();
+        // 清空PIN输入框
+        _pinController.clear();
+        (_pinInputKey.currentState as dynamic)?.clear();
       }
     }
   }
@@ -231,115 +256,90 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('解锁加密空间'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_isCheckingBiometric) ...[
-                // 正在检查生物识别
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Column(
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('正在验证生物识别...'),
-                      ],
-                    ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_isCheckingBiometric) ...[
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('正在验证生物识别...'),
+                    ],
                   ),
                 ),
-              ] else if (!_showPasswordInput) ...[
-                // 显示生物识别提示和密码输入选项
-                Text(
-                  '请使用生物识别或输入密码解锁',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+              ),
+            ] else if (!_showPinInput) ...[
+              Text(
+                '请使用生物识别或输入PIN解锁',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
                 ),
-                const SizedBox(height: 20),
-                // 生物识别按钮
-                ElevatedButton.icon(
-                  onPressed: _tryBiometricAgain,
-                  icon: const Icon(Icons.fingerprint),
-                  label: const Text('使用生物识别'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _tryBiometricAgain,
+                icon: const Icon(Icons.fingerprint),
+                label: const Text('使用生物识别'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                const SizedBox(height: 16),
-                // 切换到密码输入
-                TextButton(
-                  onPressed: () {
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showPinInput = true;
+                  });
+                },
+                child: const Text('使用PIN解锁'),
+              ),
+            ] else ...[
+              Text(
+                '请输入6位PIN以访问加密空间',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              PinInputWidget(
+                key: _pinInputKey,
+                controller: _pinController,
+                autofocus: true,
+                enabled: !_isLoading,
+                hasError: _errorMessage != null,
+                errorMessage: _errorMessage,
+                onCompleted: (pin) {
+                  if (pin.length == 6 && !_isLoading) {
+                    _handleVerify();
+                  }
+                },
+                onChanged: (pin) {
+                  if (pin.length < 6 && _errorMessage != null) {
                     setState(() {
-                      _showPasswordInput = true;
+                      _errorMessage = null;
                     });
-                  },
-                  child: const Text('使用密码解锁'),
-                ),
-              ] else ...[
-                // 显示密码输入框
-                Text(
-                  '请输入密码以访问加密空间',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: '密码',
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '请输入密码';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => _handleVerify(),
-                ),
-                // 如果启用了生物识别，显示生物识别按钮
-                if (AppSetting.get(Setting.encryptedSpaceBiometricEnabled)) ...[
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: _tryBiometricAgain,
-                    icon: const Icon(Icons.fingerprint, size: 18),
-                    label: const Text('使用生物识别解锁'),
-                  ),
-                ],
-              ],
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 12,
-                  ),
+                  }
+                },
+              ),
+              if (AppSetting.get(Setting.encryptedSpaceBiometricEnabled)) ...[
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: _tryBiometricAgain,
+                  icon: const Icon(Icons.fingerprint, size: 18),
+                  label: const Text('使用生物识别解锁'),
                 ),
               ],
             ],
-          ),
+          ],
         ),
       ),
       actions: [
@@ -349,9 +349,13 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
             : () => Navigator.of(context).pop(false),
           child: const Text('取消'),
         ),
-        if (_showPasswordInput)
+        if (_showPinInput)
           ElevatedButton(
-            onPressed: _isLoading ? null : _handleVerify,
+            onPressed: _isLoading ? null : () {
+              if (_pinController.text.length == 6) {
+                _handleVerify();
+              }
+            },
             child: _isLoading
                 ? const SizedBox(
                     height: 20,

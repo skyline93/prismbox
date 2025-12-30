@@ -25,6 +25,10 @@ import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
 import 'package:prismbox/services/encrypted_space/providers/encrypted_space_providers.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
+import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dialog.dart';
+import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+import 'package:prismbox/core/settings/app_setting.dart';
 
 /// 照片时间线页面
 ///
@@ -878,40 +882,125 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
       final isUnlocked = accessControlService.isAlbumUnlocked(albumId);
 
       if (!isUnlocked) {
-        // 未解锁，显示密码验证对话框
+        // 未解锁，需要验证
         // 在显示对话框前再次检查 mounted
         if (!mounted) return;
-        final verified = await PasswordVerifyDialog.show(
-          context,
-          albumId: albumId,
-          encryptedSpaceService: encryptedSpaceService,
-          accessControlService: accessControlService,
-        );
 
-        if (verified != true) {
-          // 用户取消或验证失败
-          if (mounted) {
-            messenger.showSnackBar(
-              const SnackBar(
-                content: Text('已取消添加到加密空间'),
-                duration: Duration(seconds: 2),
-              ),
-            );
+        // 首先检查PIN是否已设置
+        final pinIsSet = await encryptedSpaceService.checkIfPinIsSet(albumId: albumId);
+
+        if (!pinIsSet) {
+          // PIN未设置，显示设置PIN对话框
+          final dialogResult = await PasswordSetupDialog.show(
+            context,
+            albumId: albumId,
+            encryptedSpaceService: encryptedSpaceService,
+          );
+          
+          // 如果用户取消了设置PIN，直接返回
+          if (dialogResult != true) {
+            return;
           }
-          return;
-        }
+          // PIN设置成功后，需要验证PIN才能解锁相册
+          // 这里不自动验证，因为用户已经输入过PIN了，让他们再次输入可能会有不好的体验
+          // 但为了安全，还是需要验证一次
+          // 使用生物识别或验证PIN对话框
+          final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
+          final biometricAuthService = BiometricAuthService();
+          final deviceSupported = await biometricAuthService.isDeviceSupported();
+          
+          bool verified = false;
+          if (biometricEnabled && deviceSupported) {
+            // 尝试使用生物识别
+            try {
+              final result = await biometricAuthService.authenticate(
+                reason: '请使用生物识别验证以访问加密空间',
+              );
+              if (result) {
+                await accessControlService.unlockAlbum(albumId, useBiometric: false);
+                verified = true;
+              }
+            } catch (e) {
+              // 生物识别失败，继续显示验证对话框
+            }
+          }
+          
+          if (!verified) {
+            // 显示验证PIN对话框
+            final verifyResult = await PasswordVerifyDialog.show(
+              context,
+              albumId: albumId,
+              encryptedSpaceService: encryptedSpaceService,
+              accessControlService: accessControlService,
+            );
+            if (verifyResult != true) {
+              return;
+            }
+          }
+          // 验证成功，继续添加资产流程
+        } else {
+          // PIN已设置，进行验证流程
+          // 检查条件：是否已设置密码、是否启用生物识别、设备是否支持
+          final sessionStorage = SessionStorageService();
+          final hasValidToken = await sessionStorage.isSessionTokenValid(albumId);
+          final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
+          final biometricAuthService = BiometricAuthService();
+          final deviceSupported = await biometricAuthService.isDeviceSupported();
 
-        // 验证成功后解锁相册
-        // 由于密码验证对话框已经验证了密码并保存了会话令牌，
-        // 这里不需要再次进行生物识别验证
-        try {
-          await accessControlService.unlockAlbum(albumId, useBiometric: false);
-        } catch (e) {
-          // 解锁失败，记录错误但继续执行
-          // 如果解锁失败，会在添加资产时再次检查
+          // 判断是否可以直接使用生物识别
+          // 条件：已设置密码（有有效令牌）+ 启用生物识别 + 设备支持
+          bool verified = false;
+          if (hasValidToken && biometricEnabled && deviceSupported) {
+            // 情况1：直接使用生物识别认证（不显示对话框）
+            try {
+              final result = await biometricAuthService.authenticate(
+                reason: '请使用生物识别验证以添加到加密空间',
+              );
+
+              if (result) {
+                // 生物识别成功，解锁相册
+                await accessControlService.unlockAlbum(albumId, useBiometric: false);
+                verified = true;
+              } else {
+                // 生物识别失败或取消，显示密码验证对话框作为 fallback
+                final dialogResult = await PasswordVerifyDialog.show(
+                  context,
+                  albumId: albumId,
+                  encryptedSpaceService: encryptedSpaceService,
+                  accessControlService: accessControlService,
+                );
+                verified = dialogResult == true;
+              }
+            } catch (e) {
+              // 生物识别出错，显示密码验证对话框作为 fallback
+              final dialogResult = await PasswordVerifyDialog.show(
+                context,
+                albumId: albumId,
+                encryptedSpaceService: encryptedSpaceService,
+                accessControlService: accessControlService,
+              );
+              verified = dialogResult == true;
+            }
+          } else {
+            // 情况2：显示密码验证对话框
+            // 包括：未启用生物识别、设备不支持等情况（PIN已设置）
+            final dialogResult = await PasswordVerifyDialog.show(
+              context,
+              albumId: albumId,
+              encryptedSpaceService: encryptedSpaceService,
+              accessControlService: accessControlService,
+            );
+            verified = dialogResult == true;
+          }
+
+          // 如果验证失败，直接返回
+          if (!verified) {
+            return;
+          }
         }
       }
 
+      // 此时应该已经解锁，继续添加资产到加密空间
       // 添加资产到加密空间
       await encryptedSpaceService.addAssetsToEncryptedSpace(
         albumId: albumId,
