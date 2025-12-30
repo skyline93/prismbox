@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
@@ -73,6 +74,8 @@ void main() {
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
         const userId = 'test_user_id';
         const remotePath = 'https://api.example.com/upload';
@@ -115,6 +118,8 @@ void main() {
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
         const userId = 'test_user_id';
         const remotePath = 'https://api.example.com/upload';
@@ -150,6 +155,8 @@ void main() {
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
 
         mockPathResolver.setPath(asset.id, null);
@@ -178,6 +185,8 @@ void main() {
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
 
         mockPathResolver.setPath(asset.id, '');
@@ -209,6 +218,8 @@ void main() {
             path: '/path/to/test1.jpg',
             isFavorite: false,
             orientation: 0,
+            isInPrivateSpace: false,
+            migrationStatus: MigrationStatus.none,
           ),
           LocalAssetEntityData(
             id: 'asset2',
@@ -219,6 +230,8 @@ void main() {
             path: '/path/to/test2.jpg',
             isFavorite: false,
             orientation: 0,
+            isInPrivateSpace: false,
+            migrationStatus: MigrationStatus.none,
           ),
         ];
 
@@ -254,6 +267,8 @@ void main() {
             path: '/path/to/test1.jpg',
             isFavorite: false,
             orientation: 0,
+            isInPrivateSpace: false,
+            migrationStatus: MigrationStatus.none,
           ),
           LocalAssetEntityData(
             id: 'asset2',
@@ -264,6 +279,8 @@ void main() {
             path: '/path/to/test2.jpg',
             isFavorite: false,
             orientation: 0,
+            isInPrivateSpace: false,
+            migrationStatus: MigrationStatus.none,
           ),
         ];
 

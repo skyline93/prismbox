@@ -8,7 +8,9 @@ import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
+import 'package:prismbox/data/database/daos/album_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/album_type.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
@@ -69,6 +71,7 @@ class TimelineProviderService {
     try {
       final localDao = LocalAssetDao(_database);
       final remoteDao = RemoteAssetDao(_database);
+      final albumDao = AlbumDao(_database);
 
       // 1. 获取当前用户ID
       final userId = await _getCurrentUserId();
@@ -77,17 +80,32 @@ class TimelineProviderService {
         return await _getLocalAssetsOnly(localDao, remoteDao);
       }
 
-      // 2. 并行查询本地和远程资产
+      // 2. 获取加密空间相册ID（用于过滤）
+      final encryptedSpaceAlbumIds = await _getEncryptedSpaceAlbumIds(albumDao, userId);
+
+      // 3. 并行查询本地和远程资产
       final localAssetsFuture = localDao.getAllAssets();
       final remoteAssetsFuture = remoteDao.getUserAssets(userId);
 
       final localAssetsData = await localAssetsFuture;
       final remoteAssetsData = await remoteAssetsFuture;
 
-      // 3. 构建 checksum 到本地资产的映射（用于关联）
+      // 4. 过滤掉在加密空间中的资产
+      final filteredLocalAssets = await _filterEncryptedSpaceAssets(
+        localAssetsData,
+        encryptedSpaceAlbumIds,
+        albumDao,
+      );
+      final filteredRemoteAssets = await _filterEncryptedSpaceRemoteAssets(
+        remoteAssetsData,
+        encryptedSpaceAlbumIds,
+        albumDao,
+      );
+
+      // 5. 构建 checksum 到本地资产的映射（用于关联）
       final localAssetMap = <String, LocalAssetEntityData>{};
 
-      for (final data in localAssetsData) {
+      for (final data in filteredLocalAssets) {
         if (data.checksum != null && data.checksum!.isNotEmpty) {
           // 取第一个作为主要关联（通常 checksum 应该是唯一的）
           if (!localAssetMap.containsKey(data.checksum!)) {
@@ -96,12 +114,12 @@ class TimelineProviderService {
         }
       }
 
-      // 4. 构建已处理的远程资产 checksum 集合（用于去重）
+      // 6. 构建已处理的远程资产 checksum 集合（用于去重）
       final processedRemoteChecksums = <String>{};
       final mergedAssets = <BaseAsset>[];
 
-      // 5. 处理远程资产（包括有本地关联和没有本地关联的）
-      for (final remoteData in remoteAssetsData) {
+      // 7. 处理远程资产（包括有本地关联和没有本地关联的）
+      for (final remoteData in filteredRemoteAssets) {
         final checksum = remoteData.checksum;
         if (checksum.isEmpty) {
           // 没有 checksum 的远程资产，直接添加
@@ -177,8 +195,8 @@ class TimelineProviderService {
         }
       }
 
-      // 6. 处理仅本地的资产（排除已有远程版本的）
-      for (final localData in localAssetsData) {
+      // 8. 处理仅本地的资产（排除已有远程版本的）
+      for (final localData in filteredLocalAssets) {
         if (localData.checksum == null || localData.checksum!.isEmpty) {
           // 没有 checksum，无法关联，作为仅本地资产
           mergedAssets.add(
@@ -224,12 +242,12 @@ class TimelineProviderService {
         }
       }
 
-      // 7. 按创建时间降序排序
+      // 9. 按创建时间降序排序
       mergedAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       _logger.info(
-        '合并查询完成：本地资产 ${localAssetsData.length} 个，'
-        '远程资产 ${remoteAssetsData.length} 个，'
+        '合并查询完成：本地资产 ${localAssetsData.length} 个（过滤后 ${filteredLocalAssets.length} 个），'
+        '远程资产 ${remoteAssetsData.length} 个（过滤后 ${filteredRemoteAssets.length} 个），'
         '合并后 ${mergedAssets.length} 个',
       );
 
@@ -245,7 +263,19 @@ class TimelineProviderService {
     LocalAssetDao localDao,
     RemoteAssetDao remoteDao,
   ) async {
-    final localAssetsData = await localDao.getAllAssets();
+    final albumDao = AlbumDao(_database);
+    final allLocalAssetsData = await localDao.getAllAssets();
+    
+    // 获取加密空间相册ID（用于过滤）
+    final encryptedSpaceAlbumIds = await _getEncryptedSpaceAlbumIds(albumDao, null);
+    
+    // 过滤掉在加密空间中的资产
+    final localAssetsData = await _filterEncryptedSpaceAssets(
+      allLocalAssetsData,
+      encryptedSpaceAlbumIds,
+      albumDao,
+    );
+    
     final localAssets = <BaseAsset>[];
 
     for (final data in localAssetsData) {
@@ -345,9 +375,24 @@ class TimelineProviderService {
       // 1. 批量获取所有本地资产数据（一次查询）
       final assetIds = assets.map((a) => a.id).toList();
       final localDao = LocalAssetDao(_database);
-      final localAssetsMap = await localDao.getAssetsByIds(assetIds);
+      final albumDao = AlbumDao(_database);
+      final allLocalAssetsMap = await localDao.getAssetsByIds(assetIds);
+      
+      // 2. 过滤掉在加密空间中的资产
+      final userId = await _getCurrentUserId();
+      final encryptedSpaceAlbumIds = await _getEncryptedSpaceAlbumIds(albumDao, userId);
+      final localAssetsData = allLocalAssetsMap.values.toList();
+      final filteredLocalAssets = await _filterEncryptedSpaceAssets(
+        localAssetsData,
+        encryptedSpaceAlbumIds,
+        albumDao,
+      );
+      final localAssetsMap = <String, LocalAssetEntityData>{};
+      for (final asset in filteredLocalAssets) {
+        localAssetsMap[asset.id] = asset;
+      }
 
-      // 2. 收集所有需要查询的 checksum（批量查询远程资产）
+      // 3. 收集所有需要查询的 checksum（批量查询远程资产）
       final checksumsToQuery = <String>[];
       final assetIdToChecksumMap = <String, String>{};
 
@@ -359,26 +404,49 @@ class TimelineProviderService {
         }
       }
 
-      // 3. 批量查询远程资产 ID（一次查询）
+      // 4. 批量查询远程资产 ID（一次查询）
       final remoteDao = RemoteAssetDao(_database);
       final remoteAssetsMap = checksumsToQuery.isEmpty
           ? <String, RemoteAssetEntityData>{}
           : await remoteDao.getAssetsByChecksums(checksumsToQuery);
 
-      // 4. 构建 assetId -> remoteAssetId 映射
+      // 5. 过滤远程资产（排除在加密空间中的）
+      final filteredRemoteAssetsMap = <String, RemoteAssetEntityData>{};
+      if (encryptedSpaceAlbumIds['remote'] != null) {
+        final remoteEncryptedAlbumId = encryptedSpaceAlbumIds['remote']!;
+        try {
+          final encryptedAssets = await albumDao.getAlbumAssets(remoteEncryptedAlbumId);
+          final encryptedAssetIds = encryptedAssets.map((a) => a.id).toSet();
+          
+          for (final entry in remoteAssetsMap.entries) {
+            if (!encryptedAssetIds.contains(entry.value.id)) {
+              filteredRemoteAssetsMap[entry.key] = entry.value;
+            }
+          }
+        } catch (e) {
+          _logger.warning('过滤远程加密资产失败: $e');
+          // 如果过滤失败，使用原始数据
+          filteredRemoteAssetsMap.addAll(remoteAssetsMap);
+        }
+      } else {
+        filteredRemoteAssetsMap.addAll(remoteAssetsMap);
+      }
+
+      // 6. 构建 assetId -> remoteAssetId 映射（只使用过滤后的远程资产）
       final assetIdToRemoteAssetIdMap = <String, String>{};
       for (final entry in assetIdToChecksumMap.entries) {
         final checksum = entry.value;
-        final remoteAsset = remoteAssetsMap[checksum];
+        final remoteAsset = filteredRemoteAssetsMap[checksum];
         if (remoteAsset != null) {
           assetIdToRemoteAssetIdMap[entry.key] = remoteAsset.id;
         }
       }
       // ========== 批量查询优化结束 ==========
 
-      // 5. 并行转换资产（不包含数据库查询）
+      // 7. 并行转换资产（不包含数据库查询，只处理过滤后的资产）
+      final filteredAssetIds = localAssetsMap.keys.toSet();
       final localAssetsResults = await Future.wait(
-        assets.map((asset) async {
+        assets.where((asset) => filteredAssetIds.contains(asset.id)).map((asset) async {
           try {
             return await _convertAssetEntityToLocalAsset(
               asset,
@@ -473,5 +541,106 @@ class TimelineProviderService {
       remoteAssetId: remoteAssetId, // 使用预先查询的结果
       assetEntity: asset, // photo_manager 数据源包含 AssetEntity
     );
+  }
+
+  /// 获取加密空间相册ID（本地和远程）
+  /// 返回 Map<String, String>，key 为 'local' 和 'remote'，value 为相册ID
+  Future<Map<String, String?>> _getEncryptedSpaceAlbumIds(
+    AlbumDao albumDao,
+    String? userId,
+  ) async {
+    final result = <String, String?>{'local': null, 'remote': null};
+
+    try {
+      // 获取本地加密空间相册
+      final localAlbums = await albumDao.getAllLocalAlbums();
+      final localEncryptedAlbum = localAlbums.firstWhere(
+        (album) => album.albumType == AlbumType.encryptedSpace && album.isEncrypted,
+        orElse: () => throw StateError('No local encrypted space album found'),
+      );
+      result['local'] = localEncryptedAlbum.id;
+    } catch (e) {
+      // 本地加密空间相册不存在，忽略
+      _logger.fine('本地加密空间相册不存在: $e');
+    }
+
+    try {
+      // 获取远程加密空间相册
+      final remoteAlbums = await albumDao.getAllRemoteAlbums();
+      final remoteEncryptedAlbum = remoteAlbums.firstWhere(
+        (album) => album.albumType == AlbumType.encryptedSpace && album.isEncrypted,
+        orElse: () => throw StateError('No remote encrypted space album found'),
+      );
+      result['remote'] = remoteEncryptedAlbum.id;
+    } catch (e) {
+      // 远程加密空间相册不存在，忽略
+      _logger.fine('远程加密空间相册不存在: $e');
+    }
+
+    return result;
+  }
+
+  /// 过滤掉在加密空间中的本地资产
+  /// 排除条件：
+  /// 1. isInPrivateSpace = true
+  /// 2. 关联到本地加密相册
+  Future<List<LocalAssetEntityData>> _filterEncryptedSpaceAssets(
+    List<LocalAssetEntityData> assets,
+    Map<String, String?> encryptedSpaceAlbumIds,
+    AlbumDao albumDao,
+  ) async {
+    if (encryptedSpaceAlbumIds['local'] == null) {
+      // 没有本地加密相册，只过滤 isInPrivateSpace
+      return assets.where((asset) => !asset.isInPrivateSpace).toList();
+    }
+
+    final localEncryptedAlbumId = encryptedSpaceAlbumIds['local']!;
+    
+    // 获取本地加密相册中的所有资产ID
+    final encryptedAssetIds = <String>{};
+    try {
+      final encryptedAssets = await albumDao.getLocalAlbumAssets(localEncryptedAlbumId);
+      encryptedAssetIds.addAll(encryptedAssets.map((a) => a.id));
+    } catch (e) {
+      _logger.warning('获取本地加密相册资产失败: $e');
+    }
+
+    // 过滤：排除 isInPrivateSpace = true 或关联到加密相册的资产
+    return assets.where((asset) {
+      if (asset.isInPrivateSpace) {
+        return false;
+      }
+      if (encryptedAssetIds.contains(asset.id)) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  /// 过滤掉在加密空间中的远程资产
+  /// 排除条件：关联到远程加密相册
+  Future<List<RemoteAssetEntityData>> _filterEncryptedSpaceRemoteAssets(
+    List<RemoteAssetEntityData> assets,
+    Map<String, String?> encryptedSpaceAlbumIds,
+    AlbumDao albumDao,
+  ) async {
+    if (encryptedSpaceAlbumIds['remote'] == null) {
+      // 没有远程加密相册，不过滤
+      return assets;
+    }
+
+    final remoteEncryptedAlbumId = encryptedSpaceAlbumIds['remote']!;
+    
+    // 获取远程加密相册中的所有资产ID
+    final encryptedAssetIds = <String>{};
+    try {
+      final encryptedAssets = await albumDao.getAlbumAssets(remoteEncryptedAlbumId);
+      encryptedAssetIds.addAll(encryptedAssets.map((a) => a.id));
+    } catch (e) {
+      _logger.warning('获取远程加密相册资产失败: $e');
+    }
+
+    // 过滤：排除关联到加密相册的资产
+    return assets.where((asset) => !encryptedAssetIds.contains(asset.id)).toList();
   }
 }

@@ -224,3 +224,33 @@ type CheckpointRepository interface {
 	// GetNowID 获取当前时间ID（用于生成checkpoint）
 	GetNowID() string
 }
+
+// AlbumRepository 相册仓储接口
+type AlbumRepository interface {
+	// Create 创建相册
+	Create(ctx context.Context, album *models.Album) error
+	// FindByUUID 根据UUID查找相册
+	FindByUUID(ctx context.Context, uuid string) (*models.Album, error)
+	// FindByUserID 根据用户ID查找相册列表
+	FindByUserID(ctx context.Context, userID uint) ([]*models.Album, error)
+	// FindEncryptedAlbumByUserID 根据用户ID查找加密空间相册
+	FindEncryptedAlbumByUserID(ctx context.Context, userID uint) (*models.Album, error)
+	// Update 更新相册信息
+	Update(ctx context.Context, album *models.Album) error
+	// Delete 删除相册
+	Delete(ctx context.Context, uuid string) error
+}
+
+// AlbumSessionRepository 相册会话仓储接口
+type AlbumSessionRepository interface {
+	// Create 创建会话记录
+	Create(ctx context.Context, session *models.AlbumSession) error
+	// FindByID 根据ID查找会话
+	FindByID(ctx context.Context, id string) (*models.AlbumSession, error)
+	// FindByAlbumID 根据相册ID查找所有会话
+	FindByAlbumID(ctx context.Context, albumID string) ([]*models.AlbumSession, error)
+	// Delete 删除会话
+	Delete(ctx context.Context, id string) error
+	// DeleteByAlbumID 删除相册的所有会话
+	DeleteByAlbumID(ctx context.Context, albumID string) error
+}

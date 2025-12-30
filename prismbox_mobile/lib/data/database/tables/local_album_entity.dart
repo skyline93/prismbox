@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:prismbox/data/database/tables/mixins/drift_defaults_mixin.dart';
 import 'package:prismbox/data/database/tables/remote_album_entity.dart';
 import 'package:prismbox/data/database/enums/backup_selection.dart';
+import 'package:prismbox/data/database/enums/album_type.dart';
 
 /// 本地相册实体表
 /// 存储设备上的相册信息
@@ -32,6 +33,14 @@ class LocalAlbumEntity extends Table with DriftDefaultsMixin {
   TextColumn get linkedRemoteAlbumId => text()
       .nullable()
       .references(RemoteAlbumEntity, #id, onDelete: KeyAction.setNull)();
+
+  /// 是否加密
+  BoolColumn get isEncrypted => boolean()
+      .withDefault(const Constant(false))();
+
+  /// 相册类型枚举
+  IntColumn get albumType => intEnum<AlbumType>()
+      .withDefault(const Constant(0))(); // AlbumType.normal = 0
 
   @override
   Set<Column> get primaryKey => {id};

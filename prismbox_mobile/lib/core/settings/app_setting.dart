@@ -26,7 +26,11 @@ enum Setting<T> {
 
   /// 语言
   /// 默认值：zh_CN（中文简体）
-  language<String>(StoreKey.language, 'zh_CN');
+  language<String>(StoreKey.language, 'zh_CN'),
+
+  /// 是否启用生物识别解锁加密空间
+  /// 默认值：false
+  encryptedSpaceBiometricEnabled<bool>(StoreKey.encryptedSpaceBiometricEnabled, false);
 
   const Setting(this.storeKey, this.defaultValue);
 

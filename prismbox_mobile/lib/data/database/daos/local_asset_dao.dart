@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/tables/local_asset_entity.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/migration_status.dart';
 
 part 'local_asset_dao.g.dart';
 
@@ -116,6 +117,20 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
     return (select(localAssetEntity)
           ..where((t) => t.createdAt.isBetweenValues(start, end))
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        .get();
+  }
+
+  /// 查询迁移状态为失败的资产
+  Future<List<LocalAssetEntityData>> getAssetsWithFailedMigration() {
+    return (select(localAssetEntity)
+          ..where((t) => t.migrationStatus.equalsValue(MigrationStatus.failed)))
+        .get();
+  }
+
+  /// 查询迁移状态为进行中的资产
+  Future<List<LocalAssetEntityData>> getAssetsWithPendingMigration() {
+    return (select(localAssetEntity)
+          ..where((t) => t.migrationStatus.equalsValue(MigrationStatus.pending)))
         .get();
   }
 }

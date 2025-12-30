@@ -53,3 +53,21 @@ func Created(c *gin.Context, message string, data interface{}) {
 func NoContent(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
+
+// ErrorNotFound 404 错误响应
+func ErrorNotFound(c *gin.Context, message string) {
+	c.JSON(http.StatusNotFound, ApiResponse{
+		Code:    1,
+		Message: message,
+		Data:    nil,
+	})
+}
+
+// ErrorWithStatus 指定状态码的错误响应
+func ErrorWithStatus(c *gin.Context, statusCode int, message string) {
+	c.JSON(statusCode, ApiResponse{
+		Code:    1,
+		Message: message,
+		Data:    nil,
+	})
+}

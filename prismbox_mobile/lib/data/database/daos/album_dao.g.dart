@@ -13,4 +13,8 @@ mixin _$AlbumDaoMixin on DatabaseAccessor<AppDatabase> {
       attachedDatabase.localAlbumEntity;
   $AlbumAssetEntityTable get albumAssetEntity =>
       attachedDatabase.albumAssetEntity;
+  $LocalAssetEntityTable get localAssetEntity =>
+      attachedDatabase.localAssetEntity;
+  $LocalAlbumAssetEntityTable get localAlbumAssetEntity =>
+      attachedDatabase.localAlbumAssetEntity;
 }

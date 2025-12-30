@@ -5,6 +5,7 @@ import 'package:prismbox/data/database/tables/mixins/drift_defaults_mixin.dart';
 import 'package:prismbox/data/database/tables/user_entity.dart';
 import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/data/database/enums/album_order.dart';
+import 'package:prismbox/data/database/enums/album_type.dart';
 
 /// 远程相册实体表
 /// 存储服务器端的相册信息
@@ -43,6 +44,14 @@ class RemoteAlbumEntity extends Table with DriftDefaultsMixin {
   /// 排序方式枚举
   IntColumn get order => intEnum<AlbumOrder>()
       .withDefault(const Constant(1))(); // AlbumOrder.createdAtDesc = 1
+
+  /// 是否加密
+  BoolColumn get isEncrypted => boolean()
+      .withDefault(const Constant(false))();
+
+  /// 相册类型枚举
+  IntColumn get albumType => intEnum<AlbumType>()
+      .withDefault(const Constant(0))(); // AlbumType.normal = 0
 
   @override
   Set<Column> get primaryKey => {id};

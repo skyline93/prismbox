@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/album/backend/internal/api/middleware"
+	"github.com/album/backend/internal/api/v1/album"
 	"github.com/album/backend/internal/api/v1/auth"
 	"github.com/album/backend/internal/api/v1/changelog"
 	"github.com/album/backend/internal/api/v1/group"
@@ -89,6 +90,9 @@ func (r *Router) setupAPIV1() {
 
 	// 注册认证路由
 	auth.RegisterRoutes(v1, r.app)
+
+	// 注册相册路由（加密空间）
+	album.RegisterRoutes(v1, r.app)
 
 	// 注册媒体路由
 	media.RegisterRoutes(v1, r.app)

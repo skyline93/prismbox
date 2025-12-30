@@ -431,6 +431,27 @@ class $LocalAssetEntityTable extends LocalAssetEntity
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _isInPrivateSpaceMeta =
+      const VerificationMeta('isInPrivateSpace');
+  @override
+  late final GeneratedColumn<bool> isInPrivateSpace = GeneratedColumn<bool>(
+      'is_in_private_space', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_in_private_space" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _migrationStatusMeta =
+      const VerificationMeta('migrationStatus');
+  @override
+  late final GeneratedColumnWithTypeConverter<MigrationStatus, int>
+      migrationStatus = GeneratedColumn<int>(
+              'migration_status', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<MigrationStatus>(
+              $LocalAssetEntityTable.$convertermigrationStatus);
   @override
   List<GeneratedColumn> get $columns => [
         name,
@@ -444,7 +465,9 @@ class $LocalAssetEntityTable extends LocalAssetEntity
         checksum,
         path,
         isFavorite,
-        orientation
+        orientation,
+        isInPrivateSpace,
+        migrationStatus
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -517,6 +540,13 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           orientation.isAcceptableOrUnknown(
               data['orientation']!, _orientationMeta));
     }
+    if (data.containsKey('is_in_private_space')) {
+      context.handle(
+          _isInPrivateSpaceMeta,
+          isInPrivateSpace.isAcceptableOrUnknown(
+              data['is_in_private_space']!, _isInPrivateSpaceMeta));
+    }
+    context.handle(_migrationStatusMeta, const VerificationResult.success());
     return context;
   }
 
@@ -551,6 +581,11 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       orientation: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}orientation'])!,
+      isInPrivateSpace: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}is_in_private_space'])!,
+      migrationStatus: $LocalAssetEntityTable.$convertermigrationStatus.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.int, data['${effectivePrefix}migration_status'])!),
     );
   }
 
@@ -561,6 +596,9 @@ class $LocalAssetEntityTable extends LocalAssetEntity
 
   static JsonTypeConverter2<AssetType, int, int> $convertertype =
       const EnumIndexConverter<AssetType>(AssetType.values);
+  static JsonTypeConverter2<MigrationStatus, int, int>
+      $convertermigrationStatus =
+      const EnumIndexConverter<MigrationStatus>(MigrationStatus.values);
   @override
   bool get withoutRowId => true;
 }
@@ -611,6 +649,14 @@ class LocalAssetEntityData extends DataClass
 
   /// 图片方向（0-8，EXIF 方向值）
   final int orientation;
+
+  /// 是否在私有空间
+  /// 标识文件是否已迁移到应用私有目录
+  final bool isInPrivateSpace;
+
+  /// 迁移状态枚举
+  /// 用于跟踪迁移到私有空间或移回系统相册的操作状态
+  final MigrationStatus migrationStatus;
   const LocalAssetEntityData(
       {required this.name,
       required this.type,
@@ -623,7 +669,9 @@ class LocalAssetEntityData extends DataClass
       this.checksum,
       required this.path,
       required this.isFavorite,
-      required this.orientation});
+      required this.orientation,
+      required this.isInPrivateSpace,
+      required this.migrationStatus});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -650,6 +698,12 @@ class LocalAssetEntityData extends DataClass
     map['path'] = Variable<String>(path);
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['orientation'] = Variable<int>(orientation);
+    map['is_in_private_space'] = Variable<bool>(isInPrivateSpace);
+    {
+      map['migration_status'] = Variable<int>($LocalAssetEntityTable
+          .$convertermigrationStatus
+          .toSql(migrationStatus));
+    }
     return map;
   }
 
@@ -673,6 +727,8 @@ class LocalAssetEntityData extends DataClass
       path: Value(path),
       isFavorite: Value(isFavorite),
       orientation: Value(orientation),
+      isInPrivateSpace: Value(isInPrivateSpace),
+      migrationStatus: Value(migrationStatus),
     );
   }
 
@@ -693,6 +749,9 @@ class LocalAssetEntityData extends DataClass
       path: serializer.fromJson<String>(json['path']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       orientation: serializer.fromJson<int>(json['orientation']),
+      isInPrivateSpace: serializer.fromJson<bool>(json['isInPrivateSpace']),
+      migrationStatus: $LocalAssetEntityTable.$convertermigrationStatus
+          .fromJson(serializer.fromJson<int>(json['migrationStatus'])),
     );
   }
   @override
@@ -712,6 +771,10 @@ class LocalAssetEntityData extends DataClass
       'path': serializer.toJson<String>(path),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'orientation': serializer.toJson<int>(orientation),
+      'isInPrivateSpace': serializer.toJson<bool>(isInPrivateSpace),
+      'migrationStatus': serializer.toJson<int>($LocalAssetEntityTable
+          .$convertermigrationStatus
+          .toJson(migrationStatus)),
     };
   }
 
@@ -727,7 +790,9 @@ class LocalAssetEntityData extends DataClass
           Value<String?> checksum = const Value.absent(),
           String? path,
           bool? isFavorite,
-          int? orientation}) =>
+          int? orientation,
+          bool? isInPrivateSpace,
+          MigrationStatus? migrationStatus}) =>
       LocalAssetEntityData(
         name: name ?? this.name,
         type: type ?? this.type,
@@ -743,6 +808,8 @@ class LocalAssetEntityData extends DataClass
         path: path ?? this.path,
         isFavorite: isFavorite ?? this.isFavorite,
         orientation: orientation ?? this.orientation,
+        isInPrivateSpace: isInPrivateSpace ?? this.isInPrivateSpace,
+        migrationStatus: migrationStatus ?? this.migrationStatus,
       );
   LocalAssetEntityData copyWithCompanion(LocalAssetEntityCompanion data) {
     return LocalAssetEntityData(
@@ -762,6 +829,12 @@ class LocalAssetEntityData extends DataClass
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       orientation:
           data.orientation.present ? data.orientation.value : this.orientation,
+      isInPrivateSpace: data.isInPrivateSpace.present
+          ? data.isInPrivateSpace.value
+          : this.isInPrivateSpace,
+      migrationStatus: data.migrationStatus.present
+          ? data.migrationStatus.value
+          : this.migrationStatus,
     );
   }
 
@@ -779,14 +852,29 @@ class LocalAssetEntityData extends DataClass
           ..write('checksum: $checksum, ')
           ..write('path: $path, ')
           ..write('isFavorite: $isFavorite, ')
-          ..write('orientation: $orientation')
+          ..write('orientation: $orientation, ')
+          ..write('isInPrivateSpace: $isInPrivateSpace, ')
+          ..write('migrationStatus: $migrationStatus')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(name, type, createdAt, updatedAt, width,
-      height, durationInSeconds, id, checksum, path, isFavorite, orientation);
+  int get hashCode => Object.hash(
+      name,
+      type,
+      createdAt,
+      updatedAt,
+      width,
+      height,
+      durationInSeconds,
+      id,
+      checksum,
+      path,
+      isFavorite,
+      orientation,
+      isInPrivateSpace,
+      migrationStatus);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -802,7 +890,9 @@ class LocalAssetEntityData extends DataClass
           other.checksum == this.checksum &&
           other.path == this.path &&
           other.isFavorite == this.isFavorite &&
-          other.orientation == this.orientation);
+          other.orientation == this.orientation &&
+          other.isInPrivateSpace == this.isInPrivateSpace &&
+          other.migrationStatus == this.migrationStatus);
 }
 
 class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
@@ -818,6 +908,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
   final Value<String> path;
   final Value<bool> isFavorite;
   final Value<int> orientation;
+  final Value<bool> isInPrivateSpace;
+  final Value<MigrationStatus> migrationStatus;
   const LocalAssetEntityCompanion({
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -831,6 +923,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.path = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.orientation = const Value.absent(),
+    this.isInPrivateSpace = const Value.absent(),
+    this.migrationStatus = const Value.absent(),
   });
   LocalAssetEntityCompanion.insert({
     required String name,
@@ -845,6 +939,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     required String path,
     this.isFavorite = const Value.absent(),
     this.orientation = const Value.absent(),
+    this.isInPrivateSpace = const Value.absent(),
+    this.migrationStatus = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         createdAt = Value(createdAt),
@@ -864,6 +960,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     Expression<String>? path,
     Expression<bool>? isFavorite,
     Expression<int>? orientation,
+    Expression<bool>? isInPrivateSpace,
+    Expression<int>? migrationStatus,
   }) {
     return RawValuesInsertable({
       if (name != null) 'name': name,
@@ -878,6 +976,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       if (path != null) 'path': path,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (orientation != null) 'orientation': orientation,
+      if (isInPrivateSpace != null) 'is_in_private_space': isInPrivateSpace,
+      if (migrationStatus != null) 'migration_status': migrationStatus,
     });
   }
 
@@ -893,7 +993,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       Value<String?>? checksum,
       Value<String>? path,
       Value<bool>? isFavorite,
-      Value<int>? orientation}) {
+      Value<int>? orientation,
+      Value<bool>? isInPrivateSpace,
+      Value<MigrationStatus>? migrationStatus}) {
     return LocalAssetEntityCompanion(
       name: name ?? this.name,
       type: type ?? this.type,
@@ -907,6 +1009,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       path: path ?? this.path,
       isFavorite: isFavorite ?? this.isFavorite,
       orientation: orientation ?? this.orientation,
+      isInPrivateSpace: isInPrivateSpace ?? this.isInPrivateSpace,
+      migrationStatus: migrationStatus ?? this.migrationStatus,
     );
   }
 
@@ -950,6 +1054,14 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     if (orientation.present) {
       map['orientation'] = Variable<int>(orientation.value);
     }
+    if (isInPrivateSpace.present) {
+      map['is_in_private_space'] = Variable<bool>(isInPrivateSpace.value);
+    }
+    if (migrationStatus.present) {
+      map['migration_status'] = Variable<int>($LocalAssetEntityTable
+          .$convertermigrationStatus
+          .toSql(migrationStatus.value));
+    }
     return map;
   }
 
@@ -967,7 +1079,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           ..write('checksum: $checksum, ')
           ..write('path: $path, ')
           ..write('isFavorite: $isFavorite, ')
-          ..write('orientation: $orientation')
+          ..write('orientation: $orientation, ')
+          ..write('isInPrivateSpace: $isInPrivateSpace, ')
+          ..write('migrationStatus: $migrationStatus')
           ..write(')'))
         .toString();
   }
@@ -1939,6 +2053,26 @@ class $RemoteAlbumEntityTable extends RemoteAlbumEntity
               requiredDuringInsert: false,
               defaultValue: const Constant(1))
           .withConverter<AlbumOrder>($RemoteAlbumEntityTable.$converterorder);
+  static const VerificationMeta _isEncryptedMeta =
+      const VerificationMeta('isEncrypted');
+  @override
+  late final GeneratedColumn<bool> isEncrypted = GeneratedColumn<bool>(
+      'is_encrypted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_encrypted" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _albumTypeMeta =
+      const VerificationMeta('albumType');
+  @override
+  late final GeneratedColumnWithTypeConverter<AlbumType, int> albumType =
+      GeneratedColumn<int>('album_type', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<AlbumType>(
+              $RemoteAlbumEntityTable.$converteralbumType);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1949,7 +2083,9 @@ class $RemoteAlbumEntityTable extends RemoteAlbumEntity
         ownerId,
         thumbnailAssetId,
         isActivityEnabled,
-        order
+        order,
+        isEncrypted,
+        albumType
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2010,6 +2146,13 @@ class $RemoteAlbumEntityTable extends RemoteAlbumEntity
               data['is_activity_enabled']!, _isActivityEnabledMeta));
     }
     context.handle(_orderMeta, const VerificationResult.success());
+    if (data.containsKey('is_encrypted')) {
+      context.handle(
+          _isEncryptedMeta,
+          isEncrypted.isAcceptableOrUnknown(
+              data['is_encrypted']!, _isEncryptedMeta));
+    }
+    context.handle(_albumTypeMeta, const VerificationResult.success());
     return context;
   }
 
@@ -2038,6 +2181,11 @@ class $RemoteAlbumEntityTable extends RemoteAlbumEntity
       order: $RemoteAlbumEntityTable.$converterorder.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}order'])!),
+      isEncrypted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_encrypted'])!,
+      albumType: $RemoteAlbumEntityTable.$converteralbumType.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.int, data['${effectivePrefix}album_type'])!),
     );
   }
 
@@ -2048,6 +2196,8 @@ class $RemoteAlbumEntityTable extends RemoteAlbumEntity
 
   static JsonTypeConverter2<AlbumOrder, int, int> $converterorder =
       const EnumIndexConverter<AlbumOrder>(AlbumOrder.values);
+  static JsonTypeConverter2<AlbumType, int, int> $converteralbumType =
+      const EnumIndexConverter<AlbumType>(AlbumType.values);
   @override
   bool get withoutRowId => true;
 }
@@ -2080,6 +2230,12 @@ class RemoteAlbumEntityData extends DataClass
 
   /// 排序方式枚举
   final AlbumOrder order;
+
+  /// 是否加密
+  final bool isEncrypted;
+
+  /// 相册类型枚举
+  final AlbumType albumType;
   const RemoteAlbumEntityData(
       {required this.id,
       required this.name,
@@ -2089,7 +2245,9 @@ class RemoteAlbumEntityData extends DataClass
       required this.ownerId,
       this.thumbnailAssetId,
       required this.isActivityEnabled,
-      required this.order});
+      required this.order,
+      required this.isEncrypted,
+      required this.albumType});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2109,6 +2267,11 @@ class RemoteAlbumEntityData extends DataClass
       map['order'] =
           Variable<int>($RemoteAlbumEntityTable.$converterorder.toSql(order));
     }
+    map['is_encrypted'] = Variable<bool>(isEncrypted);
+    {
+      map['album_type'] = Variable<int>(
+          $RemoteAlbumEntityTable.$converteralbumType.toSql(albumType));
+    }
     return map;
   }
 
@@ -2127,6 +2290,8 @@ class RemoteAlbumEntityData extends DataClass
           : Value(thumbnailAssetId),
       isActivityEnabled: Value(isActivityEnabled),
       order: Value(order),
+      isEncrypted: Value(isEncrypted),
+      albumType: Value(albumType),
     );
   }
 
@@ -2144,6 +2309,9 @@ class RemoteAlbumEntityData extends DataClass
       isActivityEnabled: serializer.fromJson<bool>(json['isActivityEnabled']),
       order: $RemoteAlbumEntityTable.$converterorder
           .fromJson(serializer.fromJson<int>(json['order'])),
+      isEncrypted: serializer.fromJson<bool>(json['isEncrypted']),
+      albumType: $RemoteAlbumEntityTable.$converteralbumType
+          .fromJson(serializer.fromJson<int>(json['albumType'])),
     );
   }
   @override
@@ -2160,6 +2328,9 @@ class RemoteAlbumEntityData extends DataClass
       'isActivityEnabled': serializer.toJson<bool>(isActivityEnabled),
       'order': serializer
           .toJson<int>($RemoteAlbumEntityTable.$converterorder.toJson(order)),
+      'isEncrypted': serializer.toJson<bool>(isEncrypted),
+      'albumType': serializer.toJson<int>(
+          $RemoteAlbumEntityTable.$converteralbumType.toJson(albumType)),
     };
   }
 
@@ -2172,7 +2343,9 @@ class RemoteAlbumEntityData extends DataClass
           String? ownerId,
           Value<String?> thumbnailAssetId = const Value.absent(),
           bool? isActivityEnabled,
-          AlbumOrder? order}) =>
+          AlbumOrder? order,
+          bool? isEncrypted,
+          AlbumType? albumType}) =>
       RemoteAlbumEntityData(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -2185,6 +2358,8 @@ class RemoteAlbumEntityData extends DataClass
             : this.thumbnailAssetId,
         isActivityEnabled: isActivityEnabled ?? this.isActivityEnabled,
         order: order ?? this.order,
+        isEncrypted: isEncrypted ?? this.isEncrypted,
+        albumType: albumType ?? this.albumType,
       );
   RemoteAlbumEntityData copyWithCompanion(RemoteAlbumEntityCompanion data) {
     return RemoteAlbumEntityData(
@@ -2202,6 +2377,9 @@ class RemoteAlbumEntityData extends DataClass
           ? data.isActivityEnabled.value
           : this.isActivityEnabled,
       order: data.order.present ? data.order.value : this.order,
+      isEncrypted:
+          data.isEncrypted.present ? data.isEncrypted.value : this.isEncrypted,
+      albumType: data.albumType.present ? data.albumType.value : this.albumType,
     );
   }
 
@@ -2216,14 +2394,26 @@ class RemoteAlbumEntityData extends DataClass
           ..write('ownerId: $ownerId, ')
           ..write('thumbnailAssetId: $thumbnailAssetId, ')
           ..write('isActivityEnabled: $isActivityEnabled, ')
-          ..write('order: $order')
+          ..write('order: $order, ')
+          ..write('isEncrypted: $isEncrypted, ')
+          ..write('albumType: $albumType')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, description, createdAt, updatedAt,
-      ownerId, thumbnailAssetId, isActivityEnabled, order);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      description,
+      createdAt,
+      updatedAt,
+      ownerId,
+      thumbnailAssetId,
+      isActivityEnabled,
+      order,
+      isEncrypted,
+      albumType);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2236,7 +2426,9 @@ class RemoteAlbumEntityData extends DataClass
           other.ownerId == this.ownerId &&
           other.thumbnailAssetId == this.thumbnailAssetId &&
           other.isActivityEnabled == this.isActivityEnabled &&
-          other.order == this.order);
+          other.order == this.order &&
+          other.isEncrypted == this.isEncrypted &&
+          other.albumType == this.albumType);
 }
 
 class RemoteAlbumEntityCompanion
@@ -2250,6 +2442,8 @@ class RemoteAlbumEntityCompanion
   final Value<String?> thumbnailAssetId;
   final Value<bool> isActivityEnabled;
   final Value<AlbumOrder> order;
+  final Value<bool> isEncrypted;
+  final Value<AlbumType> albumType;
   const RemoteAlbumEntityCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2260,6 +2454,8 @@ class RemoteAlbumEntityCompanion
     this.thumbnailAssetId = const Value.absent(),
     this.isActivityEnabled = const Value.absent(),
     this.order = const Value.absent(),
+    this.isEncrypted = const Value.absent(),
+    this.albumType = const Value.absent(),
   });
   RemoteAlbumEntityCompanion.insert({
     required String id,
@@ -2271,6 +2467,8 @@ class RemoteAlbumEntityCompanion
     this.thumbnailAssetId = const Value.absent(),
     this.isActivityEnabled = const Value.absent(),
     this.order = const Value.absent(),
+    this.isEncrypted = const Value.absent(),
+    this.albumType = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
         createdAt = Value(createdAt),
@@ -2286,6 +2484,8 @@ class RemoteAlbumEntityCompanion
     Expression<String>? thumbnailAssetId,
     Expression<bool>? isActivityEnabled,
     Expression<int>? order,
+    Expression<bool>? isEncrypted,
+    Expression<int>? albumType,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2297,6 +2497,8 @@ class RemoteAlbumEntityCompanion
       if (thumbnailAssetId != null) 'thumbnail_asset_id': thumbnailAssetId,
       if (isActivityEnabled != null) 'is_activity_enabled': isActivityEnabled,
       if (order != null) 'order': order,
+      if (isEncrypted != null) 'is_encrypted': isEncrypted,
+      if (albumType != null) 'album_type': albumType,
     });
   }
 
@@ -2309,7 +2511,9 @@ class RemoteAlbumEntityCompanion
       Value<String>? ownerId,
       Value<String?>? thumbnailAssetId,
       Value<bool>? isActivityEnabled,
-      Value<AlbumOrder>? order}) {
+      Value<AlbumOrder>? order,
+      Value<bool>? isEncrypted,
+      Value<AlbumType>? albumType}) {
     return RemoteAlbumEntityCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -2320,6 +2524,8 @@ class RemoteAlbumEntityCompanion
       thumbnailAssetId: thumbnailAssetId ?? this.thumbnailAssetId,
       isActivityEnabled: isActivityEnabled ?? this.isActivityEnabled,
       order: order ?? this.order,
+      isEncrypted: isEncrypted ?? this.isEncrypted,
+      albumType: albumType ?? this.albumType,
     );
   }
 
@@ -2354,6 +2560,13 @@ class RemoteAlbumEntityCompanion
       map['order'] = Variable<int>(
           $RemoteAlbumEntityTable.$converterorder.toSql(order.value));
     }
+    if (isEncrypted.present) {
+      map['is_encrypted'] = Variable<bool>(isEncrypted.value);
+    }
+    if (albumType.present) {
+      map['album_type'] = Variable<int>(
+          $RemoteAlbumEntityTable.$converteralbumType.toSql(albumType.value));
+    }
     return map;
   }
 
@@ -2368,7 +2581,9 @@ class RemoteAlbumEntityCompanion
           ..write('ownerId: $ownerId, ')
           ..write('thumbnailAssetId: $thumbnailAssetId, ')
           ..write('isActivityEnabled: $isActivityEnabled, ')
-          ..write('order: $order')
+          ..write('order: $order, ')
+          ..write('isEncrypted: $isEncrypted, ')
+          ..write('albumType: $albumType')
           ..write(')'))
         .toString();
   }
@@ -2426,6 +2641,25 @@ class $LocalAlbumEntityTable extends LocalAlbumEntity
           requiredDuringInsert: false,
           defaultConstraints: GeneratedColumn.constraintIsAlways(
               'REFERENCES remote_album_entity (id) ON DELETE SET NULL'));
+  static const VerificationMeta _isEncryptedMeta =
+      const VerificationMeta('isEncrypted');
+  @override
+  late final GeneratedColumn<bool> isEncrypted = GeneratedColumn<bool>(
+      'is_encrypted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_encrypted" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _albumTypeMeta =
+      const VerificationMeta('albumType');
+  @override
+  late final GeneratedColumnWithTypeConverter<AlbumType, int> albumType =
+      GeneratedColumn<int>('album_type', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<AlbumType>($LocalAlbumEntityTable.$converteralbumType);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2433,7 +2667,9 @@ class $LocalAlbumEntityTable extends LocalAlbumEntity
         updatedAt,
         backupSelection,
         isIosSharedAlbum,
-        linkedRemoteAlbumId
+        linkedRemoteAlbumId,
+        isEncrypted,
+        albumType
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2476,6 +2712,13 @@ class $LocalAlbumEntityTable extends LocalAlbumEntity
           linkedRemoteAlbumId.isAcceptableOrUnknown(
               data['linked_remote_album_id']!, _linkedRemoteAlbumIdMeta));
     }
+    if (data.containsKey('is_encrypted')) {
+      context.handle(
+          _isEncryptedMeta,
+          isEncrypted.isAcceptableOrUnknown(
+              data['is_encrypted']!, _isEncryptedMeta));
+    }
+    context.handle(_albumTypeMeta, const VerificationResult.success());
     return context;
   }
 
@@ -2499,6 +2742,11 @@ class $LocalAlbumEntityTable extends LocalAlbumEntity
       linkedRemoteAlbumId: attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}linked_remote_album_id']),
+      isEncrypted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_encrypted'])!,
+      albumType: $LocalAlbumEntityTable.$converteralbumType.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.int, data['${effectivePrefix}album_type'])!),
     );
   }
 
@@ -2510,6 +2758,8 @@ class $LocalAlbumEntityTable extends LocalAlbumEntity
   static JsonTypeConverter2<BackupSelection, int, int>
       $converterbackupSelection =
       const EnumIndexConverter<BackupSelection>(BackupSelection.values);
+  static JsonTypeConverter2<AlbumType, int, int> $converteralbumType =
+      const EnumIndexConverter<AlbumType>(AlbumType.values);
   @override
   bool get withoutRowId => true;
 }
@@ -2533,13 +2783,21 @@ class LocalAlbumEntityData extends DataClass
 
   /// 关联的远程相册 ID
   final String? linkedRemoteAlbumId;
+
+  /// 是否加密
+  final bool isEncrypted;
+
+  /// 相册类型枚举
+  final AlbumType albumType;
   const LocalAlbumEntityData(
       {required this.id,
       required this.name,
       required this.updatedAt,
       required this.backupSelection,
       required this.isIosSharedAlbum,
-      this.linkedRemoteAlbumId});
+      this.linkedRemoteAlbumId,
+      required this.isEncrypted,
+      required this.albumType});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2555,6 +2813,11 @@ class LocalAlbumEntityData extends DataClass
     if (!nullToAbsent || linkedRemoteAlbumId != null) {
       map['linked_remote_album_id'] = Variable<String>(linkedRemoteAlbumId);
     }
+    map['is_encrypted'] = Variable<bool>(isEncrypted);
+    {
+      map['album_type'] = Variable<int>(
+          $LocalAlbumEntityTable.$converteralbumType.toSql(albumType));
+    }
     return map;
   }
 
@@ -2568,6 +2831,8 @@ class LocalAlbumEntityData extends DataClass
       linkedRemoteAlbumId: linkedRemoteAlbumId == null && nullToAbsent
           ? const Value.absent()
           : Value(linkedRemoteAlbumId),
+      isEncrypted: Value(isEncrypted),
+      albumType: Value(albumType),
     );
   }
 
@@ -2583,6 +2848,9 @@ class LocalAlbumEntityData extends DataClass
       isIosSharedAlbum: serializer.fromJson<bool>(json['isIosSharedAlbum']),
       linkedRemoteAlbumId:
           serializer.fromJson<String?>(json['linkedRemoteAlbumId']),
+      isEncrypted: serializer.fromJson<bool>(json['isEncrypted']),
+      albumType: $LocalAlbumEntityTable.$converteralbumType
+          .fromJson(serializer.fromJson<int>(json['albumType'])),
     );
   }
   @override
@@ -2597,6 +2865,9 @@ class LocalAlbumEntityData extends DataClass
           .toJson(backupSelection)),
       'isIosSharedAlbum': serializer.toJson<bool>(isIosSharedAlbum),
       'linkedRemoteAlbumId': serializer.toJson<String?>(linkedRemoteAlbumId),
+      'isEncrypted': serializer.toJson<bool>(isEncrypted),
+      'albumType': serializer.toJson<int>(
+          $LocalAlbumEntityTable.$converteralbumType.toJson(albumType)),
     };
   }
 
@@ -2606,7 +2877,9 @@ class LocalAlbumEntityData extends DataClass
           DateTime? updatedAt,
           BackupSelection? backupSelection,
           bool? isIosSharedAlbum,
-          Value<String?> linkedRemoteAlbumId = const Value.absent()}) =>
+          Value<String?> linkedRemoteAlbumId = const Value.absent(),
+          bool? isEncrypted,
+          AlbumType? albumType}) =>
       LocalAlbumEntityData(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -2616,6 +2889,8 @@ class LocalAlbumEntityData extends DataClass
         linkedRemoteAlbumId: linkedRemoteAlbumId.present
             ? linkedRemoteAlbumId.value
             : this.linkedRemoteAlbumId,
+        isEncrypted: isEncrypted ?? this.isEncrypted,
+        albumType: albumType ?? this.albumType,
       );
   LocalAlbumEntityData copyWithCompanion(LocalAlbumEntityCompanion data) {
     return LocalAlbumEntityData(
@@ -2631,6 +2906,9 @@ class LocalAlbumEntityData extends DataClass
       linkedRemoteAlbumId: data.linkedRemoteAlbumId.present
           ? data.linkedRemoteAlbumId.value
           : this.linkedRemoteAlbumId,
+      isEncrypted:
+          data.isEncrypted.present ? data.isEncrypted.value : this.isEncrypted,
+      albumType: data.albumType.present ? data.albumType.value : this.albumType,
     );
   }
 
@@ -2642,14 +2920,16 @@ class LocalAlbumEntityData extends DataClass
           ..write('updatedAt: $updatedAt, ')
           ..write('backupSelection: $backupSelection, ')
           ..write('isIosSharedAlbum: $isIosSharedAlbum, ')
-          ..write('linkedRemoteAlbumId: $linkedRemoteAlbumId')
+          ..write('linkedRemoteAlbumId: $linkedRemoteAlbumId, ')
+          ..write('isEncrypted: $isEncrypted, ')
+          ..write('albumType: $albumType')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, name, updatedAt, backupSelection,
-      isIosSharedAlbum, linkedRemoteAlbumId);
+      isIosSharedAlbum, linkedRemoteAlbumId, isEncrypted, albumType);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2659,7 +2939,9 @@ class LocalAlbumEntityData extends DataClass
           other.updatedAt == this.updatedAt &&
           other.backupSelection == this.backupSelection &&
           other.isIosSharedAlbum == this.isIosSharedAlbum &&
-          other.linkedRemoteAlbumId == this.linkedRemoteAlbumId);
+          other.linkedRemoteAlbumId == this.linkedRemoteAlbumId &&
+          other.isEncrypted == this.isEncrypted &&
+          other.albumType == this.albumType);
 }
 
 class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
@@ -2669,6 +2951,8 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
   final Value<BackupSelection> backupSelection;
   final Value<bool> isIosSharedAlbum;
   final Value<String?> linkedRemoteAlbumId;
+  final Value<bool> isEncrypted;
+  final Value<AlbumType> albumType;
   const LocalAlbumEntityCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2676,6 +2960,8 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
     this.backupSelection = const Value.absent(),
     this.isIosSharedAlbum = const Value.absent(),
     this.linkedRemoteAlbumId = const Value.absent(),
+    this.isEncrypted = const Value.absent(),
+    this.albumType = const Value.absent(),
   });
   LocalAlbumEntityCompanion.insert({
     required String id,
@@ -2684,6 +2970,8 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
     this.backupSelection = const Value.absent(),
     this.isIosSharedAlbum = const Value.absent(),
     this.linkedRemoteAlbumId = const Value.absent(),
+    this.isEncrypted = const Value.absent(),
+    this.albumType = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
         updatedAt = Value(updatedAt);
@@ -2694,6 +2982,8 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
     Expression<int>? backupSelection,
     Expression<bool>? isIosSharedAlbum,
     Expression<String>? linkedRemoteAlbumId,
+    Expression<bool>? isEncrypted,
+    Expression<int>? albumType,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2703,6 +2993,8 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
       if (isIosSharedAlbum != null) 'is_ios_shared_album': isIosSharedAlbum,
       if (linkedRemoteAlbumId != null)
         'linked_remote_album_id': linkedRemoteAlbumId,
+      if (isEncrypted != null) 'is_encrypted': isEncrypted,
+      if (albumType != null) 'album_type': albumType,
     });
   }
 
@@ -2712,7 +3004,9 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
       Value<DateTime>? updatedAt,
       Value<BackupSelection>? backupSelection,
       Value<bool>? isIosSharedAlbum,
-      Value<String?>? linkedRemoteAlbumId}) {
+      Value<String?>? linkedRemoteAlbumId,
+      Value<bool>? isEncrypted,
+      Value<AlbumType>? albumType}) {
     return LocalAlbumEntityCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -2720,6 +3014,8 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
       backupSelection: backupSelection ?? this.backupSelection,
       isIosSharedAlbum: isIosSharedAlbum ?? this.isIosSharedAlbum,
       linkedRemoteAlbumId: linkedRemoteAlbumId ?? this.linkedRemoteAlbumId,
+      isEncrypted: isEncrypted ?? this.isEncrypted,
+      albumType: albumType ?? this.albumType,
     );
   }
 
@@ -2747,6 +3043,13 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
       map['linked_remote_album_id'] =
           Variable<String>(linkedRemoteAlbumId.value);
     }
+    if (isEncrypted.present) {
+      map['is_encrypted'] = Variable<bool>(isEncrypted.value);
+    }
+    if (albumType.present) {
+      map['album_type'] = Variable<int>(
+          $LocalAlbumEntityTable.$converteralbumType.toSql(albumType.value));
+    }
     return map;
   }
 
@@ -2758,7 +3061,9 @@ class LocalAlbumEntityCompanion extends UpdateCompanion<LocalAlbumEntityData> {
           ..write('updatedAt: $updatedAt, ')
           ..write('backupSelection: $backupSelection, ')
           ..write('isIosSharedAlbum: $isIosSharedAlbum, ')
-          ..write('linkedRemoteAlbumId: $linkedRemoteAlbumId')
+          ..write('linkedRemoteAlbumId: $linkedRemoteAlbumId, ')
+          ..write('isEncrypted: $isEncrypted, ')
+          ..write('albumType: $albumType')
           ..write(')'))
         .toString();
   }
@@ -2956,6 +3261,885 @@ class AlbumAssetEntityCompanion extends UpdateCompanion<AlbumAssetEntityData> {
     return (StringBuffer('AlbumAssetEntityCompanion(')
           ..write('assetId: $assetId, ')
           ..write('albumId: $albumId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalAlbumAssetEntityTable extends LocalAlbumAssetEntity
+    with TableInfo<$LocalAlbumAssetEntityTable, LocalAlbumAssetEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalAlbumAssetEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
+  @override
+  late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES local_asset_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _albumIdMeta =
+      const VerificationMeta('albumId');
+  @override
+  late final GeneratedColumn<String> albumId = GeneratedColumn<String>(
+      'album_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES local_album_entity (id) ON DELETE CASCADE'));
+  @override
+  List<GeneratedColumn> get $columns => [assetId, albumId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_album_asset_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<LocalAlbumAssetEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+    } else if (isInserting) {
+      context.missing(_assetIdMeta);
+    }
+    if (data.containsKey('album_id')) {
+      context.handle(_albumIdMeta,
+          albumId.isAcceptableOrUnknown(data['album_id']!, _albumIdMeta));
+    } else if (isInserting) {
+      context.missing(_albumIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {assetId, albumId};
+  @override
+  LocalAlbumAssetEntityData map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalAlbumAssetEntityData(
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_id'])!,
+      albumId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}album_id'])!,
+    );
+  }
+
+  @override
+  $LocalAlbumAssetEntityTable createAlias(String alias) {
+    return $LocalAlbumAssetEntityTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class LocalAlbumAssetEntityData extends DataClass
+    implements Insertable<LocalAlbumAssetEntityData> {
+  /// 资产 ID（本地资产 ID）
+  final String assetId;
+
+  /// 相册 ID（本地相册 ID）
+  final String albumId;
+  const LocalAlbumAssetEntityData(
+      {required this.assetId, required this.albumId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['asset_id'] = Variable<String>(assetId);
+    map['album_id'] = Variable<String>(albumId);
+    return map;
+  }
+
+  LocalAlbumAssetEntityCompanion toCompanion(bool nullToAbsent) {
+    return LocalAlbumAssetEntityCompanion(
+      assetId: Value(assetId),
+      albumId: Value(albumId),
+    );
+  }
+
+  factory LocalAlbumAssetEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalAlbumAssetEntityData(
+      assetId: serializer.fromJson<String>(json['assetId']),
+      albumId: serializer.fromJson<String>(json['albumId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'assetId': serializer.toJson<String>(assetId),
+      'albumId': serializer.toJson<String>(albumId),
+    };
+  }
+
+  LocalAlbumAssetEntityData copyWith({String? assetId, String? albumId}) =>
+      LocalAlbumAssetEntityData(
+        assetId: assetId ?? this.assetId,
+        albumId: albumId ?? this.albumId,
+      );
+  LocalAlbumAssetEntityData copyWithCompanion(
+      LocalAlbumAssetEntityCompanion data) {
+    return LocalAlbumAssetEntityData(
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      albumId: data.albumId.present ? data.albumId.value : this.albumId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAlbumAssetEntityData(')
+          ..write('assetId: $assetId, ')
+          ..write('albumId: $albumId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(assetId, albumId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalAlbumAssetEntityData &&
+          other.assetId == this.assetId &&
+          other.albumId == this.albumId);
+}
+
+class LocalAlbumAssetEntityCompanion
+    extends UpdateCompanion<LocalAlbumAssetEntityData> {
+  final Value<String> assetId;
+  final Value<String> albumId;
+  const LocalAlbumAssetEntityCompanion({
+    this.assetId = const Value.absent(),
+    this.albumId = const Value.absent(),
+  });
+  LocalAlbumAssetEntityCompanion.insert({
+    required String assetId,
+    required String albumId,
+  })  : assetId = Value(assetId),
+        albumId = Value(albumId);
+  static Insertable<LocalAlbumAssetEntityData> custom({
+    Expression<String>? assetId,
+    Expression<String>? albumId,
+  }) {
+    return RawValuesInsertable({
+      if (assetId != null) 'asset_id': assetId,
+      if (albumId != null) 'album_id': albumId,
+    });
+  }
+
+  LocalAlbumAssetEntityCompanion copyWith(
+      {Value<String>? assetId, Value<String>? albumId}) {
+    return LocalAlbumAssetEntityCompanion(
+      assetId: assetId ?? this.assetId,
+      albumId: albumId ?? this.albumId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (assetId.present) {
+      map['asset_id'] = Variable<String>(assetId.value);
+    }
+    if (albumId.present) {
+      map['album_id'] = Variable<String>(albumId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAlbumAssetEntityCompanion(')
+          ..write('assetId: $assetId, ')
+          ..write('albumId: $albumId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AlbumSessionEntityTable extends AlbumSessionEntity
+    with TableInfo<$AlbumSessionEntityTable, AlbumSessionEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AlbumSessionEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _albumIdMeta =
+      const VerificationMeta('albumId');
+  @override
+  late final GeneratedColumn<String> albumId = GeneratedColumn<String>(
+      'album_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES remote_album_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _sessionTokenMeta =
+      const VerificationMeta('sessionToken');
+  @override
+  late final GeneratedColumn<String> sessionToken = GeneratedColumn<String>(
+      'session_token', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _expiresAtMeta =
+      const VerificationMeta('expiresAt');
+  @override
+  late final GeneratedColumn<DateTime> expiresAt = GeneratedColumn<DateTime>(
+      'expires_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, albumId, sessionToken, expiresAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'album_session_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AlbumSessionEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('album_id')) {
+      context.handle(_albumIdMeta,
+          albumId.isAcceptableOrUnknown(data['album_id']!, _albumIdMeta));
+    } else if (isInserting) {
+      context.missing(_albumIdMeta);
+    }
+    if (data.containsKey('session_token')) {
+      context.handle(
+          _sessionTokenMeta,
+          sessionToken.isAcceptableOrUnknown(
+              data['session_token']!, _sessionTokenMeta));
+    } else if (isInserting) {
+      context.missing(_sessionTokenMeta);
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(_expiresAtMeta,
+          expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta));
+    } else if (isInserting) {
+      context.missing(_expiresAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AlbumSessionEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AlbumSessionEntityData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      albumId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}album_id'])!,
+      sessionToken: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}session_token'])!,
+      expiresAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}expires_at'])!,
+    );
+  }
+
+  @override
+  $AlbumSessionEntityTable createAlias(String alias) {
+    return $AlbumSessionEntityTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class AlbumSessionEntityData extends DataClass
+    implements Insertable<AlbumSessionEntityData> {
+  /// 主键
+  final String id;
+
+  /// 相册 ID
+  final String albumId;
+
+  /// 会话令牌（加密存储）
+  final String sessionToken;
+
+  /// 过期时间
+  final DateTime expiresAt;
+  const AlbumSessionEntityData(
+      {required this.id,
+      required this.albumId,
+      required this.sessionToken,
+      required this.expiresAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['album_id'] = Variable<String>(albumId);
+    map['session_token'] = Variable<String>(sessionToken);
+    map['expires_at'] = Variable<DateTime>(expiresAt);
+    return map;
+  }
+
+  AlbumSessionEntityCompanion toCompanion(bool nullToAbsent) {
+    return AlbumSessionEntityCompanion(
+      id: Value(id),
+      albumId: Value(albumId),
+      sessionToken: Value(sessionToken),
+      expiresAt: Value(expiresAt),
+    );
+  }
+
+  factory AlbumSessionEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AlbumSessionEntityData(
+      id: serializer.fromJson<String>(json['id']),
+      albumId: serializer.fromJson<String>(json['albumId']),
+      sessionToken: serializer.fromJson<String>(json['sessionToken']),
+      expiresAt: serializer.fromJson<DateTime>(json['expiresAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'albumId': serializer.toJson<String>(albumId),
+      'sessionToken': serializer.toJson<String>(sessionToken),
+      'expiresAt': serializer.toJson<DateTime>(expiresAt),
+    };
+  }
+
+  AlbumSessionEntityData copyWith(
+          {String? id,
+          String? albumId,
+          String? sessionToken,
+          DateTime? expiresAt}) =>
+      AlbumSessionEntityData(
+        id: id ?? this.id,
+        albumId: albumId ?? this.albumId,
+        sessionToken: sessionToken ?? this.sessionToken,
+        expiresAt: expiresAt ?? this.expiresAt,
+      );
+  AlbumSessionEntityData copyWithCompanion(AlbumSessionEntityCompanion data) {
+    return AlbumSessionEntityData(
+      id: data.id.present ? data.id.value : this.id,
+      albumId: data.albumId.present ? data.albumId.value : this.albumId,
+      sessionToken: data.sessionToken.present
+          ? data.sessionToken.value
+          : this.sessionToken,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlbumSessionEntityData(')
+          ..write('id: $id, ')
+          ..write('albumId: $albumId, ')
+          ..write('sessionToken: $sessionToken, ')
+          ..write('expiresAt: $expiresAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, albumId, sessionToken, expiresAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AlbumSessionEntityData &&
+          other.id == this.id &&
+          other.albumId == this.albumId &&
+          other.sessionToken == this.sessionToken &&
+          other.expiresAt == this.expiresAt);
+}
+
+class AlbumSessionEntityCompanion
+    extends UpdateCompanion<AlbumSessionEntityData> {
+  final Value<String> id;
+  final Value<String> albumId;
+  final Value<String> sessionToken;
+  final Value<DateTime> expiresAt;
+  const AlbumSessionEntityCompanion({
+    this.id = const Value.absent(),
+    this.albumId = const Value.absent(),
+    this.sessionToken = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+  });
+  AlbumSessionEntityCompanion.insert({
+    required String id,
+    required String albumId,
+    required String sessionToken,
+    required DateTime expiresAt,
+  })  : id = Value(id),
+        albumId = Value(albumId),
+        sessionToken = Value(sessionToken),
+        expiresAt = Value(expiresAt);
+  static Insertable<AlbumSessionEntityData> custom({
+    Expression<String>? id,
+    Expression<String>? albumId,
+    Expression<String>? sessionToken,
+    Expression<DateTime>? expiresAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (albumId != null) 'album_id': albumId,
+      if (sessionToken != null) 'session_token': sessionToken,
+      if (expiresAt != null) 'expires_at': expiresAt,
+    });
+  }
+
+  AlbumSessionEntityCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? albumId,
+      Value<String>? sessionToken,
+      Value<DateTime>? expiresAt}) {
+    return AlbumSessionEntityCompanion(
+      id: id ?? this.id,
+      albumId: albumId ?? this.albumId,
+      sessionToken: sessionToken ?? this.sessionToken,
+      expiresAt: expiresAt ?? this.expiresAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (albumId.present) {
+      map['album_id'] = Variable<String>(albumId.value);
+    }
+    if (sessionToken.present) {
+      map['session_token'] = Variable<String>(sessionToken.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<DateTime>(expiresAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlbumSessionEntityCompanion(')
+          ..write('id: $id, ')
+          ..write('albumId: $albumId, ')
+          ..write('sessionToken: $sessionToken, ')
+          ..write('expiresAt: $expiresAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RetryTaskEntityTable extends RetryTaskEntity
+    with TableInfo<$RetryTaskEntityTable, RetryTaskEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RetryTaskEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _taskTypeMeta =
+      const VerificationMeta('taskType');
+  @override
+  late final GeneratedColumn<int> taskType = GeneratedColumn<int>(
+      'task_type', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _albumIdMeta =
+      const VerificationMeta('albumId');
+  @override
+  late final GeneratedColumn<String> albumId = GeneratedColumn<String>(
+      'album_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _assetIdsMeta =
+      const VerificationMeta('assetIds');
+  @override
+  late final GeneratedColumn<String> assetIds = GeneratedColumn<String>(
+      'asset_ids', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _extraDataMeta =
+      const VerificationMeta('extraData');
+  @override
+  late final GeneratedColumn<String> extraData = GeneratedColumn<String>(
+      'extra_data', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _retryCountMeta =
+      const VerificationMeta('retryCount');
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+      'retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _lastRetryAtMeta =
+      const VerificationMeta('lastRetryAt');
+  @override
+  late final GeneratedColumn<DateTime> lastRetryAt = GeneratedColumn<DateTime>(
+      'last_retry_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, taskType, albumId, assetIds, extraData, retryCount, lastRetryAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'retry_task_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<RetryTaskEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('task_type')) {
+      context.handle(_taskTypeMeta,
+          taskType.isAcceptableOrUnknown(data['task_type']!, _taskTypeMeta));
+    } else if (isInserting) {
+      context.missing(_taskTypeMeta);
+    }
+    if (data.containsKey('album_id')) {
+      context.handle(_albumIdMeta,
+          albumId.isAcceptableOrUnknown(data['album_id']!, _albumIdMeta));
+    } else if (isInserting) {
+      context.missing(_albumIdMeta);
+    }
+    if (data.containsKey('asset_ids')) {
+      context.handle(_assetIdsMeta,
+          assetIds.isAcceptableOrUnknown(data['asset_ids']!, _assetIdsMeta));
+    } else if (isInserting) {
+      context.missing(_assetIdsMeta);
+    }
+    if (data.containsKey('extra_data')) {
+      context.handle(_extraDataMeta,
+          extraData.isAcceptableOrUnknown(data['extra_data']!, _extraDataMeta));
+    }
+    if (data.containsKey('retry_count')) {
+      context.handle(
+          _retryCountMeta,
+          retryCount.isAcceptableOrUnknown(
+              data['retry_count']!, _retryCountMeta));
+    }
+    if (data.containsKey('last_retry_at')) {
+      context.handle(
+          _lastRetryAtMeta,
+          lastRetryAt.isAcceptableOrUnknown(
+              data['last_retry_at']!, _lastRetryAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RetryTaskEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RetryTaskEntityData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      taskType: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}task_type'])!,
+      albumId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}album_id'])!,
+      assetIds: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_ids'])!,
+      extraData: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}extra_data']),
+      retryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
+      lastRetryAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}last_retry_at']),
+    );
+  }
+
+  @override
+  $RetryTaskEntityTable createAlias(String alias) {
+    return $RetryTaskEntityTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class RetryTaskEntityData extends DataClass
+    implements Insertable<RetryTaskEntityData> {
+  /// 主键（任务ID）
+  final String id;
+
+  /// 任务类型
+  final int taskType;
+
+  /// 相册ID
+  final String albumId;
+
+  /// 资产ID列表（JSON格式存储）
+  final String assetIds;
+
+  /// 额外数据（JSON格式存储，可选）
+  final String? extraData;
+
+  /// 重试次数
+  final int retryCount;
+
+  /// 最后重试时间
+  final DateTime? lastRetryAt;
+  const RetryTaskEntityData(
+      {required this.id,
+      required this.taskType,
+      required this.albumId,
+      required this.assetIds,
+      this.extraData,
+      required this.retryCount,
+      this.lastRetryAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['task_type'] = Variable<int>(taskType);
+    map['album_id'] = Variable<String>(albumId);
+    map['asset_ids'] = Variable<String>(assetIds);
+    if (!nullToAbsent || extraData != null) {
+      map['extra_data'] = Variable<String>(extraData);
+    }
+    map['retry_count'] = Variable<int>(retryCount);
+    if (!nullToAbsent || lastRetryAt != null) {
+      map['last_retry_at'] = Variable<DateTime>(lastRetryAt);
+    }
+    return map;
+  }
+
+  RetryTaskEntityCompanion toCompanion(bool nullToAbsent) {
+    return RetryTaskEntityCompanion(
+      id: Value(id),
+      taskType: Value(taskType),
+      albumId: Value(albumId),
+      assetIds: Value(assetIds),
+      extraData: extraData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extraData),
+      retryCount: Value(retryCount),
+      lastRetryAt: lastRetryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastRetryAt),
+    );
+  }
+
+  factory RetryTaskEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RetryTaskEntityData(
+      id: serializer.fromJson<String>(json['id']),
+      taskType: serializer.fromJson<int>(json['taskType']),
+      albumId: serializer.fromJson<String>(json['albumId']),
+      assetIds: serializer.fromJson<String>(json['assetIds']),
+      extraData: serializer.fromJson<String?>(json['extraData']),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
+      lastRetryAt: serializer.fromJson<DateTime?>(json['lastRetryAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'taskType': serializer.toJson<int>(taskType),
+      'albumId': serializer.toJson<String>(albumId),
+      'assetIds': serializer.toJson<String>(assetIds),
+      'extraData': serializer.toJson<String?>(extraData),
+      'retryCount': serializer.toJson<int>(retryCount),
+      'lastRetryAt': serializer.toJson<DateTime?>(lastRetryAt),
+    };
+  }
+
+  RetryTaskEntityData copyWith(
+          {String? id,
+          int? taskType,
+          String? albumId,
+          String? assetIds,
+          Value<String?> extraData = const Value.absent(),
+          int? retryCount,
+          Value<DateTime?> lastRetryAt = const Value.absent()}) =>
+      RetryTaskEntityData(
+        id: id ?? this.id,
+        taskType: taskType ?? this.taskType,
+        albumId: albumId ?? this.albumId,
+        assetIds: assetIds ?? this.assetIds,
+        extraData: extraData.present ? extraData.value : this.extraData,
+        retryCount: retryCount ?? this.retryCount,
+        lastRetryAt: lastRetryAt.present ? lastRetryAt.value : this.lastRetryAt,
+      );
+  RetryTaskEntityData copyWithCompanion(RetryTaskEntityCompanion data) {
+    return RetryTaskEntityData(
+      id: data.id.present ? data.id.value : this.id,
+      taskType: data.taskType.present ? data.taskType.value : this.taskType,
+      albumId: data.albumId.present ? data.albumId.value : this.albumId,
+      assetIds: data.assetIds.present ? data.assetIds.value : this.assetIds,
+      extraData: data.extraData.present ? data.extraData.value : this.extraData,
+      retryCount:
+          data.retryCount.present ? data.retryCount.value : this.retryCount,
+      lastRetryAt:
+          data.lastRetryAt.present ? data.lastRetryAt.value : this.lastRetryAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RetryTaskEntityData(')
+          ..write('id: $id, ')
+          ..write('taskType: $taskType, ')
+          ..write('albumId: $albumId, ')
+          ..write('assetIds: $assetIds, ')
+          ..write('extraData: $extraData, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastRetryAt: $lastRetryAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, taskType, albumId, assetIds, extraData, retryCount, lastRetryAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RetryTaskEntityData &&
+          other.id == this.id &&
+          other.taskType == this.taskType &&
+          other.albumId == this.albumId &&
+          other.assetIds == this.assetIds &&
+          other.extraData == this.extraData &&
+          other.retryCount == this.retryCount &&
+          other.lastRetryAt == this.lastRetryAt);
+}
+
+class RetryTaskEntityCompanion extends UpdateCompanion<RetryTaskEntityData> {
+  final Value<String> id;
+  final Value<int> taskType;
+  final Value<String> albumId;
+  final Value<String> assetIds;
+  final Value<String?> extraData;
+  final Value<int> retryCount;
+  final Value<DateTime?> lastRetryAt;
+  const RetryTaskEntityCompanion({
+    this.id = const Value.absent(),
+    this.taskType = const Value.absent(),
+    this.albumId = const Value.absent(),
+    this.assetIds = const Value.absent(),
+    this.extraData = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.lastRetryAt = const Value.absent(),
+  });
+  RetryTaskEntityCompanion.insert({
+    required String id,
+    required int taskType,
+    required String albumId,
+    required String assetIds,
+    this.extraData = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.lastRetryAt = const Value.absent(),
+  })  : id = Value(id),
+        taskType = Value(taskType),
+        albumId = Value(albumId),
+        assetIds = Value(assetIds);
+  static Insertable<RetryTaskEntityData> custom({
+    Expression<String>? id,
+    Expression<int>? taskType,
+    Expression<String>? albumId,
+    Expression<String>? assetIds,
+    Expression<String>? extraData,
+    Expression<int>? retryCount,
+    Expression<DateTime>? lastRetryAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskType != null) 'task_type': taskType,
+      if (albumId != null) 'album_id': albumId,
+      if (assetIds != null) 'asset_ids': assetIds,
+      if (extraData != null) 'extra_data': extraData,
+      if (retryCount != null) 'retry_count': retryCount,
+      if (lastRetryAt != null) 'last_retry_at': lastRetryAt,
+    });
+  }
+
+  RetryTaskEntityCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? taskType,
+      Value<String>? albumId,
+      Value<String>? assetIds,
+      Value<String?>? extraData,
+      Value<int>? retryCount,
+      Value<DateTime?>? lastRetryAt}) {
+    return RetryTaskEntityCompanion(
+      id: id ?? this.id,
+      taskType: taskType ?? this.taskType,
+      albumId: albumId ?? this.albumId,
+      assetIds: assetIds ?? this.assetIds,
+      extraData: extraData ?? this.extraData,
+      retryCount: retryCount ?? this.retryCount,
+      lastRetryAt: lastRetryAt ?? this.lastRetryAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (taskType.present) {
+      map['task_type'] = Variable<int>(taskType.value);
+    }
+    if (albumId.present) {
+      map['album_id'] = Variable<String>(albumId.value);
+    }
+    if (assetIds.present) {
+      map['asset_ids'] = Variable<String>(assetIds.value);
+    }
+    if (extraData.present) {
+      map['extra_data'] = Variable<String>(extraData.value);
+    }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
+    if (lastRetryAt.present) {
+      map['last_retry_at'] = Variable<DateTime>(lastRetryAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RetryTaskEntityCompanion(')
+          ..write('id: $id, ')
+          ..write('taskType: $taskType, ')
+          ..write('albumId: $albumId, ')
+          ..write('assetIds: $assetIds, ')
+          ..write('extraData: $extraData, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastRetryAt: $lastRetryAt')
           ..write(')'))
         .toString();
   }
@@ -4799,6 +5983,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalAlbumEntityTable(this);
   late final $AlbumAssetEntityTable albumAssetEntity =
       $AlbumAssetEntityTable(this);
+  late final $LocalAlbumAssetEntityTable localAlbumAssetEntity =
+      $LocalAlbumAssetEntityTable(this);
+  late final $AlbumSessionEntityTable albumSessionEntity =
+      $AlbumSessionEntityTable(this);
+  late final $RetryTaskEntityTable retryTaskEntity =
+      $RetryTaskEntityTable(this);
   late final $StoreEntityTable storeEntity = $StoreEntityTable(this);
   late final $BackupStatusEntityTable backupStatusEntity =
       $BackupStatusEntityTable(this);
@@ -4835,6 +6025,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final UploadTaskDao uploadTaskDao = UploadTaskDao(this as AppDatabase);
   late final SyncCheckpointDao syncCheckpointDao =
       SyncCheckpointDao(this as AppDatabase);
+  late final RetryTaskDao retryTaskDao = RetryTaskDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4846,6 +6037,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         remoteAlbumEntity,
         localAlbumEntity,
         albumAssetEntity,
+        localAlbumAssetEntity,
+        albumSessionEntity,
+        retryTaskEntity,
         storeEntity,
         backupStatusEntity,
         uploadTaskEntity,
@@ -4903,6 +6097,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('album_asset_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('local_asset_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('local_album_asset_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('local_album_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('local_album_asset_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('remote_album_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('album_session_entity', kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -5163,6 +6378,8 @@ typedef $$LocalAssetEntityTableCreateCompanionBuilder
   required String path,
   Value<bool> isFavorite,
   Value<int> orientation,
+  Value<bool> isInPrivateSpace,
+  Value<MigrationStatus> migrationStatus,
 });
 typedef $$LocalAssetEntityTableUpdateCompanionBuilder
     = LocalAssetEntityCompanion Function({
@@ -5178,6 +6395,8 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<String> path,
   Value<bool> isFavorite,
   Value<int> orientation,
+  Value<bool> isInPrivateSpace,
+  Value<MigrationStatus> migrationStatus,
 });
 
 class $$LocalAssetEntityTableTableManager extends RootTableManager<
@@ -5210,6 +6429,8 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<String> path = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<int> orientation = const Value.absent(),
+            Value<bool> isInPrivateSpace = const Value.absent(),
+            Value<MigrationStatus> migrationStatus = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion(
             name: name,
@@ -5224,6 +6445,8 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             path: path,
             isFavorite: isFavorite,
             orientation: orientation,
+            isInPrivateSpace: isInPrivateSpace,
+            migrationStatus: migrationStatus,
           ),
           createCompanionCallback: ({
             required String name,
@@ -5238,6 +6461,8 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             required String path,
             Value<bool> isFavorite = const Value.absent(),
             Value<int> orientation = const Value.absent(),
+            Value<bool> isInPrivateSpace = const Value.absent(),
+            Value<MigrationStatus> migrationStatus = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion.insert(
             name: name,
@@ -5252,6 +6477,8 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             path: path,
             isFavorite: isFavorite,
             orientation: orientation,
+            isInPrivateSpace: isInPrivateSpace,
+            migrationStatus: migrationStatus,
           ),
         ));
 }
@@ -5320,6 +6547,36 @@ class $$LocalAssetEntityTableFilterComposer
       column: $state.table.orientation,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isInPrivateSpace => $state.composableBuilder(
+      column: $state.table.isInPrivateSpace,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<MigrationStatus, MigrationStatus, int>
+      get migrationStatus => $state.composableBuilder(
+          column: $state.table.migrationStatus,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ComposableFilter localAlbumAssetEntityRefs(
+      ComposableFilter Function($$LocalAlbumAssetEntityTableFilterComposer f)
+          f) {
+    final $$LocalAlbumAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.localAlbumAssetEntity,
+            getReferencedColumn: (t) => t.assetId,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAlbumAssetEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.localAlbumAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$LocalAssetEntityTableOrderingComposer
@@ -5382,6 +6639,16 @@ class $$LocalAssetEntityTableOrderingComposer
 
   ColumnOrderings<int> get orientation => $state.composableBuilder(
       column: $state.table.orientation,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isInPrivateSpace => $state.composableBuilder(
+      column: $state.table.isInPrivateSpace,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get migrationStatus => $state.composableBuilder(
+      column: $state.table.migrationStatus,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
@@ -5777,6 +7044,8 @@ typedef $$RemoteAlbumEntityTableCreateCompanionBuilder
   Value<String?> thumbnailAssetId,
   Value<bool> isActivityEnabled,
   Value<AlbumOrder> order,
+  Value<bool> isEncrypted,
+  Value<AlbumType> albumType,
 });
 typedef $$RemoteAlbumEntityTableUpdateCompanionBuilder
     = RemoteAlbumEntityCompanion Function({
@@ -5789,6 +7058,8 @@ typedef $$RemoteAlbumEntityTableUpdateCompanionBuilder
   Value<String?> thumbnailAssetId,
   Value<bool> isActivityEnabled,
   Value<AlbumOrder> order,
+  Value<bool> isEncrypted,
+  Value<AlbumType> albumType,
 });
 
 class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
@@ -5818,6 +7089,8 @@ class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
             Value<String?> thumbnailAssetId = const Value.absent(),
             Value<bool> isActivityEnabled = const Value.absent(),
             Value<AlbumOrder> order = const Value.absent(),
+            Value<bool> isEncrypted = const Value.absent(),
+            Value<AlbumType> albumType = const Value.absent(),
           }) =>
               RemoteAlbumEntityCompanion(
             id: id,
@@ -5829,6 +7102,8 @@ class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
             thumbnailAssetId: thumbnailAssetId,
             isActivityEnabled: isActivityEnabled,
             order: order,
+            isEncrypted: isEncrypted,
+            albumType: albumType,
           ),
           createCompanionCallback: ({
             required String id,
@@ -5840,6 +7115,8 @@ class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
             Value<String?> thumbnailAssetId = const Value.absent(),
             Value<bool> isActivityEnabled = const Value.absent(),
             Value<AlbumOrder> order = const Value.absent(),
+            Value<bool> isEncrypted = const Value.absent(),
+            Value<AlbumType> albumType = const Value.absent(),
           }) =>
               RemoteAlbumEntityCompanion.insert(
             id: id,
@@ -5851,6 +7128,8 @@ class $$RemoteAlbumEntityTableTableManager extends RootTableManager<
             thumbnailAssetId: thumbnailAssetId,
             isActivityEnabled: isActivityEnabled,
             order: order,
+            isEncrypted: isEncrypted,
+            albumType: albumType,
           ),
         ));
 }
@@ -5891,6 +7170,18 @@ class $$RemoteAlbumEntityTableFilterComposer
   ColumnWithTypeConverterFilters<AlbumOrder, AlbumOrder, int> get order =>
       $state.composableBuilder(
           column: $state.table.order,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isEncrypted => $state.composableBuilder(
+      column: $state.table.isEncrypted,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AlbumType, AlbumType, int> get albumType =>
+      $state.composableBuilder(
+          column: $state.table.albumType,
           builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
               column,
               joinBuilders: joinBuilders));
@@ -5950,6 +7241,23 @@ class $$RemoteAlbumEntityTableFilterComposer
                     $state.db.albumAssetEntity, joinBuilder, parentComposers)));
     return f(composer);
   }
+
+  ComposableFilter albumSessionEntityRefs(
+      ComposableFilter Function($$AlbumSessionEntityTableFilterComposer f) f) {
+    final $$AlbumSessionEntityTableFilterComposer composer = $state
+        .composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.albumSessionEntity,
+            getReferencedColumn: (t) => t.albumId,
+            builder: (joinBuilder, parentComposers) =>
+                $$AlbumSessionEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.albumSessionEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$RemoteAlbumEntityTableOrderingComposer
@@ -5990,6 +7298,16 @@ class $$RemoteAlbumEntityTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
+  ColumnOrderings<bool> get isEncrypted => $state.composableBuilder(
+      column: $state.table.isEncrypted,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get albumType => $state.composableBuilder(
+      column: $state.table.albumType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
   $$UserEntityTableOrderingComposer get ownerId {
     final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
         composer: this,
@@ -6027,6 +7345,8 @@ typedef $$LocalAlbumEntityTableCreateCompanionBuilder
   Value<BackupSelection> backupSelection,
   Value<bool> isIosSharedAlbum,
   Value<String?> linkedRemoteAlbumId,
+  Value<bool> isEncrypted,
+  Value<AlbumType> albumType,
 });
 typedef $$LocalAlbumEntityTableUpdateCompanionBuilder
     = LocalAlbumEntityCompanion Function({
@@ -6036,6 +7356,8 @@ typedef $$LocalAlbumEntityTableUpdateCompanionBuilder
   Value<BackupSelection> backupSelection,
   Value<bool> isIosSharedAlbum,
   Value<String?> linkedRemoteAlbumId,
+  Value<bool> isEncrypted,
+  Value<AlbumType> albumType,
 });
 
 class $$LocalAlbumEntityTableTableManager extends RootTableManager<
@@ -6062,6 +7384,8 @@ class $$LocalAlbumEntityTableTableManager extends RootTableManager<
             Value<BackupSelection> backupSelection = const Value.absent(),
             Value<bool> isIosSharedAlbum = const Value.absent(),
             Value<String?> linkedRemoteAlbumId = const Value.absent(),
+            Value<bool> isEncrypted = const Value.absent(),
+            Value<AlbumType> albumType = const Value.absent(),
           }) =>
               LocalAlbumEntityCompanion(
             id: id,
@@ -6070,6 +7394,8 @@ class $$LocalAlbumEntityTableTableManager extends RootTableManager<
             backupSelection: backupSelection,
             isIosSharedAlbum: isIosSharedAlbum,
             linkedRemoteAlbumId: linkedRemoteAlbumId,
+            isEncrypted: isEncrypted,
+            albumType: albumType,
           ),
           createCompanionCallback: ({
             required String id,
@@ -6078,6 +7404,8 @@ class $$LocalAlbumEntityTableTableManager extends RootTableManager<
             Value<BackupSelection> backupSelection = const Value.absent(),
             Value<bool> isIosSharedAlbum = const Value.absent(),
             Value<String?> linkedRemoteAlbumId = const Value.absent(),
+            Value<bool> isEncrypted = const Value.absent(),
+            Value<AlbumType> albumType = const Value.absent(),
           }) =>
               LocalAlbumEntityCompanion.insert(
             id: id,
@@ -6086,6 +7414,8 @@ class $$LocalAlbumEntityTableTableManager extends RootTableManager<
             backupSelection: backupSelection,
             isIosSharedAlbum: isIosSharedAlbum,
             linkedRemoteAlbumId: linkedRemoteAlbumId,
+            isEncrypted: isEncrypted,
+            albumType: albumType,
           ),
         ));
 }
@@ -6120,6 +7450,18 @@ class $$LocalAlbumEntityTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
+  ColumnFilters<bool> get isEncrypted => $state.composableBuilder(
+      column: $state.table.isEncrypted,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<AlbumType, AlbumType, int> get albumType =>
+      $state.composableBuilder(
+          column: $state.table.albumType,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
   $$RemoteAlbumEntityTableFilterComposer get linkedRemoteAlbumId {
     final $$RemoteAlbumEntityTableFilterComposer composer =
         $state.composerBuilder(
@@ -6134,6 +7476,24 @@ class $$LocalAlbumEntityTableFilterComposer
                     joinBuilder,
                     parentComposers)));
     return composer;
+  }
+
+  ComposableFilter localAlbumAssetEntityRefs(
+      ComposableFilter Function($$LocalAlbumAssetEntityTableFilterComposer f)
+          f) {
+    final $$LocalAlbumAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.localAlbumAssetEntity,
+            getReferencedColumn: (t) => t.albumId,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAlbumAssetEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.localAlbumAssetEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
   }
 }
 
@@ -6162,6 +7522,16 @@ class $$LocalAlbumEntityTableOrderingComposer
 
   ColumnOrderings<bool> get isIosSharedAlbum => $state.composableBuilder(
       column: $state.table.isIosSharedAlbum,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isEncrypted => $state.composableBuilder(
+      column: $state.table.isEncrypted,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get albumType => $state.composableBuilder(
+      column: $state.table.albumType,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -6299,6 +7669,397 @@ class $$AlbumAssetEntityTableOrderingComposer
                     parentComposers)));
     return composer;
   }
+}
+
+typedef $$LocalAlbumAssetEntityTableCreateCompanionBuilder
+    = LocalAlbumAssetEntityCompanion Function({
+  required String assetId,
+  required String albumId,
+});
+typedef $$LocalAlbumAssetEntityTableUpdateCompanionBuilder
+    = LocalAlbumAssetEntityCompanion Function({
+  Value<String> assetId,
+  Value<String> albumId,
+});
+
+class $$LocalAlbumAssetEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalAlbumAssetEntityTable,
+    LocalAlbumAssetEntityData,
+    $$LocalAlbumAssetEntityTableFilterComposer,
+    $$LocalAlbumAssetEntityTableOrderingComposer,
+    $$LocalAlbumAssetEntityTableCreateCompanionBuilder,
+    $$LocalAlbumAssetEntityTableUpdateCompanionBuilder> {
+  $$LocalAlbumAssetEntityTableTableManager(
+      _$AppDatabase db, $LocalAlbumAssetEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer: $$LocalAlbumAssetEntityTableFilterComposer(
+              ComposerState(db, table)),
+          orderingComposer: $$LocalAlbumAssetEntityTableOrderingComposer(
+              ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> assetId = const Value.absent(),
+            Value<String> albumId = const Value.absent(),
+          }) =>
+              LocalAlbumAssetEntityCompanion(
+            assetId: assetId,
+            albumId: albumId,
+          ),
+          createCompanionCallback: ({
+            required String assetId,
+            required String albumId,
+          }) =>
+              LocalAlbumAssetEntityCompanion.insert(
+            assetId: assetId,
+            albumId: albumId,
+          ),
+        ));
+}
+
+class $$LocalAlbumAssetEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $LocalAlbumAssetEntityTable> {
+  $$LocalAlbumAssetEntityTableFilterComposer(super.$state);
+  $$LocalAssetEntityTableFilterComposer get assetId {
+    final $$LocalAssetEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.assetId,
+            referencedTable: $state.db.localAssetEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAssetEntityTableFilterComposer(ComposerState($state.db,
+                    $state.db.localAssetEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  $$LocalAlbumEntityTableFilterComposer get albumId {
+    final $$LocalAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.albumId,
+            referencedTable: $state.db.localAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAlbumEntityTableFilterComposer(ComposerState($state.db,
+                    $state.db.localAlbumEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$LocalAlbumAssetEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $LocalAlbumAssetEntityTable> {
+  $$LocalAlbumAssetEntityTableOrderingComposer(super.$state);
+  $$LocalAssetEntityTableOrderingComposer get assetId {
+    final $$LocalAssetEntityTableOrderingComposer composer = $state
+        .composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.assetId,
+            referencedTable: $state.db.localAssetEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAssetEntityTableOrderingComposer(ComposerState($state.db,
+                    $state.db.localAssetEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  $$LocalAlbumEntityTableOrderingComposer get albumId {
+    final $$LocalAlbumEntityTableOrderingComposer composer = $state
+        .composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.albumId,
+            referencedTable: $state.db.localAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$LocalAlbumEntityTableOrderingComposer(ComposerState($state.db,
+                    $state.db.localAlbumEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+typedef $$AlbumSessionEntityTableCreateCompanionBuilder
+    = AlbumSessionEntityCompanion Function({
+  required String id,
+  required String albumId,
+  required String sessionToken,
+  required DateTime expiresAt,
+});
+typedef $$AlbumSessionEntityTableUpdateCompanionBuilder
+    = AlbumSessionEntityCompanion Function({
+  Value<String> id,
+  Value<String> albumId,
+  Value<String> sessionToken,
+  Value<DateTime> expiresAt,
+});
+
+class $$AlbumSessionEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AlbumSessionEntityTable,
+    AlbumSessionEntityData,
+    $$AlbumSessionEntityTableFilterComposer,
+    $$AlbumSessionEntityTableOrderingComposer,
+    $$AlbumSessionEntityTableCreateCompanionBuilder,
+    $$AlbumSessionEntityTableUpdateCompanionBuilder> {
+  $$AlbumSessionEntityTableTableManager(
+      _$AppDatabase db, $AlbumSessionEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$AlbumSessionEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer: $$AlbumSessionEntityTableOrderingComposer(
+              ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> albumId = const Value.absent(),
+            Value<String> sessionToken = const Value.absent(),
+            Value<DateTime> expiresAt = const Value.absent(),
+          }) =>
+              AlbumSessionEntityCompanion(
+            id: id,
+            albumId: albumId,
+            sessionToken: sessionToken,
+            expiresAt: expiresAt,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String albumId,
+            required String sessionToken,
+            required DateTime expiresAt,
+          }) =>
+              AlbumSessionEntityCompanion.insert(
+            id: id,
+            albumId: albumId,
+            sessionToken: sessionToken,
+            expiresAt: expiresAt,
+          ),
+        ));
+}
+
+class $$AlbumSessionEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $AlbumSessionEntityTable> {
+  $$AlbumSessionEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get sessionToken => $state.composableBuilder(
+      column: $state.table.sessionToken,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get expiresAt => $state.composableBuilder(
+      column: $state.table.expiresAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$RemoteAlbumEntityTableFilterComposer get albumId {
+    final $$RemoteAlbumEntityTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.albumId,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
+class $$AlbumSessionEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $AlbumSessionEntityTable> {
+  $$AlbumSessionEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get sessionToken => $state.composableBuilder(
+      column: $state.table.sessionToken,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get expiresAt => $state.composableBuilder(
+      column: $state.table.expiresAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$RemoteAlbumEntityTableOrderingComposer get albumId {
+    final $$RemoteAlbumEntityTableOrderingComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.albumId,
+            referencedTable: $state.db.remoteAlbumEntity,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder, parentComposers) =>
+                $$RemoteAlbumEntityTableOrderingComposer(ComposerState(
+                    $state.db,
+                    $state.db.remoteAlbumEntity,
+                    joinBuilder,
+                    parentComposers)));
+    return composer;
+  }
+}
+
+typedef $$RetryTaskEntityTableCreateCompanionBuilder = RetryTaskEntityCompanion
+    Function({
+  required String id,
+  required int taskType,
+  required String albumId,
+  required String assetIds,
+  Value<String?> extraData,
+  Value<int> retryCount,
+  Value<DateTime?> lastRetryAt,
+});
+typedef $$RetryTaskEntityTableUpdateCompanionBuilder = RetryTaskEntityCompanion
+    Function({
+  Value<String> id,
+  Value<int> taskType,
+  Value<String> albumId,
+  Value<String> assetIds,
+  Value<String?> extraData,
+  Value<int> retryCount,
+  Value<DateTime?> lastRetryAt,
+});
+
+class $$RetryTaskEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $RetryTaskEntityTable,
+    RetryTaskEntityData,
+    $$RetryTaskEntityTableFilterComposer,
+    $$RetryTaskEntityTableOrderingComposer,
+    $$RetryTaskEntityTableCreateCompanionBuilder,
+    $$RetryTaskEntityTableUpdateCompanionBuilder> {
+  $$RetryTaskEntityTableTableManager(
+      _$AppDatabase db, $RetryTaskEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$RetryTaskEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$RetryTaskEntityTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> taskType = const Value.absent(),
+            Value<String> albumId = const Value.absent(),
+            Value<String> assetIds = const Value.absent(),
+            Value<String?> extraData = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
+            Value<DateTime?> lastRetryAt = const Value.absent(),
+          }) =>
+              RetryTaskEntityCompanion(
+            id: id,
+            taskType: taskType,
+            albumId: albumId,
+            assetIds: assetIds,
+            extraData: extraData,
+            retryCount: retryCount,
+            lastRetryAt: lastRetryAt,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int taskType,
+            required String albumId,
+            required String assetIds,
+            Value<String?> extraData = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
+            Value<DateTime?> lastRetryAt = const Value.absent(),
+          }) =>
+              RetryTaskEntityCompanion.insert(
+            id: id,
+            taskType: taskType,
+            albumId: albumId,
+            assetIds: assetIds,
+            extraData: extraData,
+            retryCount: retryCount,
+            lastRetryAt: lastRetryAt,
+          ),
+        ));
+}
+
+class $$RetryTaskEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $RetryTaskEntityTable> {
+  $$RetryTaskEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get taskType => $state.composableBuilder(
+      column: $state.table.taskType,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get albumId => $state.composableBuilder(
+      column: $state.table.albumId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get assetIds => $state.composableBuilder(
+      column: $state.table.assetIds,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get extraData => $state.composableBuilder(
+      column: $state.table.extraData,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get retryCount => $state.composableBuilder(
+      column: $state.table.retryCount,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get lastRetryAt => $state.composableBuilder(
+      column: $state.table.lastRetryAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$RetryTaskEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $RetryTaskEntityTable> {
+  $$RetryTaskEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get taskType => $state.composableBuilder(
+      column: $state.table.taskType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get albumId => $state.composableBuilder(
+      column: $state.table.albumId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get assetIds => $state.composableBuilder(
+      column: $state.table.assetIds,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get extraData => $state.composableBuilder(
+      column: $state.table.extraData,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get retryCount => $state.composableBuilder(
+      column: $state.table.retryCount,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get lastRetryAt => $state.composableBuilder(
+      column: $state.table.lastRetryAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
 typedef $$StoreEntityTableCreateCompanionBuilder = StoreEntityCompanion
@@ -7047,6 +8808,12 @@ class $AppDatabaseManager {
       $$LocalAlbumEntityTableTableManager(_db, _db.localAlbumEntity);
   $$AlbumAssetEntityTableTableManager get albumAssetEntity =>
       $$AlbumAssetEntityTableTableManager(_db, _db.albumAssetEntity);
+  $$LocalAlbumAssetEntityTableTableManager get localAlbumAssetEntity =>
+      $$LocalAlbumAssetEntityTableTableManager(_db, _db.localAlbumAssetEntity);
+  $$AlbumSessionEntityTableTableManager get albumSessionEntity =>
+      $$AlbumSessionEntityTableTableManager(_db, _db.albumSessionEntity);
+  $$RetryTaskEntityTableTableManager get retryTaskEntity =>
+      $$RetryTaskEntityTableTableManager(_db, _db.retryTaskEntity);
   $$StoreEntityTableTableManager get storeEntity =>
       $$StoreEntityTableTableManager(_db, _db.storeEntity);
   $$BackupStatusEntityTableTableManager get backupStatusEntity =>

@@ -8,6 +8,7 @@ import (
 	"github.com/album/backend/internal/config"
 	"github.com/album/backend/internal/database"
 	"github.com/album/backend/internal/repository"
+	"github.com/album/backend/internal/service/album_encryption"
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/service/group"
 	"github.com/album/backend/internal/service/media"
@@ -212,6 +213,10 @@ func (b *Builder) BuildRepositories() error {
 	b.app.SyncRepo = repository.NewSyncRepository(b.app.DB)
 	b.app.CheckpointRepo = repository.NewCheckpointRepository(b.app.DB)
 
+	// 创建相册相关仓储
+	// 注意：AlbumRepository 和 AlbumSessionRepository 需要添加到 App 结构体中
+	// 暂时在 BuildServices 中创建，因为需要用于构建 AlbumEncryptionService
+
 	return nil
 }
 
@@ -338,6 +343,16 @@ func (b *Builder) BuildServices() error {
 	b.app.SyncService = sync.NewService(
 		b.app.SyncRepo,
 		b.app.CheckpointRepo,
+	)
+
+	// 创建相册相关仓储和服务
+	albumRepo := repository.NewAlbumRepository(b.app.DB)
+	albumSessionRepo := repository.NewAlbumSessionRepository(b.app.DB)
+	b.app.AlbumRepo = albumRepo
+	b.app.AlbumEncryptionService = album_encryption.NewService(
+		b.app.DB,
+		albumRepo,
+		albumSessionRepo,
 	)
 
 	return nil

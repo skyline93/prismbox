@@ -15,6 +15,8 @@ func RunAutoMigrations(db *gorm.DB) error {
 		&models.AuthProvider{},
 		&models.RefreshToken{},
 		&models.Media{},
+		&models.Album{},
+		&models.AlbumSession{},
 		&models.StoragePool{},
 		&models.Group{},
 		&models.GroupMember{},

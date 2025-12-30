@@ -9,12 +9,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class SelectionBottomSheet extends ConsumerStatefulWidget {
   final int selectedCount;
   final VoidCallback onUpload;
+  final VoidCallback? onAddToEncryptedSpace;
   final bool isAllSelected;
 
   const SelectionBottomSheet({
     super.key,
     required this.selectedCount,
     required this.onUpload,
+    this.onAddToEncryptedSpace,
     required this.isAllSelected,
   });
 
@@ -87,6 +89,15 @@ class _SelectionBottomSheetState extends ConsumerState<SelectionBottomSheet> {
                             label: '上传',
                             onPressed: widget.selectedCount > 0 ? widget.onUpload : null,
                           ),
+                          // 添加到加密空间按钮
+                          if (widget.onAddToEncryptedSpace != null)
+                            _ControlBoxButton(
+                              iconData: Icons.lock,
+                              label: '添加到加密空间',
+                              onPressed: widget.selectedCount > 0
+                                  ? widget.onAddToEncryptedSpace
+                                  : null,
+                            ),
                         ],
                       ),
                     ),

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
 
 /// 合集页面
@@ -318,9 +319,9 @@ class AlbumsPage extends ConsumerWidget {
       ),
       _CategoryItem(
         icon: Icons.lock_outline,
-        label: '加密',
+        label: '加密空间',
         onTap: () {
-          // TODO: 跳转到加密页面
+          context.router.push(const EncryptedSpaceRoute());
         },
       ),
     ];

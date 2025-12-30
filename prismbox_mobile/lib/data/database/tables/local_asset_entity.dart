@@ -3,6 +3,7 @@
 import 'package:drift/drift.dart';
 import 'package:prismbox/data/database/tables/mixins/asset_entity_mixin.dart';
 import 'package:prismbox/data/database/tables/mixins/drift_defaults_mixin.dart';
+import 'package:prismbox/data/database/enums/migration_status.dart';
 
 /// 本地资产实体表
 /// 存储设备上的原始媒体文件信息
@@ -34,6 +35,16 @@ class LocalAssetEntity extends Table with DriftDefaultsMixin, AssetEntityMixin {
 
   /// 图片方向（0-8，EXIF 方向值）
   IntColumn get orientation => integer().withDefault(const Constant(0))();
+
+  /// 是否在私有空间
+  /// 标识文件是否已迁移到应用私有目录
+  BoolColumn get isInPrivateSpace => boolean()
+      .withDefault(const Constant(false))();
+
+  /// 迁移状态枚举
+  /// 用于跟踪迁移到私有空间或移回系统相册的操作状态
+  IntColumn get migrationStatus => intEnum<MigrationStatus>()
+      .withDefault(const Constant(0))(); // MigrationStatus.none = 0
 
   @override
   Set<Column> get primaryKey => {id};

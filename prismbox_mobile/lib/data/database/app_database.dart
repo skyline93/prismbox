@@ -7,10 +7,13 @@ import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/data/database/tables/local_album_entity.dart';
 import 'package:prismbox/data/database/tables/remote_album_entity.dart';
 import 'package:prismbox/data/database/tables/album_asset_entity.dart';
+import 'package:prismbox/data/database/tables/local_album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/store_entity.dart';
 import 'package:prismbox/data/database/tables/backup_status_entity.dart';
 import 'package:prismbox/data/database/tables/upload_task_entity.dart';
 import 'package:prismbox/data/database/tables/sync_checkpoint_entity.dart';
+import 'package:prismbox/data/database/tables/album_session_entity.dart';
+import 'package:prismbox/data/database/tables/retry_task_entity.dart';
 import 'package:prismbox/data/database/daos/user_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
@@ -18,12 +21,15 @@ import 'package:prismbox/data/database/daos/album_dao.dart';
 import 'package:prismbox/data/database/daos/backup_status_dao.dart';
 import 'package:prismbox/data/database/daos/upload_task_dao.dart';
 import 'package:prismbox/data/database/daos/sync_checkpoint_dao.dart';
+import 'package:prismbox/data/database/daos/retry_task_dao.dart';
 import 'package:prismbox/data/database/exceptions/database_exception.dart';
 // 导入枚举类型，供生成的代码使用
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/asset_visibility.dart';
 import 'package:prismbox/data/database/enums/backup_selection.dart';
 import 'package:prismbox/data/database/enums/album_order.dart';
+import 'package:prismbox/data/database/enums/album_type.dart';
+import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
@@ -40,6 +46,9 @@ part 'app_database.g.dart';
     LocalAlbumEntity,
     RemoteAlbumEntity,
     AlbumAssetEntity,
+    LocalAlbumAssetEntity,
+    AlbumSessionEntity,
+    RetryTaskEntity,
     StoreEntity,
     BackupStatusEntity,
     UploadTaskEntity,
@@ -53,13 +62,14 @@ part 'app_database.g.dart';
     BackupStatusDao,
     UploadTaskDao,
     SyncCheckpointDao,
+    RetryTaskDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -127,6 +137,56 @@ class AppDatabase extends _$AppDatabase {
           syncCheckpointEntity,
           syncCheckpointEntity.lastSyncTime,
         );
+        break;
+      case 6:
+        // 加密空间功能：添加新字段和表
+        // 为远程相册表添加加密相关字段
+        await m.database.customStatement('''
+          ALTER TABLE remote_album_entity 
+          ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0;
+        ''');
+        await m.database.customStatement('''
+          ALTER TABLE remote_album_entity 
+          ADD COLUMN album_type INTEGER NOT NULL DEFAULT 0;
+        ''');
+        // 为本地相册表添加加密相关字段
+        await m.database.customStatement('''
+          ALTER TABLE local_album_entity 
+          ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0;
+        ''');
+        await m.database.customStatement('''
+          ALTER TABLE local_album_entity 
+          ADD COLUMN album_type INTEGER NOT NULL DEFAULT 0;
+        ''');
+        // 为本地资产表添加私有空间相关字段
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity 
+          ADD COLUMN is_in_private_space INTEGER NOT NULL DEFAULT 0;
+        ''');
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity 
+          ADD COLUMN migration_status INTEGER NOT NULL DEFAULT 0;
+        ''');
+        // 创建相册会话令牌表
+        await m.database.customStatement('''
+          CREATE TABLE IF NOT EXISTS album_session_entity (
+            id TEXT NOT NULL PRIMARY KEY,
+            album_id TEXT NOT NULL,
+            session_token TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (album_id) REFERENCES remote_album_entity (id) ON DELETE CASCADE
+          );
+        ''');
+        break;
+      case 7:
+        // 创建本地相册-资产关联表
+        await m.createTable(localAlbumAssetEntity);
+        break;
+      case 8:
+        // 创建重试任务表
+        await m.createTable(retryTaskEntity);
         break;
       // ... 其他版本迁移
       default:

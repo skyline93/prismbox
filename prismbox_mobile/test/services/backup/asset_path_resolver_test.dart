@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 
 void main() {
@@ -23,6 +24,8 @@ void main() {
           path: '/tmp/test.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
 
         // 创建临时文件
@@ -56,6 +59,8 @@ void main() {
           path: '/nonexistent/path.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
 
         // 注意：这个测试需要实际的photo_manager支持
@@ -86,6 +91,8 @@ void main() {
           path: '/old/path.jpg',
           isFavorite: false,
           orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
         );
 
         // Act

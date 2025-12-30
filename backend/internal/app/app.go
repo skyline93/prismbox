@@ -49,18 +49,20 @@ type App struct {
 	StoragePoolRepo  repository.StoragePoolRepository
 	SyncRepo         repository.SyncRepository
 	CheckpointRepo   repository.CheckpointRepository
+	AlbumRepo        repository.AlbumRepository
 
 	// 媒体处理
 	MediaProcessor       mediaprocessor.MediaProcessor
 	MediaProcessorConfig *mediaprocessor.Config
 
 	// 服务
-	MediaService       media.Service
-	AuthService        auth.Service
-	StoragePoolService storagepool.Service
-	SyncService        sync.Service
-	GroupService       interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
-	ShareService       interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
+	MediaService           media.Service
+	AuthService            auth.Service
+	StoragePoolService     storagepool.Service
+	SyncService            sync.Service
+	GroupService           interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
+	ShareService           interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
+	AlbumEncryptionService interface{} // 使用interface{}避免循环依赖，实际类型为 album_encryption.Service
 
 	// 变更日志模块（可选）
 	ChangelogEngine  *changelog.Engine

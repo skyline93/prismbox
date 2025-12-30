@@ -10,7 +10,7 @@
 part of 'app_router.dart';
 
 abstract class _$AppRouter extends RootStackRouter {
-  // ignore: unused_element, unused_element_parameter
+  // ignore: unused_element
   _$AppRouter({super.navigatorKey});
 
   @override
@@ -31,6 +31,12 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const BackupSettingsPage(),
+      );
+    },
+    EncryptedSpaceRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const EncryptedSpacePage(),
       );
     },
     LanguageRoute.name: (routeData) {
@@ -157,6 +163,20 @@ class BackupSettingsRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'BackupSettingsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [EncryptedSpacePage]
+class EncryptedSpaceRoute extends PageRouteInfo<void> {
+  const EncryptedSpaceRoute({List<PageRouteInfo>? children})
+      : super(
+          EncryptedSpaceRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'EncryptedSpaceRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

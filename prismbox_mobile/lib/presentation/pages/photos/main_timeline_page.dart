@@ -23,6 +23,8 @@ import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
+import 'package:prismbox/services/encrypted_space/providers/encrypted_space_providers.dart';
+import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
 
 /// 照片时间线页面
 ///
@@ -517,6 +519,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               SelectionBottomSheet(
                 selectedCount: selectionCount,
                 onUpload: () => _handleUpload(context, ref),
+                onAddToEncryptedSpace: () => _handleAddToEncryptedSpace(context, ref),
                 isAllSelected: _isAllSelected(ref, timelineSectionsAsync),
               ),
           ],
@@ -831,6 +834,121 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('上传失败: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 处理添加到加密空间
+  Future<void> _handleAddToEncryptedSpace(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+    if (selectedIds.isEmpty) return;
+
+    // 保存 context 的引用，避免在异步操作后使用过期的 context
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // 显示加载提示
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('正在添加 ${selectedIds.length} 张照片到加密空间...'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+
+      // 获取加密空间服务和访问控制服务
+      final encryptedSpaceService = await ref.read(
+        encryptedSpaceServiceProvider.future,
+      );
+      final accessControlService = await ref.read(
+        albumAccessControlServiceProvider.future,
+      );
+
+      // 获取或创建加密空间相册
+      final albumId = await encryptedSpaceService.getOrCreateEncryptedSpaceAlbum();
+
+      // 检查是否已解锁
+      final isUnlocked = accessControlService.isAlbumUnlocked(albumId);
+
+      if (!isUnlocked) {
+        // 未解锁，显示密码验证对话框
+        // 在显示对话框前再次检查 mounted
+        if (!mounted) return;
+        final verified = await PasswordVerifyDialog.show(
+          context,
+          albumId: albumId,
+          encryptedSpaceService: encryptedSpaceService,
+          accessControlService: accessControlService,
+        );
+
+        if (verified != true) {
+          // 用户取消或验证失败
+          if (mounted) {
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('已取消添加到加密空间'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+          return;
+        }
+
+        // 验证成功后解锁相册
+        // 由于密码验证对话框已经验证了密码并保存了会话令牌，
+        // 这里不需要再次进行生物识别验证
+        try {
+          await accessControlService.unlockAlbum(albumId, useBiometric: false);
+        } catch (e) {
+          // 解锁失败，记录错误但继续执行
+          // 如果解锁失败，会在添加资产时再次检查
+        }
+      }
+
+      // 添加资产到加密空间
+      await encryptedSpaceService.addAssetsToEncryptedSpace(
+        albumId: albumId,
+        assetIds: selectedIds.toList(),
+      );
+
+      // 显示成功提示
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('已成功添加 ${selectedIds.length} 张照片到加密空间'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // 刷新时间线数据，让照片页面不再显示这些资产
+        ref.invalidate(timelineAssetsProvider());
+        ref.invalidate(timelineSectionsProvider);
+
+        // 退出选择模式
+        ref.read(assetSelectionProvider.notifier).deactivate();
+      }
+    } catch (e) {
+      // 显示错误提示
+      if (mounted) {
+        String errorMessage = '添加到加密空间失败';
+        if (e.toString().contains('Session token not found')) {
+          errorMessage = '请先解锁加密空间';
+        } else if (e.toString().contains('密码')) {
+          errorMessage = '密码验证失败，请重试';
+        } else {
+          errorMessage = '添加到加密空间失败: ${e.toString()}';
+        }
+
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

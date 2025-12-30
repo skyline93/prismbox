@@ -6,6 +6,7 @@ import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/features/local_sync/exceptions/sync_exception.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
@@ -415,6 +416,8 @@ class LocalSyncService {
       isFavorite: false,
       orientation: asset.orientation,
       path: path.isNotEmpty ? path : asset.id, // 如果路径为空，使用 ID 作为备用
+      isInPrivateSpace: false, // 新同步的资产默认不在私有空间
+      migrationStatus: MigrationStatus.none, // 新同步的资产默认无迁移状态
     );
   }
 

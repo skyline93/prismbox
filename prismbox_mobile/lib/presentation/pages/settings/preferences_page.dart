@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
+import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
 
 /// 偏好设置页面
 @RoutePage()
@@ -16,17 +17,117 @@ class PreferencesPage extends ConsumerStatefulWidget {
 
 class _PreferencesPageState extends ConsumerState<PreferencesPage> {
   String _selectedThemeColor = 'blue';
+  bool _biometricEnabled = false;
+  bool _isCheckingBiometric = false;
+  bool _biometricSupported = false;
 
   @override
   void initState() {
     super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
     _loadThemeColor();
+    await _loadBiometricSettings();
   }
 
   void _loadThemeColor() {
     setState(() {
       _selectedThemeColor = AppSetting.get(Setting.themeColor);
     });
+  }
+
+  Future<void> _loadBiometricSettings() async {
+    setState(() {
+      _biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
+    });
+    
+    // 检查设备是否支持生物识别
+    try {
+      final biometricAuthService = BiometricAuthService();
+      final supported = await biometricAuthService.isDeviceSupported();
+      setState(() {
+        _biometricSupported = supported;
+        _isCheckingBiometric = false;
+      });
+    } catch (e) {
+      setState(() {
+        _biometricSupported = false;
+        _isCheckingBiometric = false;
+      });
+    }
+  }
+
+  Future<void> _onBiometricEnabledChanged(bool value) async {
+    if (value && !_biometricSupported) {
+      // 如果设备不支持，提示用户
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('您的设备不支持生物识别'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    // 如果启用生物识别，先测试一下是否可用
+    if (value) {
+      setState(() {
+        _isCheckingBiometric = true;
+      });
+      
+      try {
+        final biometricAuthService = BiometricAuthService();
+        final available = await biometricAuthService.canCheckBiometrics();
+        if (!available) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('未检测到可用的生物识别方法，请先在系统设置中配置'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          setState(() {
+            _isCheckingBiometric = false;
+          });
+          return;
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('检查生物识别失败: $e'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        setState(() {
+          _isCheckingBiometric = false;
+        });
+        return;
+      }
+    }
+
+    await AppSetting.set(Setting.encryptedSpaceBiometricEnabled, value);
+    setState(() {
+      _biometricEnabled = value;
+      _isCheckingBiometric = false;
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value 
+            ? '已启用生物识别解锁，设置密码后可使用生物识别快速解锁' 
+            : '已禁用生物识别解锁'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _onThemeColorChanged(String color) async {
@@ -67,11 +168,103 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
+            // 加密空间设置区域
+            _buildEncryptedSpaceSection(),
+            const SizedBox(height: 8),
             // 主题色选择区域
             _buildThemeColorSection(),
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 构建加密空间设置区域
+  Widget _buildEncryptedSpaceSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '加密空间',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '启用后，设置密码后可使用生物识别快速解锁加密空间',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.fingerprint,
+                    size: 20,
+                    color: _biometricSupported 
+                      ? Colors.grey[700] 
+                      : Colors.grey[400],
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '生物识别解锁',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: _biometricSupported 
+                        ? Colors.black87 
+                        : Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+              if (_isCheckingBiometric)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Switch(
+                  value: _biometricEnabled && _biometricSupported,
+                  onChanged: _biometricSupported 
+                    ? _onBiometricEnabledChanged 
+                    : null,
+                ),
+            ],
+          ),
+          if (!_biometricSupported) ...[
+            const SizedBox(height: 8),
+            Text(
+              '您的设备不支持生物识别',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[500],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
