@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
+import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
 import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
@@ -24,8 +25,10 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
   String _selectedThemeColor = 'blue';
   bool _biometricEnabled = false;
   bool _biometricSupported = false;
+  int _lockTimeoutMinutes = 30;
   String? _encryptedSpaceAlbumId;
   EncryptedSpaceService? _encryptedSpaceService;
+  AlbumAccessControlService? _albumAccessControlService;
 
   @override
   void initState() {
@@ -64,6 +67,7 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
   Future<void> _loadSettings() async {
     _loadThemeColor();
     await _loadBiometricSettings();
+    _loadLockTimeoutSettings();
   }
 
   void _loadThemeColor() {
@@ -92,6 +96,51 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
           _biometricSupported = false;
         });
       }
+    }
+  }
+
+  void _loadLockTimeoutSettings() {
+    setState(() {
+      _lockTimeoutMinutes = AppSetting.get(Setting.encryptedSpaceLockTimeoutMinutes);
+    });
+  }
+
+  /// 初始化访问控制服务
+  Future<void> _initializeAccessControlService() async {
+    if (_albumAccessControlService == null) {
+      final sessionStorage = SessionStorageService();
+      _albumAccessControlService = AlbumAccessControlService(
+        sessionStorage: sessionStorage,
+      );
+    }
+  }
+
+  /// 处理超时时间变更
+  Future<void> _onLockTimeoutChanged(int minutes) async {
+    await _initializeAccessControlService();
+    
+    // 保存到 AppSetting
+    await AppSetting.set(Setting.encryptedSpaceLockTimeoutMinutes, minutes);
+    
+    // 更新访问控制服务
+    if (_albumAccessControlService != null) {
+      await _albumAccessControlService!.setUserConfiguredTimeout(minutes);
+    }
+    
+    if (mounted) {
+      setState(() {
+        _lockTimeoutMinutes = minutes;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            minutes == 0 
+              ? '已设置为永不自动锁定' 
+              : '自动锁定超时时间已设置为 ${minutes} 分钟',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -391,8 +440,79 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
               ),
             ),
           ],
+          const SizedBox(height: 16),
+          // 自动锁定超时时间设置
+          _buildLockTimeoutSelector(),
         ],
       ),
+    );
+  }
+
+  /// 构建自动锁定超时时间选择器
+  Widget _buildLockTimeoutSelector() {
+    final timeoutOptions = [
+      _TimeoutOption(5, '5分钟'),
+      _TimeoutOption(15, '15分钟'),
+      _TimeoutOption(30, '30分钟'),
+      _TimeoutOption(60, '1小时'),
+      _TimeoutOption(120, '2小时'),
+      _TimeoutOption(0, '永不（仅令牌过期时锁定）'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.timer_outlined,
+              size: 20,
+              color: Colors.grey[700],
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              '自动锁定超时时间',
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '设置加密空间在多长时间后自动锁定（默认：30分钟）',
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 12),
+        // 使用下拉选择器
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButton<int>(
+            value: _lockTimeoutMinutes,
+            isExpanded: true,
+            underline: const SizedBox.shrink(),
+            items: timeoutOptions.map((option) {
+              return DropdownMenuItem<int>(
+                value: option.minutes,
+                child: Text(
+                  option.label,
+                  style: const TextStyle(fontSize: 15),
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                _onLockTimeoutChanged(value);
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -527,4 +647,12 @@ class _ThemeColorOption {
   final String label;
 
   _ThemeColorOption(this.value, this.color, this.label);
+}
+
+/// 超时时间选项数据模型
+class _TimeoutOption {
+  final int minutes;
+  final String label;
+
+  _TimeoutOption(this.minutes, this.label);
 }

@@ -82,105 +82,94 @@ class EncryptedSpaceService {
   /// 获取或创建加密空间相册
   /// 返回远程相册ID
   /// 确保加密空间相册总是存在（这是必须存在的相册）
+  /// 
+  /// 实现策略：总是从服务器获取或创建，确保本地与服务器ID一致
   Future<String> getOrCreateEncryptedSpaceAlbum() async {
     try {
-      // 先查询本地是否已有加密空间相册
       final albumDao = _database.albumDao;
-      final allAlbums = await albumDao.getAllRemoteAlbums();
       
-      // 查找加密空间相册
+      // 查询本地是否已有加密空间相册（用于后续比较）
+      RemoteAlbumEntityData? localAlbum;
       try {
-      final encryptedAlbum = allAlbums.firstWhere(
-        (album) => album.albumType == AlbumType.encryptedSpace,
-      );
-        _log.fine('Found encrypted space album in local database: ${encryptedAlbum.id}');
-      return encryptedAlbum.id;
-    } catch (e) {
-        // 本地没有，继续从服务器获取或创建
-        _log.fine('Encrypted space album not found in local database, fetching from server');
-      }
-    } catch (e, stackTrace) {
-      _log.warning('Error querying local albums, will fetch from server', e, stackTrace);
-      // 继续尝试从服务器获取或创建
-    }
-
-    // 本地没有，从服务器获取或创建
-    try {
-      return await _createEncryptedSpaceAlbum();
-    } catch (e, stackTrace) {
-      _log.severe('Failed to get or create encrypted space album', e, stackTrace);
-      // 如果创建失败，尝试再次查询本地（可能其他线程已经创建了）
-      try {
-        final albumDao = _database.albumDao;
         final allAlbums = await albumDao.getAllRemoteAlbums();
-        final encryptedAlbum = allAlbums.firstWhere(
+        localAlbum = allAlbums.firstWhere(
           (album) => album.albumType == AlbumType.encryptedSpace,
         );
-        _log.info('Found encrypted space album after retry: ${encryptedAlbum.id}');
-        return encryptedAlbum.id;
-      } catch (e2) {
-        // 如果还是找不到，抛出原始错误
-        rethrow;
+        _log.fine('Found encrypted space album in local database: ${localAlbum.id}');
+      } catch (e) {
+        _log.fine('Encrypted space album not found in local database');
       }
-    }
-  }
 
-  /// 创建加密空间相册
-  Future<String> _createEncryptedSpaceAlbum() async {
-    try {
+      // ✅ 总是从服务器获取或创建，确保ID一致性
       final response = await _apiService.dio.get(
         '/api/v1/albums/encrypted-space',
       );
 
       // 响应拦截器已自动提取 data 字段，response.data 已经是业务数据
       final data = response.data as Map<String, dynamic>;
-      final albumId = data['id'] as String;
+      final serverAlbumId = data['id'] as String;
 
-      // 从当前用户信息获取 ownerId（后端没有返回此字段）
-      final store = StoreService();
-      if (!store.isInitialized) {
-        throw Exception('Store not initialized');
-      }
-      
-      final userJson = store.tryGet<String>(StoreKey.currentUser);
-      if (userJson == null || userJson.isEmpty) {
-        throw Exception('User not found in store');
-      }
-      
-      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-      final ownerId = userMap['id']?.toString();
-      if (ownerId == null || ownerId.isEmpty) {
-        throw Exception('User ID not found');
+      // 如果本地相册ID与服务器不一致，删除旧的本地记录
+      if (localAlbum != null && localAlbum.id != serverAlbumId) {
+        _log.warning(
+          'Local album ID (${localAlbum.id}) differs from server ID ($serverAlbumId), '
+          'updating local database',
+        );
+        // 删除旧的本地记录
+        await albumDao.deleteAlbum(localAlbum.id);
+        localAlbum = null;
       }
 
-      // 同步到本地数据库
-      final albumDao = _database.albumDao;
-      final album = RemoteAlbumEntityData(
-        id: albumId,
-        name: data['name'] as String? ?? '加密空间',
-        description: data['description'] as String?,
-        createdAt: DateTime.parse(data['created_at'] as String),
-        updatedAt: DateTime.parse(data['updated_at'] as String),
-        ownerId: ownerId, // 从当前用户获取
-        thumbnailAssetId: data['thumbnail_asset_id'] as String?,
-        isActivityEnabled: data['is_activity_enabled'] as bool? ?? false,
-        order: AlbumOrder.createdAtDesc, // 使用枚举值
-        isEncrypted: true, // 加密空间相册
-        albumType: AlbumType.encryptedSpace, // 加密空间类型
-      );
+      // 如果本地没有或已删除，创建/更新本地记录
+      if (localAlbum == null) {
+        // 从当前用户信息获取 ownerId（后端没有返回此字段）
+        final store = StoreService();
+        if (!store.isInitialized) {
+          throw Exception('Store not initialized');
+        }
+        
+        final userJson = store.tryGet<String>(StoreKey.currentUser);
+        if (userJson == null || userJson.isEmpty) {
+          throw Exception('User not found in store');
+        }
+        
+        final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+        final ownerId = userMap['id']?.toString();
+        if (ownerId == null || ownerId.isEmpty) {
+          throw Exception('User ID not found');
+        }
 
-      await albumDao.createAlbum(album);
+        // 同步到本地数据库
+        final album = RemoteAlbumEntityData(
+          id: serverAlbumId,
+          name: data['name'] as String? ?? '加密空间',
+          description: data['description'] as String?,
+          createdAt: DateTime.parse(data['created_at'] as String),
+          updatedAt: DateTime.parse(data['updated_at'] as String),
+          ownerId: ownerId, // 从当前用户获取
+          thumbnailAssetId: data['thumbnail_asset_id'] as String?,
+          isActivityEnabled: data['is_activity_enabled'] as bool? ?? false,
+          order: AlbumOrder.createdAtDesc, // 使用枚举值
+          isEncrypted: true, // 加密空间相册
+          albumType: AlbumType.encryptedSpace, // 加密空间类型
+        );
 
-      _log.info('Encrypted space album created and synced to local database: $albumId');
-      return albumId;
+        await albumDao.createAlbum(album);
+        _log.info('Encrypted space album synced to local database: $serverAlbumId');
+      } else {
+        _log.fine('Encrypted space album already synced: $serverAlbumId');
+      }
+
+      return serverAlbumId;
     } on DioException catch (e) {
-      _log.severe('Failed to create encrypted space album', e);
+      _log.severe('Failed to get or create encrypted space album from server', e);
       rethrow;
     } catch (e, stackTrace) {
-      _log.severe('Failed to sync encrypted space album to local database', e, stackTrace);
+      _log.severe('Failed to get or create encrypted space album', e, stackTrace);
       rethrow;
     }
   }
+
 
   /// 设置加密空间密码
   Future<void> setEncryptionPassword({

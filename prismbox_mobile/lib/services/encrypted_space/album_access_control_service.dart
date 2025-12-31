@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/storage/store_key.dart';
+import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
 
@@ -43,6 +45,9 @@ class AlbumAccessControlService {
 
   // 定期验证令牌的间隔（5分钟）
   static const Duration _tokenValidationInterval = Duration(minutes: 5);
+
+  // Store服务，用于读取用户配置
+  final StoreService _store = StoreService();
 
   AlbumAccessControlService({
     SessionStorageService? sessionStorage,
@@ -103,13 +108,19 @@ class AlbumAccessControlService {
     }
     final now = DateTime.now();
 
+    // 获取用户配置的超时时间
+    final userTimeout = _getUserConfiguredTimeout();
+    
     // 记录解锁状态
+    // 使用用户配置的超时时间和令牌过期时间中的较小值
+    final calculatedExpiresAt = expiresAt.isBefore(now.add(userTimeout))
+        ? expiresAt
+        : now.add(userTimeout);
+    
     _unlockedAlbums[albumId] = UnlockState(
       albumId: albumId,
       unlockedAt: now,
-      expiresAt: expiresAt.isBefore(now.add(_defaultTimeout))
-          ? expiresAt
-          : now.add(_defaultTimeout),
+      expiresAt: calculatedExpiresAt,
     );
 
     // 启动锁定计时器
@@ -161,6 +172,8 @@ class AlbumAccessControlService {
   }
 
   /// 设置超时时间（用户可配置）
+  /// 此方法用于临时调整单个相册的超时时间
+  /// 全局配置应通过StoreService设置
   void setTimeout(String albumId, Duration timeout) {
     final state = _unlockedAlbums[albumId];
     if (state == null) {
@@ -177,6 +190,74 @@ class AlbumAccessControlService {
 
     // 重启计时器
     _startLockTimer(albumId);
+  }
+
+  /// 获取用户配置的超时时间
+  /// 从StoreService读取配置，如果未配置则使用默认值
+  Duration _getUserConfiguredTimeout() {
+    if (!_store.isInitialized) {
+      return _defaultTimeout;
+    }
+
+    final timeoutMinutes = _store.tryGet<int>(StoreKey.encryptedSpaceLockTimeoutMinutes);
+    if (timeoutMinutes == null || timeoutMinutes <= 0) {
+      return _defaultTimeout;
+    }
+
+    // 支持特殊值：0 表示永不自动锁定（仅令牌过期时锁定）
+    if (timeoutMinutes == 0) {
+      // 返回一个很长的超时时间（1年），实际由令牌过期时间控制
+      return const Duration(days: 365);
+    }
+
+    return Duration(minutes: timeoutMinutes);
+  }
+
+  /// 设置用户配置的超时时间（分钟）
+  /// [minutes] 超时时间（分钟），0 表示永不自动锁定（仅令牌过期时锁定）
+  /// 支持的常用值：5, 15, 30, 60, 120, 0（永不）
+  Future<void> setUserConfiguredTimeout(int minutes) async {
+    if (!_store.isInitialized) {
+      _log.warning('Store not initialized, cannot save timeout configuration');
+      return;
+    }
+
+    await _store.put(StoreKey.encryptedSpaceLockTimeoutMinutes, minutes);
+    _log.info('User configured lock timeout: $minutes minutes');
+
+    // 更新所有已解锁相册的超时时间
+    final albumIds = _unlockedAlbums.keys.toList();
+    for (final albumId in albumIds) {
+      final state = _unlockedAlbums[albumId];
+      if (state != null) {
+        // 重新计算过期时间
+        final now = DateTime.now();
+        final userTimeout = _getUserConfiguredTimeout();
+        final expiresAt = await _sessionStorage.getExpiresAt(albumId);
+        
+        final newExpiresAt = expiresAt != null && expiresAt.isBefore(now.add(userTimeout))
+            ? expiresAt
+            : now.add(userTimeout);
+        
+        _unlockedAlbums[albumId] = UnlockState(
+          albumId: albumId,
+          unlockedAt: state.unlockedAt,
+          expiresAt: newExpiresAt,
+        );
+        
+        // 重启计时器
+        _startLockTimer(albumId);
+      }
+    }
+  }
+
+  /// 获取当前用户配置的超时时间（分钟）
+  /// 返回 null 表示使用默认值
+  int? getUserConfiguredTimeoutMinutes() {
+    if (!_store.isInitialized) {
+      return null;
+    }
+    return _store.tryGet<int>(StoreKey.encryptedSpaceLockTimeoutMinutes);
   }
 
   /// 应用进入后台时锁定所有相册
