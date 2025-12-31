@@ -279,17 +279,30 @@ func runStoragePoolAdd(c *cli.Context) error {
 		return err
 	}
 
-	pool, err := client.CreateStoragePool(c.Context, payload)
+	result, err := client.CreateStoragePool(c.Context, payload)
 	if err != nil {
 		return err
 	}
 
 	if c.Bool("json") {
-		return printJSON(pool)
+		return printJSON(result)
 	}
 
-	fmt.Printf("存储池创建成功：%s (%s)\n", pool.Name, pool.UUID)
-	fmt.Println("请执行 `album storage pool refresh` 使在线实例立即生效。")
+	fmt.Printf("存储池创建成功：%s (%s)\n", result.Pool.Name, result.Pool.UUID)
+
+	// Display refresh status
+	if result.RefreshInfo != nil {
+		if result.RefreshInfo.Success {
+			fmt.Printf("✓ 存储池缓存已自动刷新：%s\n", result.RefreshInfo.Message)
+			if result.RefreshInfo.TaskID != "" {
+				fmt.Printf("  任务 ID: %s\n", result.RefreshInfo.TaskID)
+			}
+		} else {
+			fmt.Printf("⚠ 自动刷新失败：%s\n", result.RefreshInfo.Error)
+			fmt.Println("  请手动执行 `album storage pool refresh` 使存储池生效。")
+		}
+	}
+
 	return nil
 }
 

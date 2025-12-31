@@ -99,13 +99,27 @@ func (c *Client) GetStoragePool(ctx context.Context, uuid string) (*StoragePool,
 	return &pool, nil
 }
 
+// CreateStoragePoolResult 创建存储池的响应结果
+type CreateStoragePoolResult struct {
+	Pool        StoragePool        `json:"pool"`
+	RefreshInfo *RefreshInfoResult `json:"refresh_info,omitempty"`
+}
+
+// RefreshInfoResult 刷新信息结果
+type RefreshInfoResult struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty"`
+	TaskID  string `json:"task_id,omitempty"`
+}
+
 // CreateStoragePool 新建存储池
-func (c *Client) CreateStoragePool(ctx context.Context, payload map[string]interface{}) (*StoragePool, error) {
-	var pool StoragePool
-	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/storage/pools", payload, &pool); err != nil {
+func (c *Client) CreateStoragePool(ctx context.Context, payload map[string]interface{}) (*CreateStoragePoolResult, error) {
+	var result CreateStoragePoolResult
+	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/storage/pools", payload, &result); err != nil {
 		return nil, err
 	}
-	return &pool, nil
+	return &result, nil
 }
 
 // UpdateStoragePool 更新存储池

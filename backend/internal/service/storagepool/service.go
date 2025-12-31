@@ -13,18 +13,33 @@ import (
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/storage/interfaces"
+	"github.com/album/backend/pkg/logger"
 )
 
 // Service 存储池管理服务
 type Service interface {
 	List(ctx context.Context, filter repository.StoragePoolFilter) ([]*models.StoragePool, error)
 	Get(ctx context.Context, uuid string) (*models.StoragePool, error)
-	Create(ctx context.Context, input *CreateInput) (*models.StoragePool, error)
+	Create(ctx context.Context, input *CreateInput) (*CreateResult, error)
 	Update(ctx context.Context, uuid string, input *UpdateInput) (*models.StoragePool, error)
 	SetEnabled(ctx context.Context, uuid string, enabled bool) error
 	Refresh(ctx context.Context) (*interfaces.PoolOperationResult, error)
 	Reconcile(ctx context.Context, req *interfaces.PoolReconcileRequest) (*interfaces.PoolOperationResult, error)
 	Usage(ctx context.Context, poolUUID string) ([]repository.StoragePoolUsageRow, error)
+}
+
+// CreateResult 创建存储池的结果
+type CreateResult struct {
+	Pool        *models.StoragePool
+	RefreshInfo *RefreshInfo
+}
+
+// RefreshInfo 刷新操作信息
+type RefreshInfo struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty"`
+	TaskID  string `json:"task_id,omitempty"`
 }
 
 // CreateInput 创建存储池参数
@@ -55,6 +70,7 @@ type UpdateInput struct {
 type service struct {
 	repo    repository.StoragePoolRepository
 	storage storage.PrimaryStorage
+	logger  logger.Logger
 }
 
 // NewService 创建存储池服务
@@ -62,6 +78,7 @@ func NewService(repo repository.StoragePoolRepository, storage storage.PrimarySt
 	return &service{
 		repo:    repo,
 		storage: storage,
+		logger:  logger.New("service.storagepool"),
 	}
 }
 
@@ -73,7 +90,7 @@ func (s *service) Get(ctx context.Context, id string) (*models.StoragePool, erro
 	return s.repo.FindByUUID(ctx, id)
 }
 
-func (s *service) Create(ctx context.Context, input *CreateInput) (*models.StoragePool, error) {
+func (s *service) Create(ctx context.Context, input *CreateInput) (*CreateResult, error) {
 	if input == nil {
 		return nil, fmt.Errorf("input is required")
 	}
@@ -121,7 +138,35 @@ func (s *service) Create(ctx context.Context, input *CreateInput) (*models.Stora
 	if err := s.repo.Create(ctx, pool); err != nil {
 		return nil, err
 	}
-	return pool, nil
+
+	// Automatically refresh storage pool cache after creation
+	refreshInfo := &RefreshInfo{
+		Success: false,
+	}
+
+	if result, err := s.Refresh(ctx); err != nil {
+		refreshInfo.Error = err.Error()
+		refreshInfo.Message = "Auto refresh failed, please manually refresh the storage pool"
+		s.logger.Warn(
+			"auto refresh after pool creation failed",
+			logger.String("pool_uuid", pool.UUID),
+			logger.Error(err),
+		)
+	} else {
+		refreshInfo.Success = true
+		refreshInfo.Message = result.Message
+		refreshInfo.TaskID = result.TaskID
+		s.logger.Info(
+			"auto refresh after pool creation succeeded",
+			logger.String("pool_uuid", pool.UUID),
+			logger.String("message", result.Message),
+		)
+	}
+
+	return &CreateResult{
+		Pool:        pool,
+		RefreshInfo: refreshInfo,
+	}, nil
 }
 
 func (s *service) Update(ctx context.Context, id string, input *UpdateInput) (*models.StoragePool, error) {

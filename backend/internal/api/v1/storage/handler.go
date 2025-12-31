@@ -90,12 +90,26 @@ func (h *Handler) CreatePool(c *gin.Context) {
 		return
 	}
 	input := req.toCreateInput()
-	pool, err := h.service.Create(c.Request.Context(), input)
+	result, err := h.service.Create(c.Request.Context(), input)
 	if err != nil {
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	response.Success(c, "storage pool created", serializePool(pool))
+
+	// Build response with pool and refresh info
+	responseData := createPoolResponse{
+		Pool: serializePool(result.Pool),
+	}
+	if result.RefreshInfo != nil {
+		responseData.RefreshInfo = &refreshInfoResponse{
+			Success: result.RefreshInfo.Success,
+			Message: result.RefreshInfo.Message,
+			Error:   result.RefreshInfo.Error,
+			TaskID:  result.RefreshInfo.TaskID,
+		}
+	}
+
+	response.Success(c, "storage pool created", responseData)
 }
 
 // UpdatePool 更新存储池
@@ -346,6 +360,18 @@ type storagePoolUsageResponse struct {
 	ActualSize    int64   `json:"actual_size"`
 	DriftPercent  float64 `json:"drift_percent"`
 	LastCheckedAt string  `json:"last_checked_at"`
+}
+
+type createPoolResponse struct {
+	Pool        storagePoolResponse  `json:"pool"`
+	RefreshInfo *refreshInfoResponse `json:"refresh_info,omitempty"`
+}
+
+type refreshInfoResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty"`
+	TaskID  string `json:"task_id,omitempty"`
 }
 
 func serializePools(pools []*models.StoragePool) []storagePoolResponse {

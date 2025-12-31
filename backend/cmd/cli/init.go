@@ -210,17 +210,32 @@ func newInitStorageCommand() *cli.Command {
 				Description:          c.String("description"),
 			}
 			service := storagepool.NewService(repo, nil)
-			pool, err := service.Create(ctx, input)
+			result, err := service.Create(ctx, input)
 			if err != nil {
 				return fmt.Errorf("创建存储池失败: %w", err)
 			}
 
 			if c.Bool("json") {
-				return printJSON(pool)
+				return printJSON(result)
 			}
 
-			fmt.Printf("存储池已创建：%s (%s)\n", pool.Name, pool.UUID)
-			fmt.Println("如服务尚未运行，可直接启动；如已运行，可执行 `album storage pool refresh` 让实例立即加载新配置。")
+			fmt.Printf("存储池已创建：%s (%s)\n", result.Pool.Name, result.Pool.UUID)
+
+			// Display refresh status
+			if result.RefreshInfo != nil {
+				if result.RefreshInfo.Success {
+					fmt.Printf("✓ 存储池缓存已自动刷新：%s\n", result.RefreshInfo.Message)
+					if result.RefreshInfo.TaskID != "" {
+						fmt.Printf("  任务 ID: %s\n", result.RefreshInfo.TaskID)
+					}
+				} else {
+					fmt.Printf("⚠ 自动刷新失败：%s\n", result.RefreshInfo.Error)
+					fmt.Println("  如服务尚未运行，可直接启动；如已运行，可执行 `album storage pool refresh` 让实例立即加载新配置。")
+				}
+			} else {
+				fmt.Println("如服务尚未运行，可直接启动；如已运行，可执行 `album storage pool refresh` 让实例立即加载新配置。")
+			}
+
 			return nil
 		}),
 	}
