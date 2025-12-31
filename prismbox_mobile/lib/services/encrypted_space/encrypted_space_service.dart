@@ -30,11 +30,12 @@ class EncryptedSpaceService {
     SessionStorageService? sessionStorage,
     FileMigrationService? fileMigrationService,
     RetryQueueService? retryQueue,
-  })  : _database = database,
-        _apiService = apiService,
-        _sessionStorage = sessionStorage ?? SessionStorageService(),
-        _fileMigrationService = fileMigrationService ?? FileMigrationService(database: database),
-        _retryQueue = retryQueue ?? RetryQueueService() {
+  }) : _database = database,
+       _apiService = apiService,
+       _sessionStorage = sessionStorage ?? SessionStorageService(),
+       _fileMigrationService =
+           fileMigrationService ?? FileMigrationService(database: database),
+       _retryQueue = retryQueue ?? RetryQueueService() {
     // 初始化重试队列（启用持久化）
     _retryQueue.initialize(database);
     // 设置重试回调
@@ -59,17 +60,25 @@ class EncryptedSpaceService {
           return true;
         case RetryTaskType.migrateToPrivateSpace:
           for (final assetId in task.assetIds) {
-            await _fileMigrationService.moveAssetToPrivateSpace(assetId: assetId);
+            await _fileMigrationService.moveAssetToPrivateSpace(
+              assetId: assetId,
+            );
           }
           return true;
         case RetryTaskType.migrateFromPrivateSpace:
           for (final assetId in task.assetIds) {
-            await _fileMigrationService.moveAssetFromPrivateSpace(assetId: assetId);
+            await _fileMigrationService.moveAssetFromPrivateSpace(
+              assetId: assetId,
+            );
           }
           return true;
       }
     } catch (e, stackTrace) {
-      _log.warning('Retry task failed: ${task.type}, albumId: ${task.albumId}', e, stackTrace);
+      _log.warning(
+        'Retry task failed: ${task.type}, albumId: ${task.albumId}',
+        e,
+        stackTrace,
+      );
       return false;
     }
   }
@@ -82,12 +91,12 @@ class EncryptedSpaceService {
   /// 获取或创建加密空间相册
   /// 返回远程相册ID
   /// 确保加密空间相册总是存在（这是必须存在的相册）
-  /// 
+  ///
   /// 实现策略：总是从服务器获取或创建，确保本地与服务器ID一致
   Future<String> getOrCreateEncryptedSpaceAlbum() async {
     try {
       final albumDao = _database.albumDao;
-      
+
       // 查询本地是否已有加密空间相册（用于后续比较）
       RemoteAlbumEntityData? localAlbum;
       try {
@@ -95,7 +104,9 @@ class EncryptedSpaceService {
         localAlbum = allAlbums.firstWhere(
           (album) => album.albumType == AlbumType.encryptedSpace,
         );
-        _log.fine('Found encrypted space album in local database: ${localAlbum.id}');
+        _log.fine(
+          'Found encrypted space album in local database: ${localAlbum.id}',
+        );
       } catch (e) {
         _log.fine('Encrypted space album not found in local database');
       }
@@ -127,12 +138,12 @@ class EncryptedSpaceService {
         if (!store.isInitialized) {
           throw Exception('Store not initialized');
         }
-        
+
         final userJson = store.tryGet<String>(StoreKey.currentUser);
         if (userJson == null || userJson.isEmpty) {
           throw Exception('User not found in store');
         }
-        
+
         final userMap = jsonDecode(userJson) as Map<String, dynamic>;
         final ownerId = userMap['id']?.toString();
         if (ownerId == null || ownerId.isEmpty) {
@@ -155,21 +166,29 @@ class EncryptedSpaceService {
         );
 
         await albumDao.createAlbum(album);
-        _log.info('Encrypted space album synced to local database: $serverAlbumId');
+        _log.info(
+          'Encrypted space album synced to local database: $serverAlbumId',
+        );
       } else {
         _log.fine('Encrypted space album already synced: $serverAlbumId');
       }
 
       return serverAlbumId;
     } on DioException catch (e) {
-      _log.severe('Failed to get or create encrypted space album from server', e);
+      _log.severe(
+        'Failed to get or create encrypted space album from server',
+        e,
+      );
       rethrow;
     } catch (e, stackTrace) {
-      _log.severe('Failed to get or create encrypted space album', e, stackTrace);
+      _log.severe(
+        'Failed to get or create encrypted space album',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
-
 
   /// 设置加密空间密码
   Future<void> setEncryptionPassword({
@@ -202,10 +221,7 @@ class EncryptedSpaceService {
     try {
       await _apiService.dio.post(
         '/api/v1/albums/$albumId/password/change',
-        data: {
-          'old_password': oldPassword,
-          'new_password': newPassword,
-        },
+        data: {'old_password': oldPassword, 'new_password': newPassword},
       );
 
       // 清除所有会话令牌（密码更改后所有会话都会失效）
@@ -245,7 +261,9 @@ class EncryptedSpaceService {
         password: password, // 传递密码用于KDF加密
       );
 
-      _log.info('Password verified and session token saved for album: $albumId');
+      _log.info(
+        'Password verified and session token saved for album: $albumId',
+      );
     } on DioException catch (e) {
       _log.severe('Failed to verify password', e);
       rethrow;
@@ -255,9 +273,7 @@ class EncryptedSpaceService {
   /// 检查PIN是否已设置
   /// 通过尝试调用验证API，如果返回"PIN not set"错误，说明未设置
   /// 如果返回其他错误（如"Invalid PIN"），说明PIN已设置，只是输入错误
-  Future<bool> checkIfPinIsSet({
-    required String albumId,
-  }) async {
+  Future<bool> checkIfPinIsSet({required String albumId}) async {
     try {
       // 尝试验证一个无效的PIN
       // 如果返回"PIN not set"错误，说明PIN未设置
@@ -273,7 +289,7 @@ class EncryptedSpaceService {
       if (e.response?.statusCode == 403) {
         final errorMessage = e.response?.data?.toString().toLowerCase() ?? '';
         // 如果错误消息包含"PIN not set"或"not set for this album"，说明PIN未设置
-        if (errorMessage.contains('pin not set') || 
+        if (errorMessage.contains('pin not set') ||
             errorMessage.contains('not set for this album') ||
             errorMessage.contains('password not set')) {
           return false; // PIN未设置
@@ -301,13 +317,13 @@ class EncryptedSpaceService {
       // 检查会话令牌
       final sessionToken = await _sessionStorage.getSessionToken(albumId);
       if (sessionToken == null) {
-        throw Exception('Session token not found. Please unlock the album first.');
+        throw Exception(
+          'Session token not found. Please unlock the album first.',
+        );
       }
 
       // 添加请求头
-      final headers = {
-        'X-Session-Token': sessionToken,
-      };
+      final headers = {'X-Session-Token': sessionToken};
 
       final albumDao = _database.albumDao;
       final localAssetDao = _database.localAssetDao;
@@ -324,7 +340,9 @@ class EncryptedSpaceService {
         if (localAsset != null) {
           // 是本地资产，检查是否有远程版本
           if (localAsset.checksum != null && localAsset.checksum!.isNotEmpty) {
-            final remoteAsset = await remoteAssetDao.getAssetByChecksum(localAsset.checksum!);
+            final remoteAsset = await remoteAssetDao.getAssetByChecksum(
+              localAsset.checksum!,
+            );
             if (remoteAsset != null) {
               // 已备份资产
               mergedAssets.add(remoteAsset.id);
@@ -343,33 +361,51 @@ class EncryptedSpaceService {
             // 仅云端资产
             remoteOnlyAssets.add(assetId);
           } else {
-            _log.warning('Asset not found (neither local nor remote): $assetId');
+            _log.warning(
+              'Asset not found (neither local nor remote): $assetId',
+            );
           }
         }
       }
 
+      // 收集所有需要从系统相册删除的资产ID（用于批量删除）
+      final assetIdsToDeleteFromSystem = <String>[];
+
       // 处理仅本地资产：迁移文件到私有空间并关联到本地加密相册
       if (localOnlyAssets.isNotEmpty) {
         // 获取或创建本地加密空间相册
-        final localAlbumId = await albumDao.getOrCreateLocalEncryptedSpaceAlbum();
-        
+        final localAlbumId = await albumDao
+            .getOrCreateLocalEncryptedSpaceAlbum();
+
         for (final assetId in localOnlyAssets) {
           try {
-            // 迁移文件到私有空间（事务保护）
-            await _fileMigrationService.moveAssetToPrivateSpace(assetId: assetId);
-            
+            // 迁移文件到私有空间，但不立即删除系统相册中的文件
+            await _fileMigrationService.moveAssetToPrivateSpace(
+              assetId: assetId,
+              deleteFromSystemAlbum: false, // 不立即删除，稍后批量删除
+            );
+
+            // 收集需要删除的资产ID
+            assetIdsToDeleteFromSystem.add(assetId);
+
             // 迁移成功后，关联到本地加密相册
             // 注意：只有在迁移成功后才关联，如果迁移失败则不关联
             try {
               await albumDao.addLocalAssetToAlbum(assetId, localAlbumId);
-              _log.info('Local asset migrated to private space and added to local album: $assetId');
+              _log.info(
+                'Local asset migrated to private space and added to local album: $assetId',
+              );
             } catch (e) {
               // 忽略重复关联错误
               _log.fine('Local asset already in local album: $assetId');
             }
           } catch (e, stackTrace) {
-            _log.severe('Failed to migrate local asset to private space: $assetId', e, stackTrace);
-            // 迁移失败，不关联到加密相册，继续处理其他资产
+            _log.severe(
+              'Failed to migrate local asset to private space: $assetId',
+              e,
+              stackTrace,
+            );
+            // 迁移失败，不添加到删除列表，不关联到加密相册，继续处理其他资产
             // 这样资产不会出现在加密空间，也不会从照片页面消失
           }
         }
@@ -395,26 +431,28 @@ class EncryptedSpaceService {
             }
           }
         } on DioException catch (e) {
-      _log.severe('Failed to add remote assets to encrypted space', e);
-      
-      // 如果是网络错误，添加到重试队列
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        _retryQueue.addTask(RetryTask(
-          type: RetryTaskType.addAssets,
-          albumId: albumId,
-          assetIds: remoteAssetIds,
-        ));
-        _log.info('Added task to retry queue due to network error');
-        // 不抛出异常，允许部分成功的情况
-        return;
-      }
-      
-      // 其他错误（如认证失败、服务器错误等）直接抛出
-      rethrow;
-    }
+          _log.severe('Failed to add remote assets to encrypted space', e);
+
+          // 如果是网络错误，添加到重试队列
+          if (e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.connectionError) {
+            _retryQueue.addTask(
+              RetryTask(
+                type: RetryTaskType.addAssets,
+                albumId: albumId,
+                assetIds: remoteAssetIds,
+              ),
+            );
+            _log.info('Added task to retry queue due to network error');
+            // 不抛出异常，允许部分成功的情况
+            return;
+          }
+
+          // 其他错误（如认证失败、服务器错误等）直接抛出
+          rethrow;
+        }
       }
 
       // 处理已备份资产的本地文件迁移
@@ -423,40 +461,69 @@ class EncryptedSpaceService {
           // 通过远程资产ID找到对应的本地资产
           final remoteAsset = await remoteAssetDao.getAssetById(remoteAssetId);
           if (remoteAsset != null && remoteAsset.checksum.isNotEmpty) {
-            final localAsset = await localAssetDao.getAssetByChecksum(remoteAsset.checksum);
+            final localAsset = await localAssetDao.getAssetByChecksum(
+              remoteAsset.checksum,
+            );
             if (localAsset != null && !localAsset.isInPrivateSpace) {
-              // 迁移文件到私有空间（事务保护）
-              await _fileMigrationService.moveAssetToPrivateSpace(assetId: localAsset.id);
-              _log.info('Merged asset migrated to private space: ${localAsset.id}');
+              // 迁移文件到私有空间，但不立即删除系统相册中的文件
+              await _fileMigrationService.moveAssetToPrivateSpace(
+                assetId: localAsset.id,
+                deleteFromSystemAlbum: false, // 不立即删除，稍后批量删除
+              );
+
+              // 收集需要删除的资产ID
+              assetIdsToDeleteFromSystem.add(localAsset.id);
+
+              _log.info(
+                'Merged asset migrated to private space: ${localAsset.id}',
+              );
             }
           }
         } catch (e, stackTrace) {
-          _log.severe('Failed to migrate merged asset to private space: $remoteAssetId', e, stackTrace);
+          _log.severe(
+            'Failed to migrate merged asset to private space: $remoteAssetId',
+            e,
+            stackTrace,
+          );
           // 继续处理其他资产
         }
       }
 
+      // 批量删除系统相册中的原始文件
+      if (assetIdsToDeleteFromSystem.isNotEmpty) {
+        _log.info(
+          'Batch deleting ${assetIdsToDeleteFromSystem.length} assets from system album',
+        );
+        await _fileMigrationService.batchDeleteFromSystemAlbum(
+          assetIds: assetIdsToDeleteFromSystem,
+        );
+      }
+
       // 仅本地资产的相册关联已在上面处理完成
 
-      _log.info('Assets added to encrypted space: ${assetIds.length} assets (local: ${localOnlyAssets.length}, remote: ${remoteOnlyAssets.length}, merged: ${mergedAssets.length})');
+      _log.info(
+        'Assets added to encrypted space: ${assetIds.length} assets (local: ${localOnlyAssets.length}, remote: ${remoteOnlyAssets.length}, merged: ${mergedAssets.length})',
+      );
     } on DioException catch (e) {
       _log.severe('Failed to add assets to encrypted space', e);
-      
+
       // 如果是网络错误，添加到重试队列
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
-        _retryQueue.addTask(RetryTask(
-          type: RetryTaskType.addAssets,
-          albumId: albumId,
-          assetIds: assetIds,
-        ));
+        _retryQueue.addTask(
+          RetryTask(
+            type: RetryTaskType.addAssets,
+            albumId: albumId,
+            assetIds: assetIds,
+          ),
+        );
         _log.info('Added task to retry queue due to network error');
         // 不抛出异常，允许部分成功的情况
         return;
       }
-      
+
       rethrow;
     } catch (e, stackTrace) {
       _log.severe('Failed to add assets to encrypted space', e, stackTrace);
@@ -477,13 +544,13 @@ class EncryptedSpaceService {
       // 检查会话令牌
       final sessionToken = await _sessionStorage.getSessionToken(albumId);
       if (sessionToken == null) {
-        throw Exception('Session token not found. Please unlock the album first.');
+        throw Exception(
+          'Session token not found. Please unlock the album first.',
+        );
       }
 
       // 添加请求头
-      final headers = {
-        'X-Session-Token': sessionToken,
-      };
+      final headers = {'X-Session-Token': sessionToken};
 
       final albumDao = _database.albumDao;
       final localAssetDao = _database.localAssetDao;
@@ -500,7 +567,9 @@ class EncryptedSpaceService {
         if (localAsset != null) {
           // 是本地资产，检查是否有远程版本
           if (localAsset.checksum != null && localAsset.checksum!.isNotEmpty) {
-            final remoteAsset = await remoteAssetDao.getAssetByChecksum(localAsset.checksum!);
+            final remoteAsset = await remoteAssetDao.getAssetByChecksum(
+              localAsset.checksum!,
+            );
             if (remoteAsset != null) {
               // 已备份资产
               mergedAssets.add(remoteAsset.id);
@@ -519,7 +588,9 @@ class EncryptedSpaceService {
             // 仅云端资产
             remoteOnlyAssets.add(assetId);
           } else {
-            _log.warning('Asset not found (neither local nor remote): $assetId');
+            _log.warning(
+              'Asset not found (neither local nor remote): $assetId',
+            );
           }
         }
       }
@@ -539,26 +610,28 @@ class EncryptedSpaceService {
             await albumDao.removeAssetFromAlbum(assetId, albumId);
           }
         } on DioException catch (e) {
-      _log.severe('Failed to remove remote assets from encrypted space', e);
-      
-      // 如果是网络错误，添加到重试队列
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        _retryQueue.addTask(RetryTask(
-          type: RetryTaskType.removeAssets,
-          albumId: albumId,
-          assetIds: remoteAssetIds,
-        ));
-        _log.info('Added task to retry queue due to network error');
-        // 不抛出异常，允许部分成功的情况
-        return;
-      }
-      
-      // 其他错误（如认证失败、服务器错误等）直接抛出
-      rethrow;
-    }
+          _log.severe('Failed to remove remote assets from encrypted space', e);
+
+          // 如果是网络错误，添加到重试队列
+          if (e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.connectionError) {
+            _retryQueue.addTask(
+              RetryTask(
+                type: RetryTaskType.removeAssets,
+                albumId: albumId,
+                assetIds: remoteAssetIds,
+              ),
+            );
+            _log.info('Added task to retry queue due to network error');
+            // 不抛出异常，允许部分成功的情况
+            return;
+          }
+
+          // 其他错误（如认证失败、服务器错误等）直接抛出
+          rethrow;
+        }
       }
 
       // 处理已备份资产的本地文件移回系统相册
@@ -567,15 +640,25 @@ class EncryptedSpaceService {
           // 通过远程资产ID找到对应的本地资产
           final remoteAsset = await remoteAssetDao.getAssetById(remoteAssetId);
           if (remoteAsset != null && remoteAsset.checksum.isNotEmpty) {
-            final localAsset = await localAssetDao.getAssetByChecksum(remoteAsset.checksum);
+            final localAsset = await localAssetDao.getAssetByChecksum(
+              remoteAsset.checksum,
+            );
             if (localAsset != null && localAsset.isInPrivateSpace) {
               // 移回系统相册（事务保护）
-              await _fileMigrationService.moveAssetFromPrivateSpace(assetId: localAsset.id);
-              _log.info('Merged asset moved back to system album: ${localAsset.id}');
+              await _fileMigrationService.moveAssetFromPrivateSpace(
+                assetId: localAsset.id,
+              );
+              _log.info(
+                'Merged asset moved back to system album: ${localAsset.id}',
+              );
             }
           }
         } catch (e, stackTrace) {
-          _log.severe('Failed to move merged asset back to system album: $remoteAssetId', e, stackTrace);
+          _log.severe(
+            'Failed to move merged asset back to system album: $remoteAssetId',
+            e,
+            stackTrace,
+          );
           // 继续处理其他资产
         }
       }
@@ -583,33 +666,46 @@ class EncryptedSpaceService {
       // 处理仅本地资产的本地文件移回系统相册和移除本地相册关联
       if (localOnlyAssets.isNotEmpty) {
         // 获取本地加密空间相册ID
-        final localAlbumId = await albumDao.getOrCreateLocalEncryptedSpaceAlbum();
-        
+        final localAlbumId = await albumDao
+            .getOrCreateLocalEncryptedSpaceAlbum();
+
         for (final assetId in localOnlyAssets) {
           try {
             final localAsset = await localAssetDao.getAssetById(assetId);
             if (localAsset != null && localAsset.isInPrivateSpace) {
               // 移回系统相册（事务保护）
-              await _fileMigrationService.moveAssetFromPrivateSpace(assetId: assetId);
+              await _fileMigrationService.moveAssetFromPrivateSpace(
+                assetId: assetId,
+              );
               _log.info('Local asset moved back to system album: $assetId');
             }
-            
+
             // 移除本地相册关联
             await albumDao.removeLocalAssetFromAlbum(assetId, localAlbumId);
             _log.info('Local asset removed from local album: $assetId');
           } catch (e, stackTrace) {
-            _log.severe('Failed to move local asset back to system album: $assetId', e, stackTrace);
+            _log.severe(
+              'Failed to move local asset back to system album: $assetId',
+              e,
+              stackTrace,
+            );
             // 继续处理其他资产
           }
         }
       }
 
-      _log.info('Assets removed from encrypted space: ${assetIds.length} assets (local: ${localOnlyAssets.length}, remote: ${remoteOnlyAssets.length}, merged: ${mergedAssets.length})');
+      _log.info(
+        'Assets removed from encrypted space: ${assetIds.length} assets (local: ${localOnlyAssets.length}, remote: ${remoteOnlyAssets.length}, merged: ${mergedAssets.length})',
+      );
     } on DioException catch (e) {
       _log.severe('Failed to remove assets from encrypted space', e);
       rethrow;
     } catch (e, stackTrace) {
-      _log.severe('Failed to remove assets from encrypted space', e, stackTrace);
+      _log.severe(
+        'Failed to remove assets from encrypted space',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -620,13 +716,13 @@ class EncryptedSpaceService {
       // 检查会话令牌
       final sessionToken = await _sessionStorage.getSessionToken(albumId);
       if (sessionToken == null) {
-        throw Exception('Session token not found. Please unlock the album first.');
+        throw Exception(
+          'Session token not found. Please unlock the album first.',
+        );
       }
 
       // 添加请求头
-      final headers = {
-        'X-Session-Token': sessionToken,
-      };
+      final headers = {'X-Session-Token': sessionToken};
 
       final response = await _apiService.dio.get(
         '/api/v1/albums/$albumId/assets',
@@ -650,9 +746,7 @@ class EncryptedSpaceService {
   /// 撤销所有会话令牌
   Future<void> revokeAllSessions(String albumId) async {
     try {
-      await _apiService.dio.delete(
-        '/api/v1/albums/$albumId/sessions',
-      );
+      await _apiService.dio.delete('/api/v1/albums/$albumId/sessions');
 
       // 清除本地会话令牌
       await _sessionStorage.deleteSessionToken(albumId);
@@ -664,4 +758,3 @@ class EncryptedSpaceService {
     }
   }
 }
-
