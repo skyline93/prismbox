@@ -14,12 +14,14 @@ import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_slive
 import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
 import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart'
     show DragSelectionRegion, AssetIndex, ScrollDirection;
-import 'package:prismbox/presentation/widgets/backup/backup_status_indicator.dart';
-import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
+import 'package:prismbox/presentation/widgets/timeline/timeline_empty_state_view.dart';
+import 'package:prismbox/presentation/widgets/timeline/timeline_error_view.dart';
+import 'package:prismbox/presentation/widgets/timeline/timeline_normal_app_bar.dart';
+import 'package:prismbox/presentation/widgets/timeline/timeline_permission_denied_view.dart';
+import 'package:prismbox/presentation/widgets/timeline/timeline_selection_app_bar.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_grid_columns_provider.dart';
 import 'package:prismbox/providers/permission/photo_permission_provider.dart';
-import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
@@ -59,10 +61,6 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   /// 捏合手势相关状态
   int _lastColumnCount = 4;
   DateTime? _lastUpdateTime;
-
-  // 性能优化：提取样式对象为静态常量，避免在 build 中重复创建
-  static const _filterButtonBorderRadius = BorderRadius.all(Radius.circular(16));
-  static const _filterButtonBorderWidth = 1.0;
 
   @override
   void initState() {
@@ -161,25 +159,28 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         .read(remoteSyncCoordinatorProvider.future)
         .then((coordinator) {
           debugPrint('✅ 远程同步完成监听已启动');
-          _remoteSyncCompleteSubscription = coordinator.remoteSyncCompleteStream.listen(
-            (result) async {
-              if (mounted && result.addedCount > 0) {
-                debugPrint('✅ 收到远程同步完成通知: 新增 ${result.addedCount} 个资产，刷新时间线数据');
-                // 短暂延迟，确保数据库事务已提交
-                await Future.delayed(const Duration(milliseconds: 200));
-                if (mounted) {
-                  // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
-                  ref.invalidate(timelineAssetsProvider());
-                  ref.invalidate(timelineSectionsProvider);
-                  debugPrint('✅ 已刷新时间线数据');
-                }
-              }
-            },
-            onError: (error) {
-              // 记录错误但不影响功能
-              debugPrint('❌ 远程同步完成监听错误: $error');
-            },
-          );
+          _remoteSyncCompleteSubscription = coordinator.remoteSyncCompleteStream
+              .listen(
+                (result) async {
+                  if (mounted && result.addedCount > 0) {
+                    debugPrint(
+                      '✅ 收到远程同步完成通知: 新增 ${result.addedCount} 个资产，刷新时间线数据',
+                    );
+                    // 短暂延迟，确保数据库事务已提交
+                    await Future.delayed(const Duration(milliseconds: 200));
+                    if (mounted) {
+                      // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
+                      ref.invalidate(timelineAssetsProvider());
+                      ref.invalidate(timelineSectionsProvider);
+                      debugPrint('✅ 已刷新时间线数据');
+                    }
+                  }
+                },
+                onError: (error) {
+                  // 记录错误但不影响功能
+                  debugPrint('❌ 远程同步完成监听错误: $error');
+                },
+              );
         })
         .catchError((error) {
           debugPrint('❌ 启动远程同步完成监听失败: $error');
@@ -193,25 +194,27 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         .read(syncCoordinatorProvider.future)
         .then((coordinator) {
           debugPrint('✅ Checksum 匹配完成监听已启动');
-          _checksumMatchCompleteSubscription = coordinator.checksumMatchCompleteStream.listen(
-            (_) async {
-              if (mounted) {
-                debugPrint('✅ 收到 checksum 匹配完成通知，刷新时间线数据');
-                // 短暂延迟，确保数据库事务已提交
-                await Future.delayed(const Duration(milliseconds: 200));
-                if (mounted) {
-                  // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
-                  ref.invalidate(timelineAssetsProvider());
-                  ref.invalidate(timelineSectionsProvider);
-                  debugPrint('✅ 已刷新时间线数据');
-                }
-              }
-            },
-            onError: (error) {
-              // 记录错误但不影响功能
-              debugPrint('❌ Checksum 匹配完成监听错误: $error');
-            },
-          );
+          _checksumMatchCompleteSubscription = coordinator
+              .checksumMatchCompleteStream
+              .listen(
+                (_) async {
+                  if (mounted) {
+                    debugPrint('✅ 收到 checksum 匹配完成通知，刷新时间线数据');
+                    // 短暂延迟，确保数据库事务已提交
+                    await Future.delayed(const Duration(milliseconds: 200));
+                    if (mounted) {
+                      // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
+                      ref.invalidate(timelineAssetsProvider());
+                      ref.invalidate(timelineSectionsProvider);
+                      debugPrint('✅ 已刷新时间线数据');
+                    }
+                  }
+                },
+                onError: (error) {
+                  // 记录错误但不影响功能
+                  debugPrint('❌ Checksum 匹配完成监听错误: $error');
+                },
+              );
         })
         .catchError((error) {
           debugPrint('❌ 启动 Checksum 匹配完成监听失败: $error');
@@ -358,149 +361,18 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           children: [
             DragSelectionRegion(
               onStart: isSelectionActive ? _handleDragStart : null,
-              onAssetEnter: isSelectionActive
-                  ? _handleDragAssetEnter
-                  : null,
+              onAssetEnter: isSelectionActive ? _handleDragAssetEnter : null,
               onEnd: isSelectionActive ? _handleDragEnd : null,
-              onScrollStart: isSelectionActive
-                  ? _handleDragScrollStart
-                  : null,
+              onScrollStart: isSelectionActive ? _handleDragScrollStart : null,
               onScroll: isSelectionActive ? _handleDragScroll : null,
               child: CustomScrollView(
                 controller: _scrollController,
                 slivers: [
                   // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
                   if (isSelectionActive)
-                    SliverAppBar(
-                      floating: true,
-                      pinned: true,
-                      snap: false,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainer,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(5)),
-                      ),
-                      automaticallyImplyLeading: false,
-                      leading: SizedBox(
-                        width: 120, // 限制 leading 区域的最大宽度
-                        child: Row(
-                          mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            // 使用 InkWell + Icon 替代 IconButton，更紧凑
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  HapticFeedback.lightImpact();
-                                  ref
-                                      .read(assetSelectionProvider.notifier)
-                                      .deactivate();
-                                },
-                                borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    size: 24,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            // 使用 Expanded 确保文本可以适应剩余空间并防止溢出
-                            Expanded(
-                              child: Text(
-                                '${selectionCount}张',
-                                style: Theme.of(context).textTheme.titleMedium,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      actions: [
-                        // 全选按钮（带"全选"文字，风格与单选框一致）
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: TextButton(
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              if (_isAllSelected(ref, timelineSectionsAsync)) {
-                                _handleDeselectAll(ref);
-                              } else {
-                                _handleSelectAll(ref);
-                              }
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _isAllSelected(ref, timelineSectionsAsync)
-                                      ? Icons.check_circle_rounded
-                                      : Icons.check_circle_outline_rounded,
-                                  size: 24,
-                                  color:
-                                      _isAllSelected(ref, timelineSectionsAsync)
-                                      ? const Color(0xFF4285F4) // 谷歌蓝
-                                      : Theme.of(context).colorScheme.onSurface
-                                            .withOpacity(0.6),
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    _isAllSelected(ref, timelineSectionsAsync)
-                                        ? '全选'
-                                        : '全选',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      elevation: 0,
-                    )
+                    const TimelineSelectionAppBar()
                   else
-                    SliverAppBar(
-                      floating: true,
-                      pinned: true, // 与选择模式保持一致，避免布局变化导致滚动位置变动
-                      snap: false,
-                      title: Row(
-                        children: [
-                          const Text('照片'),
-                          const SizedBox(width: 12),
-                          // 筛选模式按钮（放在标题右侧）
-                          _buildFilterButton(context, ref),
-                        ],
-                      ),
-                      actions: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: BackupStatusIndicator(),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 20.0),
-                          child: UserProfileIndicator(),
-                        ),
-                      ],
-                    ),
+                    const TimelineNormalAppBar(),
 
                   // 时间线内容
                   ...contentSlivers,
@@ -523,7 +395,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               SelectionBottomSheet(
                 selectedCount: selectionCount,
                 onUpload: () => _handleUpload(context, ref),
-                onAddToEncryptedSpace: () => _handleAddToEncryptedSpace(context, ref),
+                onAddToEncryptedSpace: () =>
+                    _handleAddToEncryptedSpace(context, ref),
                 isAllSelected: _isAllSelected(ref, timelineSectionsAsync),
               ),
           ],
@@ -548,7 +421,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         if (permissionState is! PhotoPermissionGranted) {
           return [
             SliverFillRemaining(
-              child: _buildPermissionDeniedUI(context, permissionState),
+              child: TimelinePermissionDeniedView(
+                permissionState: permissionState,
+              ),
             ),
           ];
         }
@@ -558,27 +433,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           data: (sections) {
             if (sections.isEmpty) {
               return [
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.photo_library_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '暂无照片',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleLarge?.copyWith(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                const SliverFillRemaining(child: TimelineEmptyStateView()),
               ];
             }
 
@@ -655,13 +510,10 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               ],
               error: (error, stackTrace) => [
                 SliverFillRemaining(
-                  child: Center(
-                    child: Text(
-                      '加载 AssetEntityLoader 失败: ${error.toString()}',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.red),
-                    ),
+                  child: TimelineErrorView(
+                    errorMessage:
+                        '加载 AssetEntityLoader 失败: ${error.toString()}',
+                    title: '加载失败',
                   ),
                 ),
               ],
@@ -674,40 +526,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           ],
           error: (error, stackTrace) => [
             SliverFillRemaining(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '加载失败',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(color: Colors.red),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      error.toString(),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ref.invalidate(timelineSectionsProvider);
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('重试'),
-                    ),
-                  ],
-                ),
+              child: TimelineErrorView(
+                errorMessage: error.toString(),
+                title: '加载失败',
               ),
             ),
           ],
@@ -719,89 +540,26 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         SliverFillRemaining(
           child: Container(
             color: Theme.of(context).scaffoldBackgroundColor,
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           ),
         ),
       ],
       error: (error, stackTrace) => [
         SliverFillRemaining(
-          child: Center(
-            child: Text(
-              '权限检查失败: ${error.toString()}',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.red),
-            ),
+          child: TimelineErrorView(
+            errorMessage: '权限检查失败: ${error.toString()}',
+            title: '权限检查失败',
           ),
         ),
       ],
     );
   }
 
-  /// 构建权限被拒绝的UI
-  Widget _buildPermissionDeniedUI(
-    BuildContext context,
-    PhotoPermissionState permissionState,
-  ) {
-    final isPermanentlyDenied =
-        permissionState is PhotoPermissionPermanentlyDenied;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.photo_library_outlined,
-              size: 80,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '需要相册权限',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isPermanentlyDenied
-                  ? '相册权限已被拒绝。请在系统设置中授予相册访问权限。'
-                  : '需要相册权限才能查看您的照片。请授予相册访问权限。',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final permissionNotifier = ref.read(
-                  photoPermissionNotifierProvider.notifier,
-                );
-                await permissionNotifier.requestPermission();
-              },
-              icon: const Icon(Icons.lock_open),
-              label: const Text('授予权限'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// 处理上传
   Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
-    final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+    final selectedIds = ref.read(
+      assetSelectionProvider.select((s) => s.selectedIds),
+    );
     if (selectedIds.isEmpty) return;
 
     try {
@@ -851,7 +609,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     BuildContext context,
     WidgetRef ref,
   ) async {
-    final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+    final selectedIds = ref.read(
+      assetSelectionProvider.select((s) => s.selectedIds),
+    );
     if (selectedIds.isEmpty) return;
 
     // 保存 context 的引用，避免在异步操作后使用过期的 context
@@ -876,7 +636,8 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
       );
 
       // 获取或创建加密空间相册
-      final albumId = await encryptedSpaceService.getOrCreateEncryptedSpaceAlbum();
+      final albumId = await encryptedSpaceService
+          .getOrCreateEncryptedSpaceAlbum();
 
       // 检查是否已解锁
       final isUnlocked = accessControlService.isAlbumUnlocked(albumId);
@@ -887,7 +648,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         if (!mounted) return;
 
         // 首先检查PIN是否已设置
-        final pinIsSet = await encryptedSpaceService.checkIfPinIsSet(albumId: albumId);
+        final pinIsSet = await encryptedSpaceService.checkIfPinIsSet(
+          albumId: albumId,
+        );
 
         if (!pinIsSet) {
           // PIN未设置，显示设置PIN对话框
@@ -896,7 +659,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             albumId: albumId,
             encryptedSpaceService: encryptedSpaceService,
           );
-          
+
           // 如果用户取消了设置PIN，直接返回
           if (dialogResult != true) {
             return;
@@ -905,10 +668,13 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           // 这里不自动验证，因为用户已经输入过PIN了，让他们再次输入可能会有不好的体验
           // 但为了安全，还是需要验证一次
           // 使用生物识别或验证PIN对话框
-          final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
+          final biometricEnabled = AppSetting.get(
+            Setting.encryptedSpaceBiometricEnabled,
+          );
           final biometricAuthService = BiometricAuthService();
-          final deviceSupported = await biometricAuthService.isDeviceSupported();
-          
+          final deviceSupported = await biometricAuthService
+              .isDeviceSupported();
+
           bool verified = false;
           if (biometricEnabled && deviceSupported) {
             // 尝试使用生物识别
@@ -917,14 +683,17 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                 reason: '请使用生物识别验证以访问加密空间',
               );
               if (result) {
-                await accessControlService.unlockAlbum(albumId, useBiometric: false);
+                await accessControlService.unlockAlbum(
+                  albumId,
+                  useBiometric: false,
+                );
                 verified = true;
               }
             } catch (e) {
               // 生物识别失败，继续显示验证对话框
             }
           }
-          
+
           if (!verified) {
             // 显示验证PIN对话框
             final verifyResult = await PasswordVerifyDialog.show(
@@ -942,10 +711,15 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           // PIN已设置，进行验证流程
           // 检查条件：是否已设置密码、是否启用生物识别、设备是否支持
           final sessionStorage = SessionStorageService();
-          final hasValidToken = await sessionStorage.isSessionTokenValid(albumId);
-          final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
+          final hasValidToken = await sessionStorage.isSessionTokenValid(
+            albumId,
+          );
+          final biometricEnabled = AppSetting.get(
+            Setting.encryptedSpaceBiometricEnabled,
+          );
           final biometricAuthService = BiometricAuthService();
-          final deviceSupported = await biometricAuthService.isDeviceSupported();
+          final deviceSupported = await biometricAuthService
+              .isDeviceSupported();
 
           // 判断是否可以直接使用生物识别
           // 条件：已设置密码（有有效令牌）+ 启用生物识别 + 设备支持
@@ -959,7 +733,10 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
               if (result) {
                 // 生物识别成功，解锁相册
-                await accessControlService.unlockAlbum(albumId, useBiometric: false);
+                await accessControlService.unlockAlbum(
+                  albumId,
+                  useBiometric: false,
+                );
                 verified = true;
               } else {
                 // 生物识别失败或取消，显示密码验证对话框作为 fallback
@@ -1046,29 +823,14 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     }
   }
 
-  /// 处理全选
-  void _handleSelectAll(WidgetRef ref) {
-    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
-    timelineSectionsAsync.whenData((sections) {
-      final allAssetIds = <String>[];
-      for (final section in sections) {
-        allAssetIds.addAll(section.assets.map((a) => a.id));
-      }
-      ref.read(assetSelectionProvider.notifier).selectAll(allAssetIds);
-    });
-  }
-
-  /// 处理取消全选
-  void _handleDeselectAll(WidgetRef ref) {
-    ref.read(assetSelectionProvider.notifier).clear();
-  }
-
   /// 检查是否全选
   bool _isAllSelected(
     WidgetRef ref,
     AsyncValue<List<TimelineSection>> timelineSectionsAsync,
   ) {
-    final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+    final selectedIds = ref.read(
+      assetSelectionProvider.select((s) => s.selectedIds),
+    );
 
     return timelineSectionsAsync.when(
       data: (sections) {
@@ -1086,7 +848,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
   /// 处理分组切换（选择/取消选择整个分组）
   void _handleSectionToggle(WidgetRef ref, TimelineSection section) {
-    final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+    final selectedIds = ref.read(
+      assetSelectionProvider.select((s) => s.selectedIds),
+    );
     final sectionAssetIds = section.assets.map((a) => a.id).toSet();
 
     // 检查该分组是否全部选中
@@ -1127,7 +891,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           });
 
           // 选中起始项
-          final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+          final selectedIds = ref.read(
+            assetSelectionProvider.select((s) => s.selectedIds),
+          );
           if (!selectedIds.contains(asset.id)) {
             ref.read(assetSelectionProvider.notifier).toggle(asset.id);
           }
@@ -1241,7 +1007,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
             }
 
             // 清除之前的拖动选择
-            final selectedIds = ref.read(assetSelectionProvider.select((s) => s.selectedIds));
+            final selectedIds = ref.read(
+              assetSelectionProvider.select((s) => s.selectedIds),
+            );
             for (final assetId in _draggedAssetIds) {
               if (!selectedAssets.contains(assetId) &&
                   selectedIds.contains(assetId)) {
@@ -1316,86 +1084,5 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
     targetColumns = targetColumns.clamp(2, 8);
 
     return targetColumns;
-  }
-
-  /// 构建筛选按钮的装饰样式
-  /// 性能优化：提取为方法，避免在 build 中重复创建 BoxDecoration
-  BoxDecoration _buildFilterButtonDecoration(
-    BuildContext context,
-    Color? backgroundColor,
-  ) {
-    return BoxDecoration(
-      color: backgroundColor,
-      borderRadius: _filterButtonBorderRadius,
-      border: backgroundColor == null
-          ? Border.all(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-              width: _filterButtonBorderWidth,
-            )
-          : null,
-    );
-  }
-
-  /// 构建筛选模式按钮
-  ///
-  /// 显示当前筛选模式，点击可循环切换：全部 -> 已备份 -> 未备份 -> 全部
-  /// 使用简洁的文字按钮样式，四种模式下按钮大小保持一致
-  Widget _buildFilterButton(BuildContext context, WidgetRef ref) {
-    final filterMode = ref.watch(photoFilterModeProvider);
-    final filterNotifier = ref.read(photoFilterModeProvider.notifier);
-
-    // 根据模式选择文字和样式
-    String text;
-    Color? backgroundColor;
-    Color? textColor;
-
-    switch (filterMode) {
-      case PhotoFilterModeEnum.all:
-        text = '全部';
-        backgroundColor = null; // 使用默认背景
-        textColor = null; // 使用默认文字颜色
-        break;
-      case PhotoFilterModeEnum.backedUp:
-        text = '已备份';
-        backgroundColor = Theme.of(context).colorScheme.primaryContainer;
-        textColor = Theme.of(context).colorScheme.onPrimaryContainer;
-        break;
-      case PhotoFilterModeEnum.notBackedUp:
-        text = '未备份';
-        backgroundColor = Theme.of(context).colorScheme.errorContainer;
-        textColor = Theme.of(context).colorScheme.onErrorContainer;
-        break;
-      case PhotoFilterModeEnum.remoteOnly:
-        text = '仅云端';
-        backgroundColor = Theme.of(context).colorScheme.secondaryContainer;
-        textColor = Theme.of(context).colorScheme.onSecondaryContainer;
-        break;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        // 循环切换到下一个模式
-        // 注意：由于 timelineSectionsProvider 已经 watch 了 photoFilterModeProvider，
-        // 所以当筛选模式改变时，provider 会自动重新计算，无需手动 invalidate
-        filterNotifier.cycle();
-      },
-      child: Container(
-        // 固定宽度，确保四种模式下按钮大小一致
-        width: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: _buildFilterButtonDecoration(context, backgroundColor),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
   }
 }

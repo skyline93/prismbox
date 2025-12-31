@@ -106,6 +106,60 @@ PrismBox 是一个高性能相册应用，提供完整的照片和视频管理�
 - **智能资源选择**：根据本地/远程资源可用性和用户偏好自动选择最优资源
 - **多级缓存体系**：内存缓存（三级缓存池）+ 磁盘缓存（分离管理）
 
+#### UI 重构规范（High Priority）
+
+##### 1. UI 拆分策略
+- **拆分阈值**：任何 `build` 方法如果超过 80 行，必须拆分。
+- **原子组件**：将 UI 拆分为独立的 Widgets，存放在 `lib/presentation/widgets/<feature>` 目录下。
+- **命名规范**：
+  - 新组件文件名必须包含功能前缀，例如 `home_header.dart`, `home_media_grid.dart`。
+  - 类名必须与文件名对应，例如 `HomeHeader`, `HomeMediaGrid`。
+- **组件类型选择**：
+  - **优先使用 StatelessWidget**：如果组件不需要维护内部状态（仅依赖外部数据），严禁使用 `StatefulWidget`。
+  - 仅在需要维护内部状态时使用 `StatefulWidget`。
+
+##### 2. 状态管理规范
+- **避免 Prop Drilling**：禁止通过构造函数传递超过 2 层的数据。
+- **Riverpod 使用规范**：
+  - **局部状态**：如 Switch 开关、折叠状态等 UI 状态，使用 `StateProvider` 或 `useState` (flutter_hooks) / `local state`。
+  - **全局/业务状态**：必须通过 `ConsumerWidget` 或 `Consumer` 读取 Riverpod Provider。
+  - **性能优化**：在监听 Provider 时，必须使用 `ref.watch(provider.select(...))` 来通过筛选特定属性减少不必要的 Widget 重建。
+
+##### 3. 性能强制要求
+- **Const 构造函数**：
+  - 所有无状态组件必须定义 `const` 构造函数。
+  - 在调用时必须强制使用 `const` 关键字。
+- **列表/网格优化**：
+  - **严禁**在 `ListView` 或 `GridView` 的 children 中直接使用 map 生成列表。
+  - **必须**使用 `ListView.builder` 或 `GridView.builder` 并配合 `Sliver` 系列组件（如果页面复杂）。
+- **图片处理**：
+  - **必须**使用 `ExtendedImage` 或项目封装好的图片组件。
+  - **严禁**直接使用 `Image.network`。
+  - 列表滚动时必须利用 `cacheExtent` 和缩略图优化。
+
+##### 4. 目录结构规范（Strict）
+重构后的代码必须严格遵循以下目录结构：
+
+```
+lib/
+├── presentation/
+│   ├── pages/                   # 页面级 Widget (Scaffold 所在)
+│   │   ├── <feature>/           # 例如: backup, photos, albums, settings
+│   │   │   └── backup_page.dart
+│   ├── widgets/                 # 拆分出来的组件
+│   │   ├── <feature>/           # 功能模块特定的组件，例如: backup, media, timeline, selection
+│   │   │   ├── backup_status_widget.dart
+│   │   │   └── backup_action_sheet.dart
+│   │   └── common/              # 全局公用组件（跨 feature 使用）
+│   │       └── common_button.dart
+│   └── routing/                 # 路由配置
+│       ├── app_router.dart
+│       └── guards/
+├── providers/                    # Riverpod Providers
+│   ├── <feature>/               # 按功能模块组织
+│   │   └── backup_provider.dart
+```
+
 ### Testing Strategy
 
 #### 后端测试
