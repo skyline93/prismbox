@@ -1,8 +1,5 @@
-# timeline-page Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change refactor-timeline-page-components. Update Purpose after archive.
-## Requirements
 ### Requirement: 时间线页面 UI 组件结构
 时间线页面（MainTimelinePage）的 UI 组件 SHALL 遵循原子组件拆分原则，将大型 UI 逻辑拆分为独立的、可复用的组件。业务逻辑 SHALL 从页面类中提取到独立的控制器类和管理器中，遵循单一职责原则。
 
