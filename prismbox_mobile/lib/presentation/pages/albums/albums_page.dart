@@ -6,8 +6,8 @@ import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dialog.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
-import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
-import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+import 'package:prismbox/services/pin/pin_service_factory.dart';
+import 'package:prismbox/services/pin/pin_access_control_service.dart';
 import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart';
@@ -31,15 +31,12 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
       // 获取服务实例
       final database = await ref.read(databaseProvider.future);
       final apiService = ref.read(apiServiceProvider);
-      final sessionStorage = SessionStorageService();
       final encryptedSpaceService = EncryptedSpaceService(
         database: database,
         apiService: apiService,
-        sessionStorage: sessionStorage,
       );
-      final accessControlService = AlbumAccessControlService(
-        sessionStorage: sessionStorage,
-      );
+      final suite = PinServiceFactory.createEncryptedSpaceSuite();
+      final accessControlService = suite.accessControlService;
       final biometricAuthService = BiometricAuthService();
 
       // 获取或创建加密空间相册
@@ -59,7 +56,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
 
       // PIN已设置，继续验证流程
       // 检查条件：是否已设置密码、是否启用生物识别、设备是否支持
-      final hasValidToken = await sessionStorage.isSessionTokenValid(albumId);
+      final hasValidToken = await encryptedSpaceService.isAlbumUnlocked(albumId);
       final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
       final deviceSupported = await biometricAuthService.isDeviceSupported();
 
@@ -74,7 +71,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
 
           if (result.success) {
             // 生物识别成功，解锁并导航
-            await accessControlService.unlockAlbum(albumId, useBiometric: false);
+            await accessControlService.unlockResource(albumId, useBiometric: false);
             if (mounted) {
               context.router.push(const EncryptedSpaceRoute());
             }
@@ -119,7 +116,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
   Future<void> _showPasswordVerifyDialog({
     required String albumId,
     required EncryptedSpaceService encryptedSpaceService,
-    required AlbumAccessControlService accessControlService,
+    required PinAccessControlService accessControlService,
   }) async {
     final result = await PasswordVerifyDialog.show(
       context,

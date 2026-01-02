@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
-import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
+import 'package:prismbox/services/pin/pin_access_control_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 import 'package:prismbox/services/biometric/biometric_auth_service.dart';
-import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+// import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/pin_input_widget.dart';
 
 /// PIN验证对话框
@@ -14,7 +14,7 @@ import 'package:prismbox/presentation/widgets/encrypted_space/pin_input_widget.d
 class PasswordVerifyDialog extends StatefulWidget {
   final String albumId;
   final EncryptedSpaceService encryptedSpaceService;
-  final AlbumAccessControlService accessControlService;
+  final PinAccessControlService accessControlService;
 
   const PasswordVerifyDialog({
     super.key,
@@ -28,7 +28,7 @@ class PasswordVerifyDialog extends StatefulWidget {
     BuildContext context, {
     required String albumId,
     required EncryptedSpaceService encryptedSpaceService,
-    required AlbumAccessControlService accessControlService,
+    required PinAccessControlService accessControlService,
   }) async {
     return showDialog<bool>(
       context: context,
@@ -135,8 +135,9 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
   Future<void> _unlockWithBiometric() async {
     try {
       // 检查是否有有效的会话令牌
-      final sessionStorage = SessionStorageService();
-      final hasValidToken = await sessionStorage.isSessionTokenValid(widget.albumId);
+      final hasValidToken = await widget.encryptedSpaceService.isAlbumUnlocked(
+        widget.albumId,
+      );
       
       if (!hasValidToken) {
         // 令牌已过期，需要重新输入PIN
@@ -149,7 +150,7 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
       }
 
       // 解锁相册（不使用生物识别，因为已经验证过了）
-      await widget.accessControlService.unlockAlbum(
+      await widget.accessControlService.unlockResource(
         widget.albumId,
         useBiometric: false,
       );
@@ -231,7 +232,7 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
       );
 
       // 解锁相册（不使用生物识别，因为用户已经输入了PIN）
-      await widget.accessControlService.unlockAlbum(
+      await widget.accessControlService.unlockResource(
         widget.albumId,
         useBiometric: false,
       );

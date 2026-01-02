@@ -4,10 +4,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
-import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
 import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
-import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+import 'package:prismbox/services/pin/pin_service_factory.dart';
+import 'package:prismbox/services/pin/pin_access_control_service.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_verification_dialog.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart';
@@ -28,7 +28,7 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
   int _lockTimeoutMinutes = 30;
   String? _encryptedSpaceAlbumId;
   EncryptedSpaceService? _encryptedSpaceService;
-  AlbumAccessControlService? _albumAccessControlService;
+  PinAccessControlService? _pinAccessControlService;
 
   @override
   void initState() {
@@ -42,11 +42,9 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
     try {
       final database = await ref.read(databaseProvider.future);
       final apiService = ref.read(apiServiceProvider);
-      final sessionStorage = SessionStorageService();
       final encryptedSpaceService = EncryptedSpaceService(
         database: database,
         apiService: apiService,
-        sessionStorage: sessionStorage,
       );
 
       // 获取或创建加密空间相册
@@ -107,11 +105,9 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
 
   /// 初始化访问控制服务
   Future<void> _initializeAccessControlService() async {
-    if (_albumAccessControlService == null) {
-      final sessionStorage = SessionStorageService();
-      _albumAccessControlService = AlbumAccessControlService(
-        sessionStorage: sessionStorage,
-      );
+    if (_pinAccessControlService == null) {
+      final suite = PinServiceFactory.createEncryptedSpaceSuite();
+      _pinAccessControlService = suite.accessControlService;
     }
   }
 
@@ -123,8 +119,8 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
     await AppSetting.set(Setting.encryptedSpaceLockTimeoutMinutes, minutes);
     
     // 更新访问控制服务
-    if (_albumAccessControlService != null) {
-      await _albumAccessControlService!.setUserConfiguredTimeout(minutes);
+    if (_pinAccessControlService != null) {
+      await _pinAccessControlService!.setUserConfiguredTimeout(minutes);
     }
     
     if (mounted) {

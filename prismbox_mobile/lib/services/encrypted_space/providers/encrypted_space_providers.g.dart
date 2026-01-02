@@ -28,17 +28,42 @@ final encryptedSpaceServiceProvider =
 
 typedef EncryptedSpaceServiceRef
     = AutoDisposeFutureProviderRef<EncryptedSpaceService>;
-String _$albumAccessControlServiceHash() =>
-    r'21f239066d8c39fd8fae9137618e9b729bab2b3a';
+String _$pinAccessControlServiceHash() =>
+    r'39c6957493e9767b76c131b420fefa683fa91558';
 
-/// AlbumAccessControlService Provider
+/// PinAccessControlService Provider (for encrypted space)
+///
+/// 提供PIN访问控制服务实例，用于管理加密相册的解锁状态
+/// 这是AlbumAccessControlService的替代品，使用新的PIN服务架构
+///
+/// Copied from [pinAccessControlService].
+@ProviderFor(pinAccessControlService)
+final pinAccessControlServiceProvider =
+    AutoDisposeFutureProvider<PinAccessControlService>.internal(
+  pinAccessControlService,
+  name: r'pinAccessControlServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$pinAccessControlServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef PinAccessControlServiceRef
+    = AutoDisposeFutureProviderRef<PinAccessControlService>;
+String _$albumAccessControlServiceHash() =>
+    r'3cf258ddf532ecb07933c477473f5400015ba752';
+
+/// AlbumAccessControlService Provider (deprecated, use pinAccessControlService instead)
 ///
 /// 提供相册访问控制服务实例，用于管理相册的解锁状态
+/// 注意：此服务已弃用，请使用 pinAccessControlService
+/// 为了向后兼容，返回PinAccessControlService
 ///
 /// Copied from [albumAccessControlService].
 @ProviderFor(albumAccessControlService)
 final albumAccessControlServiceProvider =
-    AutoDisposeFutureProvider<AlbumAccessControlService>.internal(
+    AutoDisposeFutureProvider<PinAccessControlService>.internal(
   albumAccessControlService,
   name: r'albumAccessControlServiceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -49,6 +74,6 @@ final albumAccessControlServiceProvider =
 );
 
 typedef AlbumAccessControlServiceRef
-    = AutoDisposeFutureProviderRef<AlbumAccessControlService>;
+    = AutoDisposeFutureProviderRef<PinAccessControlService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

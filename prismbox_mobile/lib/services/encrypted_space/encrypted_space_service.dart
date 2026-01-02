@@ -10,16 +10,19 @@ import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/album_order.dart';
 import 'package:prismbox/data/database/enums/album_type.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
-import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/services/encrypted_space/file_migration_service.dart';
 import 'package:prismbox/services/encrypted_space/retry_queue_service.dart';
+import 'package:prismbox/services/pin/pin_service_factory.dart';
+import 'package:prismbox/services/pin/pin_auth_service.dart';
+import 'package:prismbox/services/pin/pin_session_service.dart';
 
 /// 加密空间服务
 /// 负责加密相册的创建、资产管理和访问控制
 class EncryptedSpaceService {
   final AppDatabase _database;
   final ApiService _apiService;
-  final SessionStorageService _sessionStorage;
+  late final PinAuthService _pinAuthService;
+  late final PinSessionService _pinSessionService;
   final FileMigrationService _fileMigrationService;
   final RetryQueueService _retryQueue;
   final Logger _log = Logger('EncryptedSpaceService');
@@ -27,15 +30,41 @@ class EncryptedSpaceService {
   EncryptedSpaceService({
     required AppDatabase database,
     required ApiService apiService,
-    SessionStorageService? sessionStorage,
+    PinAuthService? pinAuthService,
+    PinSessionService? pinSessionService,
     FileMigrationService? fileMigrationService,
     RetryQueueService? retryQueue,
   }) : _database = database,
        _apiService = apiService,
-       _sessionStorage = sessionStorage ?? SessionStorageService(),
        _fileMigrationService =
            fileMigrationService ?? FileMigrationService(database: database),
        _retryQueue = retryQueue ?? RetryQueueService() {
+    // 创建PIN服务配置（使用加密空间专用配置）
+    final pinConfig = PinServiceFactory.createEncryptedSpaceConfig();
+
+    // 初始化PIN服务（如果未提供）
+    _pinAuthService =
+        pinAuthService ??
+        PinServiceFactory.createAuthService(
+          config: pinConfig,
+          apiService: apiService,
+        );
+
+    _pinSessionService =
+        pinSessionService ??
+        () {
+          final keyDerivationService =
+              PinServiceFactory.createKeyDerivationService(config: pinConfig);
+          final tokenEncryptionService =
+              PinServiceFactory.createTokenEncryptionService();
+
+          return PinServiceFactory.createSessionService(
+            config: pinConfig,
+            keyDerivationService: keyDerivationService,
+            tokenEncryptionService: tokenEncryptionService,
+          );
+        }();
+
     // 初始化重试队列（启用持久化）
     _retryQueue.initialize(database);
     // 设置重试回调
@@ -196,16 +225,13 @@ class EncryptedSpaceService {
     required String password,
   }) async {
     try {
-      await _apiService.dio.post(
-        '/api/v1/albums/$albumId/password',
-        data: {'password': password},
-      );
+      await _pinAuthService.setPin(resourceId: albumId, pin: password);
 
       // 清除旧会话令牌
-      await _sessionStorage.deleteSessionToken(albumId);
+      await _pinSessionService.deleteSessionToken(albumId);
 
       _log.info('Encryption password set for album: $albumId');
-    } on DioException catch (e) {
+    } catch (e) {
       _log.severe('Failed to set encryption password', e);
       rethrow;
     }
@@ -219,19 +245,17 @@ class EncryptedSpaceService {
     required String newPassword,
   }) async {
     try {
-      await _apiService.dio.post(
-        '/api/v1/albums/$albumId/password/change',
-        data: {'old_password': oldPassword, 'new_password': newPassword},
+      await _pinAuthService.changePin(
+        resourceId: albumId,
+        oldPin: oldPassword,
+        newPin: newPassword,
       );
 
       // 清除所有会话令牌（密码更改后所有会话都会失效）
-      await _sessionStorage.deleteSessionToken(albumId);
+      await _pinSessionService.deleteSessionToken(albumId);
 
       _log.info('Encryption password changed for album: $albumId');
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 403) {
-        throw Exception('旧密码错误');
-      }
+    } catch (e) {
       _log.severe('Failed to change encryption password', e);
       rethrow;
     }
@@ -243,28 +267,23 @@ class EncryptedSpaceService {
     required String password,
   }) async {
     try {
-      final response = await _apiService.dio.post(
-        '/api/v1/albums/$albumId/verify-password',
-        data: {'password': password},
+      final result = await _pinAuthService.verifyPin(
+        resourceId: albumId,
+        pin: password,
       );
 
-      // 响应拦截器已自动提取 data 字段，response.data 已经是业务数据
-      final data = response.data as Map<String, dynamic>;
-      final token = data['token'] as String;
-      final expiresAt = DateTime.parse(data['expires_at'] as String);
-
       // 保存会话令牌（使用密码派生密钥加密）
-      await _sessionStorage.saveSessionToken(
-        albumId: albumId,
-        token: token,
-        expiresAt: expiresAt,
+      await _pinSessionService.saveSessionToken(
+        resourceId: albumId,
+        token: result.token,
+        expiresAt: result.expiresAt,
         password: password, // 传递密码用于KDF加密
       );
 
       _log.info(
         'Password verified and session token saved for album: $albumId',
       );
-    } on DioException catch (e) {
+    } catch (e) {
       _log.severe('Failed to verify password', e);
       rethrow;
     }
@@ -274,34 +293,7 @@ class EncryptedSpaceService {
   /// 通过尝试调用验证API，如果返回"PIN not set"错误，说明未设置
   /// 如果返回其他错误（如"Invalid PIN"），说明PIN已设置，只是输入错误
   Future<bool> checkIfPinIsSet({required String albumId}) async {
-    try {
-      // 尝试验证一个无效的PIN
-      // 如果返回"PIN not set"错误，说明PIN未设置
-      // 如果返回"Invalid PIN"错误，说明PIN已设置，只是输入错误
-      await _apiService.dio.post(
-        '/api/v1/albums/$albumId/verify-password',
-        data: {'password': '000000'}, // 使用一个无效的PIN
-      );
-      // 如果验证成功（不应该发生），说明PIN已设置
-      return true;
-    } on DioException catch (e) {
-      // 检查错误消息或状态码
-      if (e.response?.statusCode == 403) {
-        final errorMessage = e.response?.data?.toString().toLowerCase() ?? '';
-        // 如果错误消息包含"PIN not set"或"not set for this album"，说明PIN未设置
-        if (errorMessage.contains('pin not set') ||
-            errorMessage.contains('not set for this album') ||
-            errorMessage.contains('password not set')) {
-          return false; // PIN未设置
-        }
-      }
-      // 其他错误（如"Invalid PIN"、400等）说明PIN已设置，只是输入错误或格式错误
-      return true;
-    } catch (e) {
-      // 未知错误，默认假设PIN已设置（保守策略）
-      _log.warning('Failed to check if PIN is set, assuming it is set', e);
-      return true;
-    }
+    return await _pinAuthService.checkIfPinIsSet(resourceId: albumId);
   }
 
   /// 添加资产到加密空间
@@ -315,7 +307,7 @@ class EncryptedSpaceService {
   }) async {
     try {
       // 检查会话令牌
-      final sessionToken = await _sessionStorage.getSessionToken(albumId);
+      final sessionToken = await _pinSessionService.getSessionToken(albumId);
       if (sessionToken == null) {
         throw Exception(
           'Session token not found. Please unlock the album first.',
@@ -542,7 +534,7 @@ class EncryptedSpaceService {
   }) async {
     try {
       // 检查会话令牌
-      final sessionToken = await _sessionStorage.getSessionToken(albumId);
+      final sessionToken = await _pinSessionService.getSessionToken(albumId);
       if (sessionToken == null) {
         throw Exception(
           'Session token not found. Please unlock the album first.',
@@ -714,7 +706,7 @@ class EncryptedSpaceService {
   Future<List<String>> getEncryptedSpaceAssets(String albumId) async {
     try {
       // 检查会话令牌
-      final sessionToken = await _sessionStorage.getSessionToken(albumId);
+      final sessionToken = await _pinSessionService.getSessionToken(albumId);
       if (sessionToken == null) {
         throw Exception(
           'Session token not found. Please unlock the album first.',
@@ -740,7 +732,7 @@ class EncryptedSpaceService {
 
   /// 检查相册是否已解锁
   Future<bool> isAlbumUnlocked(String albumId) async {
-    return await _sessionStorage.isSessionTokenValid(albumId);
+    return await _pinSessionService.isSessionTokenValid(albumId);
   }
 
   /// 撤销所有会话令牌
@@ -749,7 +741,7 @@ class EncryptedSpaceService {
       await _apiService.dio.delete('/api/v1/albums/$albumId/sessions');
 
       // 清除本地会话令牌
-      await _sessionStorage.deleteSessionToken(albumId);
+      await _pinSessionService.deleteSessionToken(albumId);
 
       _log.info('All sessions revoked for album: $albumId');
     } on DioException catch (e) {

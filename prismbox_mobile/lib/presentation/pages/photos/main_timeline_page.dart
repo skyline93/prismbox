@@ -29,7 +29,6 @@ import 'package:prismbox/services/encrypted_space/providers/encrypted_space_prov
 import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dialog.dart';
 import 'package:prismbox/services/biometric/biometric_auth_service.dart';
-import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 
 /// 照片时间线页面
@@ -632,7 +631,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         encryptedSpaceServiceProvider.future,
       );
       final accessControlService = await ref.read(
-        albumAccessControlServiceProvider.future,
+        pinAccessControlServiceProvider.future,
       );
 
       // 获取或创建加密空间相册
@@ -640,7 +639,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           .getOrCreateEncryptedSpaceAlbum();
 
       // 检查是否已解锁
-      final isUnlocked = accessControlService.isAlbumUnlocked(albumId);
+      final isUnlocked = accessControlService.isResourceUnlocked(albumId);
 
       if (!isUnlocked) {
         // 未解锁，需要验证
@@ -683,7 +682,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                 reason: '请使用生物识别验证以访问加密空间',
               );
               if (result.success) {
-                await accessControlService.unlockAlbum(
+                await accessControlService.unlockResource(
                   albumId,
                   useBiometric: false,
                 );
@@ -710,10 +709,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
         } else {
           // PIN已设置，进行验证流程
           // 检查条件：是否已设置密码、是否启用生物识别、设备是否支持
-          final sessionStorage = SessionStorageService();
-          final hasValidToken = await sessionStorage.isSessionTokenValid(
-            albumId,
-          );
+          final hasValidToken = await encryptedSpaceService.isAlbumUnlocked(albumId);
           final biometricEnabled = AppSetting.get(
             Setting.encryptedSpaceBiometricEnabled,
           );
@@ -733,7 +729,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
 
               if (result.success) {
                 // 生物识别成功，解锁相册
-                await accessControlService.unlockAlbum(
+                await accessControlService.unlockResource(
                   albumId,
                   useBiometric: false,
                 );

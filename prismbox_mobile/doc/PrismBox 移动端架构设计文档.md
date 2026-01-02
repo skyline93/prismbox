@@ -225,6 +225,17 @@ class MediaViewer extends StatelessWidget {
 - 端点发现和配置
 - 错误处理和重试
 
+**PinService（PIN 服务）**：
+- PIN 码认证服务（`PinAuthService`）：处理 PIN 码的设置、验证、更改
+- PIN 会话服务（`PinSessionService`）：管理会话令牌的存储和检索
+- PIN 密钥派生服务（`PinKeyDerivationService`）：从 PIN 码派生加密密钥（PBKDF2）
+- PIN 令牌加密服务（`PinTokenEncryptionService`）：会话令牌的加密/解密（AES）
+- PIN 访问控制服务（`PinAccessControlService`）：管理资源的解锁状态和自动锁定
+- **设计特点**：
+  - 通过配置抽象支持不同的资源类型和命名空间
+  - 可复用的基础设施服务，不绑定特定业务场景
+  - 支持多种资源类型的 PIN 保护（相册、文件夹等）
+
 #### 2.2.3 设计模式
 
 - **门面模式**：Service 作为业务功能的统一入口
@@ -1467,6 +1478,14 @@ lib/
 │   │   └── media_selection_service.dart # 资源选择服务
 │   ├── auth/                    # 认证服务
 │   │   └── auth_service.dart
+│   ├── pin/                     # PIN服务（基础设施服务）
+│   │   ├── pin_service_config.dart         # PIN服务配置
+│   │   ├── pin_service_factory.dart        # PIN服务工厂
+│   │   ├── pin_auth_service.dart           # PIN认证服务
+│   │   ├── pin_session_service.dart        # PIN会话服务
+│   │   ├── pin_key_derivation_service.dart # PIN密钥派生服务
+│   │   ├── pin_token_encryption_service.dart # PIN令牌加密服务
+│   │   └── pin_access_control_service.dart # PIN访问控制服务
 │   └── app_init_service.dart    # 应用初始化服务
 │
 ├── features/                    # 功能模块（Feature Modules）

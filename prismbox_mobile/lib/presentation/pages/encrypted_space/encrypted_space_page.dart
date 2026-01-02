@@ -12,9 +12,8 @@ import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dia
 import 'package:prismbox/presentation/widgets/media/selectable_media_grid_sliver.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart';
-import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
-import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
+import 'package:prismbox/services/pin/pin_service_factory.dart';
 
 /// 加密空间页面
 /// 显示加密空间中的照片和视频
@@ -46,11 +45,9 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
     try {
       final database = await ref.read(databaseProvider.future);
       final apiService = ref.read(apiServiceProvider);
-      final sessionStorage = SessionStorageService();
       final encryptedSpaceService = EncryptedSpaceService(
         database: database,
         apiService: apiService,
-        sessionStorage: sessionStorage,
       );
 
       // 获取或创建加密空间相册
@@ -59,17 +56,16 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
       // 检查是否已设置密码
       final hasPassword = await _checkPasswordSet(encryptedSpaceService, albumId);
       
-      // 检查是否有有效的会话令牌
-      final accessControlService = AlbumAccessControlService(
-        sessionStorage: sessionStorage,
-      );
-      final hasValidToken = await sessionStorage.isSessionTokenValid(albumId);
+      // 创建PIN访问控制服务
+      final suite = PinServiceFactory.createEncryptedSpaceSuite();
+      final accessControlService = suite.accessControlService;
+      final hasValidToken = await encryptedSpaceService.isAlbumUnlocked(albumId);
       
       // 如果有有效令牌，自动解锁
       bool isUnlocked = false;
       if (hasValidToken) {
         try {
-          await accessControlService.unlockAlbum(albumId, useBiometric: false);
+          await accessControlService.unlockResource(albumId, useBiometric: false);
           isUnlocked = true;
         } catch (e) {
           // 解锁失败，保持锁定状态
@@ -110,11 +106,8 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
     String albumId,
   ) async {
     try {
-      // 尝试获取会话令牌，如果存在说明已设置密码
-      final sessionStorage = SessionStorageService();
-      final isValid = await sessionStorage.isSessionTokenValid(albumId);
-      // TODO: 更好的方式是调用API检查相册是否已设置密码
-      return isValid;
+      // 调用API检查相册是否已设置密码
+      return await service.checkIfPinIsSet(albumId: albumId);
     } catch (e) {
       return false;
     }
@@ -140,11 +133,9 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
 
     final database = await ref.read(databaseProvider.future);
     final apiService = ref.read(apiServiceProvider);
-    final sessionStorage = SessionStorageService();
     final encryptedSpaceService = EncryptedSpaceService(
       database: database,
       apiService: apiService,
-      sessionStorage: sessionStorage,
     );
 
     await PasswordSetupDialog.show(
@@ -181,12 +172,10 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
                   setState(() {
                     _isUnlocked = false;
                   });
-                  final sessionStorage = SessionStorageService();
-                  final accessControlService = AlbumAccessControlService(
-                    sessionStorage: sessionStorage,
-                  );
+                  final suite = PinServiceFactory.createEncryptedSpaceSuite();
+                  final accessControlService = suite.accessControlService;
                   if (_albumId != null) {
-                    accessControlService.lockAlbum(_albumId!);
+                    accessControlService.lockResource(_albumId!);
                   }
                 }
               },
@@ -313,11 +302,9 @@ class _EncryptedSpacePageState extends ConsumerState<EncryptedSpacePage> {
     try {
       final database = await ref.read(databaseProvider.future);
       final apiService = ref.read(apiServiceProvider);
-      final sessionStorage = SessionStorageService();
       final encryptedSpaceService = EncryptedSpaceService(
         database: database,
         apiService: apiService,
-        sessionStorage: sessionStorage,
       );
 
       final result = await _showPasswordSetupPrompt(encryptedSpaceService);
