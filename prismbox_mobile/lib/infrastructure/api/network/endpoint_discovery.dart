@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/config/network_config.dart';
 import 'package:prismbox/infrastructure/api/exceptions/api_exception.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 
@@ -38,15 +39,12 @@ class EndpointDiscovery {
 
     try {
       final requestHeaders = await ApiService.getRequestHeaders();
-      final headers = {
-        'Accept': 'application/json',
-        ...requestHeaders,
-      };
+      final headers = {'Accept': 'application/json', ...requestHeaders};
 
       final uri = Uri.parse('$baseUrl/.well-known/prismbox');
       final response = await client
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 5));
+          .timeout(NetworkConfig.endpointValidationTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -88,9 +86,9 @@ class EndpointDiscovery {
       // 临时设置端点
       _apiService.setEndpoint(url);
 
-      // 调用pingServer验证（超时5秒）
+      // 调用pingServer验证
       await _apiService.pingServer().timeout(
-        const Duration(seconds: 5),
+        NetworkConfig.endpointValidationTimeout,
         onTimeout: () {
           throw TimeoutException('服务器响应超时');
         },
@@ -114,7 +112,7 @@ class EndpointDiscovery {
   /// 清理URL
   String _sanitizeUrl(String url) {
     url = url.trim();
-    
+
     // 移除末尾的斜杠
     while (url.endsWith('/')) {
       url = url.substring(0, url.length - 1);
@@ -128,4 +126,3 @@ class EndpointDiscovery {
     return url;
   }
 }
-

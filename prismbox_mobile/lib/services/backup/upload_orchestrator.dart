@@ -20,6 +20,7 @@ import 'package:prismbox/infrastructure/asset/checksum_service.dart';
 import 'package:prismbox/services/backup/task_update_service.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
+import 'package:prismbox/core/config/task_config.dart';
 
 /// 上传结果
 class UploadResult {
@@ -52,16 +53,16 @@ class UploadError {
 
 /// 错误类型
 enum ErrorType {
-  network,        // 网络错误（可重试）
+  network, // 网络错误（可重试）
   authentication, // 认证错误（不可重试）
-  server,         // 服务器错误（5xx 可重试，4xx 不可重试）
-  local,          // 本地错误（文件不存在、权限不足等，不可重试）
-  timeout,        // 超时错误（可重试）
-  cancelled,      // 取消错误（不可重试）
+  server, // 服务器错误（5xx 可重试，4xx 不可重试）
+  local, // 本地错误（文件不存在、权限不足等，不可重试）
+  timeout, // 超时错误（可重试）
+  cancelled, // 取消错误（不可重试）
 }
 
 /// 上传编排器：流程编排层
-/// 
+///
 /// **职责边界明确**：
 /// - ✅ **负责**：上传流程编排（去重、优先级、执行协调）
 /// - ✅ **负责**：过滤已上传资产
@@ -109,34 +110,36 @@ class UploadOrchestrator {
     required ChecksumService checksumService,
     required BackupErrorHandler errorHandler, // 必需，用于统一错误处理
     TaskUpdateService? taskUpdateService, // 可选，用于更新任务信息
-  })  : _database = database,
-        _stateMachine = stateMachine,
-        _apiService = apiService ?? ApiService(),
-        _concurrencyController =
-            concurrencyController ?? UploadConcurrencyController(),
-        _uploadTaskManager = uploadTaskManager ??
-            UploadTaskManager(
-              database: database,
-              stateMachine: stateMachine,
-              errorHandler: errorHandler, // 传递错误处理器
-            ),
-        _endpointValidator = endpointValidator ??
-            ApiEndpointValidator(apiService: apiService ?? ApiService()),
-        _pathResolver = pathResolver,
-        _metadataExtractor = metadataExtractor,
-        _checksumService = checksumService,
-        _errorHandler = errorHandler,
-        _taskUpdateService = taskUpdateService;
+  }) : _database = database,
+       _stateMachine = stateMachine,
+       _apiService = apiService ?? ApiService(),
+       _concurrencyController =
+           concurrencyController ?? UploadConcurrencyController(),
+       _uploadTaskManager =
+           uploadTaskManager ??
+           UploadTaskManager(
+             database: database,
+             stateMachine: stateMachine,
+             errorHandler: errorHandler, // 传递错误处理器
+           ),
+       _endpointValidator =
+           endpointValidator ??
+           ApiEndpointValidator(apiService: apiService ?? ApiService()),
+       _pathResolver = pathResolver,
+       _metadataExtractor = metadataExtractor,
+       _checksumService = checksumService,
+       _errorHandler = errorHandler,
+       _taskUpdateService = taskUpdateService;
 
   /// 过滤已上传资产（支持分批检查和降级策略）
-  /// 
+  ///
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
   /// - [candidates] - 候选任务列表
   /// - [skipDeduplication] - 是否跳过去重（手动备份可选）
-  /// 
+  ///
   /// **返回**：过滤后的任务列表
-  /// 
+  ///
   /// **去重策略**：
   /// 1. 优先检查本地数据库（remote_asset_entity）
   /// 2. 检查服务器（分批检查，支持超时和降级）
@@ -174,12 +177,12 @@ class UploadOrchestrator {
     final duplicateTasks = <UploadTaskEntityData>[];
     // 创建任务到 checksum 的映射，用于后续日志记录
     final taskChecksumMap = <String, String?>{};
-    
+
     for (int i = 0; i < candidates.length; i++) {
       final task = candidates[i];
       final checksum = checksums[i];
       taskChecksumMap[task.id] = checksum;
-      
+
       if (!existingChecksums.contains(checksum)) {
         filtered.add(task);
       } else {
@@ -199,10 +202,7 @@ class UploadOrchestrator {
       // 通过状态机批量更新重复任务为已完成
       for (final task in duplicateTasks) {
         try {
-          await _stateMachine.transition(
-            task,
-            UploadTaskStatus.completed,
-          );
+          await _stateMachine.transition(task, UploadTaskStatus.completed);
           // 状态机内部已记录详细日志，这里记录额外的上下文信息
           final fileName = task.localPath.split('/').last;
           final checksum = taskChecksumMap[task.id];
@@ -235,15 +235,15 @@ class UploadOrchestrator {
   }
 
   /// 编排上传流程
-  /// 
+  ///
   /// **参数**：
   /// - [userId] - 用户 ID（必须）
   /// - [tasks] - 上传任务列表
   /// - [cancellationToken] - 取消令牌
   /// - [taskType] - 任务类型（用于决定是否更新 lastBackupTime）
-  /// 
+  ///
   /// **返回**：UploadResult（上传结果）
-  /// 
+  ///
   /// **执行流程**：
   /// 1. 按优先级排序任务
   /// 2. 并发执行上传任务（最大 6 个并发）
@@ -306,7 +306,9 @@ class UploadOrchestrator {
             await _executeUploadWithRetry(task);
 
             // 验证任务状态（应该已经被 UploadTaskManager 更新为 completed）
-            final completedTask = await _database.uploadTaskDao.getTaskById(task.id);
+            final completedTask = await _database.uploadTaskDao.getTaskById(
+              task.id,
+            );
             if (completedTask?.status != UploadTaskStatus.completed) {
               final fileName = task.localPath.split('/').last;
               _logger.warning(
@@ -346,7 +348,7 @@ class UploadOrchestrator {
               e,
               context: 'upload_orchestration',
             );
-            
+
             // 处理上传错误
             await _errorHandler.handleUploadError(backupError, task);
 
@@ -354,10 +356,13 @@ class UploadOrchestrator {
             // 注意：正常情况下，background_downloader 会通过回调更新状态
             // 但如果异常发生在入队之前，或者回调未触发，需要手动更新状态
             try {
-              final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
+              final currentTask = await _database.uploadTaskDao.getTaskById(
+                task.id,
+              );
               if (currentTask != null) {
                 // 如果状态已经是最终状态（failed、permanentlyFailed、cancelled），不需要再次更新
-                final isFinalStatus = currentTask.status == UploadTaskStatus.failed ||
+                final isFinalStatus =
+                    currentTask.status == UploadTaskStatus.failed ||
                     currentTask.status == UploadTaskStatus.permanentlyFailed ||
                     currentTask.status == UploadTaskStatus.cancelled;
 
@@ -365,8 +370,8 @@ class UploadOrchestrator {
                   // 状态还未更新，手动更新（异常情况下的兜底处理）
                   final newStatus = backupError.isRetryable
                       ? (currentTask.retryCount >= task.maxRetries
-                          ? UploadTaskStatus.permanentlyFailed
-                          : UploadTaskStatus.failed)
+                            ? UploadTaskStatus.permanentlyFailed
+                            : UploadTaskStatus.failed)
                       : UploadTaskStatus.permanentlyFailed;
 
                   // 通过状态机更新状态
@@ -388,11 +393,13 @@ class UploadOrchestrator {
             }
 
             // 添加错误到错误列表（用于返回）
-            errors.add(UploadError(
-              assetId: task.assetId,
-              errorMessage: backupError.message,
-              type: _mapBackupErrorTypeToErrorType(backupError.type),
-            ));
+            errors.add(
+              UploadError(
+                assetId: task.assetId,
+                errorMessage: backupError.message,
+                type: _mapBackupErrorTypeToErrorType(backupError.type),
+              ),
+            );
 
             failedCount++;
           } finally {
@@ -461,7 +468,6 @@ class UploadOrchestrator {
     return checksums;
   }
 
-
   /// 批量检查已存在资产
   Future<Set<String>> _checkExistingAssets({
     required String userId,
@@ -483,7 +489,7 @@ class UploadOrchestrator {
     var query = _database.select(_database.remoteAssetEntity)
       ..where((t) => t.checksum.isIn(validChecksums))
       ..where((t) => t.ownerId.equals(userId));
-    
+
     final localChecksums = await query.get();
 
     final localSet = localChecksums
@@ -501,14 +507,12 @@ class UploadOrchestrator {
       try {
         // 分批检查
         for (int i = 0; i < remainingChecksums.length; i += _batchSize) {
-          final batch = remainingChecksums
-              .skip(i)
-              .take(_batchSize)
-              .toList();
+          final batch = remainingChecksums.skip(i).take(_batchSize).toList();
 
           // 带超时的批量检查
-          final remoteChecksums = await _checkAssetsExistOnServer(batch)
-              .timeout(_timeout);
+          final remoteChecksums = await _checkAssetsExistOnServer(
+            batch,
+          ).timeout(_timeout);
           existingChecksums.addAll(remoteChecksums);
         }
       } catch (e) {
@@ -517,7 +521,7 @@ class UploadOrchestrator {
           e,
           context: 'check_assets_exist_on_server',
         );
-        
+
         // 降级策略：批量检查失败时，记录错误但不阻塞流程
         _logger.warning(
           'Failed to check existing assets on server: '
@@ -571,12 +575,12 @@ class UploadOrchestrator {
   }
 
   /// 执行上传（带自动重试）
-  /// 
+  ///
   /// **实现说明**：
   /// - 使用指数退避策略自动重试
   /// - 最大重试次数：3 次
   /// - 重试间隔：1秒、2秒、4秒
-  /// 
+  ///
   /// **重试策略**：
   /// - 可重试错误：网络错误、超时错误、5xx 服务器错误
   /// - 不可重试错误：认证错误、4xx 客户端错误、本地文件错误
@@ -584,7 +588,7 @@ class UploadOrchestrator {
     int retryCount = 0;
     const maxRetries = 3;
     const baseDelay = Duration(seconds: 1);
-    
+
     while (retryCount <= maxRetries) {
       try {
         await _executeUpload(task);
@@ -600,10 +604,10 @@ class UploadOrchestrator {
           e,
           context: 'upload_with_retry',
         );
-        
+
         // 判断是否可重试
         final isRetryable = backupError.isRetryable;
-        
+
         if (!isRetryable || retryCount >= maxRetries) {
           // 不可重试或达到最大重试次数，增加重试计数并抛出异常
           if (retryCount < maxRetries) {
@@ -617,19 +621,19 @@ class UploadOrchestrator {
           }
           rethrow;
         }
-        
+
         // 可重试，等待后重试
         retryCount++;
         final delay = Duration(
           milliseconds: baseDelay.inMilliseconds * (1 << (retryCount - 1)),
         ); // 指数退避：1秒、2秒、4秒
-        
+
         _logger.info(
           'Upload failed, retrying: taskId=${task.id}, '
           'attempt=$retryCount/$maxRetries, delay=${delay.inSeconds}s, '
           'errorType=${backupError.type}, isRetryable=$isRetryable',
         );
-        
+
         // 增加重试计数
         // 优先使用 TaskUpdateService，如果没有则直接操作数据库（降级处理）
         if (_taskUpdateService != null) {
@@ -638,23 +642,22 @@ class UploadOrchestrator {
           // 降级处理：直接操作数据库（避免循环依赖）
           await _database.uploadTaskDao.incrementRetryCount(task.id);
         }
-        
+
         // 等待后重试
         await Future.delayed(delay);
       }
     }
-    
+
     // 理论上不会到达这里
     throw Exception('Max retries exceeded for taskId=${task.id}');
   }
 
-
   /// 执行上传（使用 background_downloader）
-  /// 
+  ///
   /// **实现说明**：
   /// - 使用 background_downloader 实现上传逻辑
   /// - 支持后台运行、断点续传
-  /// 
+  ///
   /// **上传流程**：
   /// 1. 检查文件是否存在
   /// 2. 读取文件并计算 checksum（如果未计算）
@@ -662,11 +665,15 @@ class UploadOrchestrator {
   /// 4. 创建 UploadTask 并入队
   /// 5. 等待任务完成
   Future<void> _executeUpload(UploadTaskEntityData task) async {
-    _logger.info('Executing upload: taskId=${task.id}, assetId=${task.assetId}');
+    _logger.info(
+      'Executing upload: taskId=${task.id}, assetId=${task.assetId}',
+    );
 
     try {
       // 1. 获取本地资产信息（必需，用于路径解析和构建上传表单字段）
-      final localAsset = await _database.localAssetDao.getAssetById(task.assetId);
+      final localAsset = await _database.localAssetDao.getAssetById(
+        task.assetId,
+      );
       if (localAsset == null) {
         throw Exception('Local asset not found: ${task.assetId}');
       }
@@ -707,7 +714,8 @@ class UploadOrchestrator {
       );
 
       // 5. 验证上传端点（可选，用于提前发现问题）
-      final endpointValidation = await _endpointValidator.validateUploadEndpoint();
+      final endpointValidation = await _endpointValidator
+          .validateUploadEndpoint();
       if (!endpointValidation.isValid) {
         _logger.warning(
           'Upload endpoint validation failed: ${endpointValidation.error}',
@@ -787,7 +795,7 @@ class UploadOrchestrator {
         e,
         context: 'execute_upload',
       );
-      
+
       _logger.warning(
         'Upload failed: taskId=${task.id}, '
         'errorType=${backupError.type}, errorMessage=${backupError.message}',
@@ -799,18 +807,18 @@ class UploadOrchestrator {
   }
 
   /// 等待任务完成（通过轮询数据库状态）
-  /// 
+  ///
   /// **参数**：
   /// - [taskId] - 任务 ID
-  /// 
+  ///
   /// **实现说明**：
   /// - 轮询数据库中的任务状态
   /// - 当状态变为 completed、failed 或 permanentlyFailed 时返回
   /// - 设置超时机制（默认 10 分钟），避免无限等待
   /// - 如果任务失败，抛出异常
   Future<void> _waitForTaskCompletion(String taskId) async {
-    const pollInterval = Duration(seconds: 1); // 轮询间隔：1秒
-    const timeout = Duration(minutes: 10); // 超时时间：10分钟
+    final pollInterval = TaskConfig.pollInterval;
+    final timeout = TaskConfig.taskCompletionTimeout;
     final startTime = DateTime.now();
     int pollCount = 0;
 
@@ -890,19 +898,17 @@ class UploadOrchestrator {
   }
 
   /// 批量检查服务器上已存在的资产
-  /// 
+  ///
   /// **参数**：
   /// - [checksums] - checksum 列表
-  /// 
+  ///
   /// **返回**：已存在的 checksum 集合
-  /// 
+  ///
   /// **API 格式**：
   /// - 请求：POST /api/v1/media/check_hashes
   /// - 请求体：{ "hashes": ["hash1", "hash2", ...] }
   /// - 响应：{ "existing_hashes": ["hash1", "hash3", ...], "missing_hashes": [...], ... }
-  Future<Set<String>> _checkAssetsExistOnServer(
-    List<String> checksums,
-  ) async {
+  Future<Set<String>> _checkAssetsExistOnServer(List<String> checksums) async {
     if (checksums.isEmpty) {
       return {};
     }
@@ -927,8 +933,8 @@ class UploadOrchestrator {
         final data = response.data as Map<String, dynamic>?;
         if (data != null) {
           final existing = data['existing_hashes'] as List<dynamic>?;
-        if (existing != null) {
-          return existing.cast<String>().toSet();
+          if (existing != null) {
+            return existing.cast<String>().toSet();
           }
         }
       }
@@ -966,16 +972,14 @@ class UploadOrchestrator {
     }
   }
 
-
-
   /// 更新最后备份时间（根据成功比例决定是否更新）
-  /// 
+  ///
   /// **更新策略**：
   /// - 全部成功：立即更新
   /// - 部分成功且成功比例 ≥ 80%：更新（避免少量失败阻塞增量同步）
   /// - 部分成功且成功比例 < 80%：不更新（避免跳过大量失败任务）
   /// - 全部失败：不更新
-  /// 
+  ///
   /// **注意**：此方法仅由自动备份调用，手动备份不更新 lastBackupTime
   Future<void> _updateLastBackupTime({
     required String userId,

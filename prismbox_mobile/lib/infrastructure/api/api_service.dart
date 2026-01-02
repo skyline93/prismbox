@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:prismbox/config/app_config.dart';
+import 'package:prismbox/core/config/network_config.dart';
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/core/storage/secure_storage_service.dart';
@@ -57,13 +58,15 @@ class ApiService {
 
     // 配置文件上传Dio（超时时间更长）
     _configureDio(_fileDio);
-    _fileDio.options.receiveTimeout = const Duration(hours: 1);
-    _fileDio.options.sendTimeout = const Duration(hours: 1);
+    _fileDio.options.receiveTimeout = NetworkConfig.fileUploadReceiveTimeout;
+    _fileDio.options.sendTimeout = NetworkConfig.fileUploadSendTimeout;
 
     // 初始化刷新token专用Dio（不添加拦截器，避免循环）
     _refreshDio = Dio();
-    _refreshDio.options.connectTimeout = const Duration(seconds: 10);
-    _refreshDio.options.receiveTimeout = const Duration(seconds: 10);
+    _refreshDio.options.connectTimeout =
+        NetworkConfig.tokenRefreshConnectTimeout;
+    _refreshDio.options.receiveTimeout =
+        NetworkConfig.tokenRefreshReceiveTimeout;
     _refreshDio.options.responseType = ResponseType.json;
     _refreshDio.options.headers['User-Agent'] = 'PrismBox-Mobile/1.0';
 
@@ -89,16 +92,16 @@ class ApiService {
   void _configureDio(Dio dio) {
     // 清除已有拦截器，避免重复添加
     dio.interceptors.clear();
-    
-    dio.options.connectTimeout = const Duration(seconds: 60);
-    dio.options.receiveTimeout = const Duration(minutes: 30);
+
+    dio.options.connectTimeout = NetworkConfig.connectTimeout;
+    dio.options.receiveTimeout = NetworkConfig.receiveTimeout;
     dio.options.responseType = ResponseType.json;
     dio.options.headers['User-Agent'] = 'PrismBox-Mobile/1.0';
 
     // 配置HttpClient以支持HttpOverrides和连接池
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
-      client.maxConnectionsPerHost = 16;
+      client.maxConnectionsPerHost = NetworkConfig.maxConnectionsPerHost;
       client.autoUncompress = true;
       // HttpOverrides.global会自动应用
       return client;
@@ -134,7 +137,7 @@ class ApiService {
   String? get endpoint => _endpoint;
 
   /// 解析并设置端点
-  /// 
+  ///
   /// 注意：此方法仅用于端点发现和临时设置，不会持久化到 Store
   /// 服务器地址应在 app_config.dart 中配置
   Future<String> resolveAndSetEndpoint(String serverUrl) async {
@@ -197,7 +200,7 @@ class ApiService {
   }
 
   /// 获取请求头（用于background_downloader等外部场景）
-  /// 
+  ///
   /// 注意：此方法用于非Dio场景，需要手动调用
   /// 对于Dio请求，拦截器会自动处理
   static Future<Map<String, String>> getRequestHeaders() async {
@@ -218,7 +221,7 @@ class ApiService {
         if (deviceId.isNotEmpty) {
           headers['x-device-id'] = deviceId;
         }
-        
+
         final platformType = await deviceService.getPlatformType();
         if (platformType.isNotEmpty) {
           headers['x-device-type'] = platformType;
@@ -285,10 +288,7 @@ class ApiService {
     try {
       final response = await _dio.get('/api/v1/server/ping');
       if (response.statusCode != 200) {
-        throw ApiException(
-          response.statusCode ?? 500,
-          'Server ping failed',
-        );
+        throw ApiException(response.statusCode ?? 500, 'Server ping failed');
       }
     } on DioException catch (e) {
       throw ApiErrorHandler.handleError(e);
@@ -316,26 +316,33 @@ class _DeviceInterceptor extends Interceptor {
   final Logger _log = Logger('DeviceInterceptor');
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     try {
       final deviceService = DeviceService();
-      
+
       // 获取设备ID（必需）
       final deviceId = await deviceService.getDeviceId();
       if (deviceId.isNotEmpty) {
         options.headers['x-device-id'] = deviceId;
         _log.fine('Device ID added to request: ${deviceId.substring(0, 8)}...');
       } else {
-        _log.warning('Device ID is empty, request may fail if device middleware is required: ${options.path}');
+        _log.warning(
+          'Device ID is empty, request may fail if device middleware is required: ${options.path}',
+        );
       }
-      
+
       // 获取设备类型（必需）
       final platformType = await deviceService.getPlatformType();
       if (platformType.isNotEmpty) {
         options.headers['x-device-type'] = platformType;
         _log.fine('Device type added to request: $platformType');
       } else {
-        _log.warning('Device type is empty, request may fail if device middleware is required: ${options.path}');
+        _log.warning(
+          'Device type is empty, request may fail if device middleware is required: ${options.path}',
+        );
       }
 
       // 向后兼容：添加旧的设备信息头（用于日志记录）
@@ -449,16 +456,13 @@ class _ResponseInterceptor extends Interceptor {
 
 /// 重试拦截器
 class _RetryInterceptor extends Interceptor {
-  static const int _maxRetries = 3;
-  static const Duration _retryDelay = Duration(seconds: 1);
-
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (_shouldRetry(err) && _getRetryCount(err) < _maxRetries) {
+    if (_shouldRetry(err) && _getRetryCount(err) < NetworkConfig.maxRetries) {
       final retryCount = _getRetryCount(err) + 1;
 
       // 指数退避
-      final delay = _retryDelay * retryCount;
+      final delay = NetworkConfig.retryDelay * retryCount;
       await Future.delayed(delay);
 
       // 更新重试计数
@@ -489,8 +493,7 @@ class _RetryInterceptor extends Interceptor {
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.receiveTimeout ||
         err.type == DioExceptionType.connectionError ||
-        (err.response?.statusCode != null &&
-            err.response!.statusCode! >= 500);
+        (err.response?.statusCode != null && err.response!.statusCode! >= 500);
   }
 
   int _getRetryCount(DioException err) {
@@ -509,18 +512,18 @@ class _LoggingInterceptor extends Interceptor {
     if (kDebugMode) {
       final uri = options.uri.toString();
       final method = options.method;
-      
+
       _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       _log.fine('📤 API Request');
       _log.fine('  Method: $method');
       _log.fine('  URL: $uri');
-      
+
       // 打印请求头（隐藏敏感信息）
       if (options.headers.isNotEmpty) {
         final safeHeaders = ApiLoggingUtils.sanitizeHeaders(options.headers);
         _log.fine('  Headers: $safeHeaders');
       }
-      
+
       // 打印请求体
       if (options.data != null) {
         if (options.data is FormData) {
@@ -530,10 +533,10 @@ class _LoggingInterceptor extends Interceptor {
           _log.fine('  Body: $bodyStr');
         }
       }
-      
+
       _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
-    
+
     handler.next(options);
   }
 
@@ -544,13 +547,15 @@ class _LoggingInterceptor extends Interceptor {
       final uri = response.requestOptions.uri.toString();
       final statusCode = response.statusCode;
       final method = response.requestOptions.method;
-      
+
       _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       _log.fine('📥 API Response');
       _log.fine('  Method: $method');
       _log.fine('  URL: $uri');
-      _log.fine('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
-      
+      _log.fine(
+        '  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}',
+      );
+
       // 打印响应头（隐藏敏感信息）
       if (response.headers.map.isNotEmpty) {
         final safeHeaders = ApiLoggingUtils.sanitizeHeaders(
@@ -558,18 +563,20 @@ class _LoggingInterceptor extends Interceptor {
         );
         _log.fine('  Headers: $safeHeaders');
       }
-      
+
       // 打印响应体
       if (response.data != null) {
         final responseBody = ApiLoggingUtils.formatResponseBody(response.data);
-        _log.fine('  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}');
+        _log.fine(
+          '  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}',
+        );
       } else {
         _log.fine('  Body: [空]');
       }
-      
+
       _log.fine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
-    
+
     handler.next(response);
   }
 
@@ -578,30 +585,36 @@ class _LoggingInterceptor extends Interceptor {
     // 错误日志使用 warning 级别，但详细信息只在调试模式下输出
     final uri = err.requestOptions.uri.toString();
     final method = err.requestOptions.method;
-    
+
     _log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     _log.warning('❌ API Error');
     _log.warning('  Method: $method');
     _log.warning('  URL: $uri');
     _log.warning('  Type: ${err.type}');
-    
+
     if (err.response != null) {
       final statusCode = err.response!.statusCode;
-      _log.warning('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
-      
+      _log.warning(
+        '  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}',
+      );
+
       // 在调试模式下打印错误响应体
       if (kDebugMode && err.response!.data != null) {
-        final errorBody = ApiLoggingUtils.formatResponseBody(err.response!.data);
-        _log.warning('  Error Body: ${ApiLoggingUtils.truncateResponseBody(errorBody)}');
+        final errorBody = ApiLoggingUtils.formatResponseBody(
+          err.response!.data,
+        );
+        _log.warning(
+          '  Error Body: ${ApiLoggingUtils.truncateResponseBody(errorBody)}',
+        );
       }
     } else {
       _log.warning('  Message: ${err.message}');
     }
-    
+
     if (err.error != null) {
       _log.warning('  Error: ${err.error}');
     }
-    
+
     // 在调试模式下输出堆栈跟踪
     if (kDebugMode) {
       try {
@@ -610,9 +623,9 @@ class _LoggingInterceptor extends Interceptor {
         // 忽略堆栈跟踪输出错误
       }
     }
-    
+
     _log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     handler.next(err);
   }
 }
@@ -654,17 +667,22 @@ class _ErrorInterceptor extends Interceptor {
           if (newToken != null) {
             // 更新请求头中的token
             err.requestOptions.headers['x-prismbox-user-token'] = newToken;
-            
+
             // 根据请求类型选择对应的Dio实例重试
-            final dioInstance = err.requestOptions.extra['dio_instance'] as String?;
-            final dio = dioInstance == 'file' ? _apiService.fileDio : _apiService.dio;
-            
+            final dioInstance =
+                err.requestOptions.extra['dio_instance'] as String?;
+            final dio = dioInstance == 'file'
+                ? _apiService.fileDio
+                : _apiService.dio;
+
             final response = await dio.fetch(err.requestOptions);
             handler.resolve(response);
             return;
           }
         } catch (e) {
-          _apiService._log.warning('Failed to retry request after token refresh: $e');
+          _apiService._log.warning(
+            'Failed to retry request after token refresh: $e',
+          );
           // 重试失败，继续错误处理流程
         }
       }
@@ -691,11 +709,12 @@ class _ErrorInterceptor extends Interceptor {
       try {
         // 检查token是否已被其他请求刷新
         final currentToken = await _secureStorage.getAccessToken();
-        final requestToken = err.requestOptions.headers['x-prismbox-user-token'] as String?;
-        
+        final requestToken =
+            err.requestOptions.headers['x-prismbox-user-token'] as String?;
+
         // 如果当前存储的token与请求中的token不同，说明已被其他请求刷新
-        if (currentToken != null && 
-            requestToken != null && 
+        if (currentToken != null &&
+            requestToken != null &&
             currentToken != requestToken) {
           _apiService._log.fine('Token already refreshed by another request');
           return true; // token已被刷新
@@ -727,42 +746,51 @@ class _ErrorInterceptor extends Interceptor {
         final statusCode = response.statusCode;
         _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         _apiService._log.info('✅ Token Refresh Response');
-        _apiService._log.info('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
-        
+        _apiService._log.info(
+          '  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}',
+        );
+
         // 解析响应（后端返回统一格式 ApiResponse{code, message, data}）
         final data = response.data;
         if (data is Map<String, dynamic>) {
           final code = data['code'] as int?;
           final message = data['message'] as String?;
           final responseData = data['data'];
-          
+
           // 记录响应体（隐藏敏感信息）
           if (kDebugMode) {
             final sanitizedData = ApiLoggingUtils.sanitizeRefreshResponse(data);
-            final responseBody = ApiLoggingUtils.formatJson(sanitizedData, sanitize: false);
-            _apiService._log.info('  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}');
+            final responseBody = ApiLoggingUtils.formatJson(
+              sanitizedData,
+              sanitize: false,
+            );
+            _apiService._log.info(
+              '  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}',
+            );
           } else {
             _apiService._log.info('  Code: $code');
             _apiService._log.info('  Message: $message');
           }
-          
+
           if (code == 0 && responseData is Map<String, dynamic>) {
             final accessToken = responseData['access_token'] as String?;
-            
+
             if (accessToken != null) {
               // 保存新token
               await _apiService.setAccessToken(accessToken);
-              
+
               _apiService._log.info('  ✅ Access token refreshed successfully');
               _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               return true;
             }
           }
-          
+
           _apiService._log.warning('  ❌ Invalid refresh token response format');
           _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         } else {
-          _apiService._log.warning('  ❌ Unexpected response format: ${data.runtimeType}');
+          _apiService._log.warning(
+            '  ❌ Unexpected response format: ${data.runtimeType}',
+          );
           _apiService._log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         }
 
@@ -772,23 +800,29 @@ class _ErrorInterceptor extends Interceptor {
         _apiService._log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         _apiService._log.warning('❌ Token Refresh Error');
         _apiService._log.warning('  Type: ${e.type}');
-        
+
         if (e.response != null) {
           final statusCode = e.response!.statusCode;
-          _apiService._log.warning('  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}');
-          
+          _apiService._log.warning(
+            '  Status: $statusCode ${ApiLoggingUtils.getStatusMessage(statusCode)}',
+          );
+
           if (kDebugMode && e.response!.data != null) {
-            final errorBody = ApiLoggingUtils.formatResponseBody(e.response!.data);
-            _apiService._log.warning('  Error Body: ${ApiLoggingUtils.truncateResponseBody(errorBody)}');
+            final errorBody = ApiLoggingUtils.formatResponseBody(
+              e.response!.data,
+            );
+            _apiService._log.warning(
+              '  Error Body: ${ApiLoggingUtils.truncateResponseBody(errorBody)}',
+            );
           }
         } else {
           _apiService._log.warning('  Message: ${e.message}');
         }
-        
+
         if (e.error != null) {
           _apiService._log.warning('  Error: ${e.error}');
         }
-        
+
         _apiService._log.warning('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         return false;
       } catch (e, stackTrace) {
@@ -807,7 +841,7 @@ class _ErrorInterceptor extends Interceptor {
   /// 处理refresh token过期
   Future<void> _handleRefreshTokenExpired() async {
     await _apiService.clearAccessToken();
-    
+
     // 触发401回调
     final callback = _apiService.onUnauthorized;
     if (callback != null) {
@@ -815,4 +849,3 @@ class _ErrorInterceptor extends Interceptor {
     }
   }
 }
-

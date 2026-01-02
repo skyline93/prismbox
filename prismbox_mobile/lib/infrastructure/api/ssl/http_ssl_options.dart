@@ -2,57 +2,48 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:prismbox/config/app_config.dart';
-import 'package:prismbox/core/storage/store_key.dart';
-import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/infrastructure/api/ssl/http_ssl_cert_override.dart';
-import 'package:prismbox/infrastructure/api/ssl/http_ssl_cert_override.dart' as ssl;
+import 'package:prismbox/infrastructure/api/ssl/http_ssl_cert_override.dart'
+    as ssl;
 
 /// SSL/TLS配置管理
 class HttpSSLOptions {
   /// 从 AppConfig 应用 SSL 配置
-  /// 
+  ///
   /// 从编译时配置（AppConfig）读取 SSL 设置并应用
   /// 这是主要的配置方式，适用于开发/生产环境的区分
   static Future<void> apply({bool applyNative = true}) async {
     // 从 AppConfig 读取配置
     final allowSelfSigned = SslConfig.allowSelfSignedCert;
-    
-    await _apply(
-      allowSelfSigned: allowSelfSigned,
-      applyNative: applyNative,
-    );
+
+    await _apply(allowSelfSigned: allowSelfSigned, applyNative: applyNative);
   }
 
   /// 运行时动态应用 SSL 配置（可选）
-  /// 
+  ///
   /// 用于在运行时动态切换 SSL 配置
   /// 注意：主要配置应通过 AppConfig 设置，此方法仅用于特殊场景
-  /// 
+  ///
   /// [allowSelfSigned] 是否允许自签名证书
   /// [applyNative] 是否应用 Android 原生配置
   static Future<void> applyWithConfig({
     required bool allowSelfSigned,
     bool applyNative = true,
   }) async {
-    await _apply(
-      allowSelfSigned: allowSelfSigned,
-      applyNative: applyNative,
-    );
+    await _apply(allowSelfSigned: allowSelfSigned, applyNative: applyNative);
   }
 
-  /// 响应设置变更（保留用于兼容性，但推荐使用 AppConfig）
-  /// 
-  /// 注意：此方法会更新 StoreService 中的设置，但实际配置仍以 AppConfig 为准
-  /// 建议直接修改 AppConfig 并重新编译应用
-  @Deprecated('推荐使用 AppConfig.ssl.allowSelfSignedCert 配置，修改后重新编译应用')
+  /// 响应设置变更（已废弃）
+  ///
+  /// **已废弃**：此方法已废弃，不再更新 StoreService。
+  /// 请直接使用 `AppConfig.ssl.allowSelfSignedCert` 配置，修改后重新编译应用。
+  ///
+  /// 如需运行时动态配置，请使用 `applyWithConfig()` 方法。
+  @Deprecated(
+    '已废弃：请使用 AppConfig.ssl.allowSelfSignedCert 配置，修改后重新编译应用。如需运行时配置，请使用 applyWithConfig()',
+  )
   static Future<void> applyFromSettings(bool newValue) async {
-    final store = StoreService();
-    if (store.isInitialized) {
-      // 更新 Store 中的设置（用于兼容性）
-      store.put(StoreKey.allowSelfSignedSSLCert, newValue);
-    }
-
-    // 应用配置（但实际应该使用 AppConfig 的配置）
+    // 不再更新 StoreService，直接应用配置
     await applyWithConfig(allowSelfSigned: newValue, applyNative: true);
   }
 
@@ -111,4 +102,3 @@ class HttpSSLOptions {
     }
   }
 }
-

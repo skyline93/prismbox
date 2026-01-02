@@ -1,15 +1,14 @@
 /// Store键定义
 /// 定义所有存储在Store中的键及其类型
 enum StoreKey<T> {
-  // 服务器配置
-  serverUrl<String>._(0),
-  serverEndpoint<String>._(1),
+  // 认证信息
   accessToken<String>._(2),
   refreshToken<String>._(3),
   currentUser<String>._(4), // JSON字符串
 
-  // SSL配置
-  allowSelfSignedSSLCert<bool>._(10),
+  // SSL配置（客户端证书）
+  // 注意：allowSelfSignedSSLCert 已废弃，请使用 AppConfig.ssl.allowSelfSignedCert
+  // 注意：serverUrl 和 serverEndpoint 已废弃，请使用 AppConfig.api.serverBaseUrl
   sslClientCertData<String>._(11),
   sslClientCertPassword<String>._(12),
 

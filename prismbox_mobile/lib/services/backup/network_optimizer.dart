@@ -4,15 +4,16 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/config/network_config.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 
 /// 网络优化器
-/// 
+///
 /// **职责**：
 /// - 连接复用和连接池管理
 /// - 请求合并（批量检查 checksum）
 /// - 智能重试机制
-/// 
+///
 /// **优化策略**：
 /// - 使用 Dio 的连接池功能
 /// - 批量请求合并，减少网络往返
@@ -21,16 +22,8 @@ class NetworkOptimizer {
   final ApiService _apiService;
   final Logger _logger = Logger('NetworkOptimizer');
 
-  // 连接池配置
-  static const int _maxConnectionsPerHost = 6;
-  static const Duration _idleTimeout = Duration(seconds: 30);
-
-  // 批量请求配置
-  static const int _batchSize = 100; // 每批最多 100 个
-
-  NetworkOptimizer({
-    required ApiService apiService,
-  }) : _apiService = apiService {
+  NetworkOptimizer({required ApiService apiService})
+    : _apiService = apiService {
     _configureConnectionPool();
   }
 
@@ -38,31 +31,32 @@ class NetworkOptimizer {
   void _configureConnectionPool() {
     try {
       final dio = _apiService.dio;
-      
+
       // 检查是否已经配置了 IOHttpClientAdapter
       if (dio.httpClientAdapter is IOHttpClientAdapter) {
         final adapter = dio.httpClientAdapter as IOHttpClientAdapter;
-        
+
         // 如果还没有配置 createHttpClient，则配置它
         if (adapter.createHttpClient == null) {
           adapter.createHttpClient = () {
             final client = HttpClient();
-            client.maxConnectionsPerHost = _maxConnectionsPerHost;
-            client.idleTimeout = _idleTimeout;
+            client.maxConnectionsPerHost =
+                NetworkConfig.networkOptimizerMaxConnections;
+            client.idleTimeout = NetworkConfig.networkOptimizerIdleTimeout;
             client.autoUncompress = true;
             return client;
           };
-          
+
           _logger.info(
-            'Connection pool configured: maxConnectionsPerHost=$_maxConnectionsPerHost, '
-            'idleTimeout=${_idleTimeout.inSeconds}s',
+            'Connection pool configured: maxConnectionsPerHost=${NetworkConfig.networkOptimizerMaxConnections}, '
+            'idleTimeout=${NetworkConfig.networkOptimizerIdleTimeout.inSeconds}s',
           );
         } else {
           // 已经配置过了，记录日志
           _logger.info(
             'Connection pool already configured by ApiService: '
-            'maxConnectionsPerHost=$_maxConnectionsPerHost, '
-            'idleTimeout=${_idleTimeout.inSeconds}s',
+            'maxConnectionsPerHost=${NetworkConfig.networkOptimizerMaxConnections}, '
+            'idleTimeout=${NetworkConfig.networkOptimizerIdleTimeout.inSeconds}s',
           );
         }
       } else {
@@ -71,28 +65,22 @@ class NetworkOptimizer {
         );
       }
     } catch (e, stackTrace) {
-      _logger.warning(
-        'Failed to configure connection pool',
-        e,
-        stackTrace,
-      );
+      _logger.warning('Failed to configure connection pool', e, stackTrace);
     }
   }
 
   /// 批量检查资产是否存在（优化版本）
-  /// 
+  ///
   /// **参数**：
   /// - [checksums] - checksum 列表
-  /// 
+  ///
   /// **返回**：已存在的 checksum 集合
-  /// 
+  ///
   /// **优化策略**：
   /// - 分批检查（每批最多 100 个）
   /// - 使用连接池复用连接
   /// - 支持超时和降级策略
-  Future<Set<String>> batchCheckAssetsExist(
-    List<String> checksums,
-  ) async {
+  Future<Set<String>> batchCheckAssetsExist(List<String> checksums) async {
     if (checksums.isEmpty) {
       return {};
     }
@@ -103,15 +91,15 @@ class NetworkOptimizer {
 
     try {
       // 分批检查
-      for (int i = 0; i < checksums.length; i += _batchSize) {
-        final batch = checksums.skip(i).take(_batchSize).toList();
+      for (int i = 0; i < checksums.length; i += NetworkConfig.batchSize) {
+        final batch = checksums.skip(i).take(NetworkConfig.batchSize).toList();
 
         try {
           final batchResult = await _checkBatchWithRetry(batch);
           existingChecksums.addAll(batchResult);
         } catch (e, stackTrace) {
           _logger.warning(
-            'Failed to check batch ${i ~/ _batchSize + 1}: $e',
+            'Failed to check batch ${i ~/ NetworkConfig.batchSize + 1}: $e',
             e,
             stackTrace,
           );
@@ -133,10 +121,10 @@ class NetworkOptimizer {
   }
 
   /// 检查批次（带重试）
-  /// 
+  ///
   /// **参数**：
   /// - [checksums] - checksum 列表（一批）
-  /// 
+  ///
   /// **返回**：已存在的 checksum 集合
   Future<Set<String>> _checkBatchWithRetry(List<String> checksums) async {
     const maxRetries = 3;
@@ -165,8 +153,8 @@ class NetworkOptimizer {
           final data = response.data as Map<String, dynamic>?;
           if (data != null) {
             final existing = data['existing_hashes'] as List<dynamic>?;
-          if (existing != null) {
-            return existing.cast<String>().toSet();
+            if (existing != null) {
+              return existing.cast<String>().toSet();
             }
           }
         }
@@ -191,16 +179,15 @@ class NetworkOptimizer {
   }
 
   /// 获取连接池统计信息
-  /// 
+  ///
   /// **返回**：连接池统计信息（用于监控和调试）
   Map<String, dynamic> getConnectionPoolStats() {
     // 注意：Dio 不直接提供连接池统计信息
     // 这里返回配置信息
     return {
-      'maxConnectionsPerHost': _maxConnectionsPerHost,
-      'idleTimeout': _idleTimeout.inSeconds,
-      'batchSize': _batchSize,
+      'maxConnectionsPerHost': NetworkConfig.networkOptimizerMaxConnections,
+      'idleTimeout': NetworkConfig.networkOptimizerIdleTimeout.inSeconds,
+      'batchSize': NetworkConfig.batchSize,
     };
   }
 }
-
