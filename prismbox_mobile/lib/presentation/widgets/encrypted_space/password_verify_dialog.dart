@@ -5,7 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
-import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/pin_input_widget.dart';
 
@@ -109,7 +109,7 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
         reason: '请使用生物识别验证以访问加密空间',
       );
 
-      if (result && mounted) {
+      if (result.success && mounted) {
         // 生物识别成功，直接解锁
         await _unlockWithBiometric();
       } else if (mounted) {
@@ -191,7 +191,7 @@ class _PasswordVerifyDialogState extends State<PasswordVerifyDialog> {
         reason: '请使用生物识别验证以访问加密空间',
       );
 
-      if (result) {
+      if (result.success) {
         await _unlockWithBiometric();
       } else {
         setState(() {

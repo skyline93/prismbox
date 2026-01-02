@@ -204,6 +204,11 @@ If multiple capabilities are affected, create multiple delta files under `change
 - [ ] 1.4 Write tests
 ```
 
+**Task Scope Guidelines:**
+- **Include**: Code implementation, refactoring, updates, deletions, code quality checks (linter/static analysis), unit test writing, code documentation updates, configuration updates
+- **Exclude**: Runtime manual testing, manual verification scenarios, user acceptance testing, performance testing, integration testing, deployment verification
+- **Principle**: Only include tasks that can be completed through code changes. Exclude tasks that require running the application, manual operations, or human judgment.
+
 5. **Create design.md when needed:**
 Create `design.md` if any of the following apply; otherwise omit it:
 - Cross-cutting change (multiple services/modules) or a new architectural pattern

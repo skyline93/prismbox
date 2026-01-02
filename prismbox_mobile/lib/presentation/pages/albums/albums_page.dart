@@ -8,7 +8,7 @@ import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dia
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
-import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
@@ -72,7 +72,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
             reason: '请使用生物识别验证以访问加密空间',
           );
 
-          if (result) {
+          if (result.success) {
             // 生物识别成功，解锁并导航
             await accessControlService.unlockAlbum(albumId, useBiometric: false);
             if (mounted) {

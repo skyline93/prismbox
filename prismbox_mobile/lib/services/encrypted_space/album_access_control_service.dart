@@ -7,7 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
-import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 
 /// 解锁状态
 class UnlockState {
@@ -88,8 +88,13 @@ class AlbumAccessControlService {
         reason: '请使用生物识别验证以访问加密空间',
       );
       
-      if (!biometricResult) {
-        throw Exception('Biometric authentication failed or cancelled');
+      if (!biometricResult.success) {
+        // 根据失败类型抛出不同的异常
+        if (biometricResult.failure == BiometricAuthFailure.userCancel) {
+          throw Exception('Biometric authentication cancelled by user');
+        } else {
+          throw Exception('Biometric authentication failed: ${biometricResult.failure}');
+        }
       }
       
       _log.info('Biometric authentication succeeded for album: $albumId');

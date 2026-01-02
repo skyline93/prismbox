@@ -28,7 +28,7 @@ import 'package:prismbox/services/backup/providers/backup_providers.dart';
 import 'package:prismbox/services/encrypted_space/providers/encrypted_space_providers.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dialog.dart';
-import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 
@@ -682,7 +682,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
               final result = await biometricAuthService.authenticate(
                 reason: '请使用生物识别验证以访问加密空间',
               );
-              if (result) {
+              if (result.success) {
                 await accessControlService.unlockAlbum(
                   albumId,
                   useBiometric: false,
@@ -731,7 +731,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
                 reason: '请使用生物识别验证以添加到加密空间',
               );
 
-              if (result) {
+              if (result.success) {
                 // 生物识别成功，解锁相册
                 await accessControlService.unlockAlbum(
                   albumId,

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/core/settings/app_setting.dart';
 import 'package:prismbox/services/encrypted_space/album_access_control_service.dart';
-import 'package:prismbox/services/encrypted_space/biometric_auth_service.dart';
+import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/services/encrypted_space/session_storage_service.dart';
 import 'package:prismbox/presentation/widgets/encrypted_space/password_verification_dialog.dart';
@@ -299,7 +299,7 @@ class _PreferencesPageState extends ConsumerState<PreferencesPage> {
         reason: '请使用生物识别验证以关闭生物识别解锁',
       );
 
-      return result;
+      return result.success;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
