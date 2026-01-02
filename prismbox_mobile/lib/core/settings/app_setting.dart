@@ -26,16 +26,7 @@ enum Setting<T> {
 
   /// 语言
   /// 默认值：zh_CN（中文简体）
-  language<String>(StoreKey.language, 'zh_CN'),
-
-  /// 是否启用生物识别解锁加密空间
-  /// 默认值：false
-  encryptedSpaceBiometricEnabled<bool>(StoreKey.encryptedSpaceBiometricEnabled, false),
-
-  /// 加密空间自动锁定超时时间（分钟）
-  /// 默认值：30分钟
-  /// 特殊值：0 表示永不自动锁定（仅令牌过期时锁定）
-  encryptedSpaceLockTimeoutMinutes<int>(StoreKey.encryptedSpaceLockTimeoutMinutes, 30);
+  language<String>(StoreKey.language, 'zh_CN');
 
   const Setting(this.storeKey, this.defaultValue);
 

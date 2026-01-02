@@ -56,15 +56,3 @@ func (r *albumRepository) Update(ctx context.Context, album *models.Album) error
 func (r *albumRepository) Delete(ctx context.Context, uuid string) error {
 	return r.db.WithContext(ctx).Where("uuid = ?", uuid).Delete(&models.Album{}).Error
 }
-
-// FindEncryptedAlbumByUserID 根据用户ID查找加密空间相册
-func (r *albumRepository) FindEncryptedAlbumByUserID(ctx context.Context, userID uint) (*models.Album, error) {
-	var album models.Album
-	err := r.db.WithContext(ctx).
-		Where("user_id = ? AND is_encrypted = ? AND album_type = ?", userID, true, models.AlbumTypeEncryptedSpace).
-		First(&album).Error
-	if err != nil {
-		return nil, err
-	}
-	return &album, nil
-}

@@ -4,8 +4,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:logging/logging.dart';
-import 'package:prismbox/core/storage/store_key.dart';
-import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/services/pin/pin_service_config.dart';
 import 'package:prismbox/services/pin/pin_session_service.dart';
 import 'package:prismbox/services/biometric/biometric_auth_service.dart';
@@ -44,9 +42,6 @@ class PinAccessControlService {
 
   // 定期验证令牌的间隔（5分钟）
   static const Duration _tokenValidationInterval = Duration(minutes: 5);
-
-  // Store服务，用于读取用户配置
-  final StoreService _store = StoreService();
 
   PinAccessControlService({
     required PinServiceConfig config,
@@ -205,74 +200,9 @@ class PinAccessControlService {
   }
 
   /// 获取用户配置的超时时间
-  /// 从StoreService读取配置，如果未配置则使用默认值
+  /// 使用配置中的默认值
   Duration _getUserConfiguredTimeout() {
-    if (!_store.isInitialized) {
-      return _config.defaultSessionTimeout;
-    }
-
-    final timeoutMinutes = _store.tryGet<int>(
-      StoreKey.encryptedSpaceLockTimeoutMinutes,
-    );
-    if (timeoutMinutes == null || timeoutMinutes <= 0) {
-      return _config.defaultSessionTimeout;
-    }
-
-    // 支持特殊值：0 表示永不自动锁定（仅令牌过期时锁定）
-    if (timeoutMinutes == 0) {
-      // 返回一个很长的超时时间（1年），实际由令牌过期时间控制
-      return const Duration(days: 365);
-    }
-
-    return Duration(minutes: timeoutMinutes);
-  }
-
-  /// 设置用户配置的超时时间（分钟）
-  /// [minutes] 超时时间（分钟），0 表示永不自动锁定（仅令牌过期时锁定）
-  /// 支持的常用值：5, 15, 30, 60, 120, 0（永不）
-  Future<void> setUserConfiguredTimeout(int minutes) async {
-    if (!_store.isInitialized) {
-      _log.warning('Store not initialized, cannot save timeout configuration');
-      return;
-    }
-
-    await _store.put(StoreKey.encryptedSpaceLockTimeoutMinutes, minutes);
-    _log.info('User configured lock timeout: $minutes minutes');
-
-    // 更新所有已解锁资源的超时时间
-    final resourceIds = _unlockedResources.keys.toList();
-    for (final resourceId in resourceIds) {
-      final state = _unlockedResources[resourceId];
-      if (state != null) {
-        // 重新计算过期时间
-        final now = DateTime.now();
-        final userTimeout = _getUserConfiguredTimeout();
-        final expiresAt = await _sessionService.getExpiresAt(resourceId);
-
-        final newExpiresAt =
-            expiresAt != null && expiresAt.isBefore(now.add(userTimeout))
-            ? expiresAt
-            : now.add(userTimeout);
-
-        _unlockedResources[resourceId] = UnlockState(
-          resourceId: resourceId,
-          unlockedAt: state.unlockedAt,
-          expiresAt: newExpiresAt,
-        );
-
-        // 重启计时器
-        _startLockTimer(resourceId);
-      }
-    }
-  }
-
-  /// 获取当前用户配置的超时时间（分钟）
-  /// 返回 null 表示使用默认值
-  int? getUserConfiguredTimeoutMinutes() {
-    if (!_store.isInitialized) {
-      return null;
-    }
-    return _store.tryGet<int>(StoreKey.encryptedSpaceLockTimeoutMinutes);
+    return _config.defaultSessionTimeout;
   }
 
   /// 应用进入后台时锁定所有资源

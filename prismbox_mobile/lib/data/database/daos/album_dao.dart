@@ -8,8 +8,6 @@ import 'package:prismbox/data/database/tables/album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/local_album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/remote_asset_entity.dart';
 import 'package:prismbox/data/database/tables/local_asset_entity.dart';
-import 'package:prismbox/data/database/enums/album_type.dart';
-import 'package:prismbox/data/database/enums/backup_selection.dart';
 
 part 'album_dao.g.dart';
 
@@ -159,35 +157,5 @@ class AlbumDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  /// 获取或创建本地加密空间相册
-  /// 返回本地相册ID
-  Future<String> getOrCreateLocalEncryptedSpaceAlbum() async {
-    // 查找是否已存在本地加密空间相册
-    final existingAlbum = await (select(localAlbumEntity)
-          ..where((t) => 
-              t.albumType.equalsValue(AlbumType.encryptedSpace) &
-              t.isEncrypted.equals(true)))
-        .getSingleOrNull();
-
-    if (existingAlbum != null) {
-      return existingAlbum.id;
-    }
-
-    // 创建新的本地加密空间相册
-    final albumId = 'local_encrypted_space_${DateTime.now().millisecondsSinceEpoch}';
-    final album = LocalAlbumEntityData(
-      id: albumId,
-      name: '加密空间',
-      updatedAt: DateTime.now(),
-      backupSelection: BackupSelection.none,
-      isIosSharedAlbum: false,
-      linkedRemoteAlbumId: null,
-      isEncrypted: true,
-      albumType: AlbumType.encryptedSpace,
-    );
-
-    await createLocalAlbum(album);
-    return albumId;
-  }
 }
 

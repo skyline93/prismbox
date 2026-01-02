@@ -9,12 +9,9 @@ import 'package:prismbox/core/storage/store_service.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/remote_sync/providers/remote_sync_providers.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart';
-import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
 import 'package:prismbox/utils/network_checker.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
-import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
-import 'package:prismbox/providers/infrastructure/database_provider.dart';
 import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
@@ -205,37 +202,12 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
         );
         remoteCoordinator.startAutoSyncOnLaunch(userId: userId);
         _log.info('远程媒体同步服务已启动');
-        
-        // 自动初始化加密空间相册（确保它总是存在）
-        unawaited(_initializeEncryptedSpaceAlbum());
       } else {
         _log.info('未获取到用户ID，跳过远程同步');
       }
     } catch (e, stackTrace) {
       // 记录错误但不阻塞 UI
       _log.warning('启动自动同步失败', e, stackTrace);
-    }
-  }
-
-  /// 初始化加密空间相册（后台执行，不阻塞UI）
-  /// 确保加密空间相册总是存在
-  Future<void> _initializeEncryptedSpaceAlbum() async {
-    try {
-      _log.info('开始初始化加密空间相册');
-      
-      final database = await ref.read(databaseProvider.future);
-      final apiService = ref.read(apiServiceProvider);
-      final encryptedSpaceService = EncryptedSpaceService(
-        database: database,
-        apiService: apiService,
-      );
-      
-      // 获取或创建加密空间相册（确保它总是存在）
-      final albumId = await encryptedSpaceService.getOrCreateEncryptedSpaceAlbum();
-      _log.info('✅ 加密空间相册初始化成功: $albumId');
-    } catch (e, stackTrace) {
-      // 记录错误但不阻塞应用
-      _log.warning('初始化加密空间相册失败', e, stackTrace);
     }
   }
 

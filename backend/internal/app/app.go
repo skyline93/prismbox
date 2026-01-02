@@ -62,7 +62,6 @@ type App struct {
 	SyncService            sync.Service
 	GroupService           interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
 	ShareService           interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
-	AlbumEncryptionService interface{} // 使用interface{}避免循环依赖，实际类型为 album_encryption.Service
 
 	// 变更日志模块（可选）
 	ChangelogEngine  *changelog.Engine

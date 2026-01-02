@@ -2,6 +2,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prismbox/services/pin/pin_service_factory.dart';
+import 'package:prismbox/services/pin/pin_service_config.dart';
 import 'package:prismbox/services/pin/pin_auth_service.dart';
 import 'package:prismbox/services/pin/pin_session_service.dart';
 import 'package:prismbox/services/pin/pin_access_control_service.dart';
@@ -23,10 +24,14 @@ void main() {
     late PinAccessControlService accessControlService;
 
     setUp(() {
-      final suite = PinServiceFactory.createEncryptedSpaceSuite();
-      authService = suite.authService;
-      sessionService = suite.sessionService;
-      accessControlService = suite.accessControlService;
+      final config = PinServiceConfig(
+        storageKeyPrefix: 'test_pin_',
+        resourceTypeName: 'resource',
+        defaultSessionTimeout: const Duration(minutes: 30),
+      );
+      authService = PinServiceFactory.createAuthService(config: config);
+      sessionService = PinServiceFactory.createSessionService(config: config);
+      accessControlService = PinServiceFactory.createAccessControlService(config: config);
     });
 
     tearDown(() async {

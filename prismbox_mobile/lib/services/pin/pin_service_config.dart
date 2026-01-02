@@ -3,7 +3,7 @@
 /// PIN服务配置
 /// 用于配置PIN服务的存储键名前缀、资源类型名称和超时时间
 class PinServiceConfig {
-  /// 存储键名前缀（如: 'encrypted_space_'）
+  /// 存储键名前缀（如: 'pin_'）
   final String storageKeyPrefix;
 
   /// 资源类型名称（如: 'album'），用于日志和错误消息

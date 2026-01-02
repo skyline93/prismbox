@@ -1,17 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
-import 'package:prismbox/presentation/widgets/encrypted_space/password_verify_dialog.dart';
-import 'package:prismbox/presentation/widgets/encrypted_space/password_setup_dialog.dart';
-import 'package:prismbox/services/encrypted_space/encrypted_space_service.dart';
-import 'package:prismbox/services/pin/pin_service_factory.dart';
-import 'package:prismbox/services/pin/pin_access_control_service.dart';
-import 'package:prismbox/services/biometric/biometric_auth_service.dart';
-import 'package:prismbox/core/settings/app_setting.dart';
-import 'package:prismbox/providers/infrastructure/database_provider.dart';
-import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
 
 /// 合集页面
 /// 模仿 Google 相册的 UI 设计
@@ -24,129 +14,6 @@ class AlbumsPage extends ConsumerStatefulWidget {
 }
 
 class _AlbumsPageState extends ConsumerState<AlbumsPage> {
-  /// 处理加密空间点击
-  /// 先进行验证，验证通过后再导航
-  Future<void> _handleEncryptedSpaceTap() async {
-    try {
-      // 获取服务实例
-      final database = await ref.read(databaseProvider.future);
-      final apiService = ref.read(apiServiceProvider);
-      final encryptedSpaceService = EncryptedSpaceService(
-        database: database,
-        apiService: apiService,
-      );
-      final suite = PinServiceFactory.createEncryptedSpaceSuite();
-      final accessControlService = suite.accessControlService;
-      final biometricAuthService = BiometricAuthService();
-
-      // 获取或创建加密空间相册
-      final albumId = await encryptedSpaceService.getOrCreateEncryptedSpaceAlbum();
-
-      // 首先检查PIN是否已设置
-      final pinIsSet = await encryptedSpaceService.checkIfPinIsSet(albumId: albumId);
-
-      if (!pinIsSet) {
-        // PIN未设置，显示设置PIN对话框
-        await _showPasswordSetupDialog(
-          albumId: albumId,
-          encryptedSpaceService: encryptedSpaceService,
-        );
-        return;
-      }
-
-      // PIN已设置，继续验证流程
-      // 检查条件：是否已设置密码、是否启用生物识别、设备是否支持
-      final hasValidToken = await encryptedSpaceService.isAlbumUnlocked(albumId);
-      final biometricEnabled = AppSetting.get(Setting.encryptedSpaceBiometricEnabled);
-      final deviceSupported = await biometricAuthService.isDeviceSupported();
-
-      // 判断是否可以直接使用生物识别
-      // 条件：已设置密码（有有效令牌）+ 启用生物识别 + 设备支持
-      if (hasValidToken && biometricEnabled && deviceSupported) {
-        // 情况1：直接使用生物识别认证（不显示对话框）
-        try {
-          final result = await biometricAuthService.authenticate(
-            reason: '请使用生物识别验证以访问加密空间',
-          );
-
-          if (result.success) {
-            // 生物识别成功，解锁并导航
-            await accessControlService.unlockResource(albumId, useBiometric: false);
-            if (mounted) {
-              context.router.push(const EncryptedSpaceRoute());
-            }
-          } else {
-            // 生物识别失败或取消，显示密码验证对话框作为 fallback
-            await _showPasswordVerifyDialog(
-              albumId: albumId,
-              encryptedSpaceService: encryptedSpaceService,
-              accessControlService: accessControlService,
-            );
-          }
-        } catch (e) {
-          // 生物识别出错，显示密码验证对话框作为 fallback
-          await _showPasswordVerifyDialog(
-            albumId: albumId,
-            encryptedSpaceService: encryptedSpaceService,
-            accessControlService: accessControlService,
-          );
-        }
-      } else {
-        // 情况2：显示密码验证对话框
-        // 包括：未启用生物识别、设备不支持等情况（PIN已设置）
-        await _showPasswordVerifyDialog(
-          albumId: albumId,
-          encryptedSpaceService: encryptedSpaceService,
-          accessControlService: accessControlService,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('访问加密空间失败: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  /// 显示密码验证对话框
-  Future<void> _showPasswordVerifyDialog({
-    required String albumId,
-    required EncryptedSpaceService encryptedSpaceService,
-    required PinAccessControlService accessControlService,
-  }) async {
-    final result = await PasswordVerifyDialog.show(
-      context,
-      albumId: albumId,
-      encryptedSpaceService: encryptedSpaceService,
-      accessControlService: accessControlService,
-    );
-
-    // 验证成功，导航到加密空间页面
-    if (result == true && mounted) {
-      context.router.push(const EncryptedSpaceRoute());
-    }
-  }
-
-  /// 显示设置PIN对话框
-  Future<void> _showPasswordSetupDialog({
-    required String albumId,
-    required EncryptedSpaceService encryptedSpaceService,
-  }) async {
-    final result = await PasswordSetupDialog.show(
-      context,
-      albumId: albumId,
-      encryptedSpaceService: encryptedSpaceService,
-    );
-
-    // PIN设置成功，导航到加密空间页面
-    if (result == true && mounted) {
-      context.router.push(const EncryptedSpaceRoute());
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -454,11 +321,6 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
         onTap: () {
           // TODO: 跳转到归档页面
         },
-      ),
-      _CategoryItem(
-        icon: Icons.lock_outline,
-        label: '加密空间',
-        onTap: _handleEncryptedSpaceTap,
       ),
     ];
 

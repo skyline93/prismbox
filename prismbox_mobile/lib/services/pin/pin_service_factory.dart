@@ -12,14 +12,6 @@ import 'package:prismbox/services/biometric/biometric_auth_service.dart';
 /// PIN服务工厂
 /// 用于创建配置好的PIN服务实例
 class PinServiceFactory {
-  /// 创建加密空间专用的PIN服务配置
-  static PinServiceConfig createEncryptedSpaceConfig() {
-    return PinServiceConfig(
-      storageKeyPrefix: 'encrypted_space_',
-      resourceTypeName: 'album',
-      defaultSessionTimeout: const Duration(minutes: 30),
-    );
-  }
 
   /// 创建PIN认证服务
   static PinAuthService createAuthService({
@@ -71,39 +63,6 @@ class PinServiceFactory {
       config: config,
       sessionService: sessionService ?? createSessionService(config: config),
       biometricAuth: biometricAuth ?? BiometricAuthService(),
-    );
-  }
-
-  /// 创建完整的PIN服务套件（用于加密空间）
-  static PinServiceSuite createEncryptedSpaceSuite({
-    ApiService? apiService,
-    BiometricAuthService? biometricAuth,
-  }) {
-    final config = createEncryptedSpaceConfig();
-    final keyDerivationService = createKeyDerivationService(config: config);
-    final tokenEncryptionService = createTokenEncryptionService();
-    final sessionService = createSessionService(
-      config: config,
-      keyDerivationService: keyDerivationService,
-      tokenEncryptionService: tokenEncryptionService,
-    );
-    final authService = createAuthService(
-      config: config,
-      apiService: apiService,
-    );
-    final accessControlService = createAccessControlService(
-      config: config,
-      sessionService: sessionService,
-      biometricAuth: biometricAuth,
-    );
-
-    return PinServiceSuite(
-      config: config,
-      authService: authService,
-      sessionService: sessionService,
-      keyDerivationService: keyDerivationService,
-      tokenEncryptionService: tokenEncryptionService,
-      accessControlService: accessControlService,
     );
   }
 }

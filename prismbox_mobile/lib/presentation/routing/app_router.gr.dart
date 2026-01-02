@@ -33,12 +33,6 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const BackupSettingsPage(),
       );
     },
-    EncryptedSpaceRoute.name: (routeData) {
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: const EncryptedSpacePage(),
-      );
-    },
     LanguageRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -163,20 +157,6 @@ class BackupSettingsRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'BackupSettingsRoute';
-
-  static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [EncryptedSpacePage]
-class EncryptedSpaceRoute extends PageRouteInfo<void> {
-  const EncryptedSpaceRoute({List<PageRouteInfo>? children})
-      : super(
-          EncryptedSpaceRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'EncryptedSpaceRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

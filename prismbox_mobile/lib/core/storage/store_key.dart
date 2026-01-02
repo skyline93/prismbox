@@ -32,10 +32,6 @@ enum StoreKey<T> {
   loadPreview<bool>._(101),
   loadOriginal<bool>._(102),
 
-  // 加密空间设置
-  encryptedSpaceBiometricEnabled<bool>._(103), // 是否启用生物识别解锁加密空间
-  encryptedSpaceLockTimeoutMinutes<int>._(104), // 加密空间自动锁定超时时间（分钟），默认30分钟
-
   // 本地同步设置
   dataSourceThreshold<int>._(110), // 数据源切换阈值（数据库资产数量）
 
