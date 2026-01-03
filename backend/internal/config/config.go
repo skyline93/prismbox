@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/album/backend/internal/changelog"
 	"github.com/album/backend/internal/config/types"
 	"github.com/album/backend/internal/database"
 	"github.com/album/backend/internal/server"
@@ -20,13 +19,12 @@ type APIConfig struct {
 
 // Config 主配置结构体
 type Config struct {
-	Server    *server.Config         `yaml:"server"`
-	Database  *database.Config       `yaml:"database"`
-	Storage   *storage.Config        `yaml:"storage"`
-	Auth      *auth.Config           `yaml:"auth"`
-	API       *APIConfig             `yaml:"api"`
-	Logger    *logger.Config         `yaml:"logger"`
-	Changelog *changelog.Config      `yaml:"changelog"`
-	Queue     *gq.ServerConfig       `yaml:"queue"`
-	Media     *mediaprocessor.Config `yaml:"media"`
+	Server   *server.Config         `yaml:"server"`
+	Database *database.Config       `yaml:"database"`
+	Storage  *storage.Config        `yaml:"storage"`
+	Auth     *auth.Config           `yaml:"auth"`
+	API      *APIConfig             `yaml:"api"`
+	Logger   *logger.Config         `yaml:"logger"`
+	Queue    *gq.ServerConfig       `yaml:"queue"`
+	Media    *mediaprocessor.Config `yaml:"media"`
 }

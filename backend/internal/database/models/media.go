@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -57,26 +56,4 @@ type Media struct {
 // TableName 指定表名
 func (Media) TableName() string {
 	return "medias"
-}
-
-// GetRecordID 实现 changelog.ChangelogModel 接口
-func (m *Media) GetRecordID() string {
-	return m.UUID
-}
-
-// GetTableName 实现 changelog.ChangelogModel 接口
-func (m *Media) GetTableName() string {
-	return "medias"
-}
-
-// GetIsolationKey 实现 changelog.ChangelogModel 接口
-// 返回隔离字段名，Media 使用 user_id 作为隔离字段
-func (m *Media) GetIsolationKey() string {
-	return "user_id"
-}
-
-// GetIsolationValue 实现 changelog.ChangelogModel 接口
-// 返回用户ID作为隔离值
-func (m *Media) GetIsolationValue() string {
-	return fmt.Sprintf("%d", m.UserID)
 }

@@ -9,13 +9,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class SelectionBottomSheet extends ConsumerStatefulWidget {
   final int selectedCount;
   final VoidCallback onUpload;
+  final VoidCallback? onDelete;
   final bool isAllSelected;
+  final bool showDeleteButton;
 
   const SelectionBottomSheet({
     super.key,
     required this.selectedCount,
     required this.onUpload,
+    this.onDelete,
     required this.isAllSelected,
+    this.showDeleteButton = false,
   });
 
   @override
@@ -87,6 +91,15 @@ class _SelectionBottomSheetState extends ConsumerState<SelectionBottomSheet> {
                             label: '上传',
                             onPressed: widget.selectedCount > 0 ? widget.onUpload : null,
                           ),
+                          // 删除按钮（根据 showDeleteButton 显示）
+                          if (widget.showDeleteButton)
+                            _ControlBoxButton(
+                              iconData: Icons.delete_outline,
+                              label: '删除',
+                              onPressed: widget.selectedCount > 0 && widget.onDelete != null
+                                  ? widget.onDelete
+                                  : null,
+                            ),
                         ],
                       ),
                     ),

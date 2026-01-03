@@ -9,18 +9,21 @@ class LocalAsset extends BaseAsset {
   /// 本地资产 ID（photo_manager 的 AssetEntity ID）
   @override
   final String id;
-  
+
   /// 关联的远程资产 ID
   final String? remoteAssetId;
-  
+
   /// 是否已上传（标识资产是否已成功上传到服务器）
   final bool isUploaded;
-  
+
   /// 图片方向（EXIF 方向值，0-8）
   final int orientation;
-  
+
   /// photo_manager 的 AssetEntity（可选，用于直接访问本地资源）
   final AssetEntity? assetEntity;
+
+  /// 回收站路径（可选，用于已删除的资源）
+  final String? trashPath;
 
   const LocalAsset({
     required this.id,
@@ -38,6 +41,7 @@ class LocalAsset extends BaseAsset {
     this.isUploaded = false,
     this.orientation = 0,
     this.assetEntity,
+    this.trashPath,
   }) : remoteAssetId = remoteId;
 
   @override
@@ -47,7 +51,8 @@ class LocalAsset extends BaseAsset {
   String? get remoteId => remoteAssetId;
 
   @override
-  AssetState get storage => remoteId == null ? AssetState.local : AssetState.merged;
+  AssetState get storage =>
+      remoteId == null ? AssetState.local : AssetState.merged;
 
   @override
   String get heroTag => '${id}_${remoteId ?? checksum ?? ''}';
@@ -69,6 +74,7 @@ class LocalAsset extends BaseAsset {
     int orientation = 0,
     String? remoteAssetId,
     AssetEntity? assetEntity,
+    String? trashPath,
   }) {
     return LocalAsset(
       id: id,
@@ -86,7 +92,7 @@ class LocalAsset extends BaseAsset {
       isUploaded: isUploaded,
       orientation: orientation,
       assetEntity: assetEntity,
+      trashPath: trashPath,
     );
   }
 }
-

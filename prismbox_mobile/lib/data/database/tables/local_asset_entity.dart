@@ -45,6 +45,18 @@ class LocalAssetEntity extends Table with DriftDefaultsMixin, AssetEntityMixin {
   IntColumn get migrationStatus => intEnum<MigrationStatus>()
       .withDefault(const Constant(0))(); // MigrationStatus.none = 0
 
+  /// 删除时间（软删除）
+  /// 用于标记资源是否已删除，NULL 表示未删除
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  /// 原始路径（删除前在系统相册的路径）
+  /// 用于恢复时还原文件位置
+  TextColumn get originalPath => text().nullable()();
+
+  /// 回收站路径（在应用私有回收站空间的路径）
+  /// 用于永久删除时定位文件
+  TextColumn get trashPath => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

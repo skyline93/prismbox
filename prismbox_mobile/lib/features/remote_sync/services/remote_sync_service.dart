@@ -335,6 +335,30 @@ class RemoteSyncService {
       final updatedAt = _parseDateTime(data['updated_at'] as String?);
       final mediaTakenAt = _parseDateTime(data['media_taken_at'] as String?);
 
+      // 解析 deletedAt 字段
+      // 注意：后端同步 API 只返回未删除的资产（deleted = false），
+      // 所以同步数据中不会包含已删除的资产。
+      // 如果后端将来添加了 deleted_at 字段，优先使用它；
+      // 否则，由于只返回未删除的资产，deletedAt 应该为 null。
+      DateTime? deletedAt;
+      if (data.containsKey('deleted_at')) {
+        // 如果后端提供了 deleted_at 字段，解析它
+        deletedAt = _parseDateTime(data['deleted_at'] as String?);
+      } else if (data.containsKey('deleted')) {
+        // 如果后端提供了 deleted 布尔字段，根据它设置 deletedAt
+        final deleted = data['deleted'] as bool? ?? false;
+        if (deleted) {
+          // 如果 deleted 为 true，但没有提供 deleted_at 时间，使用 updatedAt 作为删除时间
+          deletedAt = updatedAt ?? DateTime.now();
+        } else {
+          deletedAt = null;
+        }
+      } else {
+        // 后端没有提供删除相关字段，说明该资产未删除
+        // 因为同步 API 只返回未删除的资产（deleted = false）
+        deletedAt = null;
+      }
+
       return RemoteAssetEntityData(
         id: data['uuid'] as String,
         checksum: data['hash'] as String? ?? '',
@@ -351,7 +375,7 @@ class RemoteSyncService {
         isFavorite: false, // 服务器数据中可能没有这个字段
         localDateTime: mediaTakenAt,
         thumbHash: null, // 服务器数据中可能没有这个字段
-        deletedAt: null,
+        deletedAt: deletedAt,
         livePhotoVideoId: null, // 服务器数据中可能没有这个字段
         visibility: AssetVisibility.private,
         stackId: null,

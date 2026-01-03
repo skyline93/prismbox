@@ -17,6 +17,7 @@ import 'package:prismbox/presentation/pages/backup/upload_detail_page.dart';
 import 'package:prismbox/presentation/pages/settings/settings_page.dart';
 import 'package:prismbox/presentation/pages/settings/preferences_page.dart';
 import 'package:prismbox/presentation/pages/settings/language_page.dart';
+import 'package:prismbox/presentation/pages/trash/trash_page.dart';
 import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
 import 'package:prismbox/presentation/routing/guards/duplicate_guard.dart';
 import 'package:prismbox/presentation/routing/guards/permission_guard.dart';
@@ -151,6 +152,13 @@ class AppRouter extends _$AppRouter {
         AutoRoute(
           page: LanguageRoute.page,
           path: '/settings/language',
+          guards: [_authGuard],
+        ),
+
+        // 回收站页面（需要认证）
+        AutoRoute(
+          page: TrashRoute.page,
+          path: '/trash',
           guards: [_authGuard],
         ),
       ];

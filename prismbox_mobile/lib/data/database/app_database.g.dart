@@ -456,6 +456,24 @@ class $LocalAssetEntityTable extends LocalAssetEntity
               defaultValue: const Constant(0))
           .withConverter<MigrationStatus>(
               $LocalAssetEntityTable.$convertermigrationStatus);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _originalPathMeta =
+      const VerificationMeta('originalPath');
+  @override
+  late final GeneratedColumn<String> originalPath = GeneratedColumn<String>(
+      'original_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _trashPathMeta =
+      const VerificationMeta('trashPath');
+  @override
+  late final GeneratedColumn<String> trashPath = GeneratedColumn<String>(
+      'trash_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         name,
@@ -471,7 +489,10 @@ class $LocalAssetEntityTable extends LocalAssetEntity
         isFavorite,
         orientation,
         isInPrivateSpace,
-        migrationStatus
+        migrationStatus,
+        deletedAt,
+        originalPath,
+        trashPath
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -553,6 +574,20 @@ class $LocalAssetEntityTable extends LocalAssetEntity
               data['is_in_private_space']!, _isInPrivateSpaceMeta));
     }
     context.handle(_migrationStatusMeta, const VerificationResult.success());
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    if (data.containsKey('original_path')) {
+      context.handle(
+          _originalPathMeta,
+          originalPath.isAcceptableOrUnknown(
+              data['original_path']!, _originalPathMeta));
+    }
+    if (data.containsKey('trash_path')) {
+      context.handle(_trashPathMeta,
+          trashPath.isAcceptableOrUnknown(data['trash_path']!, _trashPathMeta));
+    }
     return context;
   }
 
@@ -592,6 +627,12 @@ class $LocalAssetEntityTable extends LocalAssetEntity
       migrationStatus: $LocalAssetEntityTable.$convertermigrationStatus.fromSql(
           attachedDatabase.typeMapping.read(
               DriftSqlType.int, data['${effectivePrefix}migration_status'])!),
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+      originalPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}original_path']),
+      trashPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}trash_path']),
     );
   }
 
@@ -663,6 +704,18 @@ class LocalAssetEntityData extends DataClass
   /// 迁移状态枚举
   /// 用于跟踪迁移到私有空间或移回系统相册的操作状态
   final MigrationStatus migrationStatus;
+
+  /// 删除时间（软删除）
+  /// 用于标记资源是否已删除，NULL 表示未删除
+  final DateTime? deletedAt;
+
+  /// 原始路径（删除前在系统相册的路径）
+  /// 用于恢复时还原文件位置
+  final String? originalPath;
+
+  /// 回收站路径（在应用私有回收站空间的路径）
+  /// 用于永久删除时定位文件
+  final String? trashPath;
   const LocalAssetEntityData(
       {required this.name,
       required this.type,
@@ -677,7 +730,10 @@ class LocalAssetEntityData extends DataClass
       required this.isFavorite,
       required this.orientation,
       required this.isInPrivateSpace,
-      required this.migrationStatus});
+      required this.migrationStatus,
+      this.deletedAt,
+      this.originalPath,
+      this.trashPath});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -708,6 +764,15 @@ class LocalAssetEntityData extends DataClass
           .$convertermigrationStatus
           .toSql(migrationStatus));
     }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    if (!nullToAbsent || originalPath != null) {
+      map['original_path'] = Variable<String>(originalPath);
+    }
+    if (!nullToAbsent || trashPath != null) {
+      map['trash_path'] = Variable<String>(trashPath);
+    }
     return map;
   }
 
@@ -731,6 +796,15 @@ class LocalAssetEntityData extends DataClass
       orientation: Value(orientation),
       isInPrivateSpace: Value(isInPrivateSpace),
       migrationStatus: Value(migrationStatus),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      originalPath: originalPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalPath),
+      trashPath: trashPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trashPath),
     );
   }
 
@@ -754,6 +828,9 @@ class LocalAssetEntityData extends DataClass
       isInPrivateSpace: serializer.fromJson<bool>(json['isInPrivateSpace']),
       migrationStatus: $LocalAssetEntityTable.$convertermigrationStatus
           .fromJson(serializer.fromJson<int>(json['migrationStatus'])),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      originalPath: serializer.fromJson<String?>(json['originalPath']),
+      trashPath: serializer.fromJson<String?>(json['trashPath']),
     );
   }
   @override
@@ -777,6 +854,9 @@ class LocalAssetEntityData extends DataClass
       'migrationStatus': serializer.toJson<int>($LocalAssetEntityTable
           .$convertermigrationStatus
           .toJson(migrationStatus)),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'originalPath': serializer.toJson<String?>(originalPath),
+      'trashPath': serializer.toJson<String?>(trashPath),
     };
   }
 
@@ -794,7 +874,10 @@ class LocalAssetEntityData extends DataClass
           bool? isFavorite,
           int? orientation,
           bool? isInPrivateSpace,
-          MigrationStatus? migrationStatus}) =>
+          MigrationStatus? migrationStatus,
+          Value<DateTime?> deletedAt = const Value.absent(),
+          Value<String?> originalPath = const Value.absent(),
+          Value<String?> trashPath = const Value.absent()}) =>
       LocalAssetEntityData(
         name: name ?? this.name,
         type: type ?? this.type,
@@ -812,6 +895,10 @@ class LocalAssetEntityData extends DataClass
         orientation: orientation ?? this.orientation,
         isInPrivateSpace: isInPrivateSpace ?? this.isInPrivateSpace,
         migrationStatus: migrationStatus ?? this.migrationStatus,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        originalPath:
+            originalPath.present ? originalPath.value : this.originalPath,
+        trashPath: trashPath.present ? trashPath.value : this.trashPath,
       );
   LocalAssetEntityData copyWithCompanion(LocalAssetEntityCompanion data) {
     return LocalAssetEntityData(
@@ -838,6 +925,11 @@ class LocalAssetEntityData extends DataClass
       migrationStatus: data.migrationStatus.present
           ? data.migrationStatus.value
           : this.migrationStatus,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      originalPath: data.originalPath.present
+          ? data.originalPath.value
+          : this.originalPath,
+      trashPath: data.trashPath.present ? data.trashPath.value : this.trashPath,
     );
   }
 
@@ -857,7 +949,10 @@ class LocalAssetEntityData extends DataClass
           ..write('isFavorite: $isFavorite, ')
           ..write('orientation: $orientation, ')
           ..write('isInPrivateSpace: $isInPrivateSpace, ')
-          ..write('migrationStatus: $migrationStatus')
+          ..write('migrationStatus: $migrationStatus, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('originalPath: $originalPath, ')
+          ..write('trashPath: $trashPath')
           ..write(')'))
         .toString();
   }
@@ -877,7 +972,10 @@ class LocalAssetEntityData extends DataClass
       isFavorite,
       orientation,
       isInPrivateSpace,
-      migrationStatus);
+      migrationStatus,
+      deletedAt,
+      originalPath,
+      trashPath);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -895,7 +993,10 @@ class LocalAssetEntityData extends DataClass
           other.isFavorite == this.isFavorite &&
           other.orientation == this.orientation &&
           other.isInPrivateSpace == this.isInPrivateSpace &&
-          other.migrationStatus == this.migrationStatus);
+          other.migrationStatus == this.migrationStatus &&
+          other.deletedAt == this.deletedAt &&
+          other.originalPath == this.originalPath &&
+          other.trashPath == this.trashPath);
 }
 
 class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
@@ -913,6 +1014,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
   final Value<int> orientation;
   final Value<bool> isInPrivateSpace;
   final Value<MigrationStatus> migrationStatus;
+  final Value<DateTime?> deletedAt;
+  final Value<String?> originalPath;
+  final Value<String?> trashPath;
   const LocalAssetEntityCompanion({
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -928,6 +1032,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.orientation = const Value.absent(),
     this.isInPrivateSpace = const Value.absent(),
     this.migrationStatus = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.originalPath = const Value.absent(),
+    this.trashPath = const Value.absent(),
   });
   LocalAssetEntityCompanion.insert({
     required String name,
@@ -944,6 +1051,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.orientation = const Value.absent(),
     this.isInPrivateSpace = const Value.absent(),
     this.migrationStatus = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.originalPath = const Value.absent(),
+    this.trashPath = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         createdAt = Value(createdAt),
@@ -965,6 +1075,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     Expression<int>? orientation,
     Expression<bool>? isInPrivateSpace,
     Expression<int>? migrationStatus,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? originalPath,
+    Expression<String>? trashPath,
   }) {
     return RawValuesInsertable({
       if (name != null) 'name': name,
@@ -981,6 +1094,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       if (orientation != null) 'orientation': orientation,
       if (isInPrivateSpace != null) 'is_in_private_space': isInPrivateSpace,
       if (migrationStatus != null) 'migration_status': migrationStatus,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (originalPath != null) 'original_path': originalPath,
+      if (trashPath != null) 'trash_path': trashPath,
     });
   }
 
@@ -998,7 +1114,10 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       Value<bool>? isFavorite,
       Value<int>? orientation,
       Value<bool>? isInPrivateSpace,
-      Value<MigrationStatus>? migrationStatus}) {
+      Value<MigrationStatus>? migrationStatus,
+      Value<DateTime?>? deletedAt,
+      Value<String?>? originalPath,
+      Value<String?>? trashPath}) {
     return LocalAssetEntityCompanion(
       name: name ?? this.name,
       type: type ?? this.type,
@@ -1014,6 +1133,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       orientation: orientation ?? this.orientation,
       isInPrivateSpace: isInPrivateSpace ?? this.isInPrivateSpace,
       migrationStatus: migrationStatus ?? this.migrationStatus,
+      deletedAt: deletedAt ?? this.deletedAt,
+      originalPath: originalPath ?? this.originalPath,
+      trashPath: trashPath ?? this.trashPath,
     );
   }
 
@@ -1065,6 +1187,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           .$convertermigrationStatus
           .toSql(migrationStatus.value));
     }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (originalPath.present) {
+      map['original_path'] = Variable<String>(originalPath.value);
+    }
+    if (trashPath.present) {
+      map['trash_path'] = Variable<String>(trashPath.value);
+    }
     return map;
   }
 
@@ -1084,7 +1215,10 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           ..write('isFavorite: $isFavorite, ')
           ..write('orientation: $orientation, ')
           ..write('isInPrivateSpace: $isInPrivateSpace, ')
-          ..write('migrationStatus: $migrationStatus')
+          ..write('migrationStatus: $migrationStatus, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('originalPath: $originalPath, ')
+          ..write('trashPath: $trashPath')
           ..write(')'))
         .toString();
   }
@@ -6380,6 +6514,9 @@ typedef $$LocalAssetEntityTableCreateCompanionBuilder
   Value<int> orientation,
   Value<bool> isInPrivateSpace,
   Value<MigrationStatus> migrationStatus,
+  Value<DateTime?> deletedAt,
+  Value<String?> originalPath,
+  Value<String?> trashPath,
 });
 typedef $$LocalAssetEntityTableUpdateCompanionBuilder
     = LocalAssetEntityCompanion Function({
@@ -6397,6 +6534,9 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<int> orientation,
   Value<bool> isInPrivateSpace,
   Value<MigrationStatus> migrationStatus,
+  Value<DateTime?> deletedAt,
+  Value<String?> originalPath,
+  Value<String?> trashPath,
 });
 
 class $$LocalAssetEntityTableTableManager extends RootTableManager<
@@ -6431,6 +6571,9 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<int> orientation = const Value.absent(),
             Value<bool> isInPrivateSpace = const Value.absent(),
             Value<MigrationStatus> migrationStatus = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<String?> originalPath = const Value.absent(),
+            Value<String?> trashPath = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion(
             name: name,
@@ -6447,6 +6590,9 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             orientation: orientation,
             isInPrivateSpace: isInPrivateSpace,
             migrationStatus: migrationStatus,
+            deletedAt: deletedAt,
+            originalPath: originalPath,
+            trashPath: trashPath,
           ),
           createCompanionCallback: ({
             required String name,
@@ -6463,6 +6609,9 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<int> orientation = const Value.absent(),
             Value<bool> isInPrivateSpace = const Value.absent(),
             Value<MigrationStatus> migrationStatus = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<String?> originalPath = const Value.absent(),
+            Value<String?> trashPath = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion.insert(
             name: name,
@@ -6479,6 +6628,9 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             orientation: orientation,
             isInPrivateSpace: isInPrivateSpace,
             migrationStatus: migrationStatus,
+            deletedAt: deletedAt,
+            originalPath: originalPath,
+            trashPath: trashPath,
           ),
         ));
 }
@@ -6559,6 +6711,21 @@ class $$LocalAssetEntityTableFilterComposer
           builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
               column,
               joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get deletedAt => $state.composableBuilder(
+      column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get originalPath => $state.composableBuilder(
+      column: $state.table.originalPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get trashPath => $state.composableBuilder(
+      column: $state.table.trashPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
 
   ComposableFilter localAlbumAssetEntityRefs(
       ComposableFilter Function($$LocalAlbumAssetEntityTableFilterComposer f)
@@ -6649,6 +6816,21 @@ class $$LocalAssetEntityTableOrderingComposer
 
   ColumnOrderings<int> get migrationStatus => $state.composableBuilder(
       column: $state.table.migrationStatus,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get deletedAt => $state.composableBuilder(
+      column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get originalPath => $state.composableBuilder(
+      column: $state.table.originalPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get trashPath => $state.composableBuilder(
+      column: $state.table.trashPath,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }

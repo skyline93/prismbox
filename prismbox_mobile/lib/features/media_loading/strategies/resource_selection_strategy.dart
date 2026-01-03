@@ -12,20 +12,22 @@ import 'package:prismbox/features/media_loading/providers/local_full_provider.da
 import 'package:prismbox/features/media_loading/providers/local_thumb_provider.dart';
 import 'package:prismbox/features/media_loading/providers/remote_full_provider.dart';
 import 'package:prismbox/features/media_loading/providers/remote_thumb_provider.dart';
+import 'package:prismbox/features/media_loading/providers/file_path_thumb_provider.dart';
+import 'package:prismbox/features/media_loading/providers/file_path_full_provider.dart';
 
 /// 资源选择策略接口
 /// 定义如何选择本地或远程资源提供者
 abstract class ResourceSelectionStrategy {
   /// 判断是否应该使用本地资源
   bool shouldUseLocalAsset(BaseAsset asset);
-  
+
   /// 选择缩略图提供者
   ImageProvider? selectThumbnailProvider(
     BaseAsset asset, {
     required Size size,
     String? serverUrl,
   });
-  
+
   /// 选择原图提供者
   ImageProvider selectFullImageProvider(
     BaseAsset asset, {
@@ -34,9 +36,9 @@ abstract class ResourceSelectionStrategy {
     String? serverUrl,
     AssetEntityLoader? assetEntityLoader,
   });
-  
+
   /// 异步选择缩略图提供者（新增）
-  /// 
+  ///
   /// 用于处理 assetEntity 为 null 的情况
   /// 返回 Future，支持异步获取 AssetEntity
   Future<ImageProvider?> selectThumbnailProviderAsync(
@@ -52,10 +54,10 @@ abstract class ResourceSelectionStrategy {
 class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
   /// 用户 ID 获取函数（可选）
   final String? Function(BaseAsset asset)? userIdGetter;
-  
+
   /// 是否优先使用远程图片（从 AppSetting 获取）
   final bool preferRemoteImage;
-  
+
   /// 缓存管理器（可选）
   ThumbnailImageCacheManager? thumbnailCacheManager;
   RemoteImageCacheManager? remoteImageCacheManager;
@@ -90,16 +92,30 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
   }) {
     if (shouldUseLocalAsset(asset)) {
       // 使用本地资源
-      if (asset is LocalAsset && asset.assetEntity != null) {
-        return LocalThumbProvider(
-          asset: asset.assetEntity!,
-          size: size,
-          cacheManager: thumbnailCacheManager,
-          userId: userIdGetter?.call(asset),
-          checksum: asset.checksum,
-        );
+      if (asset is LocalAsset) {
+        // 如果资产在回收站（有 trashPath），使用文件路径提供者
+        if (asset.trashPath != null && asset.trashPath!.isNotEmpty) {
+          return FilePathThumbProvider(
+            filePath: asset.trashPath!,
+            size: size,
+            cacheManager: thumbnailCacheManager,
+            userId: userIdGetter?.call(asset),
+            checksum: asset.checksum,
+          );
+        }
+
+        // 如果有 assetEntity，使用 AssetEntity 提供者
+        if (asset.assetEntity != null) {
+          return LocalThumbProvider(
+            asset: asset.assetEntity!,
+            size: size,
+            cacheManager: thumbnailCacheManager,
+            userId: userIdGetter?.call(asset),
+            checksum: asset.checksum,
+          );
+        }
       }
-      // 如果没有 AssetEntity，返回 null
+      // 如果没有 AssetEntity 且不在回收站，返回 null
       return null;
     } else {
       // 使用远程资源
@@ -126,6 +142,18 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
     if (shouldUseLocalAsset(asset)) {
       // 使用本地资源
       if (asset is LocalAsset) {
+        // 如果资产在回收站（有 trashPath），使用文件路径提供者
+        if (asset.trashPath != null && asset.trashPath!.isNotEmpty) {
+          return FilePathFullProvider(
+            filePath: asset.trashPath!,
+            targetSize: size,
+            cacheManager: thumbnailCacheManager,
+            userId: userIdGetter?.call(asset),
+            checksum: asset.checksum,
+            loadOriginal: loadOriginal,
+          );
+        }
+
         if (asset.assetEntity != null) {
           // 有 assetEntity，直接使用 LocalFullImageProvider
           return LocalFullImageProvider(
@@ -147,7 +175,7 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
             loadOriginal: loadOriginal,
           );
         }
-        // 如果没有 AssetEntityLoader，无法加载本地资源
+        // 如果没有 AssetEntityLoader 且不在回收站，无法加载本地资源
       }
       // LocalAsset 的 assetEntity 为 null 且没有 AssetEntityLoader，尝试回退到远程
       if (asset.hasRemote && asset is RemoteAsset) {
@@ -171,7 +199,7 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
         );
       }
     }
-    
+
     // 如果既没有本地也没有远程，抛出异常（由调用方处理占位符）
     throw UnimplementedError('No provider available for asset: ${asset.id}');
   }
@@ -185,6 +213,17 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
   }) async {
     if (shouldUseLocalAsset(asset)) {
       if (asset is LocalAsset) {
+        // 如果资产在回收站（有 trashPath），使用文件路径提供者
+        if (asset.trashPath != null && asset.trashPath!.isNotEmpty) {
+          return FilePathThumbProvider(
+            filePath: asset.trashPath!,
+            size: size,
+            cacheManager: thumbnailCacheManager,
+            userId: userIdGetter?.call(asset),
+            checksum: asset.checksum,
+          );
+        }
+
         // 如果 assetEntity 为 null，尝试异步获取
         if (asset.assetEntity == null) {
           if (assetEntityLoader != null) {
@@ -227,4 +266,3 @@ class DefaultResourceSelectionStrategy implements ResourceSelectionStrategy {
     return null;
   }
 }
-

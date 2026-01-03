@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/album/backend/internal/changelog"
 	"github.com/album/backend/internal/config/types"
 	"github.com/album/backend/internal/database"
 	"github.com/album/backend/internal/server"
@@ -305,13 +304,6 @@ func (l *Loader) defaultConfig() *Config {
 			Level:  "debug",
 			Format: "console",
 			Output: "stdout",
-		},
-		Changelog: &changelog.Config{
-			Enabled:                   true,
-			CleanupInterval:           24 * time.Hour,
-			DeviceActiveThreshold:     5 * time.Minute,
-			DefaultChangelogPageLimit: 50,
-			FullChangelogTables:       make(map[string]changelog.FullChangelogTableConfig),
 		},
 		Queue: gq.DefaultServerConfig(),
 		Media: mediaprocessor.DefaultConfig(),

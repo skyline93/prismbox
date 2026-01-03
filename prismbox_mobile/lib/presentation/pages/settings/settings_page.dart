@@ -42,6 +42,8 @@ class SettingsPage extends ConsumerWidget {
             _buildPreferencesCard(context),
             // 语言设置卡片
             _buildLanguageCard(context, languageDisplay),
+            // 回收站卡片
+            _buildTrashCard(context),
             const SizedBox(height: 8),
           ],
         ),
@@ -147,6 +149,62 @@ class SettingsPage extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         languageDisplay,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 20, color: Colors.grey[400]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建回收站卡片
+  Widget _buildTrashCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.router.push(const TrashRoute()),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.delete_outline, size: 24, color: Colors.black87),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '回收站',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '查看和管理已删除的资源',
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],

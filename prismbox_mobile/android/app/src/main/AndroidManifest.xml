@@ -16,9 +16,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     
-    <!-- Android 13 及以上 (API 33+) - 写入权限（用于修改/删除照片） -->
+    <!-- Android 13 及以上 (API 33+) - 写入权限（用于修改/删除媒体文件） -->
     <uses-permission android:name="android.permission.WRITE_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.WRITE_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.WRITE_MEDIA_AUDIO" />
     
     <!-- Android 14 及以上 (API 34+) - 部分媒体访问权限（如果需要访问部分照片） -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />

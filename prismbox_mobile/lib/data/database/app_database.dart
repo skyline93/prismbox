@@ -69,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -239,6 +239,21 @@ class AppDatabase extends _$AppDatabase {
         await m.database.customStatement('''
           ALTER TABLE local_asset_entity_new RENAME TO 
           local_asset_entity;
+        ''');
+        break;
+      case 10:
+        // 添加回收站相关字段到本地资产表
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity 
+          ADD COLUMN deleted_at INTEGER;
+        ''');
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity 
+          ADD COLUMN original_path TEXT;
+        ''');
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity 
+          ADD COLUMN trash_path TEXT;
         ''');
         break;
       // ... 其他版本迁移

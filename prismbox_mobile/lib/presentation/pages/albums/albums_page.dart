@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/user/user_profile_indicator.dart';
 
 /// 合集页面
@@ -98,7 +99,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                   icon: Icons.delete_outline,
                   label: '回收站',
                   onTap: () {
-                    // TODO: 跳转到回收站
+                    context.router.push(const TrashRoute());
                   },
                 ),
               ),

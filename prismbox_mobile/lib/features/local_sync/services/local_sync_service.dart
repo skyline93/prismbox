@@ -153,13 +153,15 @@ class LocalSyncService {
               try {
                 // 先检查是否存在，用于统计
                 final existing = await dao.getAssetById(entity.id);
-                
+
                 // 如果资产已在私有空间，跳过更新（保护私有空间状态）
                 if (existing != null && existing.isInPrivateSpace) {
-                  _logger.fine('Skipping upsert for asset in private space: ${entity.id}');
+                  _logger.fine(
+                    'Skipping upsert for asset in private space: ${entity.id}',
+                  );
                   continue;
                 }
-                
+
                 await dao.insertOrUpdateAsset(entity);
                 if (existing == null) {
                   added++;
@@ -175,10 +177,12 @@ class LocalSyncService {
                     // 再次检查资产是否在私有空间（防止并发修改）
                     final existing = await dao.getAssetById(entity.id);
                     if (existing != null && existing.isInPrivateSpace) {
-                      _logger.fine('Skipping update for asset in private space: ${entity.id}');
+                      _logger.fine(
+                        'Skipping update for asset in private space: ${entity.id}',
+                      );
                       continue;
                     }
-                    
+
                     await dao.updateAsset(entity);
                     updated++;
                   } catch (e3) {
@@ -313,10 +317,12 @@ class LocalSyncService {
             } else {
               // 如果资产已在私有空间，跳过更新（保护私有空间状态）
               if (existing.isInPrivateSpace) {
-                _logger.fine('Skipping update for asset in private space: ${entity.id}');
+                _logger.fine(
+                  'Skipping update for asset in private space: ${entity.id}',
+                );
                 continue;
               }
-              
+
               // 检查是否需要更新（比较修改时间）
               if (entity.updatedAt.isAfter(existing.updatedAt)) {
                 toUpdate.add(entity);
@@ -340,10 +346,12 @@ class LocalSyncService {
                 // 检查资产是否已在私有空间（防止并发修改）
                 final existing = await dao.getAssetById(entity.id);
                 if (existing != null && existing.isInPrivateSpace) {
-                  _logger.fine('Skipping insert for asset in private space: ${entity.id}');
+                  _logger.fine(
+                    'Skipping insert for asset in private space: ${entity.id}',
+                  );
                   continue;
                 }
-                
+
                 await dao.insertOrUpdateAsset(entity);
                 added++;
               } catch (e2) {
@@ -355,10 +363,12 @@ class LocalSyncService {
                     // 再次检查资产是否在私有空间（防止并发修改）
                     final existing = await dao.getAssetById(entity.id);
                     if (existing != null && existing.isInPrivateSpace) {
-                      _logger.fine('Skipping update for asset in private space: ${entity.id}');
+                      _logger.fine(
+                        'Skipping update for asset in private space: ${entity.id}',
+                      );
                       continue;
                     }
-                    
+
                     await dao.updateAsset(entity);
                     updated++;
                   } catch (e3) {
@@ -378,10 +388,12 @@ class LocalSyncService {
             // 再次检查资产是否在私有空间（防止并发修改）
             final existing = await dao.getAssetById(entity.id);
             if (existing != null && existing.isInPrivateSpace) {
-              _logger.fine('Skipping update for asset in private space: ${entity.id}');
+              _logger.fine(
+                'Skipping update for asset in private space: ${entity.id}',
+              );
               continue;
             }
-            
+
             await dao.updateAsset(entity);
             updated++;
           } catch (e) {
@@ -488,13 +500,20 @@ class LocalSyncService {
 
       // 找出数据库中但系统相册中不存在的资产
       // 注意：如果资产在私有空间，即使系统相册中不存在，也不应该删除
+      // 注意：已软删除的资产（deletedAt != null）不应该被硬删除，它们已经在回收站
       int deleted = 0;
       for (final existing in existingAssets) {
         // 跳过私有空间中的资产（它们已经从系统相册删除）
         if (existing.isInPrivateSpace) {
           continue;
         }
-        
+
+        // 跳过已软删除的资产（它们已经在回收站，不应该被硬删除）
+        if (existing.deletedAt != null) {
+          _logger.fine('跳过已软删除的资产: ${existing.id}');
+          continue;
+        }
+
         if (!systemAssetIds.contains(existing.id)) {
           try {
             await dao.deleteAsset(existing.id);

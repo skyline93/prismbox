@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/album/backend/internal/changelog"
 	"github.com/album/backend/internal/config"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/service/auth"
@@ -62,10 +61,6 @@ type App struct {
 	SyncService            sync.Service
 	GroupService           interface{} // 使用interface{}避免循环依赖，实际类型为 group.Service
 	ShareService           interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
-
-	// 变更日志模块（可选）
-	ChangelogEngine  *changelog.Engine
-	ChangelogFactory *changelog.WrapperFactory
 }
 
 // Close 释放应用资源

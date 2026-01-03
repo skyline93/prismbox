@@ -110,6 +110,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const TabShellPage(),
       );
     },
+    TrashRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const TrashPage(),
+      );
+    },
     UploadDetailRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -354,6 +360,20 @@ class TabShellRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'TabShellRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [TrashPage]
+class TrashRoute extends PageRouteInfo<void> {
+  const TrashRoute({List<PageRouteInfo>? children})
+      : super(
+          TrashRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'TrashRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

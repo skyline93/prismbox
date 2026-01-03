@@ -23,8 +23,8 @@ class ApiConfig {
   /// - https://47.107.63.140
   // static const String serverBaseUrl = 'http://47.107.63.140';
   // static const String serverBaseUrl = 'http://127.0.0.1:8080';
-  static const String serverBaseUrl = 'http://10.0.2.2';
-  // static const String serverBaseUrl = 'http://10.0.2.2:8080';
+  // static const String serverBaseUrl = 'http://10.0.2.2';
+  static const String serverBaseUrl = 'http://10.0.2.2:8080';
 
   /// 获取完整的 API 端点 URL
   /// 

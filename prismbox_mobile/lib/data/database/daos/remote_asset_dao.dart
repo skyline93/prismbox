@@ -118,7 +118,7 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
     final count = await (update(remoteAssetEntity)
           ..where((t) => t.id.equals(id)))
         .write(RemoteAssetEntityCompanion(
-          deletedAt: const Value.absent(),
+          deletedAt: const Value(null), // 设置为 NULL，清空删除标记
         ));
     return count > 0;
   }
@@ -169,6 +169,23 @@ class RemoteAssetDao extends DatabaseAccessor<AppDatabase>
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
           ..limit(limit, offset: offset))
         .get();
+  }
+
+  /// 获取所有已软删除的远程资产
+  /// 按删除时间降序排序
+  Future<List<RemoteAssetEntityData>> getDeletedAssets() {
+    return (select(remoteAssetEntity)
+          ..where((t) => t.deletedAt.isNotNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.deletedAt)]))
+        .get();
+  }
+
+  /// 硬删除资产（永久删除）
+  Future<bool> deleteAsset(String id) async {
+    final count = await (delete(remoteAssetEntity)
+          ..where((t) => t.id.equals(id)))
+        .go();
+    return count > 0;
   }
 }
 

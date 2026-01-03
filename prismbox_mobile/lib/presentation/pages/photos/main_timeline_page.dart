@@ -6,6 +6,7 @@ import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
+import 'package:prismbox/presentation/pages/photos/controllers/timeline_delete_handler.dart';
 import 'package:prismbox/presentation/pages/photos/controllers/timeline_drag_selection_controller.dart';
 import 'package:prismbox/presentation/pages/photos/controllers/timeline_scroll_position_manager.dart';
 import 'package:prismbox/presentation/pages/photos/controllers/timeline_upload_handler.dart';
@@ -46,6 +47,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
   late final TimelineDragSelectionController _dragSelectionController;
   late final TimelineScrollPositionManager _scrollPositionManager;
   late final TimelineUploadHandler _uploadHandler;
+  late final TimelineDeleteHandler _deleteHandler;
 
   @override
   WidgetRef get ref => super.ref;
@@ -68,6 +70,11 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
       mounted: () => mounted,
     );
     _uploadHandler = TimelineUploadHandler(
+      context: context,
+      ref: ref,
+      mounted: () => mounted,
+    );
+    _deleteHandler = TimelineDeleteHandler(
       context: context,
       ref: ref,
       mounted: () => mounted,
@@ -205,7 +212,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
               SelectionBottomSheet(
                 selectedCount: selectionCount,
                 onUpload: _uploadHandler.handleUpload,
+                onDelete: _getDeleteCallback(ref, timelineSectionsAsync),
                 isAllSelected: _isAllSelected(ref, timelineSectionsAsync),
+                showDeleteButton: _shouldShowDeleteButton(ref),
               ),
           ],
         ),
@@ -413,6 +422,45 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
         }
       }
     }
+  }
+
+  /// 判断是否应该显示删除按钮
+  /// 根据当前过滤模式决定
+  bool _shouldShowDeleteButton(WidgetRef ref) {
+    // 所有过滤模式都支持删除
+    return true;
+  }
+
+  /// 获取删除回调函数
+  VoidCallback? _getDeleteCallback(
+    WidgetRef ref,
+    AsyncValue<List<TimelineSection>> timelineSectionsAsync,
+  ) {
+    return () {
+      final selectedIds = ref.read(
+        assetSelectionProvider.select((s) => s.selectedIds),
+      );
+
+      if (selectedIds.isEmpty) {
+        return;
+      }
+
+      // 从时间线数据中获取选中的资产
+      timelineSectionsAsync.whenData((sections) {
+        final selectedAssets = <BaseAsset>[];
+        for (final section in sections) {
+          for (final asset in section.assets) {
+            if (selectedIds.contains(asset.id)) {
+              selectedAssets.add(asset);
+            }
+          }
+        }
+
+        if (selectedAssets.isNotEmpty) {
+          _deleteHandler.handleDelete(selectedAssets);
+        }
+      });
+    };
   }
 
 }

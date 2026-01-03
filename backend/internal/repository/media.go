@@ -74,6 +74,15 @@ func (r *mediaRepository) Update(ctx context.Context, uuid string, updates map[s
 		return result.Error
 	}
 
+	// 检查是否真的更新了记录
+	if result.RowsAffected == 0 {
+		r.logger.Warn("update media record: no rows affected",
+			logger.String("uuid", uuid),
+			logger.String("updates", string(updatesJSON)),
+		)
+		return gorm.ErrRecordNotFound
+	}
+
 	// 记录更新结果
 	r.logger.Info("media record updated successfully",
 		logger.String("uuid", uuid),
@@ -120,11 +129,11 @@ func (r *mediaRepository) FindByUserIDWithFilter(ctx context.Context, userID uin
 	var medias []*models.Media
 	query := r.db.WithContext(ctx).
 		Where("user_id = ? AND deleted = ?", userID, false)
-	
+
 	if itemType != "" {
 		query = query.Where("item_type = ?", itemType)
 	}
-	
+
 	err := query.
 		Order("created_at DESC").
 		Limit(limit).
@@ -139,11 +148,11 @@ func (r *mediaRepository) CountByUserID(ctx context.Context, userID uint, itemTy
 	query := r.db.WithContext(ctx).
 		Model(&models.Media{}).
 		Where("user_id = ? AND deleted = ?", userID, false)
-	
+
 	if itemType != "" {
 		query = query.Where("item_type = ?", itemType)
 	}
-	
+
 	err := query.Count(&count).Error
 	return count, err
 }
@@ -163,11 +172,11 @@ func (r *mediaRepository) FindChangesSince(ctx context.Context, userID uint, sin
 	var medias []*models.Media
 	query := r.db.WithContext(ctx).
 		Where("user_id = ?", userID)
-	
+
 	if since != nil {
 		query = query.Where("updated_at > ?", since)
 	}
-	
+
 	err := query.
 		Order("updated_at ASC").
 		Find(&medias).Error
