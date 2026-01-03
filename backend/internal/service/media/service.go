@@ -1418,7 +1418,21 @@ func (s *service) PurgeMedia(ctx context.Context, userID uint, mediaUUID string)
 		return fmt.Errorf("find media: %w", err)
 	}
 
-	// 2. 删除存储中的文件
+	// 2. 检查资产是否已被软删除
+	// 如果未被软删除（deleted = false），理论上应该先发送删除事件通知其他设备
+	// 但由于 PurgeMedia 没有 writer，无法直接发送事件
+	// 如果资产之前已被软删除（deleted = true），其他设备应该已经收到删除事件
+	if !media.Deleted {
+		// 资产未被软删除，直接永久删除
+		// 注意：这种情况下其他设备可能无法及时知道资产已被删除
+		// 但会在下次全量同步时发现资产不存在，从而清理本地记录
+		s.log.Warn("purging media that was not soft-deleted, other devices may not be notified immediately",
+			logger.String("uuid", mediaUUID),
+			logger.Uint("user_id", userID),
+		)
+	}
+
+	// 3. 删除存储中的文件
 	if err := s.cleanupMediaFiles(ctx, media); err != nil {
 		s.log.Warn("failed to cleanup media files",
 			logger.Error(err),
@@ -1427,7 +1441,7 @@ func (s *service) PurgeMedia(ctx context.Context, userID uint, mediaUUID string)
 		// 继续删除数据库记录，即使文件删除失败
 	}
 
-	// 3. 永久删除数据库记录
+	// 4. 永久删除数据库记录
 	if err := s.repo.Purge(ctx, mediaUUID); err != nil {
 		return fmt.Errorf("purge media: %w", err)
 	}

@@ -209,6 +209,8 @@ type SyncRepository interface {
 	GetAssetsWithCursor(ctx context.Context, userID uint, batchSize int, lastID string) ([]*models.Media, string, error)
 	// GetAssetsSince 获取指定时间之后的资产（用于增量同步）
 	GetAssetsSince(ctx context.Context, userID uint, since *time.Time, batchSize int) ([]*models.Media, error)
+	// GetDeletedAssetsSince 获取指定时间之后被软删除的资产UUID列表（用于增量同步）
+	GetDeletedAssetsSince(ctx context.Context, userID uint, since *time.Time, batchSize int) ([]string, error)
 }
 
 // CheckpointRepository 检查点仓储接口

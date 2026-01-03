@@ -30,13 +30,13 @@ func NewHandler(syncService syncservice.Service, app *appctx.App) *Handler {
 
 // StreamSyncAssets 流式同步资产
 // @Summary      流式同步资产
-// @Description  流式同步远程媒体资源到本地，支持全量和增量同步
+// @Description  流式同步远程媒体资源到本地，支持全量和增量同步。在增量同步时，服务器会发送已删除资产的删除事件（asset_delete_v1），客户端收到后应更新本地数据库的 deletedAt 字段。删除事件格式：{"type": "asset_delete_v1", "ids": [uuid1, uuid2, ...], "data": {}}。删除事件在资产数据之后发送。
 // @Tags         Sync
 // @Accept       json
 // @Produce      application/jsonlines+json
 // @Security     BearerAuth
 // @Param        request body dto.SyncStreamRequest true "同步请求"
-// @Success      200 "流式数据（JSON Lines 格式）"
+// @Success      200 "流式数据（JSON Lines 格式）。事件类型包括：asset_v1（资产数据）、asset_delete_v1（删除事件）、sync_complete_v1（同步完成）"
 // @Failure      400 {object} response.ApiResponse "请求参数错误"
 // @Failure      401 {object} response.ApiResponse "未认证"
 // @Router       /sync/assets/stream [post]

@@ -72,3 +72,22 @@ func (r *syncRepository) GetAssetsSince(ctx context.Context, userID uint, since 
 
 	return medias, nil
 }
+
+// GetDeletedAssetsSince 获取指定时间之后被软删除的资产UUID列表（用于增量同步）
+func (r *syncRepository) GetDeletedAssetsSince(ctx context.Context, userID uint, since *time.Time, batchSize int) ([]string, error) {
+	query := r.db.WithContext(ctx).
+		Model(&models.Media{}).
+		Where("user_id = ? AND deleted = ?", userID, true).
+		Select("uuid")
+
+	if since != nil {
+		query = query.Where("updated_at > ?", *since)
+	}
+
+	var uuids []string
+	if err := query.Order("updated_at ASC").Limit(batchSize).Pluck("uuid", &uuids).Error; err != nil {
+		return nil, err
+	}
+
+	return uuids, nil
+}

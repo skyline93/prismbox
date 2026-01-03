@@ -1,8 +1,5 @@
-# remote-asset-sync Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change decouple-local-remote-assets. Update Purpose after archive.
-## Requirements
 ### Requirement: 远程资产同步
 
 系统 SHALL 提供远程资产同步功能，从服务器同步远程媒体资源到本地数据库。远程资产同步 SHALL 完全独立于本地资产同步，不进行任何关联。
