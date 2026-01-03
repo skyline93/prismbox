@@ -41,16 +41,21 @@ class TrashStorageService {
   ///
   /// **参数**：
   /// - [sourceFile] - 源文件路径
-  /// - [assetId] - 资产 ID（用于生成文件名）
+  /// - [assetId] - 资产 ID（用于日志和错误处理）
+  /// - [originalFileName] - 原始文件名（用于生成回收站文件名，确保恢复时文件名不变）
   ///
   /// **返回**：回收站文件路径
   ///
   /// **行为**：
-  /// 1. 复制文件到回收站目录（按日期分组）
-  /// 2. 返回回收站文件路径
+  /// 1. 清理原始文件名，移除非法字符和路径分隔符
+  /// 2. 处理文件名长度限制（最大 200 字符，保留扩展名）
+  /// 3. 处理文件名冲突（如果文件已存在，添加序号后缀）
+  /// 4. 复制文件到回收站目录（按日期分组）
+  /// 5. 返回回收站文件路径
   Future<String> moveToTrash({
     required String sourceFile,
     required String assetId,
+    required String originalFileName,
   }) async {
     try {
       final source = File(sourceFile);
@@ -58,18 +63,86 @@ class TrashStorageService {
         throw FileSystemException('源文件不存在', sourceFile);
       }
 
-      // 获取文件扩展名
-      final ext = p.extension(sourceFile);
+      // 获取文件扩展名（优先使用源文件的扩展名，如果原始文件名没有扩展名）
+      var ext = p.extension(sourceFile);
       if (ext.isEmpty) {
-        _logger.warning('源文件没有扩展名: $sourceFile');
+        ext = p.extension(originalFileName);
+      }
+      if (ext.isEmpty) {
+        _logger.warning('源文件和原始文件名都没有扩展名: $sourceFile, $originalFileName');
       }
 
       // 获取日期目录
       final dateDir = await _getDateTrashDirectory(DateTime.now());
 
-      // 生成回收站文件名：{assetId}.{ext}
-      final trashFileName = '$assetId$ext';
-      final trashFile = File(p.join(dateDir.path, trashFileName));
+      // 清理原始文件名，移除路径分隔符和非法字符
+      // 这些字符在 Android 和 iOS 上都是非法的或可能导致问题
+      var sanitizedFileName = originalFileName
+          .replaceAll(RegExp(r'[/\\]'), '_') // 路径分隔符
+          .replaceAll(RegExp(r'[:*?"<>|]'), '_'); // 其他非法字符
+
+      // 如果清理后的文件名（不含扩展名）为空，使用 assetId 作为后备方案
+      final nameWithoutExt = p.basenameWithoutExtension(sanitizedFileName);
+      if (nameWithoutExt.isEmpty || nameWithoutExt.trim().isEmpty) {
+        // 清理 assetId 中的路径分隔符
+        final sanitizedAssetId = assetId.replaceAll(RegExp(r'[/\\]'), '_');
+        final nameExt = p.extension(sanitizedFileName);
+        sanitizedFileName = '$sanitizedAssetId$nameExt';
+        _logger.warning(
+          '原始文件名清理后为空，使用 assetId 作为文件名: '
+          'originalFileName=$originalFileName, assetId=$assetId',
+        );
+      }
+
+      // 处理文件名长度限制（保留扩展名）
+      // Android 和 iOS 通常限制为 255 字节，我们使用 200 字符作为安全限制
+      if (sanitizedFileName.length > 200) {
+        final nameExt = p.extension(sanitizedFileName);
+        final nameWithoutExt = p.basenameWithoutExtension(sanitizedFileName);
+        final maxNameLength = 200 - nameExt.length;
+        sanitizedFileName =
+            '${nameWithoutExt.substring(0, maxNameLength)}$nameExt';
+        _logger.info(
+          '文件名过长已截断: 原始长度=${originalFileName.length}, '
+          '截断后=${sanitizedFileName.length}',
+        );
+      }
+
+      // 如果清理后的文件名没有扩展名，使用源文件的扩展名
+      if (p.extension(sanitizedFileName).isEmpty && ext.isNotEmpty) {
+        sanitizedFileName = '$sanitizedFileName$ext';
+      }
+
+      // 处理文件名冲突：如果文件已存在，添加序号后缀
+      var trashFile = File(p.join(dateDir.path, sanitizedFileName));
+      int counter = 1;
+      while (await trashFile.exists()) {
+        final nameWithoutExt = p.basenameWithoutExtension(sanitizedFileName);
+        final nameExt = p.extension(sanitizedFileName);
+        final newName = '${nameWithoutExt}_$counter$nameExt';
+        trashFile = File(p.join(dateDir.path, newName));
+        counter++;
+        if (counter > 1000) {
+          // 防止无限循环
+          throw FileSystemException(
+            '无法生成唯一的回收站文件名，已尝试 1000 次',
+            sanitizedFileName,
+          );
+        }
+      }
+
+      if (counter > 1) {
+        _logger.info(
+          '文件名冲突已解决: 原始文件名=$sanitizedFileName, '
+          '最终文件名=${p.basename(trashFile.path)}',
+        );
+      }
+
+      // 确保目标文件的父目录存在（虽然应该已经存在，但为了安全起见）
+      final trashFileDir = trashFile.parent;
+      if (!await trashFileDir.exists()) {
+        await trashFileDir.create(recursive: true);
+      }
 
       // 复制文件到回收站
       await source.copy(trashFile.path);

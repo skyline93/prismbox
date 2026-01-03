@@ -60,10 +60,11 @@ class LocalAssetDeleteService {
       final actualPath = originFile.path;
       _logger.info('通过 AssetEntity 获取到实际路径: $actualPath');
 
-      // 3. 将文件复制到回收站
+      // 3. 将文件复制到回收站（使用原始文件名，确保恢复时文件名不变）
       final trashPath = await _trashStorage.moveToTrash(
         sourceFile: actualPath,
         assetId: assetId,
+        originalFileName: asset.name,
       );
 
       // 4. 删除系统相册中的原文件
@@ -139,10 +140,11 @@ class LocalAssetDeleteService {
         final actualPath = originFile.path;
         _logger.info('通过 AssetEntity 获取到实际路径: $actualPath');
 
-        // 3. 复制到回收站
+        // 3. 复制到回收站（使用原始文件名，确保恢复时文件名不变）
         final trashPath = await _trashStorage.moveToTrash(
           sourceFile: actualPath,
           assetId: assetId,
+          originalFileName: asset.name,
         );
         trashPaths[assetId] = trashPath;
 

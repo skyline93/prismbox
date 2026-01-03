@@ -74,10 +74,18 @@ class TrashRestoreService {
       }
 
       // 创建临时文件
+      // 清理 assetId 中的路径分隔符，避免创建不存在的子目录
+      final sanitizedAssetId = asset.id.replaceAll(RegExp(r'[/\\]'), '_');
       final tempDir = Directory.systemTemp;
       final tempFileName =
-          'restore_${asset.id}_${DateTime.now().millisecondsSinceEpoch}${_getFileExtension(trashPath)}';
+          'restore_${sanitizedAssetId}_${DateTime.now().millisecondsSinceEpoch}${_getFileExtension(trashPath)}';
       tempFile = File('${tempDir.path}/$tempFileName');
+      
+      // 确保临时文件目录存在
+      if (!await tempDir.exists()) {
+        await tempDir.create(recursive: true);
+      }
+      
       await trashFile.copy(tempFile.path);
 
       // 3. 使用 photo_manager 将文件添加回系统相册
