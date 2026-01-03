@@ -447,7 +447,7 @@ class LocalSyncService {
     return LocalAssetEntityData(
       id: asset.id,
       name: originalFileName, // 使用 asset.title 获取的原始文件名
-      checksum: null, // checksum 在后台计算
+      isUploaded: false, // 新同步的资产默认未上传
       type: assetType,
       createdAt: asset.createDateTime,
       updatedAt: asset.modifiedDateTime,

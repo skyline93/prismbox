@@ -13,7 +13,6 @@ import 'package:prismbox/services/backup/providers/backup_providers.dart';
 /// - 数据源切换监听
 /// - 上传完成监听
 /// - 远程同步完成监听
-/// - Checksum 匹配完成监听
 class TimelineEventListeners {
   final WidgetRef ref;
   final bool Function() mounted;
@@ -21,7 +20,6 @@ class TimelineEventListeners {
   StreamSubscription<bool>? _dataSourceSwitchSubscription;
   StreamSubscription<String>? _uploadCompleteSubscription;
   StreamSubscription? _remoteSyncCompleteSubscription;
-  StreamSubscription? _checksumMatchCompleteSubscription;
 
   TimelineEventListeners({
     required this.ref,
@@ -33,7 +31,6 @@ class TimelineEventListeners {
     _listenDataSourceSwitch();
     _listenUploadComplete();
     _listenRemoteSyncComplete();
-    _listenChecksumMatchComplete();
   }
 
   /// 清理所有订阅
@@ -41,7 +38,6 @@ class TimelineEventListeners {
     _dataSourceSwitchSubscription?.cancel();
     _uploadCompleteSubscription?.cancel();
     _remoteSyncCompleteSubscription?.cancel();
-    _checksumMatchCompleteSubscription?.cancel();
   }
 
   /// 监听数据源切换通知
@@ -146,38 +142,5 @@ class TimelineEventListeners {
         });
   }
 
-  /// 监听 checksum 匹配完成通知
-  /// 当 checksum 匹配完成后，刷新时间线数据以更新上传状态图标
-  void _listenChecksumMatchComplete() {
-    ref
-        .read(syncCoordinatorProvider.future)
-        .then((coordinator) {
-          debugPrint('✅ Checksum 匹配完成监听已启动');
-          _checksumMatchCompleteSubscription = coordinator
-              .checksumMatchCompleteStream
-              .listen(
-                (_) async {
-                  if (mounted()) {
-                    debugPrint('✅ 收到 checksum 匹配完成通知，刷新时间线数据');
-                    // 短暂延迟，确保数据库事务已提交
-                    await Future.delayed(const Duration(milliseconds: 200));
-                    if (mounted()) {
-                      // 刷新时间线数据，确保 LocalAsset 对象获取到最新的 remoteAssetId
-                      ref.invalidate(timelineAssetsProvider());
-                      ref.invalidate(timelineSectionsProvider);
-                      debugPrint('✅ 已刷新时间线数据');
-                    }
-                  }
-                },
-                onError: (error) {
-                  // 记录错误但不影响功能
-                  debugPrint('❌ Checksum 匹配完成监听错误: $error');
-                },
-              );
-        })
-        .catchError((error) {
-          debugPrint('❌ 启动 Checksum 匹配完成监听失败: $error');
-        });
-  }
 }
 

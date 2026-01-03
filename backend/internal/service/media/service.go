@@ -19,6 +19,7 @@ import (
 	"github.com/album/backend/internal/storage/primary/local"
 	"github.com/album/backend/internal/thumbhash"
 	"github.com/album/backend/pkg/gq"
+	"github.com/album/backend/pkg/hashutil"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
 	"github.com/gabriel-vasile/mimetype"
@@ -28,7 +29,6 @@ import (
 // UploadMediaRequest 上传媒体请求
 type UploadMediaRequest struct {
 	UserID           uint
-	Hash             string
 	ItemType         string
 	OriginalFilename string
 	CloudUUID        string
@@ -202,17 +202,33 @@ func (s *service) CheckInstantUpload(ctx context.Context, userID uint, hash stri
 	return nil, nil
 }
 
-// UploadMedia 上传媒体文件（流式处理，使用客户端传入的Hash）
-// 注意：秒传检查已在Handler层完成，这里直接进行上传
+// UploadMedia 上传媒体文件（流式处理，后端计算 Hash）
 func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*models.Media, error) {
-	if err := validateHash(req.Hash); err != nil {
-		return nil, err
-	}
-
 	ext, normalizedExt := resolveExtensions(req.ItemType, req.Filename)
 
-	// 使用存储适配器构建存储key和选项
-	storageKey, err := s.storageAdapter.BuildStorageKey(req.Hash, req.ItemType, MediaFileTypeOriginal, normalizedExt)
+	// 1. 读取数据到临时文件（用于计算 hash 和后续存储）
+	tempFile, err := os.CreateTemp("", "media_upload_*.tmp")
+	if err != nil {
+		return nil, fmt.Errorf("create temp file: %w", err)
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
+	// 读取数据到临时文件，同时获取实际文件大小
+	actualSize, err := io.Copy(tempFile, req.Data)
+	if err != nil {
+		return nil, fmt.Errorf("copy data to temp file: %w", err)
+	}
+
+	// 2. 计算 hash（从临时文件）
+	tempFile.Seek(0, 0)
+	hash, err := hashutil.CalculateHashMD5(tempFile)
+	if err != nil {
+		return nil, fmt.Errorf("calculate hash: %w", err)
+	}
+
+	// 3. 使用计算得到的 hash 构建存储 key
+	storageKey, err := s.storageAdapter.BuildStorageKey(hash, req.ItemType, MediaFileTypeOriginal, normalizedExt)
 	if err != nil {
 		return nil, fmt.Errorf("build storage key: %w", err)
 	}
@@ -223,15 +239,19 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 	}
 	putOpts.UserID = req.UserID
 
-	headBuf, err := readHead(req.Data, sniffBufferSize)
+	// 4. 读取文件头用于 MIME 类型检测
+	tempFile.Seek(0, 0)
+	headBuf, err := readHead(tempFile, sniffBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
 	mimeType := detectMimeType(headBuf, normalizedExt, ext)
-	dataReader := wrapDataReader(req.Data, headBuf)
 
-	if err := s.storageManager.Put(ctx, storageKey, dataReader, req.FileSize, putOpts); err != nil {
+	// 5. 重置文件指针，直接传递给存储层
+	tempFile.Seek(0, 0)
+	// 直接传递 tempFile，存储层只需要完整的文件数据
+	if err := s.storageManager.Put(ctx, storageKey, tempFile, actualSize, putOpts); err != nil {
 		return nil, fmt.Errorf("upload to storage: %w", err)
 	}
 
@@ -240,7 +260,7 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 		localPoolUUID = putOpts.PoolID
 	}
 
-	media := s.newMediaModel(req, storageKey, mimeType, localPoolUUID)
+	media := s.newMediaModel(req, hash, storageKey, mimeType, localPoolUUID)
 	if err := s.repo.Create(ctx, media); err != nil {
 		s.storageManager.Delete(ctx, storageKey)
 		return nil, fmt.Errorf("create media record: %w", err)
@@ -250,22 +270,15 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 
 	s.log.Info("media uploaded successfully",
 		logger.String("uuid", req.CloudUUID),
-		logger.String("hash", req.Hash),
+		logger.String("hash", hash),
 		logger.Uint("user_id", req.UserID),
-		logger.Int64("file_size", req.FileSize),
+		logger.Int64("file_size", actualSize),
 	)
 
 	return media, nil
 }
 
 const sniffBufferSize = 8192
-
-func validateHash(hash string) error {
-	if len(hash) < 4 {
-		return fmt.Errorf("invalid hash length: must be at least 4 characters")
-	}
-	return nil
-}
 
 func resolveExtensions(itemType, filename string) (string, string) {
 	ext := filepath.Ext(filename)
@@ -322,18 +335,11 @@ func lookupMimeType(value string) string {
 	return ""
 }
 
-func wrapDataReader(data io.Reader, head []byte) io.Reader {
-	if len(head) == 0 {
-		return data
-	}
-	return io.MultiReader(bytes.NewReader(head), data)
-}
-
-func (s *service) newMediaModel(req *UploadMediaRequest, storageKey, mimeType string, localPoolUUID string) *models.Media {
+func (s *service) newMediaModel(req *UploadMediaRequest, hash, storageKey, mimeType string, localPoolUUID string) *models.Media {
 	return &models.Media{
 		UUID:             req.CloudUUID,
 		UserID:           req.UserID,
-		Hash:             req.Hash,
+		Hash:             hash,
 		ItemType:         strings.ToLower(req.ItemType),
 		OriginalFilename: req.OriginalFilename,
 		Filename:         req.Filename,

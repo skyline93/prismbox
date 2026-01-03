@@ -402,12 +402,16 @@ class $LocalAssetEntityTable extends LocalAssetEntity
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _checksumMeta =
-      const VerificationMeta('checksum');
+  static const VerificationMeta _isUploadedMeta =
+      const VerificationMeta('isUploaded');
   @override
-  late final GeneratedColumn<String> checksum = GeneratedColumn<String>(
-      'checksum', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+  late final GeneratedColumn<bool> isUploaded = GeneratedColumn<bool>(
+      'is_uploaded', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_uploaded" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _pathMeta = const VerificationMeta('path');
   @override
   late final GeneratedColumn<String> path = GeneratedColumn<String>(
@@ -462,7 +466,7 @@ class $LocalAssetEntityTable extends LocalAssetEntity
         height,
         durationInSeconds,
         id,
-        checksum,
+        isUploaded,
         path,
         isFavorite,
         orientation,
@@ -518,9 +522,11 @@ class $LocalAssetEntityTable extends LocalAssetEntity
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('checksum')) {
-      context.handle(_checksumMeta,
-          checksum.isAcceptableOrUnknown(data['checksum']!, _checksumMeta));
+    if (data.containsKey('is_uploaded')) {
+      context.handle(
+          _isUploadedMeta,
+          isUploaded.isAcceptableOrUnknown(
+              data['is_uploaded']!, _isUploadedMeta));
     }
     if (data.containsKey('path')) {
       context.handle(
@@ -573,8 +579,8 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           DriftSqlType.int, data['${effectivePrefix}duration_in_seconds']),
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      checksum: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}checksum']),
+      isUploaded: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_uploaded'])!,
       path: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}path'])!,
       isFavorite: attachedDatabase.typeMapping
@@ -629,8 +635,8 @@ class LocalAssetEntityData extends DataClass
   /// 主键（设备资产 ID）
   final String id;
 
-  /// 文件哈希（用于与远程资产关联）
-  final String? checksum;
+  /// 是否已上传（标识资产是否已成功上传到服务器）
+  final bool isUploaded;
 
   /// 文件路径（本地文件系统的完整路径）
   ///
@@ -666,7 +672,7 @@ class LocalAssetEntityData extends DataClass
       this.height,
       this.durationInSeconds,
       required this.id,
-      this.checksum,
+      required this.isUploaded,
       required this.path,
       required this.isFavorite,
       required this.orientation,
@@ -692,9 +698,7 @@ class LocalAssetEntityData extends DataClass
       map['duration_in_seconds'] = Variable<int>(durationInSeconds);
     }
     map['id'] = Variable<String>(id);
-    if (!nullToAbsent || checksum != null) {
-      map['checksum'] = Variable<String>(checksum);
-    }
+    map['is_uploaded'] = Variable<bool>(isUploaded);
     map['path'] = Variable<String>(path);
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['orientation'] = Variable<int>(orientation);
@@ -721,9 +725,7 @@ class LocalAssetEntityData extends DataClass
           ? const Value.absent()
           : Value(durationInSeconds),
       id: Value(id),
-      checksum: checksum == null && nullToAbsent
-          ? const Value.absent()
-          : Value(checksum),
+      isUploaded: Value(isUploaded),
       path: Value(path),
       isFavorite: Value(isFavorite),
       orientation: Value(orientation),
@@ -745,7 +747,7 @@ class LocalAssetEntityData extends DataClass
       height: serializer.fromJson<int?>(json['height']),
       durationInSeconds: serializer.fromJson<int?>(json['durationInSeconds']),
       id: serializer.fromJson<String>(json['id']),
-      checksum: serializer.fromJson<String?>(json['checksum']),
+      isUploaded: serializer.fromJson<bool>(json['isUploaded']),
       path: serializer.fromJson<String>(json['path']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       orientation: serializer.fromJson<int>(json['orientation']),
@@ -767,7 +769,7 @@ class LocalAssetEntityData extends DataClass
       'height': serializer.toJson<int?>(height),
       'durationInSeconds': serializer.toJson<int?>(durationInSeconds),
       'id': serializer.toJson<String>(id),
-      'checksum': serializer.toJson<String?>(checksum),
+      'isUploaded': serializer.toJson<bool>(isUploaded),
       'path': serializer.toJson<String>(path),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'orientation': serializer.toJson<int>(orientation),
@@ -787,7 +789,7 @@ class LocalAssetEntityData extends DataClass
           Value<int?> height = const Value.absent(),
           Value<int?> durationInSeconds = const Value.absent(),
           String? id,
-          Value<String?> checksum = const Value.absent(),
+          bool? isUploaded,
           String? path,
           bool? isFavorite,
           int? orientation,
@@ -804,7 +806,7 @@ class LocalAssetEntityData extends DataClass
             ? durationInSeconds.value
             : this.durationInSeconds,
         id: id ?? this.id,
-        checksum: checksum.present ? checksum.value : this.checksum,
+        isUploaded: isUploaded ?? this.isUploaded,
         path: path ?? this.path,
         isFavorite: isFavorite ?? this.isFavorite,
         orientation: orientation ?? this.orientation,
@@ -823,7 +825,8 @@ class LocalAssetEntityData extends DataClass
           ? data.durationInSeconds.value
           : this.durationInSeconds,
       id: data.id.present ? data.id.value : this.id,
-      checksum: data.checksum.present ? data.checksum.value : this.checksum,
+      isUploaded:
+          data.isUploaded.present ? data.isUploaded.value : this.isUploaded,
       path: data.path.present ? data.path.value : this.path,
       isFavorite:
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
@@ -849,7 +852,7 @@ class LocalAssetEntityData extends DataClass
           ..write('height: $height, ')
           ..write('durationInSeconds: $durationInSeconds, ')
           ..write('id: $id, ')
-          ..write('checksum: $checksum, ')
+          ..write('isUploaded: $isUploaded, ')
           ..write('path: $path, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('orientation: $orientation, ')
@@ -869,7 +872,7 @@ class LocalAssetEntityData extends DataClass
       height,
       durationInSeconds,
       id,
-      checksum,
+      isUploaded,
       path,
       isFavorite,
       orientation,
@@ -887,7 +890,7 @@ class LocalAssetEntityData extends DataClass
           other.height == this.height &&
           other.durationInSeconds == this.durationInSeconds &&
           other.id == this.id &&
-          other.checksum == this.checksum &&
+          other.isUploaded == this.isUploaded &&
           other.path == this.path &&
           other.isFavorite == this.isFavorite &&
           other.orientation == this.orientation &&
@@ -904,7 +907,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
   final Value<int?> height;
   final Value<int?> durationInSeconds;
   final Value<String> id;
-  final Value<String?> checksum;
+  final Value<bool> isUploaded;
   final Value<String> path;
   final Value<bool> isFavorite;
   final Value<int> orientation;
@@ -919,7 +922,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.height = const Value.absent(),
     this.durationInSeconds = const Value.absent(),
     this.id = const Value.absent(),
-    this.checksum = const Value.absent(),
+    this.isUploaded = const Value.absent(),
     this.path = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.orientation = const Value.absent(),
@@ -935,7 +938,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.height = const Value.absent(),
     this.durationInSeconds = const Value.absent(),
     required String id,
-    this.checksum = const Value.absent(),
+    this.isUploaded = const Value.absent(),
     required String path,
     this.isFavorite = const Value.absent(),
     this.orientation = const Value.absent(),
@@ -956,7 +959,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     Expression<int>? height,
     Expression<int>? durationInSeconds,
     Expression<String>? id,
-    Expression<String>? checksum,
+    Expression<bool>? isUploaded,
     Expression<String>? path,
     Expression<bool>? isFavorite,
     Expression<int>? orientation,
@@ -972,7 +975,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       if (height != null) 'height': height,
       if (durationInSeconds != null) 'duration_in_seconds': durationInSeconds,
       if (id != null) 'id': id,
-      if (checksum != null) 'checksum': checksum,
+      if (isUploaded != null) 'is_uploaded': isUploaded,
       if (path != null) 'path': path,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (orientation != null) 'orientation': orientation,
@@ -990,7 +993,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       Value<int?>? height,
       Value<int?>? durationInSeconds,
       Value<String>? id,
-      Value<String?>? checksum,
+      Value<bool>? isUploaded,
       Value<String>? path,
       Value<bool>? isFavorite,
       Value<int>? orientation,
@@ -1005,7 +1008,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       height: height ?? this.height,
       durationInSeconds: durationInSeconds ?? this.durationInSeconds,
       id: id ?? this.id,
-      checksum: checksum ?? this.checksum,
+      isUploaded: isUploaded ?? this.isUploaded,
       path: path ?? this.path,
       isFavorite: isFavorite ?? this.isFavorite,
       orientation: orientation ?? this.orientation,
@@ -1042,8 +1045,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (checksum.present) {
-      map['checksum'] = Variable<String>(checksum.value);
+    if (isUploaded.present) {
+      map['is_uploaded'] = Variable<bool>(isUploaded.value);
     }
     if (path.present) {
       map['path'] = Variable<String>(path.value);
@@ -1076,7 +1079,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           ..write('height: $height, ')
           ..write('durationInSeconds: $durationInSeconds, ')
           ..write('id: $id, ')
-          ..write('checksum: $checksum, ')
+          ..write('isUploaded: $isUploaded, ')
           ..write('path: $path, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('orientation: $orientation, ')
@@ -5996,8 +5999,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $UploadTaskEntityTable(this);
   late final $SyncCheckpointEntityTable syncCheckpointEntity =
       $SyncCheckpointEntityTable(this);
-  late final Index idxLocalAssetChecksum = Index('idx_local_asset_checksum',
-      'CREATE INDEX idx_local_asset_checksum ON local_asset_entity (checksum)');
   late final Index idxRemoteAssetOwnerChecksum = Index(
       'idx_remote_asset_owner_checksum',
       'CREATE INDEX idx_remote_asset_owner_checksum ON remote_asset_entity (owner_id, checksum)');
@@ -6044,7 +6045,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         backupStatusEntity,
         uploadTaskEntity,
         syncCheckpointEntity,
-        idxLocalAssetChecksum,
         idxRemoteAssetOwnerChecksum,
         idxRemoteAssetChecksum,
         idxBackupStatusUserId,
@@ -6374,7 +6374,7 @@ typedef $$LocalAssetEntityTableCreateCompanionBuilder
   Value<int?> height,
   Value<int?> durationInSeconds,
   required String id,
-  Value<String?> checksum,
+  Value<bool> isUploaded,
   required String path,
   Value<bool> isFavorite,
   Value<int> orientation,
@@ -6391,7 +6391,7 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<int?> height,
   Value<int?> durationInSeconds,
   Value<String> id,
-  Value<String?> checksum,
+  Value<bool> isUploaded,
   Value<String> path,
   Value<bool> isFavorite,
   Value<int> orientation,
@@ -6425,7 +6425,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<int?> height = const Value.absent(),
             Value<int?> durationInSeconds = const Value.absent(),
             Value<String> id = const Value.absent(),
-            Value<String?> checksum = const Value.absent(),
+            Value<bool> isUploaded = const Value.absent(),
             Value<String> path = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<int> orientation = const Value.absent(),
@@ -6441,7 +6441,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             height: height,
             durationInSeconds: durationInSeconds,
             id: id,
-            checksum: checksum,
+            isUploaded: isUploaded,
             path: path,
             isFavorite: isFavorite,
             orientation: orientation,
@@ -6457,7 +6457,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<int?> height = const Value.absent(),
             Value<int?> durationInSeconds = const Value.absent(),
             required String id,
-            Value<String?> checksum = const Value.absent(),
+            Value<bool> isUploaded = const Value.absent(),
             required String path,
             Value<bool> isFavorite = const Value.absent(),
             Value<int> orientation = const Value.absent(),
@@ -6473,7 +6473,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             height: height,
             durationInSeconds: durationInSeconds,
             id: id,
-            checksum: checksum,
+            isUploaded: isUploaded,
             path: path,
             isFavorite: isFavorite,
             orientation: orientation,
@@ -6528,8 +6528,8 @@ class $$LocalAssetEntityTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get checksum => $state.composableBuilder(
-      column: $state.table.checksum,
+  ColumnFilters<bool> get isUploaded => $state.composableBuilder(
+      column: $state.table.isUploaded,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6622,8 +6622,8 @@ class $$LocalAssetEntityTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get checksum => $state.composableBuilder(
-      column: $state.table.checksum,
+  ColumnOrderings<bool> get isUploaded => $state.composableBuilder(
+      column: $state.table.isUploaded,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

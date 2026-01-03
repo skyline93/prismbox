@@ -6,7 +6,7 @@ part of 'asset_upload_status_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$assetUploadStatusHash() => r'c7e0a4bf9d966743c4d658384c253108be61c2eb';
+String _$assetUploadStatusHash() => r'f9daba40e8d4978d0e368fc5485fba0b45bcc17d';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -60,14 +60,13 @@ class _SystemHash {
 ///
 /// **参数**：
 /// - [assetId] - 资产的唯一标识符（localId 或 id）
-/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-/// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+/// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+/// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
 ///
 /// **状态判断逻辑（优先级顺序）**：
-/// 1. 优先查询上传任务状态（最可靠的数据源）
-/// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-/// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-/// 4. 否则显示未上传
+/// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+/// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+/// 3. 否则显示未上传
 ///
 /// Copied from [assetUploadStatus].
 @ProviderFor(assetUploadStatus)
@@ -104,14 +103,13 @@ const assetUploadStatusProvider = AssetUploadStatusFamily();
 ///
 /// **参数**：
 /// - [assetId] - 资产的唯一标识符（localId 或 id）
-/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-/// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+/// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+/// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
 ///
 /// **状态判断逻辑（优先级顺序）**：
-/// 1. 优先查询上传任务状态（最可靠的数据源）
-/// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-/// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-/// 4. 否则显示未上传
+/// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+/// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+/// 3. 否则显示未上传
 ///
 /// Copied from [assetUploadStatus].
 class AssetUploadStatusFamily
@@ -147,14 +145,13 @@ class AssetUploadStatusFamily
   ///
   /// **参数**：
   /// - [assetId] - 资产的唯一标识符（localId 或 id）
-  /// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-  /// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+  /// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+  /// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
   ///
   /// **状态判断逻辑（优先级顺序）**：
-  /// 1. 优先查询上传任务状态（最可靠的数据源）
-  /// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-  /// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-  /// 4. 否则显示未上传
+  /// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+  /// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+  /// 3. 否则显示未上传
   ///
   /// Copied from [assetUploadStatus].
   const AssetUploadStatusFamily();
@@ -190,14 +187,13 @@ class AssetUploadStatusFamily
   ///
   /// **参数**：
   /// - [assetId] - 资产的唯一标识符（localId 或 id）
-  /// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-  /// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+  /// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+  /// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
   ///
   /// **状态判断逻辑（优先级顺序）**：
-  /// 1. 优先查询上传任务状态（最可靠的数据源）
-  /// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-  /// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-  /// 4. 否则显示未上传
+  /// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+  /// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+  /// 3. 否则显示未上传
   ///
   /// Copied from [assetUploadStatus].
   AssetUploadStatusProvider call(
@@ -269,14 +265,13 @@ class AssetUploadStatusFamily
 ///
 /// **参数**：
 /// - [assetId] - 资产的唯一标识符（localId 或 id）
-/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-/// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+/// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+/// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
 ///
 /// **状态判断逻辑（优先级顺序）**：
-/// 1. 优先查询上传任务状态（最可靠的数据源）
-/// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-/// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-/// 4. 否则显示未上传
+/// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+/// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+/// 3. 否则显示未上传
 ///
 /// Copied from [assetUploadStatus].
 class AssetUploadStatusProvider
@@ -312,14 +307,13 @@ class AssetUploadStatusProvider
   ///
   /// **参数**：
   /// - [assetId] - 资产的唯一标识符（localId 或 id）
-  /// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-  /// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+  /// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+  /// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
   ///
   /// **状态判断逻辑（优先级顺序）**：
-  /// 1. 优先查询上传任务状态（最可靠的数据源）
-  /// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-  /// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-  /// 4. 否则显示未上传
+  /// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+  /// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+  /// 3. 否则显示未上传
   ///
   /// Copied from [assetUploadStatus].
   AssetUploadStatusProvider(

@@ -71,6 +71,7 @@ void main() {
           type: AssetType.image,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          isUploaded: false,
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
@@ -115,6 +116,7 @@ void main() {
           type: AssetType.image,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          isUploaded: false,
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
@@ -152,6 +154,7 @@ void main() {
           type: AssetType.image,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          isUploaded: false,
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
@@ -182,6 +185,7 @@ void main() {
           type: AssetType.image,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          isUploaded: false,
           path: '/path/to/test.jpg',
           isFavorite: false,
           orientation: 0,
@@ -209,7 +213,7 @@ void main() {
       test('应该批量创建任务', () async {
         // Arrange
         final assets = [
-          LocalAssetEntityData(
+          LocalAssetEntityData(isUploaded: false, 
             id: 'asset1',
             name: 'test1.jpg',
             type: AssetType.image,
@@ -221,7 +225,7 @@ void main() {
             isInPrivateSpace: false,
             migrationStatus: MigrationStatus.none,
           ),
-          LocalAssetEntityData(
+          LocalAssetEntityData(isUploaded: false, 
             id: 'asset2',
             name: 'test2.jpg',
             type: AssetType.image,
@@ -258,7 +262,7 @@ void main() {
       test('应该跳过无法创建的任务', () async {
         // Arrange
         final assets = [
-          LocalAssetEntityData(
+          LocalAssetEntityData(isUploaded: false, 
             id: 'asset1',
             name: 'test1.jpg',
             type: AssetType.image,
@@ -270,7 +274,7 @@ void main() {
             isInPrivateSpace: false,
             migrationStatus: MigrationStatus.none,
           ),
-          LocalAssetEntityData(
+          LocalAssetEntityData(isUploaded: false, 
             id: 'asset2',
             name: 'test2.jpg',
             type: AssetType.image,

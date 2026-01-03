@@ -16,7 +16,8 @@ TBD - created by archiving change refactor-timeline-page-components. Update Purp
 - **WHEN** 实现时间线页面的事件监听功能
 - **THEN** 所有 Stream 事件监听逻辑 SHALL 位于 `lib/presentation/pages/photos/listeners/timeline_event_listeners.dart`
 - **AND** 类名 SHALL 为 `TimelineEventListeners`
-- **AND** 类 SHALL 负责管理数据源切换、上传完成、远程同步完成、checksum 匹配完成等事件监听
+- **AND** 类 SHALL 负责管理数据源切换、上传完成、远程同步完成等事件监听
+- **AND** 类 SHALL 不监听 checksum 匹配完成事件（已移除）
 - **AND** 类 SHALL 提供 `start()` 方法启动所有监听
 - **AND** 类 SHALL 提供 `dispose()` 方法清理所有订阅
 - **AND** 页面类 SHALL 在 `initState()` 中初始化监听器，在 `dispose()` 中清理监听器
@@ -158,4 +159,32 @@ TBD - created by archiving change refactor-timeline-page-components. Update Purp
 - **AND** 控制器类 SHALL 通过构造函数接收必要的依赖（WidgetRef、ScrollController 等）
 - **AND** 控制器类 SHALL 不持有状态，状态由 Riverpod Provider 管理
 - **AND** 控制器类 SHALL 提供清晰的公共接口，便于测试
+
+### Requirement: 时间线数据合并和展示
+
+时间线页面 SHALL 独立展示本地资产和远程资产，不进行自动关联去重。系统 SHALL 支持过滤选项，允许用户选择查看方式。
+
+#### Scenario: 独立数据合并
+- **WHEN** 获取时间线数据
+- **THEN** 系统 SHALL 并行查询本地资产表和远程资产表
+- **AND** 系统 SHALL 先添加所有远程资产（RemoteAsset）到列表
+- **AND** 系统 SHALL 再添加所有本地资产（LocalAsset）到列表
+- **AND** 系统 SHALL 不进行基于 checksum 的关联
+- **AND** 系统 SHALL 不建立本地-远程资产关联
+- **AND** 系统 SHALL 按创建时间降序排序
+
+#### Scenario: 过滤选项支持
+- **WHEN** 用户选择过滤模式
+- **THEN** 系统 SHALL 支持"全部"模式（显示本地+远程资产）
+- **AND** 系统 SHALL 支持"仅本地"模式（只显示本地资产）
+- **AND** 系统 SHALL 支持"仅远程"模式（只显示远程资产）
+- **AND** 系统 SHALL 支持"已备份"模式（显示 `isUploaded = true` 的本地资产）
+- **AND** 系统 SHALL 支持"未备份"模式（显示 `isUploaded = false` 的本地资产）
+- **AND** 系统 SHALL 通过 `TimelineFilterButton` 组件提供过滤选项
+
+#### Scenario: 数据源选择
+- **WHEN** 选择时间线数据源
+- **THEN** 系统 SHALL 检查是否有远程资产
+- **AND** 如果存在远程资产，系统 SHALL 使用数据库数据源（需要合并显示）
+- **AND** 如果不存在远程资产，系统 SHALL 根据本地资产数量选择数据源（数据库或 photo_manager）
 

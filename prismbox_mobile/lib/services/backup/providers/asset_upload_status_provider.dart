@@ -1,18 +1,15 @@
 // lib/services/backup/providers/asset_upload_status_provider.dart
 
 import 'dart:async';
-import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/daos/upload_task_dao.dart';
-import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 
 part 'asset_upload_status_provider.g.dart';
 
-final _logger = Logger('AssetUploadStatusProvider');
 
 /// 资产上传状态 Provider
 /// 
@@ -45,78 +42,36 @@ final _logger = Logger('AssetUploadStatusProvider');
 /// 
 /// **参数**：
 /// - [assetId] - 资产的唯一标识符（localId 或 id）
-/// - [hasRemote] - 资产是否有远程版本（用于快速判断已上传状态，但不作为唯一依据）
-/// - [checksum] - 资产的 checksum（可选，用于查询远程资产表）
+/// - [hasRemote] - 资产是否有远程版本（保留用于向后兼容，但不再使用）
+/// - [checksum] - 资产的 checksum（保留用于向后兼容，但不再使用）
 /// 
 /// **状态判断逻辑（优先级顺序）**：
-/// 1. 优先查询上传任务状态（最可靠的数据源）
-/// 2. 如果没有任务记录，查询远程资产表（通过 checksum）
-/// 3. 如果 hasRemote == true，也显示已上传（快速路径，但不作为唯一依据）
-/// 4. 否则显示未上传
+/// 1. 优先查询上传任务状态（最可靠的数据源，用于显示上传进度）
+/// 2. 如果没有任务记录，检查本地资产的 isUploaded 字段
+/// 3. 否则显示未上传
 @riverpod
 Stream<AssetUploadStatusInfo> assetUploadStatus(
   AssetUploadStatusRef ref,
   String assetId, // 使用唯一标识符作为 family 参数
-  bool hasRemote, // 资产是否有远程版本
-  String? checksum, // 资产的 checksum（用于查询远程资产表）
+  bool hasRemote, // 保留用于向后兼容，但不再使用
+  String? checksum, // 保留用于向后兼容，但不再使用
 ) async* {
   final database = await ref.watch(infra.databaseProvider.future);
   final uploadDao = UploadTaskDao(database);
-  final remoteDao = RemoteAssetDao(database);
   final localDao = LocalAssetDao(database);
   
-  // 1. 如果没有传入 checksum，从本地资产表查询
-  String? assetChecksum = checksum;
-  if (assetChecksum == null || assetChecksum.isEmpty) {
-    final localAsset = await localDao.getAssetById(assetId);
-    assetChecksum = localAsset?.checksum;
-  }
-  
-  // 缓存 checksum 用于后续使用（避免重复检查 null）
-  final hasChecksum = assetChecksum != null && assetChecksum.isNotEmpty;
-  // 用于需要非空 String 的地方（仅在 hasChecksum 为 true 时使用）
-  // 注意：当 hasChecksum 为 true 时，assetChecksum 一定不为 null
-  final checksumValue = hasChecksum ? assetChecksum : '';
-  
-  // 2. 如果 hasRemote == true，先快速返回已上传状态
-  // 但继续监听，以防状态变化
-  // 注意：hasRemote 可能为 false，但远程资产表可能有数据，所以不能直接 return
-  if (hasRemote) {
-    yield const AssetUploadStatusInfo(
-      status: AssetUploadStatus.uploaded,
-    );
-  }
-  
-  // 3. 查询初始状态
+  // 1. 查询初始状态
   AssetUploadStatusInfo? lastStatus;
   
-  // 3.1 优先查询上传任务状态
+  // 1.1 优先查询上传任务状态（用于显示上传进度）
   final initialTask = await uploadDao.getTaskByLocalAssetId(assetId);
   if (initialTask != null) {
     lastStatus = _getStatusFromTask(initialTask);
     yield lastStatus;
   } else {
-    // 3.2 如果没有任务记录，检查远程资产表
-    if (hasChecksum) {
-      final remoteAsset = await remoteDao.getAssetByChecksum(checksumValue);
-      if (remoteAsset != null) {
-        lastStatus = const AssetUploadStatusInfo(
-          status: AssetUploadStatus.uploaded,
-        );
-        yield lastStatus;
-      } else if (hasRemote) {
-        // 3.3 如果 hasRemote == true，显示已上传
-        lastStatus = const AssetUploadStatusInfo(
-          status: AssetUploadStatus.uploaded,
-        );
-        yield lastStatus;
-      } else {
-        lastStatus = const AssetUploadStatusInfo(
-          status: AssetUploadStatus.notUploaded,
-        );
-        yield lastStatus;
-      }
-    } else if (hasRemote) {
+    // 1.2 如果没有任务记录，检查本地资产的 isUploaded 字段
+    final localAsset = await localDao.getAssetById(assetId);
+    if (localAsset != null && localAsset.isUploaded) {
       lastStatus = const AssetUploadStatusInfo(
         status: AssetUploadStatus.uploaded,
       );
@@ -129,105 +84,27 @@ Stream<AssetUploadStatusInfo> assetUploadStatus(
     }
   }
   
-  // 4. 同时监听上传任务和远程资产表的变化
-  // 使用 StreamController 来合并两个流
-  final statusController = StreamController<AssetUploadStatusInfo>();
-  StreamSubscription? taskSubscription;
-  StreamSubscription? remoteSubscription;
-  
-  // 4.1 监听上传任务变化
-  taskSubscription = uploadDao.watchTaskByLocalAssetId(assetId).listen(
-    (task) async {
-      AssetUploadStatusInfo newStatus;
-      
-      if (task != null) {
-        // 任务存在，使用任务状态
-        newStatus = _getStatusFromTask(task);
+  // 2. 监听上传任务变化（主要数据源）
+  await for (final task in uploadDao.watchTaskByLocalAssetId(assetId)) {
+    AssetUploadStatusInfo newStatus;
+    
+    if (task != null) {
+      // 任务存在，使用任务状态
+      newStatus = _getStatusFromTask(task);
+    } else {
+      // 任务不存在，检查本地资产的 isUploaded 字段
+      final localAsset = await localDao.getAssetById(assetId);
+      if (localAsset != null && localAsset.isUploaded) {
+        newStatus = const AssetUploadStatusInfo(
+          status: AssetUploadStatus.uploaded,
+        );
       } else {
-        // 任务不存在，检查远程资产表
-        if (hasChecksum) {
-          final remoteAsset = await remoteDao.getAssetByChecksum(checksumValue);
-          if (remoteAsset != null) {
-            newStatus = const AssetUploadStatusInfo(
-              status: AssetUploadStatus.uploaded,
-            );
-          } else if (hasRemote) {
-            newStatus = const AssetUploadStatusInfo(
-              status: AssetUploadStatus.uploaded,
-            );
-          } else {
-            newStatus = const AssetUploadStatusInfo(
-              status: AssetUploadStatus.notUploaded,
-            );
-          }
-        } else if (hasRemote) {
-          newStatus = const AssetUploadStatusInfo(
-            status: AssetUploadStatus.uploaded,
-          );
-        } else {
-          newStatus = const AssetUploadStatusInfo(
-            status: AssetUploadStatus.notUploaded,
-          );
-        }
+        newStatus = const AssetUploadStatusInfo(
+          status: AssetUploadStatus.notUploaded,
+        );
       }
-      
-      if (!statusController.isClosed) {
-        statusController.add(newStatus);
-      }
-    },
-    onError: (error) {
-      // 错误处理：如果监听失败，保持当前状态
-      _logger.warning('监听上传任务状态失败: $assetId', error);
-    },
-  );
-  
-  // 4.2 监听远程资产表变化（仅在 checksum 存在时）
-  if (hasChecksum) {
-    remoteSubscription = remoteDao.watchAssetByChecksum(checksumValue).listen(
-      (remoteAsset) async {
-        AssetUploadStatusInfo newStatus;
-        
-        if (remoteAsset != null) {
-          // 远程资产存在，检查任务状态
-          final task = await uploadDao.getTaskByLocalAssetId(assetId);
-          if (task != null) {
-            // 优先使用任务状态
-            newStatus = _getStatusFromTask(task);
-          } else {
-            // 任务不存在，但远程资产存在，显示已上传
-            newStatus = const AssetUploadStatusInfo(
-              status: AssetUploadStatus.uploaded,
-            );
-          }
-        } else {
-          // 远程资产不存在，检查任务状态
-          final task = await uploadDao.getTaskByLocalAssetId(assetId);
-          if (task != null) {
-            newStatus = _getStatusFromTask(task);
-          } else if (hasRemote) {
-            newStatus = const AssetUploadStatusInfo(
-              status: AssetUploadStatus.uploaded,
-            );
-          } else {
-            newStatus = const AssetUploadStatusInfo(
-              status: AssetUploadStatus.notUploaded,
-            );
-          }
-        }
-        
-        if (!statusController.isClosed) {
-          statusController.add(newStatus);
-        }
-      },
-      onError: (error) {
-        // 错误处理：如果监听失败，保持当前状态
-        _logger.warning('监听远程资产状态失败: $assetId', error);
-      },
-    );
-  }
-  
-  // 5. 监听合并后的状态流，并去重
-  await for (final newStatus in statusController.stream) {
+    }
+    
     // 只有在状态真正改变时才 yield（避免重复更新导致的抖动）
     if (lastStatus?.status != newStatus.status ||
         lastStatus?.progress != newStatus.progress) {
@@ -235,11 +112,6 @@ Stream<AssetUploadStatusInfo> assetUploadStatus(
       yield newStatus;
     }
   }
-  
-  // 6. 清理资源（当 provider 被销毁时）
-  await taskSubscription.cancel();
-  await remoteSubscription?.cancel();
-  await statusController.close();
 }
 
 /// 根据任务状态转换为资产上传状态信息

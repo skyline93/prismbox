@@ -8,15 +8,14 @@ import 'package:prismbox/data/database/enums/migration_status.dart';
 /// 本地资产实体表
 /// 存储设备上的原始媒体文件信息
 @DataClassName('LocalAssetEntityData')
-@TableIndex(name: 'idx_local_asset_checksum', columns: {#checksum})
 class LocalAssetEntity extends Table with DriftDefaultsMixin, AssetEntityMixin {
   const LocalAssetEntity();
 
   /// 主键（设备资产 ID）
   TextColumn get id => text()();
 
-  /// 文件哈希（用于与远程资产关联）
-  TextColumn get checksum => text().nullable()();
+  /// 是否已上传（标识资产是否已成功上传到服务器）
+  BoolColumn get isUploaded => boolean().withDefault(const Constant(false))();
 
   /// 文件路径（本地文件系统的完整路径）
   ///

@@ -27,13 +27,6 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
-  /// 根据 checksum 获取资产
-  Future<LocalAssetEntityData?> getAssetByChecksum(String checksum) {
-    return (select(localAssetEntity)
-          ..where((t) => t.checksum.equals(checksum)))
-        .getSingleOrNull();
-  }
-
   /// 批量根据 ID 获取资产
   /// 返回 Map<assetId, LocalAssetEntityData>
   Future<Map<String, LocalAssetEntityData>> getAssetsByIds(List<String> ids) {

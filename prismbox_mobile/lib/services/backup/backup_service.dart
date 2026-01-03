@@ -1,7 +1,6 @@
 // lib/services/backup/backup_service.dart
 
 import 'dart:async';
-import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
@@ -432,33 +431,11 @@ class BackupService {
       );
     }
     
-    // 3. 统计信息
+    // 3. 统计信息（基于 isUploaded 字段）
     int total = candidates.length;
-    int processing = 0;
-    int backupCount = 0;
-    
-    // 获取所有候选资产的 checksum
-    final candidateChecksums = candidates
-        .where((asset) => asset.checksum != null)
-        .map((asset) => asset.checksum!)
-        .toSet();
-    
-    // 查询已备份的资产（通过 checksum 匹配）
-    if (candidateChecksums.isNotEmpty) {
-      final remoteAssets = await (_database.select(_database.remoteAssetEntity)
-            ..where((t) =>
-                t.ownerId.equals(userId) &
-                t.checksum.isIn(candidateChecksums)))
-          .get();
-      
-      backupCount = remoteAssets.length;
-    }
-    
-    // 统计处理中的资产（checksum 为 null）
-    processing = candidates.where((asset) => asset.checksum == null).length;
-    
-    // 剩余数量 = 总数 - 已备份数
-    final remainder = total - backupCount;
+    int backupCount = candidates.where((asset) => asset.isUploaded).length;
+    int remainder = total - backupCount;
+    int processing = 0; // 处理中数量（不再需要，因为不再计算 checksum）
     
     return BackupCounts(
       total: total,

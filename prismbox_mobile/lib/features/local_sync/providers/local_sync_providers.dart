@@ -2,14 +2,12 @@
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
-import 'package:prismbox/features/local_sync/services/checksum_matching_service.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
 import 'package:prismbox/features/local_sync/services/sync_coordinator.dart';
 import 'package:prismbox/features/local_sync/services/timeline_provider_service.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart'
     as infra;
-import 'package:prismbox/providers/infrastructure/asset_providers.dart' as infra_asset;
 
 part 'local_sync_providers.g.dart';
 
@@ -40,21 +38,6 @@ Future<TimelineProviderService> timelineProviderService(
   );
 }
 
-/// ChecksumMatchingService Provider
-@riverpod
-Future<ChecksumMatchingService> checksumMatchingService(
-  ChecksumMatchingServiceRef ref,
-) async {
-  final database = await ref.watch(infra.databaseProvider.future);
-  final checksumService = await ref.watch(infra_asset.checksumServiceProvider.future);
-  final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
-  return ChecksumMatchingService(
-    database: database,
-    checksumService: checksumService,
-    pathResolver: pathResolver,
-  );
-}
-
 /// SyncCoordinator Provider
 ///
 /// 使用 keepAlive: true 确保全局单例
@@ -62,13 +45,9 @@ Future<ChecksumMatchingService> checksumMatchingService(
 Future<SyncCoordinator> syncCoordinator(SyncCoordinatorRef ref) async {
   final syncService = await ref.watch(localSyncServiceProvider.future);
   final database = await ref.watch(infra.databaseProvider.future);
-  final checksumMatchingService = await ref.watch(
-    checksumMatchingServiceProvider.future,
-  );
   return SyncCoordinator(
     syncService: syncService,
     database: database,
-    checksumMatchingService: checksumMatchingService,
   );
 }
 

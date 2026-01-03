@@ -6,7 +6,6 @@ import 'package:prismbox/core/config/sync_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
-import 'package:prismbox/features/local_sync/services/checksum_matching_service.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/features/local_sync/services/local_sync_service.dart';
 import 'package:prismbox/utils/async_mutex.dart';
@@ -17,11 +16,10 @@ import 'package:prismbox/utils/async_mutex.dart';
 /// - 协调后台本地同步任务，不阻塞 UI
 /// - 管理同步状态
 /// - 支持自动同步和手动同步
-/// - 协调数据源切换和 checksum 匹配任务
+/// - 协调数据源切换
 class SyncCoordinator {
   final LocalSyncService _syncService;
   final AppDatabase _database;
-  final ChecksumMatchingService _checksumMatchingService;
   final Logger _logger = Logger('SyncCoordinator');
   
   /// 同步状态流控制器
@@ -29,9 +27,6 @@ class SyncCoordinator {
   
   /// 数据源切换通知流控制器
   final _dataSourceSwitchController = StreamController<bool>.broadcast();
-  
-  /// Checksum 匹配完成通知流控制器
-  final _checksumMatchCompleteController = StreamController<void>.broadcast();
   
   /// 同步互斥锁（确保顺序执行）
   final AsyncMutex _syncMutex = AsyncMutex();
@@ -45,10 +40,8 @@ class SyncCoordinator {
   SyncCoordinator({
     required LocalSyncService syncService,
     required AppDatabase database,
-    required ChecksumMatchingService checksumMatchingService,
   })  : _syncService = syncService,
-        _database = database,
-        _checksumMatchingService = checksumMatchingService;
+        _database = database;
 
   /// 同步状态流
   Stream<SyncStatusInfo> get statusStream => _statusController.stream;
@@ -56,10 +49,6 @@ class SyncCoordinator {
   /// 数据源切换通知流
   /// 当同步完成后，如果数据库数据可用，会发出 true 通知
   Stream<bool> get dataSourceSwitchStream => _dataSourceSwitchController.stream;
-
-  /// Checksum 匹配完成通知流
-  /// 当 checksum 匹配任务完成并匹配到远程资产时，会发出通知
-  Stream<void> get checksumMatchCompleteStream => _checksumMatchCompleteController.stream;
 
   /// 当前状态
   SyncStatusInfo _currentStatus = const SyncStatusInfo();
@@ -168,9 +157,6 @@ class SyncCoordinator {
         
         // 同步成功后，检查是否需要切换到数据库数据源
         await _checkAndSwitchDataSource();
-        
-        // 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
-        _startChecksumMatchingTask();
       } else {
         _updateStatus(
           SyncStatus.error,
@@ -240,31 +226,11 @@ class SyncCoordinator {
     }
   }
 
-  /// 启动后台任务：为没有 checksum 的本地资产计算 checksum 并匹配远程资产
-  /// 
-  /// **注意**：这是一个耗时的操作，在后台异步执行，不阻塞同步流程
-  void _startChecksumMatchingTask() {
-    // 在后台执行，不等待完成
-    Future(() async {
-      try {
-        final matchedCount = await _checksumMatchingService.startMatchingTask();
-        
-        // 如果匹配到了远程资产，通知 UI 刷新
-        if (matchedCount > 0 && !_checksumMatchCompleteController.isClosed) {
-          _checksumMatchCompleteController.add(null);
-        }
-      } catch (e, stackTrace) {
-        _logger.warning('Checksum 匹配任务失败', e, stackTrace);
-      }
-    });
-  }
-
   /// 释放资源
   void dispose() {
     cancel();
     _statusController.close();
     _dataSourceSwitchController.close();
-    _checksumMatchCompleteController.close();
   }
 }
 

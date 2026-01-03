@@ -64,27 +64,7 @@ final timelineProviderServiceProvider =
 
 typedef TimelineProviderServiceRef
     = AutoDisposeFutureProviderRef<TimelineProviderService>;
-String _$checksumMatchingServiceHash() =>
-    r'f2749fc0d9d21b27d0a815f59c714b4eaaa8a35b';
-
-/// ChecksumMatchingService Provider
-///
-/// Copied from [checksumMatchingService].
-@ProviderFor(checksumMatchingService)
-final checksumMatchingServiceProvider =
-    AutoDisposeFutureProvider<ChecksumMatchingService>.internal(
-  checksumMatchingService,
-  name: r'checksumMatchingServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$checksumMatchingServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef ChecksumMatchingServiceRef
-    = AutoDisposeFutureProviderRef<ChecksumMatchingService>;
-String _$syncCoordinatorHash() => r'd43c17d41b14a8427baa6490d14c90b52206a2e7';
+String _$syncCoordinatorHash() => r'4ade885654e27bea051c9756debaca52a6338da3';
 
 /// SyncCoordinator Provider
 ///

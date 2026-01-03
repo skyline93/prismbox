@@ -69,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -187,6 +187,59 @@ class AppDatabase extends _$AppDatabase {
       case 8:
         // 创建重试任务表
         await m.createTable(retryTaskEntity);
+        break;
+      case 9:
+        // 本地资源与远程资源完全解耦：添加 isUploaded 字段，移除 checksum 字段
+        // 注意：SQLite 不支持直接删除列，使用表重建方式
+        // 1. 添加 isUploaded 字段（临时，用于迁移）
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity 
+          ADD COLUMN is_uploaded INTEGER NOT NULL DEFAULT 0;
+        ''');
+        // 2. 创建新表（不包含 checksum 字段）
+        await m.database.customStatement('''
+          CREATE TABLE local_asset_entity_new (
+            id TEXT NOT NULL PRIMARY KEY,
+            is_uploaded INTEGER NOT NULL DEFAULT 0,
+            path TEXT NOT NULL,
+            is_favorite INTEGER NOT NULL DEFAULT 0,
+            orientation INTEGER NOT NULL DEFAULT 0,
+            is_in_private_space INTEGER NOT NULL DEFAULT 0,
+            migration_status INTEGER NOT NULL DEFAULT 0,
+            name TEXT NOT NULL,
+            type INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            width INTEGER,
+            height INTEGER,
+            duration_in_seconds INTEGER
+          );
+        ''');
+        // 3. 复制数据（忽略 checksum 字段，isUploaded 设为 0）
+        await m.database.customStatement('''
+          INSERT INTO local_asset_entity_new (
+            id, is_uploaded, path, is_favorite, orientation, 
+            is_in_private_space, migration_status, name, type, 
+            created_at, updated_at, width, height, duration_in_seconds
+          )
+          SELECT 
+            id, 0, path, is_favorite, orientation, 
+            is_in_private_space, migration_status, name, type, 
+            created_at, updated_at, width, height, duration_in_seconds
+          FROM local_asset_entity;
+        ''');
+        // 4. 删除旧表和索引
+        await m.database.customStatement('''
+          DROP INDEX IF EXISTS idx_local_asset_checksum;
+        ''');
+        await m.database.customStatement('''
+          DROP TABLE local_asset_entity;
+        ''');
+        // 5. 重命名新表
+        await m.database.customStatement('''
+          ALTER TABLE local_asset_entity_new RENAME TO 
+          local_asset_entity;
+        ''');
         break;
       // ... 其他版本迁移
       default:

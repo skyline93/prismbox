@@ -74,7 +74,6 @@ Future<UploadOrchestrator> uploadOrchestrator(
   final concurrencyController = UploadConcurrencyController();
   final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   final metadataExtractor = ref.watch(fileMetadataExtractorProvider);
-  final checksumService = await ref.watch(infra_asset.checksumServiceProvider.future);
   // 注意：taskUpdateService 会在 uploadServiceProvider 中设置
   // 这里先传入 null，后续通过 setTaskUpdateService 设置
   return UploadOrchestrator(
@@ -85,7 +84,6 @@ Future<UploadOrchestrator> uploadOrchestrator(
     uploadTaskManager: uploadTaskManager,
     pathResolver: pathResolver,
     metadataExtractor: metadataExtractor,
-    checksumService: checksumService,
     errorHandler: errorHandler, // 注入错误处理器
     taskUpdateService: null, // 延迟设置
   );

@@ -2,6 +2,8 @@
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
+import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/remote_asset.dart';
 import 'package:prismbox/features/local_sync/models/sync_status.dart';
 import 'package:prismbox/features/local_sync/models/timeline_section.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
@@ -58,6 +60,12 @@ Future<List<TimelineSection>> timelineSections(TimelineSectionsRef ref) async {
 /// [assets] - 原始资产列表
 /// [filterMode] - 筛选模式
 /// 返回过滤后的资产列表
+///
+/// **过滤逻辑（解耦后）**：
+/// - 全部：显示所有资产（本地和远程）
+/// - 已备份：显示远程资产（因为解耦后，本地资产不再关联远程资产，所以"已备份"理解为"仅远程"）
+/// - 未备份：显示本地资产（仅本地存在）
+/// - 仅云端：显示远程资产（仅远程存在）
 List<BaseAsset> _filterAssets(
   List<BaseAsset> assets,
   PhotoFilterModeEnum filterMode,
@@ -67,14 +75,14 @@ List<BaseAsset> _filterAssets(
       // 显示全部，不过滤
       return assets;
     case PhotoFilterModeEnum.backedUp:
-      // 仅显示已备份（有远程版本）
-      return assets.where((asset) => asset.hasRemote).toList();
+      // 仅显示远程资产（解耦后，"已备份"理解为"仅远程"）
+      return assets.whereType<RemoteAsset>().toList();
     case PhotoFilterModeEnum.notBackedUp:
-      // 仅显示未备份（仅本地）
-      return assets.where((asset) => asset.isLocalOnly).toList();
+      // 仅显示本地资产（仅本地存在）
+      return assets.whereType<LocalAsset>().toList();
     case PhotoFilterModeEnum.remoteOnly:
-      // 仅显示仅云端（仅远程存在）
-      return assets.where((asset) => asset.isRemoteOnly).toList();
+      // 仅显示远程资产（仅远程存在）
+      return assets.whereType<RemoteAsset>().toList();
   }
 }
 

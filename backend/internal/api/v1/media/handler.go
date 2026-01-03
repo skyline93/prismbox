@@ -38,18 +38,16 @@ func NewHandler(mediaService mediaservice.Service, app *appctx.App) *Handler {
 
 // UploadMedia 上传媒体文件
 // @Summary      上传媒体文件
-// @Description  上传图片或视频文件，支持秒传（通过 hash 检查）。如果文件已存在，直接返回已存在的媒体信息
+// @Description  上传图片或视频文件。后端会自动计算文件 hash。
 // @Tags         Media
 // @Accept       multipart/form-data
 // @Produce      json
 // @Security     BearerAuth
 // @Param        file formData file true "媒体文件"
-// @Param        hash formData string true "文件 MD5 哈希值（32位十六进制字符串）"
 // @Param        item_type formData string true "媒体类型" Enums(image, video)
 // @Param        cloud_uuid formData string true "客户端生成的 UUID"
 // @Param        original_filename formData string false "原始文件名"
 // @Param        media_taken_at formData string false "媒体拍摄时间（RFC3339 格式）"
-// @Success      200 {object} response.ApiResponse{data=dto.MediaResponse} "文件已存在（秒传）"
 // @Success      201 {object} response.ApiResponse{data=dto.MediaResponse} "上传成功"
 // @Failure      400 {object} response.ApiResponse "请求参数错误或文件格式不支持"
 // @Failure      401 {object} response.ApiResponse "未认证"
@@ -60,23 +58,13 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 1. 获取表单参数（与旧架构一致）
-	hash := c.PostForm("hash")
+	// 1. 获取表单参数
 	itemTypeStr := c.PostForm("item_type")
 	originalFilename := c.PostForm("original_filename")
 	cloudUUID := c.PostForm("cloud_uuid")
 	mediaTakenAtStr := c.PostForm("media_taken_at")
 
 	// 2. 校验必填参数
-	if hash == "" {
-		apiresponse.Error(c, "Form field 'hash' is required")
-		return
-	}
-	// 验证Hash格式（MD5应该是32个字符的十六进制字符串）
-	if len(hash) != 32 {
-		apiresponse.Error(c, "Invalid 'hash' format. Must be a 32-character hexadecimal string (MD5)")
-		return
-	}
 	if cloudUUID == "" {
 		apiresponse.Error(c, "Form field 'cloud_uuid' is required")
 		return
@@ -123,47 +111,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		logger.String("filename", originalFilename),
 	)
 
-	// 6. 秒传检查（在打开文件流之前，优化性能）
-	existingMedia, err := h.mediaService.CheckInstantUpload(c.Request.Context(), userID, hash)
-	if err != nil {
-		h.log.Error("failed to check instant upload",
-			logger.Error(err),
-			logger.String("hash", hash),
-			logger.Uint("user_id", userID),
-		)
-		apiresponse.Error(c, "Database error during hash check")
-		return
-	}
-	if existingMedia != nil {
-		// 文件已存在，秒传成功，直接返回（不需要打开文件流）
-		response := &dto.MediaResponse{
-			UUID:             existingMedia.UUID,
-			UserID:           existingMedia.UserID,
-			Hash:             existingMedia.Hash,
-			ItemType:         existingMedia.ItemType,
-			OriginalFilename: existingMedia.OriginalFilename,
-			Filename:         existingMedia.Filename,
-			FileSize:         existingMedia.FileSize,
-			MimeType:         existingMedia.MimeType,
-			ProcessingStatus: existingMedia.ProcessingStatus,
-			LocalPath:        existingMedia.LocalPath,
-			BackupStatus:     existingMedia.BackupStatus,
-			CreatedAt:        existingMedia.CreatedAt.Format(time.RFC3339),
-			ThumbHash:        existingMedia.ThumbHash,
-		}
-		h.log.Info("media instant upload (file already exists)",
-			logger.String("uuid", existingMedia.UUID),
-			logger.String("requested_uuid", cloudUUID),
-			logger.String("hash", hash),
-			logger.Uint("user_id", userID),
-			logger.String("device_id", deviceID),
-			logger.String("device_type", deviceType),
-		)
-		apiresponse.Success(c, "File already exists for this user", response)
-		return
-	}
-
-	// 7. 获取上传的文件（只有在不是秒传时才需要）
+	// 3. 获取上传的文件
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.log.Error("failed to get uploaded file",
@@ -173,7 +121,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 8. 验证文件大小（如果配置了最大文件大小）
+	// 4. 验证文件大小（如果配置了最大文件大小）
 	if h.app != nil && h.app.Config != nil && h.app.Config.API != nil && h.app.Config.API.MaxFileSize > 0 {
 		maxSize := int64(h.app.Config.API.MaxFileSize)
 		if file.Size > maxSize {
@@ -187,7 +135,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		}
 	}
 
-	// 9. 打开文件流（流式处理）
+	// 5. 打开文件流（流式处理）
 	src, err := file.Open()
 	if err != nil {
 		h.log.Error("failed to open uploaded file",
@@ -199,10 +147,9 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	}
 	defer src.Close()
 
-	// 10. 调用Service层上传媒体（传入所有参数）
+	// 6. 调用Service层上传媒体（后端会计算 hash）
 	media, err := h.mediaService.UploadMedia(c.Request.Context(), &mediaservice.UploadMediaRequest{
 		UserID:           userID,
-		Hash:             hash,
 		ItemType:         itemType,
 		OriginalFilename: originalFilename,
 		CloudUUID:        cloudUUID,
@@ -221,7 +168,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	// 11. 转换为响应格式
+	// 7. 转换为响应格式
 	response := &dto.MediaResponse{
 		UUID:             media.UUID,
 		UserID:           media.UserID,

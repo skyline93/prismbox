@@ -63,6 +63,12 @@ func processImageHandler(
 			return fmt.Errorf("resolve image path: %w", err)
 		}
 
+		log.Debug("starting image processing",
+			logger.String("media_uuid", payload.MediaUUID),
+			logger.String("file_path", payload.FilePath),
+			logger.String("original_path", originalPath),
+		)
+
 		result, procErr := processor.ProcessImage(ctx, originalPath, nil)
 		status := "COMPLETED"
 		updates := map[string]interface{}{
@@ -93,10 +99,26 @@ func processImageHandler(
 		if len(result.Errors) > 0 {
 			status = "FAILED"
 			updates["processing_status"] = status
+			// 构建详细的错误信息
+			errorDetails := make([]string, len(result.Errors))
+			for i, err := range result.Errors {
+				errorDetails[i] = fmt.Sprintf("%s: %s", err.Spec, err.Message)
+			}
 			log.Warn("image processing completed with errors",
 				logger.String("media_uuid", payload.MediaUUID),
+				logger.String("original_path", originalPath),
 				logger.Int("error_count", len(result.Errors)),
+				logger.String("errors", strings.Join(errorDetails, "; ")),
 			)
+			// 为每个错误单独记录日志，便于调试
+			for _, err := range result.Errors {
+				log.Error("image processing error for spec",
+					logger.String("media_uuid", payload.MediaUUID),
+					logger.String("spec", err.Spec),
+					logger.String("error_message", err.Message),
+					logger.Error(err.Err),
+				)
+			}
 		}
 
 		// 生成 ThumbHash（仅图片类型，失败不阻塞主流程）
@@ -133,8 +155,15 @@ func processImageHandler(
 
 		log.Info("image processed successfully",
 			logger.String("media_uuid", payload.MediaUUID),
+			logger.String("original_path", originalPath),
 			logger.Int("generated_files", len(result.GeneratedFiles)),
 		)
+		if len(result.GeneratedFiles) > 0 {
+			log.Debug("generated files list",
+				logger.String("media_uuid", payload.MediaUUID),
+				logger.String("files", strings.Join(result.GeneratedFiles, ", ")),
+			)
+		}
 
 		return nil
 	}
@@ -171,6 +200,12 @@ func processVideoHandler(
 			return fmt.Errorf("resolve video path: %w", err)
 		}
 
+		log.Debug("starting video processing",
+			logger.String("media_uuid", payload.MediaUUID),
+			logger.String("file_path", payload.FilePath),
+			logger.String("original_path", originalPath),
+		)
+
 		result, procErr := processor.ProcessVideo(ctx, originalPath, nil)
 		status := "COMPLETED"
 		updates := map[string]interface{}{
@@ -201,10 +236,26 @@ func processVideoHandler(
 		if len(result.Errors) > 0 {
 			status = "FAILED"
 			updates["processing_status"] = status
+			// 构建详细的错误信息
+			errorDetails := make([]string, len(result.Errors))
+			for i, err := range result.Errors {
+				errorDetails[i] = fmt.Sprintf("%s: %s", err.Spec, err.Message)
+			}
 			log.Warn("video processing completed with errors",
 				logger.String("media_uuid", payload.MediaUUID),
+				logger.String("original_path", originalPath),
 				logger.Int("error_count", len(result.Errors)),
+				logger.String("errors", strings.Join(errorDetails, "; ")),
 			)
+			// 为每个错误单独记录日志，便于调试
+			for _, err := range result.Errors {
+				log.Error("video processing error for spec",
+					logger.String("media_uuid", payload.MediaUUID),
+					logger.String("spec", err.Spec),
+					logger.String("error_message", err.Message),
+					logger.Error(err.Err),
+				)
+			}
 		}
 
 		if err := repo.Update(ctx, payload.MediaUUID, updates); err != nil {
@@ -213,8 +264,15 @@ func processVideoHandler(
 
 		log.Info("video processed successfully",
 			logger.String("media_uuid", payload.MediaUUID),
+			logger.String("original_path", originalPath),
 			logger.Int("generated_files", len(result.GeneratedFiles)),
 		)
+		if len(result.GeneratedFiles) > 0 {
+			log.Debug("generated files list",
+				logger.String("media_uuid", payload.MediaUUID),
+				logger.String("files", strings.Join(result.GeneratedFiles, ", ")),
+			)
+		}
 
 		return nil
 	}

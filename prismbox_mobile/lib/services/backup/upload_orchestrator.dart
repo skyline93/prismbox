@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
 import 'package:prismbox/data/database/app_database.dart';
@@ -16,7 +15,6 @@ import 'package:prismbox/services/backup/upload_task_manager.dart';
 import 'package:prismbox/services/backup/api_endpoint_validator.dart';
 import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
-import 'package:prismbox/infrastructure/asset/checksum_service.dart';
 import 'package:prismbox/services/backup/task_update_service.dart';
 import 'package:prismbox/services/backup/error_handler.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
@@ -77,18 +75,12 @@ class UploadOrchestrator {
   final ApiEndpointValidator _endpointValidator;
   final AssetPathResolver _pathResolver;
   final FileMetadataExtractor _metadataExtractor;
-  final ChecksumService _checksumService;
   final TaskUpdateService? _taskUpdateService; // 可选，用于更新任务信息
   final BackupErrorHandler _errorHandler; // 必需，用于统一错误处理
   final Logger _logger = Logger('UploadOrchestrator');
 
-  // 去重检查配置
-  static const int _batchSize = 100; // 每批最多检查 100 个
-  static const Duration _timeout = Duration(seconds: 30); // 超时时间
-
   // 上传端点配置
   static const String _uploadEndpoint = '/api/v1/media/upload-stream';
-  static const String _checkAssetsEndpoint = '/api/v1/media/check_hashes';
 
   /// 上传完成通知流控制器
   final _uploadCompleteController = StreamController<String>.broadcast();
@@ -107,7 +99,6 @@ class UploadOrchestrator {
     ApiEndpointValidator? endpointValidator,
     required AssetPathResolver pathResolver,
     required FileMetadataExtractor metadataExtractor,
-    required ChecksumService checksumService,
     required BackupErrorHandler errorHandler, // 必需，用于统一错误处理
     TaskUpdateService? taskUpdateService, // 可选，用于更新任务信息
   }) : _database = database,
@@ -127,23 +118,21 @@ class UploadOrchestrator {
            ApiEndpointValidator(apiService: apiService ?? ApiService()),
        _pathResolver = pathResolver,
        _metadataExtractor = metadataExtractor,
-       _checksumService = checksumService,
        _errorHandler = errorHandler,
        _taskUpdateService = taskUpdateService;
 
-  /// 过滤已上传资产（支持分批检查和降级策略）
+  /// 过滤已上传资产（基于 isUploaded 字段）
   ///
   /// **参数**：
-  /// - [userId] - 用户 ID（必须）
+  /// - [userId] - 用户 ID（必须，保留用于未来扩展）
   /// - [candidates] - 候选任务列表
   /// - [skipDeduplication] - 是否跳过去重（手动备份可选）
   ///
   /// **返回**：过滤后的任务列表
   ///
   /// **去重策略**：
-  /// 1. 优先检查本地数据库（remote_asset_entity）
-  /// 2. 检查服务器（分批检查，支持超时和降级）
-  /// 3. 过滤掉已存在的资产
+  /// 1. 查询本地资产表中 isUploaded = true 的资产
+  /// 2. 过滤掉这些资产对应的任务
   Future<List<UploadTaskEntityData>> filterUploadedAssets({
     required String userId,
     required List<UploadTaskEntityData> candidates,
@@ -163,38 +152,34 @@ class UploadOrchestrator {
       'candidates=${candidates.length}',
     );
 
-    // 1. 获取所有候选任务的 checksum
-    final checksums = await _calculateChecksums(candidates);
+    // 1. 批量查询本地资产，获取已上传的资产 ID 集合
+    final assetIds = candidates.map((task) => task.assetId).toList();
+    final localDao = _database.localAssetDao;
+    final localAssetsMap = await localDao.getAssetsByIds(assetIds);
+    
+    final uploadedAssetIds = <String>{};
+    for (final entry in localAssetsMap.entries) {
+      if (entry.value.isUploaded) {
+        uploadedAssetIds.add(entry.key);
+      }
+    }
 
-    // 2. 批量检查已存在资产
-    final existingChecksums = await _checkExistingAssets(
-      userId: userId,
-      checksums: checksums,
-    );
-
-    // 3. 过滤掉已存在的资产，并将被去重的任务标记为 completed
+    // 2. 过滤掉已上传的资产，并将被去重的任务标记为 completed
     final filtered = <UploadTaskEntityData>[];
     final duplicateTasks = <UploadTaskEntityData>[];
-    // 创建任务到 checksum 的映射，用于后续日志记录
-    final taskChecksumMap = <String, String?>{};
 
-    for (int i = 0; i < candidates.length; i++) {
-      final task = candidates[i];
-      final checksum = checksums[i];
-      taskChecksumMap[task.id] = checksum;
-
-      if (!existingChecksums.contains(checksum)) {
+    for (final task in candidates) {
+      if (!uploadedAssetIds.contains(task.assetId)) {
         filtered.add(task);
       } else {
         _logger.fine(
-          'Skipping duplicate asset: assetId=${task.assetId}, '
-          'checksum=$checksum',
+          'Skipping uploaded asset: assetId=${task.assetId}',
         );
         duplicateTasks.add(task);
       }
     }
 
-    // 4. 将被去重的任务标记为 completed（因为它们已经存在于服务器上）
+    // 3. 将被去重的任务标记为 completed（因为它们已经上传）
     if (duplicateTasks.isNotEmpty) {
       _logger.info(
         'Marking ${duplicateTasks.length} duplicate tasks as completed',
@@ -205,13 +190,11 @@ class UploadOrchestrator {
           await _stateMachine.transition(task, UploadTaskStatus.completed);
           // 状态机内部已记录详细日志，这里记录额外的上下文信息
           final fileName = task.localPath.split('/').last;
-          final checksum = taskChecksumMap[task.id];
           _logger.info(
             'Marked duplicate task as completed: '
             'taskId=${task.id}, '
             'assetId=${task.assetId}, '
-            'filename=$fileName, '
-            'checksum=$checksum',
+            'filename=$fileName',
           );
         } catch (e) {
           final fileName = task.localPath.split('/').last;
@@ -443,96 +426,6 @@ class UploadOrchestrator {
     return result;
   }
 
-  /// 计算任务的 checksum
-  Future<List<String?>> _calculateChecksums(
-    List<UploadTaskEntityData> tasks,
-  ) async {
-    final checksums = <String?>[];
-
-    for (final task in tasks) {
-      try {
-        // 使用 ChecksumService 获取或计算 checksum
-        final checksum = await _checksumService.getOrCalculateChecksum(
-          assetId: task.assetId,
-          filePath: task.localPath,
-        );
-        checksums.add(checksum);
-      } catch (e) {
-        _logger.warning(
-          'Failed to calculate checksum for taskId=${task.id}: $e',
-        );
-        checksums.add(null);
-      }
-    }
-
-    return checksums;
-  }
-
-  /// 批量检查已存在资产
-  Future<Set<String>> _checkExistingAssets({
-    required String userId,
-    required List<String?> checksums,
-  }) async {
-    final existingChecksums = <String>{};
-
-    // 过滤掉 null checksum
-    final validChecksums = checksums
-        .where((c) => c != null)
-        .cast<String>()
-        .toList();
-
-    if (validChecksums.isEmpty) {
-      return existingChecksums;
-    }
-
-    // 1. 优先检查本地数据库（remote_asset_entity）
-    var query = _database.select(_database.remoteAssetEntity)
-      ..where((t) => t.checksum.isIn(validChecksums))
-      ..where((t) => t.ownerId.equals(userId));
-
-    final localChecksums = await query.get();
-
-    final localSet = localChecksums
-        .map((a) => a.checksum)
-        .where((c) => c.isNotEmpty)
-        .toSet();
-    existingChecksums.addAll(localSet);
-
-    // 2. 检查服务器（分批检查，支持超时和降级）
-    final remainingChecksums = validChecksums
-        .where((c) => !existingChecksums.contains(c))
-        .toList();
-
-    if (remainingChecksums.isNotEmpty) {
-      try {
-        // 分批检查
-        for (int i = 0; i < remainingChecksums.length; i += _batchSize) {
-          final batch = remainingChecksums.skip(i).take(_batchSize).toList();
-
-          // 带超时的批量检查
-          final remoteChecksums = await _checkAssetsExistOnServer(
-            batch,
-          ).timeout(_timeout);
-          existingChecksums.addAll(remoteChecksums);
-        }
-      } catch (e) {
-        // 使用统一的错误处理器
-        final backupError = _errorHandler.handleError(
-          e,
-          context: 'check_assets_exist_on_server',
-        );
-
-        // 降级策略：批量检查失败时，记录错误但不阻塞流程
-        _logger.warning(
-          'Failed to check existing assets on server: '
-          'errorType=${backupError.type}, errorMessage=${backupError.message}',
-        );
-        // 可以选择跳过去重或逐个检查（根据配置决定）
-      }
-    }
-
-    return existingChecksums;
-  }
 
   /// 按优先级排序任务
   List<UploadTaskEntityData> _sortTasksByPriority(
@@ -707,12 +600,6 @@ class UploadOrchestrator {
         fileSize = await _metadataExtractor.extractFileSize(actualPath);
       }
 
-      // 4. 获取或计算 checksum（使用 ChecksumService）
-      final checksum = await _checksumService.getOrCalculateChecksum(
-        assetId: task.assetId,
-        filePath: actualPath,
-      );
-
       // 5. 验证上传端点（可选，用于提前发现问题）
       final endpointValidation = await _endpointValidator
           .validateUploadEndpoint();
@@ -754,8 +641,8 @@ class UploadOrchestrator {
       // 格式化 media_taken_at（RFC3339 格式，UTC 时间）
       final mediaTakenAt = localAsset.createdAt.toUtc().toIso8601String();
 
+      // 后端统一计算 hash，前端不再计算
       final fields = <String, String>{
-        'hash': checksum ?? '',
         'item_type': itemType,
         'cloud_uuid': cloudUuid,
         'original_filename': localAsset.name,
@@ -861,11 +748,12 @@ class UploadOrchestrator {
             'Task completed: taskId=$taskId, '
             'elapsed=${elapsed.inSeconds}s, polls=$pollCount',
           );
-          // 任务成功完成，发出上传完成通知
-          // 注意：不再立即同步资产，由同步模块定时处理
+          // 任务成功完成，更新本地资产的 isUploaded = true
+          await _updateLocalAssetUploadedStatus(task.assetId, true);
+          // 发出上传完成通知
           _logger.info(
             'Task completed: assetId=${task.assetId}, '
-            'sync will be handled by sync module',
+            'isUploaded updated to true',
           );
           _uploadCompleteController.add(task.assetId);
           return; // 任务成功完成
@@ -897,57 +785,52 @@ class UploadOrchestrator {
     }
   }
 
-  /// 批量检查服务器上已存在的资产
-  ///
+  /// 更新本地资产的上传状态
+  /// 
   /// **参数**：
-  /// - [checksums] - checksum 列表
-  ///
-  /// **返回**：已存在的 checksum 集合
-  ///
-  /// **API 格式**：
-  /// - 请求：POST /api/v1/media/check_hashes
-  /// - 请求体：{ "hashes": ["hash1", "hash2", ...] }
-  /// - 响应：{ "existing_hashes": ["hash1", "hash3", ...], "missing_hashes": [...], ... }
-  Future<Set<String>> _checkAssetsExistOnServer(List<String> checksums) async {
-    if (checksums.isEmpty) {
-      return {};
-    }
-
+  /// - [assetId] - 本地资产 ID
+  /// - [isUploaded] - 是否已上传
+  /// 
+  /// **注意**：此方法需要数据库代码生成后才能使用 isUploaded 字段
+  Future<void> _updateLocalAssetUploadedStatus(
+    String assetId,
+    bool isUploaded,
+  ) async {
     try {
-      final endpoint = _apiService.endpoint ?? '';
-      final url = '$endpoint$_checkAssetsEndpoint';
-
-      final headers = await ApiService.getRequestHeaders();
-      headers['Content-Type'] = 'application/json';
-
-      final response = await _apiService.dio.post(
-        url,
-        data: {'hashes': checksums},
-        options: Options(headers: headers),
-      );
-
-      if (response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300) {
-        // 响应拦截器已经提取了 data 字段，所以 response.data 直接是业务数据
-        final data = response.data as Map<String, dynamic>?;
-        if (data != null) {
-          final existing = data['existing_hashes'] as List<dynamic>?;
-          if (existing != null) {
-            return existing.cast<String>().toSet();
-          }
-        }
+      final localDao = _database.localAssetDao;
+      final localAsset = await localDao.getAssetById(assetId);
+      if (localAsset == null) {
+        _logger.warning(
+          'Local asset not found: assetId=$assetId, '
+          'cannot update isUploaded status',
+        );
+        return;
       }
 
-      return {};
+      // 如果状态已经是目标状态，跳过更新
+      if (localAsset.isUploaded == isUploaded) {
+        return;
+      }
+
+      // 更新资产的上传状态
+      final updatedAsset = localAsset.copyWith(
+        isUploaded: isUploaded,
+        updatedAt: DateTime.now(),
+      );
+      await localDao.updateAsset(updatedAsset);
+
+      _logger.info(
+        'Updated local asset isUploaded status: '
+        'assetId=$assetId, isUploaded=$isUploaded',
+      );
     } catch (e, stackTrace) {
+      // 记录错误但不阻塞上传流程
       _logger.warning(
-        'Failed to check assets exist on server: $e',
+        'Failed to update local asset isUploaded status: '
+        'assetId=$assetId, error=$e',
         e,
         stackTrace,
       );
-      // 降级策略：返回空集合，允许继续上传
-      return {};
     }
   }
 
