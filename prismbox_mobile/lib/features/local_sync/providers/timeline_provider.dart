@@ -61,27 +61,33 @@ Future<List<TimelineSection>> timelineSections(TimelineSectionsRef ref) async {
 /// [filterMode] - 筛选模式
 /// 返回过滤后的资产列表
 ///
-/// **过滤逻辑（解耦后）**：
-/// - 全部：显示所有资产（本地和远程）
-/// - 已备份：显示远程资产（因为解耦后，本地资产不再关联远程资产，所以"已备份"理解为"仅远程"）
-/// - 未备份：显示本地资产（仅本地存在）
-/// - 仅云端：显示远程资产（仅远程存在）
+/// **过滤逻辑（基于上传状态）**：
+/// - 全部：仅展示本地媒体资源（LocalAsset），包括已上传和未上传的
+/// - 已备份：仅展示已上传的本地媒体资源（isUploaded == true）
+/// - 未备份：仅展示未上传的本地媒体资源（isUploaded == false，包括从未上传和上传失败的）
+/// - 仅云端：仅展示远程服务端的媒体资源（RemoteAsset）
 List<BaseAsset> _filterAssets(
   List<BaseAsset> assets,
   PhotoFilterModeEnum filterMode,
 ) {
   switch (filterMode) {
     case PhotoFilterModeEnum.all:
-      // 显示全部，不过滤
-      return assets;
-    case PhotoFilterModeEnum.backedUp:
-      // 仅显示远程资产（解耦后，"已备份"理解为"仅远程"）
-      return assets.whereType<RemoteAsset>().toList();
-    case PhotoFilterModeEnum.notBackedUp:
-      // 仅显示本地资产（仅本地存在）
+      // 仅展示本地媒体资源，包括已上传和未上传的
       return assets.whereType<LocalAsset>().toList();
+    case PhotoFilterModeEnum.backedUp:
+      // 仅展示已上传的本地媒体资源（isUploaded == true）
+      return assets
+          .whereType<LocalAsset>()
+          .where((asset) => asset.isUploaded)
+          .toList();
+    case PhotoFilterModeEnum.notBackedUp:
+      // 仅展示未上传的本地媒体资源（isUploaded == false）
+      return assets
+          .whereType<LocalAsset>()
+          .where((asset) => !asset.isUploaded)
+          .toList();
     case PhotoFilterModeEnum.remoteOnly:
-      // 仅显示远程资产（仅远程存在）
+      // 仅展示远程服务端的媒体资源
       return assets.whereType<RemoteAsset>().toList();
   }
 }

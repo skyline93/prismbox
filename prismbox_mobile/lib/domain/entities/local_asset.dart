@@ -7,10 +7,14 @@ import 'package:photo_manager/photo_manager.dart' hide AssetType;
 /// 本地资产实体
 class LocalAsset extends BaseAsset {
   /// 本地资产 ID（photo_manager 的 AssetEntity ID）
+  @override
   final String id;
   
   /// 关联的远程资产 ID
   final String? remoteAssetId;
+  
+  /// 是否已上传（标识资产是否已成功上传到服务器）
+  final bool isUploaded;
   
   /// 图片方向（EXIF 方向值，0-8）
   final int orientation;
@@ -31,6 +35,7 @@ class LocalAsset extends BaseAsset {
     super.durationInSeconds,
     super.isFavorite = false,
     super.livePhotoVideoId,
+    this.isUploaded = false,
     this.orientation = 0,
     this.assetEntity,
   }) : remoteAssetId = remoteId;
@@ -60,6 +65,7 @@ class LocalAsset extends BaseAsset {
     int? durationInSeconds,
     bool isFavorite = false,
     String? livePhotoVideoId,
+    bool isUploaded = false,
     int orientation = 0,
     String? remoteAssetId,
     AssetEntity? assetEntity,
@@ -77,6 +83,7 @@ class LocalAsset extends BaseAsset {
       durationInSeconds: durationInSeconds,
       isFavorite: isFavorite,
       livePhotoVideoId: livePhotoVideoId,
+      isUploaded: isUploaded,
       orientation: orientation,
       assetEntity: assetEntity,
     );

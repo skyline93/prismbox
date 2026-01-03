@@ -4,16 +4,16 @@ part 'photo_filter_provider.g.dart';
 
 /// 照片筛选模式枚举
 enum PhotoFilterModeEnum {
-  /// 显示全部照片
+  /// 仅显示本地媒体资源（包括已上传和未上传的）
   all,
 
-  /// 仅显示已备份的照片
+  /// 仅显示已上传的本地媒体资源（isUploaded == true）
   backedUp,
 
-  /// 仅显示未备份的照片
+  /// 仅显示未上传的本地媒体资源（isUploaded == false）
   notBackedUp,
 
-  /// 仅显示仅云端的照片
+  /// 仅显示远程服务端的媒体资源
   remoteOnly,
 }
 
