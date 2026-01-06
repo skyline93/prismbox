@@ -30,7 +30,7 @@
 - **Affected code**: 
   - `backend/internal/api/v1/media/handler.go` - 修改 Handler，允许 hash 为空
   - `backend/internal/service/media/service.go` - 修改 Service，支持后端计算 hash
-  - `prismbox_mobile/lib/services/backup/upload_orchestrator.dart` - 移除前端 hash 计算
+  - `mobile/lib/services/backup/upload_orchestrator.dart` - 移除前端 hash 计算
 - **API Changes**:
   - `/api/v1/media/upload-stream` - `hash` 字段从必填改为可选
   - 当 `hash` 为空时，后端将计算 hash

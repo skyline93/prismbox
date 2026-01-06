@@ -52,8 +52,8 @@
 ## Impact
 
 - **受影响文件**：
-  - `prismbox_mobile/lib/presentation/pages/viewer/media_viewer_page.dart` - 大幅简化（从 1087 行减少到约 200-300 行）
-  - 新增 6-7 个组件/类文件在 `prismbox_mobile/lib/presentation/widgets/viewer/` 目录下
+  - `mobile/lib/presentation/pages/viewer/media_viewer_page.dart` - 大幅简化（从 1087 行减少到约 200-300 行）
+  - 新增 6-7 个组件/类文件在 `mobile/lib/presentation/widgets/viewer/` 目录下
     - `viewer_video_manager.dart` - 视频播放器管理器类
     - `viewer_dismiss_gesture.dart` - 下滑退出手势处理组件
     - `viewer_controls_bar.dart` - 控制栏组件

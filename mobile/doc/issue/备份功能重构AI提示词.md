@@ -10,7 +10,7 @@
 你是一位经验丰富的Flutter/Dart开发工程师，擅长代码重构和架构设计。
 
 **项目背景**：
-- 项目路径：`prismbox_mobile/lib/services/backup/`
+- 项目路径：`mobile/lib/services/backup/`
 - 当前问题：代码重复严重（70+行），状态管理混乱，职责边界不清
 - 重构方式：渐进式重构，分5个阶段执行
 - 参考文档：`备份功能重构评估与方案.md`

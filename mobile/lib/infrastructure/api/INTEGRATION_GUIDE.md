@@ -11,7 +11,7 @@
 Store表已添加到数据库schema中，运行代码生成：
 
 ```bash
-cd prismbox_mobile
+cd mobile
 flutter pub run build_runner build --delete-conflicting-outputs
 ```
 

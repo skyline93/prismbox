@@ -35,8 +35,8 @@
 ## Impact
 
 - **受影响文件**：
-  - `prismbox_mobile/lib/presentation/pages/photos/main_timeline_page.dart` - 大幅简化
-  - 新增 6-7 个组件文件在 `prismbox_mobile/lib/presentation/widgets/timeline/` 目录下
+  - `mobile/lib/presentation/pages/photos/main_timeline_page.dart` - 大幅简化
+  - 新增 6-7 个组件文件在 `mobile/lib/presentation/widgets/timeline/` 目录下
 - **受影响规范**：
   - UI 重构规范（project.md 中的 UI 拆分策略）
   - 组件命名规范

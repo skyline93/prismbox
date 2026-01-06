@@ -29,7 +29,7 @@
 ## Impact
 
 - **受影响文件**：
-  - `prismbox_mobile/lib/services/encrypted_space/biometric_auth_service.dart` → 重构后移动到 `lib/services/biometric/biometric_auth_service.dart`
+  - `mobile/lib/services/encrypted_space/biometric_auth_service.dart` → 重构后移动到 `lib/services/biometric/biometric_auth_service.dart`
   - 所有引用该服务的文件（约 10+ 个文件）需要更新导入路径和调用方式
 - **受影响模块**：
   - 加密空间模块（当前唯一使用者，需要适配新接口）

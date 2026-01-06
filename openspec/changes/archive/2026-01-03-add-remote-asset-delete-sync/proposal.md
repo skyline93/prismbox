@@ -31,5 +31,5 @@
   - `backend/internal/repository/sync.go` - 新增查询已删除资产的方法
   - `backend/internal/service/sync/service.go` - 在流式同步中发送删除事件
   - `backend/internal/service/media/service.go` - 永久删除前发送删除事件
-  - `prismbox_mobile/lib/features/remote_sync/services/remote_sync_service.dart` - 已有处理逻辑，无需修改
+  - `mobile/lib/features/remote_sync/services/remote_sync_service.dart` - 已有处理逻辑，无需修改
 

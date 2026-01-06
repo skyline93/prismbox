@@ -24,7 +24,7 @@
 
 ### 前端代码现状
 
-- 使用临时方案计算 hash（`prismbox_mobile/lib/services/backup/upload_orchestrator.dart` 第 645-657 行）
+- 使用临时方案计算 hash（`mobile/lib/services/backup/upload_orchestrator.dart` 第 645-657 行）
 - 带有 TODO 注释说明这是临时方案，等待后端修改
 
 ## Design Decisions

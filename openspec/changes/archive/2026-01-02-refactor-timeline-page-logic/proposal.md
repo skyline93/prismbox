@@ -49,7 +49,7 @@
 ## Impact
 
 - **受影响文件**：
-  - `prismbox_mobile/lib/presentation/pages/photos/main_timeline_page.dart` - 大幅简化（从 863 行减少到约 300-400 行）
+  - `mobile/lib/presentation/pages/photos/main_timeline_page.dart` - 大幅简化（从 863 行减少到约 300-400 行）
   - 新增 5 个业务逻辑类文件：
     - `lib/presentation/pages/photos/listeners/timeline_event_listeners.dart` - 事件监听管理器
     - `lib/presentation/pages/photos/controllers/timeline_drag_selection_controller.dart` - 拖动选择控制器

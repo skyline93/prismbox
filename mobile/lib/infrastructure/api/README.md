@@ -14,7 +14,7 @@
 在实现完成后，需要运行以下命令安装依赖：
 
 ```bash
-cd prismbox_mobile
+cd mobile
 flutter pub get
 ```
 

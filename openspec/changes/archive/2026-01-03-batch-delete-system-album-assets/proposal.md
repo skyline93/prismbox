@@ -20,7 +20,7 @@
 
 - **受影响规范**：`specs/timeline-page/spec.md`
 - **受影响代码**：
-  - `prismbox_mobile/lib/services/trash/trash_storage_service.dart`
-  - `prismbox_mobile/lib/services/trash/local_asset_delete_service.dart`
+  - `mobile/lib/services/trash/trash_storage_service.dart`
+  - `mobile/lib/services/trash/local_asset_delete_service.dart`
 - **用户体验改进**：批量删除操作从多次确认优化为单次确认
 

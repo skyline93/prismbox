@@ -16,10 +16,10 @@
 
 - **Affected specs**: `timeline-page`
 - **Affected code**: 
-  - `prismbox_mobile/lib/domain/entities/local_asset.dart` - 添加 `isUploaded` 字段
-  - `prismbox_mobile/lib/features/local_sync/providers/timeline_provider.dart` - 过滤逻辑实现
-  - `prismbox_mobile/lib/providers/photo_filter/photo_filter_provider.dart` - 过滤模式定义（可能需要更新注释）
-  - `prismbox_mobile/lib/features/local_sync/services/timeline_provider_service.dart` - 数据获取服务（创建 LocalAsset 时传递 isUploaded）
+  - `mobile/lib/domain/entities/local_asset.dart` - 添加 `isUploaded` 字段
+  - `mobile/lib/features/local_sync/providers/timeline_provider.dart` - 过滤逻辑实现
+  - `mobile/lib/providers/photo_filter/photo_filter_provider.dart` - 过滤模式定义（可能需要更新注释）
+  - `mobile/lib/features/local_sync/services/timeline_provider_service.dart` - 数据获取服务（创建 LocalAsset 时传递 isUploaded）
 
 ## Breaking Changes
 

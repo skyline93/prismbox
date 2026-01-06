@@ -38,10 +38,10 @@
 
 - **新增能力**：`pin` capability（PIN码服务规范）
 - **影响的代码**：
-  - `prismbox_mobile/lib/services/encrypted_space/` 目录下的PIN相关服务
-  - `prismbox_mobile/lib/services/encrypted_space/encrypted_space_service.dart`（使用新的PIN服务）
+  - `mobile/lib/services/encrypted_space/` 目录下的PIN相关服务
+  - `mobile/lib/services/encrypted_space/encrypted_space_service.dart`（使用新的PIN服务）
   - 所有调用PIN相关服务的UI组件和业务逻辑
 - **新增代码**：
-  - `prismbox_mobile/lib/services/pin/` 目录（新的PIN服务层）
+  - `mobile/lib/services/pin/` 目录（新的PIN服务层）
 - **测试影响**：需要为新的PIN服务编写独立测试，并更新加密空间相关的测试
 

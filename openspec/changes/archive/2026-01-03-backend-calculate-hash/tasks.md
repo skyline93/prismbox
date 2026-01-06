@@ -25,7 +25,7 @@
 
 ## 4. 更新前端代码
 
-- [x] 4.1 修改 `prismbox_mobile/lib/services/backup/upload_orchestrator.dart`
+- [x] 4.1 修改 `mobile/lib/services/backup/upload_orchestrator.dart`
 - [x] 4.2 移除 `FileHashUtil.calculateFileChecksum` 调用
 - [x] 4.3 移除 `hash` 字段
 - [x] 4.4 移除 `FileHashUtil` 和相关导入
