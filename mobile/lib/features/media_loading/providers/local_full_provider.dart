@@ -64,6 +64,9 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
   /// 阶段 1：加载缩略图（从缓存或生成）
   /// 阶段 2：加载适配设备分辨率的图片
   /// 阶段 3：根据 loadOriginal 参数或全局设置决定是否加载原图
+  /// 
+  /// 所有阶段都使用原生解码，包括 RAW 格式
+  /// 原生 API（Android ImageDecoder、iOS PHImageManager）已经能够处理 RAW 格式和任意尺寸
   Stream<ui.Codec> _loadImage(LocalFullImageProvider key, ImageDecoderCallback decode) async* {
     try {
       // 如果 loadOriginal 为 true，强制加载原图；否则使用全局设置
@@ -77,10 +80,12 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
         yield thumbCodec;
         
         // 阶段 2：加载适配设备分辨率的图片
+        // 统一使用原生解码，包括 RAW 格式
         final adaptedCodec = await _loadAdaptedImage(key, decode);
         yield adaptedCodec;
         
         // 阶段 3：根据 loadOriginal 参数或全局设置决定是否加载原图
+        // 统一使用原生解码，包括 RAW 格式
         if (shouldLoadOriginal) {
           final originalCodec = await _loadOriginalImage(key, decode);
           yield originalCodec;
@@ -159,8 +164,11 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
   
   /// 加载原图（阶段 3）
   /// 
-  /// 使用 LocalImageRequest 处理原图加载
-  /// 对于图片类型，直接读取原文件；对于视频类型，生成高质量缩略图
+  /// 使用原生解码加载原图
+  /// 传递 width=0, height=0 给原生 API，表示最大尺寸/原图
+  /// iOS 原生层：width=0, height=0 对应 PHImageManagerMaximumSize
+  /// Android 原生层：width=0, height=0 时返回原图尺寸
+  /// 如果原生解码失败，会自动降级到 Flutter 层处理
   Future<ui.Codec> _loadOriginalImage(
     LocalFullImageProvider key,
     ImageDecoderCallback decode,
@@ -168,10 +176,11 @@ class LocalFullImageProvider extends ImageProvider<LocalFullImageProvider> {
     final cacheManager = key.cacheManager ?? ThumbnailImageCacheManager();
     
     // 使用 LocalImageRequest 加载原图
-    // LocalImageRequest 的 _loadFullImage 会处理图片和视频的不同情况
+    // LocalImageRequest 的 _loadFullImage 会使用原生解码（width=0, height=0）
+    // 如果原生解码失败，会自动降级到 Flutter 层处理
     final request = LocalImageRequest(
       asset: key.asset,
-      targetSize: null, // 原图不需要指定尺寸
+      targetSize: null, // null 表示原图，会传递 width=0, height=0 给原生 API
       cacheManager: cacheManager,
       userId: key.userId,
       checksum: key.checksum,

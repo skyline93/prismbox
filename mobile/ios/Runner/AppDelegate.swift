@@ -22,12 +22,10 @@ import UserNotifications
     // 必须在应用启动时注册，否则后台任务无法执行
     BackgroundWorkerApiImpl.registerBackgroundWorkers()
     
-    // 注册网络连接检查 API
-    let connectivityRegistrar = registrar(forPlugin: "ConnectivityApi")!
-    ConnectivityApiSetup.setUp(
-      binaryMessenger: connectivityRegistrar.messenger(),
-      api: ConnectivityApiImpl()
-    )
+    // 注册自定义插件到 Flutter Engine
+    // Note: This generates a deprecation warning but is the standard pattern
+    let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
+    AppDelegate.registerPlugins(with: controller.engine)
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -45,6 +43,12 @@ import UserNotifications
     ConnectivityApiSetup.setUp(
       binaryMessenger: engine.binaryMessenger,
       api: ConnectivityApiImpl()
+    )
+    
+    // 注册缩略图解码 API
+    ThumbnailApiSetup.setUp(
+      binaryMessenger: engine.binaryMessenger,
+      api: ThumbnailApiImpl()
     )
   }
 }

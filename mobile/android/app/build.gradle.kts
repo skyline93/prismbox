@@ -37,6 +37,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    externalNativeBuild {
+        cmake {
+            path = file("CMakeLists.txt")
+        }
+    }
 }
 
 flutter {
@@ -53,4 +59,8 @@ dependencies {
     
     // Google Guava for ListenableFuture (required by WorkManager)
     implementation("com.google.guava:guava:31.1-android")
+    
+    // Glide for image loading (fallback for Android < Q)
+    val glideVersion = "4.16.0"
+    implementation("com.github.bumptech.glide:glide:$glideVersion")
 }

@@ -9,6 +9,8 @@ import app.prismbox.background.BackgroundWorkerApiImpl
 import app.prismbox.background.BackgroundWorkerFgHostApi
 import app.prismbox.connectivity.ConnectivityApiImpl
 import app.prismbox.connectivity.ConnectivityApi
+import app.prismbox.images.ThumbnailApi
+import app.prismbox.images.ThumbnailsImpl
 
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -31,6 +33,12 @@ class MainActivity : FlutterFragmentActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             ConnectivityApiImpl(this) as ConnectivityApi
         )
+        
+        // 注册缩略图解码 API
+        ThumbnailApi.setUp(
+            flutterEngine.dartExecutor.binaryMessenger,
+            ThumbnailsImpl(this)
+        )
     }
     
     companion object {
@@ -47,6 +55,12 @@ class MainActivity : FlutterFragmentActivity() {
             ConnectivityApi.setUp(
                 engine.dartExecutor.binaryMessenger,
                 ConnectivityApiImpl(ctx) as ConnectivityApi
+            )
+            
+            // 注册缩略图解码 API（供后台 Engine 使用）
+            ThumbnailApi.setUp(
+                engine.dartExecutor.binaryMessenger,
+                ThumbnailsImpl(ctx)
             )
         }
     }

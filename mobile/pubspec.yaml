@@ -111,6 +111,9 @@ dependencies:
   # 权限管理
   permission_handler: ^11.3.1
 
+  # FFI - 用于原生内存指针访问
+  ffi: ^2.1.4
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
