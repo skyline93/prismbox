@@ -14,6 +14,7 @@ import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
 import 'package:prismbox/features/local_sync/models/data_source_type.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
+import 'package:prismbox/platform/asset_native_api.g.dart';
 import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
 
 /// 时间线数据提供者服务
@@ -21,14 +22,17 @@ import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
 class TimelineProviderService {
   final AppDatabase _database;
   final DataSourceSelector _dataSourceSelector;
+  final AssetNativeApi _assetNativeApi;
   final Logger _logger = Logger('TimelineProviderService');
 
   TimelineProviderService({
     required AppDatabase database,
     DataSourceSelector? dataSourceSelector,
+    AssetNativeApi? assetNativeApi,
   }) : _database = database,
        _dataSourceSelector =
-           dataSourceSelector ?? DataSourceSelector(database: database);
+           dataSourceSelector ?? DataSourceSelector(database: database),
+       _assetNativeApi = assetNativeApi ?? AssetNativeApi();
 
   /// 获取时间线数据
   ///
@@ -68,12 +72,12 @@ class TimelineProviderService {
       try {
         final localAssets = await _getFromPhotoManager();
         final assets = localAssets.cast<BaseAsset>();
-        
+
         // 如果提供了过滤模式，则进行过滤
         if (filterMode != null) {
           return _filterAssets(assets, filterMode);
         }
-        
+
         return assets;
       } catch (e2) {
         _logger.severe('从 photo_manager 获取数据也失败', e2);
@@ -120,7 +124,7 @@ class TimelineProviderService {
   }
 
   /// 从数据库获取数据（合并本地和远程资产）
-  /// 
+  ///
   /// **合并策略**：
   /// - 完全解耦本地和远程资产，不进行关联
   /// - 先添加所有远程资产，再添加所有本地资产
@@ -209,11 +213,9 @@ class TimelineProviderService {
   }
 
   /// 仅获取本地资产（当无法获取用户ID时）
-  Future<List<BaseAsset>> _getLocalAssetsOnly(
-    LocalAssetDao localDao,
-  ) async {
+  Future<List<BaseAsset>> _getLocalAssetsOnly(LocalAssetDao localDao) async {
     final localAssetsData = await localDao.getAllAssets();
-    
+
     final localAssets = <BaseAsset>[];
 
     for (final data in localAssetsData) {
@@ -310,16 +312,12 @@ class TimelineProviderService {
       );
 
       // 过滤掉转换失败的结果
-      final localAssets = localAssetsResults
-          .whereType<LocalAsset>()
-          .toList();
+      final localAssets = localAssetsResults.whereType<LocalAsset>().toList();
 
       // 按创建时间降序排序
       localAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      _logger.info(
-        '从 photo_manager 加载 ${localAssets.length} 个资产',
-      );
+      _logger.info('从 photo_manager 加载 ${localAssets.length} 个资产');
 
       return localAssets;
     } catch (e) {
@@ -371,6 +369,16 @@ class TimelineProviderService {
     // 注意：不要使用 originFile.path 来解析文件名，因为它在 iOS 上是临时文件，文件名是随机的
     final originalFileName = asset.title ?? '';
 
+    // 获取收藏状态
+    // 通过原生 API 从系统相册获取收藏状态
+    bool isFavorite = false;
+    try {
+      isFavorite = await _assetNativeApi.getIsFavorite(asset.id);
+    } catch (e) {
+      // 获取失败时默认为 false，不影响时间线显示
+      _logger.fine('获取收藏状态失败: ${asset.id}, 默认为 false');
+    }
+
     return LocalAsset.fromData(
       id: asset.id,
       name: originalFileName, // 使用 asset.title 获取的原始文件名
@@ -381,12 +389,11 @@ class TimelineProviderService {
       width: asset.width,
       height: asset.height,
       durationInSeconds: asset.duration,
-      isFavorite: false,
+      isFavorite: isFavorite, // 从系统相册获取的收藏状态
       isUploaded: false, // photo_manager 数据源无法获取上传状态，默认为未上传
       orientation: asset.orientation,
       remoteAssetId: null, // 完全解耦，不关联远程资产
       assetEntity: asset, // photo_manager 数据源包含 AssetEntity
     );
   }
-
 }

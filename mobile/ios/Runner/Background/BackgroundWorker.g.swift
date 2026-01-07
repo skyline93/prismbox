@@ -11,25 +11,6 @@ import Foundation
   #error("Unsupported platform.")
 #endif
 
-private func wrapResult(_ result: Any?) -> [Any?] {
-  return [result]
-}
-
-private func wrapError(_ error: Any) -> [Any?] {
-  if let flutterError = error as? FlutterError {
-    return [
-      flutterError.code,
-      flutterError.message,
-      flutterError.details,
-    ]
-  }
-  return [
-    "\(error)",
-    "\(type(of: error))",
-    "Stacktrace: \(Thread.callStackSymbols)",
-  ]
-}
-
 /// 错误类型，用于包装 FlutterError 以符合 Error 协议
 struct BackgroundWorkerError: Error {
   let code: String
@@ -51,15 +32,6 @@ struct BackgroundWorkerError: Error {
 
 private func createConnectionError(withChannelName channelName: String) -> BackgroundWorkerError {
   return BackgroundWorkerError(code: "channel-error", message: "Unable to establish connection on channel: '\(channelName)'.", details: nil)
-}
-
-private func isNullish(_ value: Any?) -> Bool {
-  return value is NSNull || value == nil
-}
-
-private func nilOrValue<T>(_ value: Any?) -> T? {
-  if value is NSNull { return nil }
-  return value as! T?
 }
 
 /// 后台任务配置设置

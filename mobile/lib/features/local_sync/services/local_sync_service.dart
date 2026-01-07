@@ -10,12 +10,14 @@ import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/features/local_sync/exceptions/sync_exception.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
+import 'package:prismbox/platform/asset_native_api.g.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 本地同步服务
 /// 负责扫描系统相册并同步到数据库
 class LocalSyncService {
   final AppDatabase _database;
+  final AssetNativeApi _assetNativeApi;
   final Logger _logger = Logger('LocalSyncService');
 
   /// 批量处理大小
@@ -24,7 +26,11 @@ class LocalSyncService {
   /// 取消令牌
   CancellationToken? _cancellationToken;
 
-  LocalSyncService({required AppDatabase database}) : _database = database;
+  LocalSyncService({
+    required AppDatabase database,
+    AssetNativeApi? assetNativeApi,
+  }) : _database = database,
+       _assetNativeApi = assetNativeApi ?? AssetNativeApi();
 
   /// 同步本地媒体库到数据库
   ///
@@ -130,11 +136,19 @@ class LocalSyncService {
           end: end,
         );
 
+        // 批量获取收藏状态
+        final favoriteMap = await _batchGetFavoriteStatus(
+          assets.map((a) => a.id).toList(),
+        );
+
         // 转换为数据库实体
         final entities = <LocalAssetEntityData>[];
         for (final asset in assets) {
           try {
-            final entity = await _convertToEntity(asset);
+            final entity = await _convertToEntity(
+              asset,
+              favoriteMap: favoriteMap,
+            );
             entities.add(entity);
           } catch (e) {
             _logger.warning('转换资产失败: ${asset.id}', e);
@@ -298,18 +312,29 @@ class LocalSyncService {
         final toInsert = <LocalAssetEntityData>[];
         final toUpdate = <LocalAssetEntityData>[];
 
+        // 收集需要处理的资产 ID，用于批量获取收藏状态
+        final assetsToProcess = <pm.AssetEntity>[];
         for (final asset in assets) {
+          // 优化：只处理修改时间在最后同步时间之后的资产，或者是新资产
+          final isNewAsset = !existingIds.contains(asset.id);
+          final isModified = asset.modifiedDateTime.isAfter(lastSyncTime);
+
+          if (isNewAsset || isModified) {
+            assetsToProcess.add(asset);
+          }
+        }
+
+        // 批量获取收藏状态
+        final favoriteMap = await _batchGetFavoriteStatus(
+          assetsToProcess.map((a) => a.id).toList(),
+        );
+
+        for (final asset in assetsToProcess) {
           try {
-            // 优化：只处理修改时间在最后同步时间之后的资产，或者是新资产
-            final isNewAsset = !existingIds.contains(asset.id);
-            final isModified = asset.modifiedDateTime.isAfter(lastSyncTime);
-
-            if (!isNewAsset && !isModified) {
-              // 跳过未修改的现有资产
-              continue;
-            }
-
-            final entity = await _convertToEntity(asset);
+            final entity = await _convertToEntity(
+              asset,
+              favoriteMap: favoriteMap,
+            );
             final existing = existingMap[entity.id];
 
             if (existing == null) {
@@ -422,7 +447,15 @@ class LocalSyncService {
   }
 
   /// 转换 AssetEntity 为 LocalAssetEntityData
-  Future<LocalAssetEntityData> _convertToEntity(pm.AssetEntity asset) async {
+  ///
+  /// [asset] - photo_manager 的 AssetEntity
+  /// [favoriteMap] - 可选的收藏状态映射表（用于批量处理时传入预获取的收藏状态）
+  ///
+  /// 如果 favoriteMap 为空或不包含该资产，会单独调用原生 API 获取收藏状态
+  Future<LocalAssetEntityData> _convertToEntity(
+    pm.AssetEntity asset, {
+    Map<String, bool>? favoriteMap,
+  }) async {
     // 获取文件路径 - 使用 originFile 获取原始文件路径
     // 注意：originFile 返回原始文件的永久路径，不会被系统清理
     // file 可能返回处理后的临时文件（如应用 EXIF 旋转），路径可能包含 _exif.jpg 后缀
@@ -457,6 +490,21 @@ class LocalSyncService {
       assetType = AssetType.other;
     }
 
+    // 获取收藏状态
+    // 优先使用批量预获取的 favoriteMap，否则单独调用原生 API
+    bool isFavorite = false;
+    if (favoriteMap != null && favoriteMap.containsKey(asset.id)) {
+      isFavorite = favoriteMap[asset.id]!;
+    } else {
+      // 单独获取收藏状态（用于单个资产处理的情况）
+      try {
+        isFavorite = await _assetNativeApi.getIsFavorite(asset.id);
+      } catch (e) {
+        // 获取失败时默认为 false，不影响同步流程
+        _logger.fine('获取收藏状态失败: ${asset.id}, 默认为 false');
+      }
+    }
+
     return LocalAssetEntityData(
       id: asset.id,
       name: originalFileName, // 使用 asset.title 获取的原始文件名
@@ -467,7 +515,7 @@ class LocalSyncService {
       width: asset.width,
       height: asset.height,
       durationInSeconds: asset.duration,
-      isFavorite: false,
+      isFavorite: isFavorite, // 从系统相册获取的收藏状态
       // iOS 上，Photos framework 已经预校正了尺寸，orientation 应始终为 0（与 Immich 一致）
       // Android 上，使用 photo_manager 返回的 orientation（可能是 90° 或 270°）
       orientation: Platform.isIOS ? 0 : asset.orientation,
@@ -475,6 +523,31 @@ class LocalSyncService {
       isInPrivateSpace: false, // 新同步的资产默认不在私有空间
       migrationStatus: MigrationStatus.none, // 新同步的资产默认无迁移状态
     );
+  }
+
+  /// 批量获取资产的收藏状态
+  ///
+  /// 通过原生 API 批量获取多个资产的收藏状态
+  /// 返回 assetId -> isFavorite 的映射表
+  Future<Map<String, bool>> _batchGetFavoriteStatus(
+    List<String> assetIds,
+  ) async {
+    if (assetIds.isEmpty) {
+      return {};
+    }
+
+    try {
+      final metadataList = await _assetNativeApi.getAssetMetadata(assetIds);
+      final result = <String, bool>{};
+      for (final metadata in metadataList) {
+        result[metadata.id] = metadata.isFavorite;
+      }
+      return result;
+    } catch (e) {
+      // 批量获取失败时返回空映射，让 _convertToEntity 逐个获取
+      _logger.warning('批量获取收藏状态失败，将逐个获取', e);
+      return {};
+    }
   }
 
   /// 检测已删除的资产

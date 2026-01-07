@@ -12,7 +12,7 @@ import Foundation
 #endif
 
 /// Error class for passing custom error details to Dart side.
-final class PigeonError: Error {
+internal final class PigeonError: Error {
   let code: String
   let message: String?
   let details: Any?
@@ -29,11 +29,11 @@ final class PigeonError: Error {
       }
 }
 
-private func wrapResult(_ result: Any?) -> [Any?] {
+internal func wrapResult(_ result: Any?) -> [Any?] {
   return [result]
 }
 
-private func wrapError(_ error: Any) -> [Any?] {
+internal func wrapError(_ error: Any) -> [Any?] {
   if let pigeonError = error as? PigeonError {
     return [
       pigeonError.code,
@@ -55,11 +55,11 @@ private func wrapError(_ error: Any) -> [Any?] {
   ]
 }
 
-private func isNullish(_ value: Any?) -> Bool {
+internal func isNullish(_ value: Any?) -> Bool {
   return value is NSNull || value == nil
 }
 
-private func nilOrValue<T>(_ value: Any?) -> T? {
+internal func nilOrValue<T>(_ value: Any?) -> T? {
   if value is NSNull { return nil }
   return value as! T?
 }

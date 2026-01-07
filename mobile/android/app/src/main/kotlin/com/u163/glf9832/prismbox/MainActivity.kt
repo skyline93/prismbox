@@ -5,6 +5,8 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import app.prismbox.HttpSSLOptionsPlugin
 import app.prismbox.StoragePlugin
+import app.prismbox.assets.AssetNativeApi
+import app.prismbox.assets.AssetNativeApiImpl
 import app.prismbox.background.BackgroundWorkerApiImpl
 import app.prismbox.background.BackgroundWorkerFgHostApi
 import app.prismbox.connectivity.ConnectivityApiImpl
@@ -39,6 +41,12 @@ class MainActivity : FlutterFragmentActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             ThumbnailsImpl(this)
         )
+        
+        // 注册资产原生 API（用于获取收藏状态等元数据）
+        AssetNativeApi.setUp(
+            flutterEngine.dartExecutor.binaryMessenger,
+            AssetNativeApiImpl(this)
+        )
     }
     
     companion object {
@@ -61,6 +69,12 @@ class MainActivity : FlutterFragmentActivity() {
             ThumbnailApi.setUp(
                 engine.dartExecutor.binaryMessenger,
                 ThumbnailsImpl(ctx)
+            )
+            
+            // 注册资产原生 API（供后台 Engine 使用）
+            AssetNativeApi.setUp(
+                engine.dartExecutor.binaryMessenger,
+                AssetNativeApiImpl(ctx)
             )
         }
     }

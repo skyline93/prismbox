@@ -50,5 +50,11 @@ import UserNotifications
       binaryMessenger: engine.binaryMessenger,
       api: ThumbnailApiImpl()
     )
+    
+    // 注册资产原生 API（用于获取收藏状态等元数据）
+    AssetNativeApiSetup.setUp(
+      binaryMessenger: engine.binaryMessenger,
+      api: AssetNativeApiImpl()
+    )
   }
 }

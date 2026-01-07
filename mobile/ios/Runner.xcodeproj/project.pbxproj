@@ -26,6 +26,8 @@
 		4656AA060634419CB2342F6B /* Thumbhash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C8438480BD4FA29350A461 /* Thumbhash.swift */; };
 		A95B776E49BB4EB0A1AAADC9 /* Thumbnails.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445F280A65C84B82B3B62F79 /* Thumbnails.g.swift */; };
 		F764DA24E42F424DB5C3CBB1 /* ThumbnailsImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C1FC2D662E460EA9ECFA05 /* ThumbnailsImpl.swift */; };
+		A6EA4F89721743C882A6F53D /* AssetNative.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F43E4C6C7564C959D334EC1 /* AssetNative.g.swift */; };
+		82EBEA2D29B746FCB76DF76A /* AssetNativeApiImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A664A7B2C7D4BDBB2CE5071 /* AssetNativeApiImpl.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +88,8 @@
 		55C8438480BD4FA29350A461 /* Thumbhash.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Thumbhash.swift; sourceTree = "<group>"; };
 		445F280A65C84B82B3B62F79 /* Thumbnails.g.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Thumbnails.g.swift; sourceTree = "<group>"; };
 		D8C1FC2D662E460EA9ECFA05 /* ThumbnailsImpl.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ThumbnailsImpl.swift; sourceTree = "<group>"; };
+		4F43E4C6C7564C959D334EC1 /* AssetNative.g.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AssetNative.g.swift; sourceTree = "<group>"; };
+		1A664A7B2C7D4BDBB2CE5071 /* AssetNativeApiImpl.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AssetNativeApiImpl.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -197,6 +201,7 @@
 				E5F6A7B8C9D0E1F2A3B4C5D6 /* Background */,
 				0564B7FFE17C41AF9E86280E /* Connectivity */,
 				7E8F9A0B1C2D3E4F5A6B7C8D /* Images */,
+				82E7BDD113CA4290ABB2E908 /* Assets */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -219,6 +224,15 @@
 				D8C1FC2D662E460EA9ECFA05 /* ThumbnailsImpl.swift */,
 			);
 			path = Images;
+			sourceTree = "<group>";
+		};
+		82E7BDD113CA4290ABB2E908 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				4F43E4C6C7564C959D334EC1 /* AssetNative.g.swift */,
+				1A664A7B2C7D4BDBB2CE5071 /* AssetNativeApiImpl.swift */,
+			);
+			path = Assets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -468,6 +482,8 @@
 				4656AA060634419CB2342F6B /* Thumbhash.swift in Sources */,
 				A95B776E49BB4EB0A1AAADC9 /* Thumbnails.g.swift in Sources */,
 				F764DA24E42F424DB5C3CBB1 /* ThumbnailsImpl.swift in Sources */,
+				A6EA4F89721743C882A6F53D /* AssetNative.g.swift in Sources */,
+				82EBEA2D29B746FCB76DF76A /* AssetNativeApiImpl.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -5,6 +5,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';
+import 'package:prismbox/presentation/widgets/media/favorite_indicator.dart';
 import 'package:prismbox/presentation/widgets/media/media_image_widget.dart';
 
 /// 媒体网格 Sliver（用于 CustomScrollView）
@@ -149,11 +150,18 @@ class _MediaGridSliverState extends State<MediaGridSliver> {
       onVisibilityChanged: (info) => _onVisibilityChanged(index, info),
       child: GestureDetector(
         onTap: () => widget.onTap?.call(asset, index),
-        child: MediaImageWidget(
-          asset: asset,
-          isThumbnail: true,
-          serverUrl: widget.serverUrl,
-          assetEntityLoader: widget.assetEntityLoader,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            MediaImageWidget(
+              asset: asset,
+              isThumbnail: true,
+              serverUrl: widget.serverUrl,
+              assetEntityLoader: widget.assetEntityLoader,
+            ),
+            // 收藏指示器（左下角）
+            FavoriteIndicator(isFavorite: asset.isFavorite),
+          ],
         ),
       ),
     );
@@ -318,11 +326,18 @@ class _MediaGridViewState extends State<MediaGridView> {
       onVisibilityChanged: (info) => _onVisibilityChanged(index, info),
       child: GestureDetector(
         onTap: () => widget.onTap?.call(asset, index),
-        child: MediaImageWidget(
-          asset: asset,
-          isThumbnail: true,
-          serverUrl: widget.serverUrl,
-          assetEntityLoader: widget.assetEntityLoader,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            MediaImageWidget(
+              asset: asset,
+              isThumbnail: true,
+              serverUrl: widget.serverUrl,
+              assetEntityLoader: widget.assetEntityLoader,
+            ),
+            // 收藏指示器（左下角）
+            FavoriteIndicator(isFavorite: asset.isFavorite),
+          ],
         ),
       ),
     );
