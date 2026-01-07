@@ -7,6 +7,7 @@ import 'package:prismbox/data/database/enums/asset_visibility.dart';
 /// 远程资产实体
 class RemoteAsset extends BaseAsset {
   /// 远程资产 ID（服务器端 ID）
+  @override
   final String id;
   
   /// 关联的本地资产 ID
@@ -50,10 +51,14 @@ class RemoteAsset extends BaseAsset {
   String? get remoteId => id;
 
   @override
-  AssetState get storage => localId == null ? AssetState.remote : AssetState.merged;
+  AssetState get storage =>
+      localId == null ? AssetState.remote : AssetState.merged;
 
   @override
   String get heroTag => '${localId ?? checksum ?? ''}_$id';
+
+  @override
+  int? get orientation => null; // RemoteAsset 没有 orientation，需要从 EXIF 获取（当前阶段不实现）
 
   /// 从数据库实体创建 RemoteAsset
   factory RemoteAsset.fromData({
@@ -94,4 +99,3 @@ class RemoteAsset extends BaseAsset {
     );
   }
 }
-

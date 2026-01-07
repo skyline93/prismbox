@@ -55,27 +55,34 @@ class ViewerControlsBar extends StatelessWidget {
           top: 0,
           left: 0,
           right: 0,
-          child: AppBar(
-            backgroundColor: Colors.black.withOpacity(0.5),
-            iconTheme: const IconThemeData(color: Colors.white),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: onBack ?? () => Navigator.of(context).pop(),
+          child: IgnorePointer(
+            ignoring: false, // AppBar 需要接收点击事件
+            child: AppBar(
+              backgroundColor: Colors.black.withOpacity(0.5),
+              iconTheme: const IconThemeData(color: Colors.white),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: onBack ?? () => Navigator.of(context).pop(),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  onPressed:
+                      onShare ??
+                      () {
+                        // TODO: 分享媒体
+                      },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed:
+                      onMore ??
+                      () {
+                        // TODO: 显示更多选项
+                      },
+                ),
+              ],
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.share),
-                onPressed: onShare ?? () {
-                  // TODO: 分享媒体
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.more_vert),
-                onPressed: onMore ?? () {
-                  // TODO: 显示更多选项
-                },
-              ),
-            ],
           ),
         ),
         // 底部控制栏
@@ -83,31 +90,40 @@ class ViewerControlsBar extends StatelessWidget {
           bottom: 0,
           left: 0,
           right: 0,
-          child: Container(
-            color: Colors.black.withOpacity(0.5),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.favorite_border, color: Colors.white),
-                  onPressed: onFavorite ?? () {
-                    // TODO: 切换收藏状态
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.info_outline, color: Colors.white),
-                  onPressed: onInfo ?? () {
-                    // TODO: 显示信息
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white),
-                  onPressed: onEdit ?? () {
-                    // TODO: 编辑媒体
-                  },
-                ),
-              ],
+          child: IgnorePointer(
+            ignoring: false, // 按钮需要接收点击事件
+            child: Container(
+              color: Colors.black.withOpacity(0.5),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.favorite_border, color: Colors.white),
+                    onPressed:
+                        onFavorite ??
+                        () {
+                          // TODO: 切换收藏状态
+                        },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.info_outline, color: Colors.white),
+                    onPressed:
+                        onInfo ??
+                        () {
+                          // TODO: 显示信息
+                        },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    onPressed:
+                        onEdit ??
+                        () {
+                          // TODO: 编辑媒体
+                        },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -115,4 +131,3 @@ class ViewerControlsBar extends StatelessWidget {
     );
   }
 }
-

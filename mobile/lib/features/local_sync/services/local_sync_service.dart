@@ -1,6 +1,7 @@
 // lib/features/local_sync/services/local_sync_service.dart
 
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/data/database/app_database.dart';
@@ -467,7 +468,9 @@ class LocalSyncService {
       height: asset.height,
       durationInSeconds: asset.duration,
       isFavorite: false,
-      orientation: asset.orientation,
+      // iOS 上，Photos framework 已经预校正了尺寸，orientation 应始终为 0（与 Immich 一致）
+      // Android 上，使用 photo_manager 返回的 orientation（可能是 90° 或 270°）
+      orientation: Platform.isIOS ? 0 : asset.orientation,
       path: path.isNotEmpty ? path : asset.id, // 如果路径为空，使用 ID 作为备用
       isInPrivateSpace: false, // 新同步的资产默认不在私有空间
       migrationStatus: MigrationStatus.none, // 新同步的资产默认无迁移状态

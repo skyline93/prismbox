@@ -12,6 +12,7 @@ import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_manager.dart';
+import 'package:prismbox/presentation/widgets/viewer/viewer_video_state_provider.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_dismiss_gesture.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_controls_bar.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_image_page.dart';
@@ -50,8 +51,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   // 缓存的 AssetEntityLoader
   AssetEntityLoader? _assetEntityLoader;
 
-  // 当前可见的页面索引
-  int _currentPageIndex = 0;
   // 需要保留资源的页面索引集合
   Set<int> _visiblePageIndices = {};
 
@@ -62,7 +61,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     if (_initialIndex < 0) {
       _initialIndex = 0;
     }
-    _currentPageIndex = _initialIndex;
     _pageController = PageController(initialPage: _initialIndex);
 
     // 初始化视频管理器
@@ -94,8 +92,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     _controlsTimer?.cancel();
     _pageController.dispose();
 
-    // 释放所有视频播放器资源
-    _videoManager.disposeAllControllers();
+    // 注意：不再需要释放 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -187,78 +184,87 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
           onDismiss: () {
             context.router.pop();
           },
-          child: Stack(
-            children: [
-              // 混合媒体查看器（支持图片和视频）
-              PageView.builder(
-                controller: _pageController,
-                itemCount: widget.assetIds.length,
-                physics: _isZoomed
-                    ? const NeverScrollableScrollPhysics()
-                    : (Platform.isIOS
-                          ? const BouncingScrollPhysics()
-                          : const ClampingScrollPhysics()),
-                onPageChanged: (index) {
-                  // 页面切换时的处理
-                  _handlePageChanged(index);
-                },
-                itemBuilder: (context, index) {
-                  final assetId = widget.assetIds[index];
-                  final asset = _assetMap?[assetId];
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              // 点击屏幕任意位置切换控制栏显示/隐藏
+              if (!_isZoomed) {
+                _toggleControls();
+              }
+            },
+            child: Stack(
+              children: [
+                // 混合媒体查看器（支持图片和视频）
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: widget.assetIds.length,
+                  physics: _isZoomed
+                      ? const NeverScrollableScrollPhysics()
+                      : (Platform.isIOS
+                            ? const BouncingScrollPhysics()
+                            : const ClampingScrollPhysics()),
+                  onPageChanged: (index) {
+                    // 页面切换时的处理
+                    _handlePageChanged(index);
+                  },
+                  itemBuilder: (context, index) {
+                    final assetId = widget.assetIds[index];
+                    final asset = _assetMap?[assetId];
 
-                  if (asset == null) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    );
-                  }
+                    if (asset == null) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    }
 
-                  // 根据资产类型显示不同的内容
-                  if (asset.isVideo) {
-                    return ViewerVideoPage(
-                      asset: asset,
-                      assetId: assetId,
-                      videoManager: _videoManager,
-                      serverUrl: _serverUrl,
-                      assetEntityLoader: _assetEntityLoader,
-                      showControls: _showControls,
-                      onToggleControls: _toggleControls,
-                      onMuteChanged: (muted) {
-                        // 静音状态由视频管理器管理，这里不需要额外处理
-                      },
-                      currentIndex: index,
-                      visiblePageIndices: _visiblePageIndices,
-                    );
-                  } else {
-                    return ViewerImagePage(
-                      asset: asset,
-                      assetId: assetId,
-                      serverUrl: _serverUrl,
-                      assetEntityLoader: _assetEntityLoader,
-                      onTap: _toggleControls,
-                      onScaleStateChanged: (PhotoViewScaleState state) {
-                        setState(() {
-                          _isZoomed = state != PhotoViewScaleState.initial;
-                          if (_isZoomed) {
-                            _hideControls();
-                          } else {
-                            _startControlsTimer();
-                          }
-                        });
-                      },
-                    );
-                  }
-                },
-              ),
+                    // 根据资产类型显示不同的内容
+                    if (asset.isVideo) {
+                      return ViewerVideoPage(
+                        asset: asset,
+                        assetId: assetId,
+                        videoManager: _videoManager,
+                        serverUrl: _serverUrl,
+                        assetEntityLoader: _assetEntityLoader,
+                        showControls: _showControls,
+                        onToggleControls: _toggleControls,
+                        onMuteChanged: (muted) {
+                          // 静音状态由视频管理器管理，这里不需要额外处理
+                        },
+                        currentIndex: index,
+                        visiblePageIndices: _visiblePageIndices,
+                      );
+                    } else {
+                      return ViewerImagePage(
+                        asset: asset,
+                        assetId: assetId,
+                        serverUrl: _serverUrl,
+                        assetEntityLoader: _assetEntityLoader,
+                        onTap: _toggleControls,
+                        onScaleStateChanged: (PhotoViewScaleState state) {
+                          setState(() {
+                            _isZoomed = state != PhotoViewScaleState.initial;
+                            if (_isZoomed) {
+                              _hideControls();
+                            } else {
+                              _startControlsTimer();
+                            }
+                          });
+                        },
+                      );
+                    }
+                  },
+                ),
 
-              // 控制栏
-              ViewerControlsBar(
-                showControls: _showControls,
-                onToggleControls: _toggleControls,
-                onBack: () {
-                  context.router.pop();
-                },
-              ),
-            ],
+                // 控制栏
+                ViewerControlsBar(
+                  showControls: _showControls,
+                  onToggleControls: _toggleControls,
+                  onBack: () {
+                    context.router.pop();
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -276,35 +282,17 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     }
   }
 
-  /// 处理页面切换（增强版：即时释放资源）
+  /// 处理页面切换
   void _handlePageChanged(int index) {
-    final previousIndex = _currentPageIndex;
-    _currentPageIndex = index;
-
     // 计算新的可见页面范围
     final newVisibleIndices = _videoManager.calculateVisibleIndices(
       index,
       widget.assetIds.length,
     );
 
-    // 释放不可见页面的资源
-    _videoManager.updateVisibleIndices(
-      newVisibleIndices,
-      widget.assetIds,
-      _assetMap,
-    );
-
     // 更新可见页面索引集合
+    _videoManager.updateVisibleIndices(newVisibleIndices);
     _visiblePageIndices = newVisibleIndices;
-
-    // 停止上一个页面的视频（如果存在）
-    if (previousIndex < widget.assetIds.length) {
-      final previousAssetId = widget.assetIds[previousIndex];
-      _videoManager.pauseAndReleaseVideo(
-        previousAssetId,
-        keepIfVisible: newVisibleIndices.contains(previousIndex),
-      );
-    }
 
     // 处理当前页面
     if (index < widget.assetIds.length) {
@@ -313,10 +301,13 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
       if (asset != null && asset.isVideo) {
         _videoManager.setCurrentVideoAssetId(assetId);
-        // 确保视频控制器已创建并播放
-        _videoManager.playController(assetId);
+        // 更新 Provider，触发响应式更新（ViewerVideoPage 会通过 ref.listen 响应并自动播放）
+        ref.read(currentVideoAssetIdProvider.notifier).state = assetId;
+        // 注意：不再调用 playController，播放控制由 ViewerVideoPage 的 onPlaybackReady 完成
       } else {
         _videoManager.setCurrentVideoAssetId(null);
+        // 切换到非视频页面时，将 Provider 状态设置为 null
+        ref.read(currentVideoAssetIdProvider.notifier).state = null;
       }
     }
 

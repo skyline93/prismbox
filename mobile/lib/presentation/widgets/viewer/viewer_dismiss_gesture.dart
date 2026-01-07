@@ -65,13 +65,13 @@ class _ViewerDismissGestureState extends State<ViewerDismissGesture>
     _dismissAnimationController.removeListener(_animationListener);
 
     // 创建动画
-    _dismissAnimation = Tween<double>(
-      begin: startOffset,
-      end: endOffset,
-    ).animate(CurvedAnimation(
-      parent: _dismissAnimationController,
-      curve: Curves.easeOut,
-    ));
+    _dismissAnimation = Tween<double>(begin: startOffset, end: endOffset)
+        .animate(
+          CurvedAnimation(
+            parent: _dismissAnimationController,
+            curve: Curves.easeOut,
+          ),
+        );
 
     // 添加监听器
     _dismissAnimationController.addListener(_animationListener);
@@ -91,13 +91,13 @@ class _ViewerDismissGestureState extends State<ViewerDismissGesture>
     _dismissAnimationController.removeListener(_animationListener);
 
     _dismissAnimationController.reset();
-    _dismissAnimation = Tween<double>(
-      begin: _verticalDragOffset,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _dismissAnimationController,
-      curve: Curves.easeOut,
-    ));
+    _dismissAnimation = Tween<double>(begin: _verticalDragOffset, end: 0.0)
+        .animate(
+          CurvedAnimation(
+            parent: _dismissAnimationController,
+            curve: Curves.easeOut,
+          ),
+        );
 
     // 添加监听器
     _dismissAnimationController.addListener(_animationListener);
@@ -176,13 +176,9 @@ class _ViewerDismissGestureState extends State<ViewerDismissGesture>
         child: Transform.scale(
           scale: scale,
           alignment: Alignment.topCenter,
-          child: Opacity(
-            opacity: contentOpacity,
-            child: widget.child,
-          ),
+          child: Opacity(opacity: contentOpacity, child: widget.child),
         ),
       ),
     );
   }
 }
-

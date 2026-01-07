@@ -4,6 +4,8 @@ PODS:
   - Flutter (1.0.0)
   - flutter_secure_storage (6.0.0):
     - Flutter
+  - native_video_player (1.0.0):
+    - Flutter
   - permission_handler_apple (9.3.0):
     - Flutter
 
@@ -11,6 +13,7 @@ DEPENDENCIES:
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - Flutter (from `Flutter`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - native_video_player (from `.symlinks/plugins/native_video_player/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
 
 EXTERNAL SOURCES:
@@ -20,6 +23,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  native_video_player:
+    :path: ".symlinks/plugins/native_video_player/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
 
@@ -27,6 +32,7 @@ SPEC CHECKSUMS:
   device_info_plus: 335f3ce08d2e174b9fdc3db3db0f4e3b1f66bd89
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  native_video_player: b65c58951ede2f93d103a25366bdebca95081265
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
 
 PODFILE CHECKSUM: de97cdd71230554f2f9175b64953d8f22054f2bf

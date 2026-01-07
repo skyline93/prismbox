@@ -17,7 +17,8 @@ class LocalAsset extends BaseAsset {
   final bool isUploaded;
 
   /// 图片方向（EXIF 方向值，0-8）
-  final int orientation;
+  /// 使用私有字段避免与 BaseAsset.orientation getter 的命名冲突
+  final int _orientation;
 
   /// photo_manager 的 AssetEntity（可选，用于直接访问本地资源）
   final AssetEntity? assetEntity;
@@ -39,10 +40,11 @@ class LocalAsset extends BaseAsset {
     super.isFavorite = false,
     super.livePhotoVideoId,
     this.isUploaded = false,
-    this.orientation = 0,
+    int orientation = 0,
     this.assetEntity,
     this.trashPath,
-  }) : remoteAssetId = remoteId;
+  }) : _orientation = orientation,
+       remoteAssetId = remoteId;
 
   @override
   String? get localId => id;
@@ -56,6 +58,9 @@ class LocalAsset extends BaseAsset {
 
   @override
   String get heroTag => '${id}_${remoteId ?? checksum ?? ''}';
+
+  @override
+  int? get orientation => _orientation;
 
   /// 从数据库实体创建 LocalAsset
   factory LocalAsset.fromData({
