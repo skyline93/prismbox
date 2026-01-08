@@ -30,10 +30,10 @@ class FavoriteIndicator extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: const BoxDecoration(
-          color: Colors.black54,
+          color: Colors.transparent,
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.favorite, color: Colors.white, size: 12),
+        child: const Icon(Icons.favorite, color: Colors.white, size: 14),
       ),
     );
   }
