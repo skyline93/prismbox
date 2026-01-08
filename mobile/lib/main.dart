@@ -11,6 +11,8 @@ import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/data/database/connection.dart';
 import 'package:prismbox/services/debug/storage_inspector_service.dart';
 import 'package:prismbox/services/backup/providers/backup_providers.dart' as backup;
+import 'package:prismbox/providers/post/post_providers.dart';
+import 'package:prismbox/providers/infrastructure/database_provider.dart';
 import 'package:prismbox/providers/settings/theme_provider.dart';
 import 'package:prismbox/providers/settings/locale_provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -96,38 +98,71 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
-    // 在 Widget 构建完成后初始化 UploadTaskManager
+    // 在 Widget 构建完成后初始化任务管理器
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeUploadTaskManager();
+      _initializeTaskManagers();
     });
   }
 
-  /// 初始化 UploadTaskManager
+  /// 初始化任务管理器并检查未完成的任务
   /// 
-  /// **注意**：UploadTaskManager 的初始化已经在 Provider 中完成
-  /// 这里只需要确保 Provider 被读取，触发初始化
-  Future<void> _initializeUploadTaskManager() async {
+  /// **注意**：任务管理器的初始化已经在 Provider 中完成
+  /// 这里只需要确保 Provider 被读取，触发初始化，并检查未完成的任务
+  Future<void> _initializeTaskManagers() async {
     if (_isInitialized) {
       return;
     }
 
     try {
       final logger = Logger('MyApp');
-      logger.info('Initializing UploadTaskManager...');
+      logger.info('Initializing task managers...');
 
       // 读取 Provider 会触发初始化（在 Provider 中已经完成）
       await ref.read(backup.uploadTaskManagerProvider.future);
+      await ref.read(postTaskManagerProvider.future);
+
+      // 检查并恢复未完成的帖子任务
+      await _checkAndResumePostTasks(ref);
 
       _isInitialized = true;
-      logger.info('UploadTaskManager initialized successfully');
+      logger.info('Task managers initialized successfully');
     } catch (e, stackTrace) {
       final logger = Logger('MyApp');
       logger.warning(
-        'Failed to initialize UploadTaskManager: $e',
+        'Failed to initialize task managers: $e',
         e,
         stackTrace,
       );
       // 即使初始化失败，也继续运行应用
+    }
+  }
+
+  /// 检查并恢复未完成的帖子任务
+  Future<void> _checkAndResumePostTasks(WidgetRef ref) async {
+    try {
+      final logger = Logger('MyApp');
+      final database = await ref.read(databaseProvider.future);
+      
+      // 获取所有用户
+      final users = await database.userDao.getAllUsers();
+      if (users.isEmpty) {
+        return;
+      }
+
+      // 恢复每个用户的未完成任务
+      final postTaskManager = await ref.read(postTaskManagerProvider.future);
+      for (final user in users) {
+        await postTaskManager.resumePendingTasks(user.id);
+      }
+      
+      logger.info('Post task recovery completed');
+    } catch (e, stackTrace) {
+      final logger = Logger('MyApp');
+      logger.warning(
+        'Failed to check and resume post tasks: $e',
+        e,
+        stackTrace,
+      );
     }
   }
 

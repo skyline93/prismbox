@@ -157,6 +157,17 @@ class UploadTaskDao extends DatabaseAccessor<AppDatabase>
     return count > 0;
   }
 
+  /// 更新任务媒体 UUID
+  Future<bool> updateMediaUuid(String taskId, String? mediaUuid) async {
+    final count = await (update(uploadTaskEntity)
+          ..where((t) => t.id.equals(taskId)))
+        .write(UploadTaskEntityCompanion(
+          mediaUuid: mediaUuid != null ? Value(mediaUuid) : const Value.absent(),
+          updatedAt: Value(DateTime.now()),
+        ));
+    return count > 0;
+  }
+
   /// 增加重试次数
   Future<bool> incrementRetryCount(String taskId) async {
     final task = await getTaskById(taskId);

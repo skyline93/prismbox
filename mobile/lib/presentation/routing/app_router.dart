@@ -21,6 +21,12 @@ import 'package:prismbox/presentation/pages/settings/settings_page.dart';
 import 'package:prismbox/presentation/pages/settings/preferences_page.dart';
 import 'package:prismbox/presentation/pages/settings/language_page.dart';
 import 'package:prismbox/presentation/pages/trash/trash_page.dart';
+import 'package:prismbox/presentation/pages/groups/create_group_page.dart';
+import 'package:prismbox/presentation/pages/groups/group_list_page.dart';
+import 'package:prismbox/presentation/pages/groups/group_detail_page.dart';
+import 'package:prismbox/presentation/pages/groups/group_members_page.dart';
+import 'package:prismbox/presentation/pages/posts/create_post_page.dart';
+import 'package:prismbox/presentation/pages/posts/post_detail_page.dart';
 import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
 import 'package:prismbox/presentation/routing/guards/duplicate_guard.dart';
 import 'package:prismbox/presentation/routing/guards/permission_guard.dart';
@@ -91,8 +97,8 @@ class AppRouter extends _$AppRouter {
           guards: [_authGuard],
         ),
         AutoRoute(
-          page: LibraryRoute.page,
-          path: 'library', // 子路由路径不能以 "/" 开头
+          page: GroupListRoute.page,
+          path: 'groups', // 子路由路径不能以 "/" 开头
           guards: [_authGuard],
         ),
       ],
@@ -169,6 +175,48 @@ class AppRouter extends _$AppRouter {
     AutoRoute(
       page: RecentlyAddedTimelineRoute.page,
       path: '/collections/recently-added',
+      guards: [_authGuard],
+    ),
+
+    // 圈子列表页面（需要认证）
+    AutoRoute(
+      page: GroupListRoute.page,
+      path: '/groups',
+      guards: [_authGuard],
+    ),
+
+    // 创建圈子页面（需要认证）
+    AutoRoute(
+      page: CreateGroupRoute.page,
+      path: '/groups/create',
+      guards: [_authGuard],
+    ),
+
+    // 圈子详情页面（需要认证）
+    AutoRoute(
+      page: GroupDetailRoute.page,
+      path: '/groups/:groupUuid',
+      guards: [_authGuard],
+    ),
+
+    // 成员管理页面（需要认证）
+    AutoRoute(
+      page: GroupMembersRoute.page,
+      path: '/groups/:groupUuid/members',
+      guards: [_authGuard],
+    ),
+
+    // 创建帖子页面（需要认证）
+    AutoRoute(
+      page: CreatePostRoute.page,
+      path: '/groups/:groupUuid/posts/create',
+      guards: [_authGuard],
+    ),
+
+    // 帖子详情页面（需要认证）
+    AutoRoute(
+      page: PostDetailRoute.page,
+      path: '/groups/:groupUuid/posts/:postId',
       guards: [_authGuard],
     ),
   ];

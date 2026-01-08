@@ -25,11 +25,13 @@ class UploadResult {
   final int successCount;
   final int failedCount;
   final List<UploadError> errors;
+  final Map<String, String>? mediaUuids;
 
   UploadResult({
     required this.successCount,
     required this.failedCount,
     required this.errors,
+    this.mediaUuids,
   });
 
   int get totalCount => successCount + failedCount;
@@ -412,15 +414,42 @@ class UploadOrchestrator {
       );
     }
 
+    // 4. 收集成功任务的 UUID（从数据库读取，此时应该已经存储）
+    final mediaUuids = <String, String>{};
+    for (final task in sortedTasks) {
+      try {
+        final completedTask = await _database.uploadTaskDao.getTaskById(task.id);
+        if (completedTask?.status == UploadTaskStatus.completed) {
+          final uuid = completedTask!.mediaUuid;
+          if (uuid != null && uuid.isNotEmpty) {
+            mediaUuids[task.id] = uuid;
+            _logger.fine(
+              'Collected media UUID: taskId=${task.id}, mediaUuid=$uuid',
+            );
+          } else {
+            _logger.warning(
+              'Task completed but mediaUuid is missing: taskId=${task.id}',
+            );
+          }
+        }
+      } catch (e) {
+        _logger.warning(
+          'Failed to read media UUID for task: taskId=${task.id}, error=$e',
+        );
+      }
+    }
+
     final result = UploadResult(
       successCount: successCount,
       failedCount: failedCount,
       errors: errors,
+      mediaUuids: mediaUuids.isNotEmpty ? mediaUuids : null,
     );
 
     _logger.info(
       'Upload orchestration completed: userId=$userId, '
-      'success=$successCount, failed=$failedCount',
+      'success=$successCount, failed=$failedCount, '
+      'mediaUuidsCount=${mediaUuids.length}',
     );
 
     return result;
@@ -748,6 +777,42 @@ class UploadOrchestrator {
             'Task completed: taskId=$taskId, '
             'elapsed=${elapsed.inSeconds}s, polls=$pollCount',
           );
+          
+          // 等待 UUID 存储完成（最多等待 1 秒，每次 100ms）
+          String? mediaUuid = task.mediaUuid;
+          if (mediaUuid == null || mediaUuid.isEmpty) {
+            _logger.fine(
+              'Media UUID not yet stored, waiting for it: taskId=$taskId',
+            );
+            const maxRetries = 10;
+            const retryInterval = Duration(milliseconds: 100);
+            
+            for (int i = 0; i < maxRetries; i++) {
+              await Future.delayed(retryInterval);
+              final updatedTask = await _database.uploadTaskDao.getTaskById(taskId);
+              if (updatedTask != null) {
+                mediaUuid = updatedTask.mediaUuid;
+                if (mediaUuid != null && mediaUuid.isNotEmpty) {
+                  _logger.fine(
+                    'Media UUID found after waiting: taskId=$taskId, '
+                    'attempt=${i + 1}/$maxRetries, mediaUuid=$mediaUuid',
+                  );
+                  break;
+                }
+              }
+            }
+            
+            if (mediaUuid == null || mediaUuid.isEmpty) {
+              _logger.warning(
+                'Media UUID not available after waiting: taskId=$taskId, '
+                'elapsed=${elapsed.inSeconds}s',
+              );
+              throw Exception(
+                'Media UUID not available for completed task: $taskId',
+              );
+            }
+          }
+          
           // 任务成功完成，更新本地资产的 isUploaded = true
           await _updateLocalAssetUploadedStatus(task.assetId, true);
           // 发出上传完成通知

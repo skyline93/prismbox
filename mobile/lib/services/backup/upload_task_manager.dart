@@ -143,8 +143,14 @@ class UploadTaskManager {
 
     onStatusChange?.call(taskId, status);
 
-    // 更新数据库中的任务状态（包含错误信息）
-    _updateTaskStatus(taskId, status, errorMessage: errorMessage).catchError((error) {
+    // 更新数据库中的任务状态（包含错误信息和响应体）
+    // 响应体将在状态变为 completed 时用于提取 UUID
+    _updateTaskStatus(
+      taskId, 
+      status, 
+      errorMessage: errorMessage,
+      responseBody: status == TaskStatus.complete ? update.responseBody : null,
+    ).catchError((error) {
       _logger.warning(
         'Failed to update task status: taskId=$taskId, error=$error',
       );
@@ -217,6 +223,67 @@ class UploadTaskManager {
     return errorMessage;
   }
 
+  /// 从上传响应中提取 media UUID 并存储到数据库
+  Future<void> _extractAndStoreMediaUuid(String taskId, String? responseBody) async {
+    if (responseBody == null || responseBody.isEmpty) {
+      _logger.warning(
+        'Cannot extract media UUID: responseBody is null or empty for taskId=$taskId',
+      );
+      return;
+    }
+
+    try {
+      final responseJson = jsonDecode(responseBody) as Map<String, dynamic>?;
+      if (responseJson == null) {
+        _logger.warning(
+          'Cannot extract media UUID: responseBody is not valid JSON for taskId=$taskId',
+        );
+        return;
+      }
+
+      // 解析响应结构：{"code":0,"message":"...","data":{"uuid":"...",...}}
+      final data = responseJson['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        _logger.warning(
+          'Cannot extract media UUID: response data is null for taskId=$taskId',
+        );
+        return;
+      }
+
+      final uuid = data['uuid'] as String?;
+      if (uuid == null || uuid.isEmpty) {
+        _logger.warning(
+          'Cannot extract media UUID: uuid is null or empty for taskId=$taskId',
+        );
+        return;
+      }
+
+      // 存储到数据库（使用 await 确保存储完成）
+      try {
+        final success = await _database.uploadTaskDao.updateMediaUuid(taskId, uuid);
+        if (success) {
+          _logger.info(
+            'Media UUID extracted and stored: taskId=$taskId, mediaUuid=$uuid',
+          );
+        } else {
+          _logger.warning(
+            'Failed to store media UUID: taskId=$taskId, mediaUuid=$uuid',
+          );
+        }
+      } catch (error) {
+        _logger.warning(
+          'Error storing media UUID: taskId=$taskId, error=$error',
+        );
+      }
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Failed to extract media UUID from response: taskId=$taskId, error=$e',
+        e,
+        stackTrace,
+      );
+    }
+  }
+
   /// 处理进度更新
   void _handleProgressUpdate(TaskProgressUpdate update) {
     final taskId = update.task.taskId;
@@ -261,8 +328,9 @@ class UploadTaskManager {
     String taskId, 
     TaskStatus status, {
     String? errorMessage,
+    String? responseBody,
   }) async {
-    final task = await _database.uploadTaskDao.getTaskById(taskId);
+    var task = await _database.uploadTaskDao.getTaskById(taskId);
     if (task == null) {
       _logger.warning('Task not found: taskId=$taskId');
       return;
@@ -292,10 +360,61 @@ class UploadTaskManager {
       case TaskStatus.running:
         // running 状态映射到 uploading
         newStatus = UploadTaskStatus.uploading;
+        
+        // 处理并发状态更新：如果当前状态是 pending，说明 enqueued 状态更新还没完成
+        // 需要先转换到 queued，再转换到 uploading
+        if (task.status == UploadTaskStatus.pending) {
+          _logger.fine(
+            'Running status received but task is still pending, '
+            'transitioning through queued first: taskId=$taskId',
+          );
+          // 先转换到 queued
+          try {
+            final queuedTask = await _stateMachine.transition(
+              task,
+              UploadTaskStatus.queued,
+            );
+            // 更新 task 引用，使用最新的状态
+            task = queuedTask;
+          } catch (e) {
+            _logger.warning(
+              'Failed to transition pending -> queued before running: taskId=$taskId, error=$e',
+            );
+            // 如果转换失败，继续尝试直接转换（可能会失败，但至少记录了错误）
+          }
+        }
         break;
       case TaskStatus.complete:
         newStatus = UploadTaskStatus.completed;
         // uploadedAt 由状态机自动设置
+        
+        // 在状态变为 completed 之前，先提取并存储 UUID
+        if (responseBody != null && responseBody.isNotEmpty) {
+          await _extractAndStoreMediaUuid(taskId, responseBody);
+        }
+        
+        // 处理并发状态更新：如果当前状态是 queued，说明 running 状态更新还没完成或失败了
+        // 需要先转换到 uploading，再转换到 completed
+        if (task.status == UploadTaskStatus.queued) {
+          _logger.fine(
+            'Complete status received but task is still queued, '
+            'transitioning through uploading first: taskId=$taskId',
+          );
+          // 先转换到 uploading
+          try {
+            final uploadingTask = await _stateMachine.transition(
+              task,
+              UploadTaskStatus.uploading,
+            );
+            // 更新 task 引用，使用最新的状态
+            task = uploadingTask;
+          } catch (e) {
+            _logger.warning(
+              'Failed to transition queued -> uploading before complete: taskId=$taskId, error=$e',
+            );
+            // 如果转换失败，继续尝试直接转换（可能会失败，但至少记录了错误）
+          }
+        }
         break;
       case TaskStatus.failed:
         newStatus = UploadTaskStatus.failed;
@@ -316,23 +435,30 @@ class UploadTaskManager {
     }
 
     // 如果状态改变，或者有新的错误信息，通过状态机更新数据库
-    if (task.status != newStatus || 
-        (errorMessage != null && task.errorMessage != errorMessage)) {
+    // 注意：task 可能在中间状态转换时被更新，需要重新获取最新状态以确保数据一致性
+    var currentTask = await _database.uploadTaskDao.getTaskById(taskId);
+    if (currentTask == null) {
+      _logger.warning('Task not found after intermediate transitions: taskId=$taskId');
+      return;
+    }
+    
+    if (currentTask.status != newStatus || 
+        (errorMessage != null && currentTask.errorMessage != errorMessage)) {
       try {
-        await _stateMachine.transition(
-          task,
+        final updatedTask = await _stateMachine.transition(
+          currentTask,
           newStatus,
           errorMessage: errorMessage,
         );
         
         // 记录详细的状态更新日志（状态机内部已记录详细日志，这里记录额外的上下文信息）
-        final fileName = task.localPath.split('/').last;
+        final fileName = updatedTask.localPath.split('/').last;
         _logger.info(
           'Task status updated via state machine: '
           'taskId=$taskId, '
-          'assetId=${task.assetId}, '
+          'assetId=${updatedTask.assetId}, '
           'filename=$fileName, '
-          'from=${task.status} -> to=$newStatus'
+          'from=${currentTask.status} -> to=$newStatus'
           '${errorMessage != null ? ", error: $errorMessage" : ""}',
         );
       } catch (e, stackTrace) {

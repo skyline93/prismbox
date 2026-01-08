@@ -214,6 +214,52 @@ controller.addListener(() {
 
 ---
 
+## 案例 6：Riverpod AsyncNotifier 一直处于 loading 状态
+
+### 现象
+
+* Provider 状态一直停留在 loading
+* `load()` 方法被调用但请求未发出
+* 后端没有收到 API 请求
+
+### 定位
+
+```dart
+@override
+Future<List<Post>> build(String groupUuid) async {
+  // ❌ 错误：直接返回同步值
+  return [];
+}
+
+Future<void> load() async {
+  // ❌ 错误：build() 返回的 Future 让状态变为 loading
+  // 此时检查 state.isLoading 为 true，直接返回
+  if (state.isLoading) return;
+  // ...
+}
+```
+
+### 命中问题
+
+* ❌ Riverpod AsyncNotifier `build()` 方法未使用 `Future.value()`
+* ❌ 时序问题：`build()` 完成后立即调用 `load()` 被误判
+
+### 修复方案
+
+```dart
+@override
+Future<List<Post>> build(String groupUuid) async {
+  // ✅ 正确：使用 Future.value() 确保立即完成
+  return Future.value([]);
+}
+```
+
+### 参考文档
+
+* 详见：`mobile/doc/riverpod-asyncnotifier-best-practices.md`
+
+---
+
 # 第三部分：Flutter 性能 Code Review Checklist
 
 > **使用方式**：
@@ -237,6 +283,14 @@ controller.addListener(() {
 * [ ] 状态订阅是否使用 select / 局部 Builder
 * [ ] 是否存在页面级 setState 承载高频变化
 * [ ] 高频状态是否已物理隔离
+
+### Riverpod AsyncNotifier 专项检查
+
+* [ ] `build()` 方法是否使用 `Future.value()` 返回初始值（避免状态停留在 loading）
+* [ ] `build()` 方法是否只负责初始化，不执行数据加载
+* [ ] 数据加载是否在单独的 `load()`、`refresh()` 等方法中
+* [ ] `load()` 方法的状态检查是否考虑了 `build()` 初始化的场景
+* [ ] 是否存在时序问题：`build()` 完成后立即调用 `load()` 是否会被误判为"已在加载中"
 
 ---
 

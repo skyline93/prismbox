@@ -14,6 +14,7 @@ import 'package:prismbox/data/database/tables/upload_task_entity.dart';
 import 'package:prismbox/data/database/tables/sync_checkpoint_entity.dart';
 import 'package:prismbox/data/database/tables/album_session_entity.dart';
 import 'package:prismbox/data/database/tables/retry_task_entity.dart';
+import 'package:prismbox/data/database/tables/post_task_entity.dart';
 import 'package:prismbox/data/database/daos/user_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
@@ -22,6 +23,7 @@ import 'package:prismbox/data/database/daos/backup_status_dao.dart';
 import 'package:prismbox/data/database/daos/upload_task_dao.dart';
 import 'package:prismbox/data/database/daos/sync_checkpoint_dao.dart';
 import 'package:prismbox/data/database/daos/retry_task_dao.dart';
+import 'package:prismbox/data/database/daos/post_task_dao.dart';
 import 'package:prismbox/data/database/exceptions/database_exception.dart';
 // 导入枚举类型，供生成的代码使用
 import 'package:prismbox/data/database/enums/asset_type.dart';
@@ -33,6 +35,7 @@ import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
+import 'package:prismbox/data/database/enums/post_task_status.dart';
 
 part 'app_database.g.dart';
 
@@ -53,6 +56,7 @@ part 'app_database.g.dart';
     BackupStatusEntity,
     UploadTaskEntity,
     SyncCheckpointEntity,
+    PostTaskEntity,
   ],
   daos: [
     UserDao,
@@ -63,13 +67,14 @@ part 'app_database.g.dart';
     UploadTaskDao,
     SyncCheckpointDao,
     RetryTaskDao,
+    PostTaskDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration {
@@ -255,6 +260,50 @@ class AppDatabase extends _$AppDatabase {
           ALTER TABLE local_asset_entity 
           ADD COLUMN trash_path TEXT;
         ''');
+        break;
+      case 11:
+        // 添加帖子任务表
+        await m.createTable(postTaskEntity);
+        break;
+      case 12:
+        // 为帖子任务表添加 mediaAssetIds 字段
+        // 检查列是否存在（使用 PRAGMA table_info 查询表结构）
+        final result = await m.database.customSelect(
+          'PRAGMA table_info(post_task_entity)',
+          readsFrom: {},
+        ).get();
+        
+        final columnExists = result.any((row) => 
+          row.data['name'] == 'media_asset_ids'
+        );
+        
+        if (!columnExists) {
+          // 列不存在，添加列
+          await m.database.customStatement('''
+            ALTER TABLE post_task_entity 
+            ADD COLUMN media_asset_ids TEXT;
+          ''');
+        }
+        break;
+      case 13:
+        // 为上传任务表添加 mediaUuid 字段
+        // 检查列是否存在（使用 PRAGMA table_info 查询表结构）
+        final uploadTaskResult = await m.database.customSelect(
+          'PRAGMA table_info(upload_task_entity)',
+          readsFrom: {},
+        ).get();
+        
+        final mediaUuidColumnExists = uploadTaskResult.any((row) => 
+          row.data['name'] == 'media_uuid'
+        );
+        
+        if (!mediaUuidColumnExists) {
+          // 列不存在，添加列
+          await m.database.customStatement('''
+            ALTER TABLE upload_task_entity 
+            ADD COLUMN media_uuid TEXT;
+          ''');
+        }
         break;
       // ... 其他版本迁移
       default:

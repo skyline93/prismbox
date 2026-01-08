@@ -10,7 +10,7 @@
 part of 'app_router.dart';
 
 abstract class _$AppRouter extends RootStackRouter {
-  // ignore: unused_element, unused_element_parameter
+  // ignore: unused_element
   _$AppRouter({super.navigatorKey});
 
   @override
@@ -33,10 +33,61 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const BackupSettingsPage(),
       );
     },
+    CreateGroupRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const CreateGroupPage(),
+      );
+    },
+    CreatePostRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<CreatePostRouteArgs>(
+          orElse: () => CreatePostRouteArgs(
+              groupUuid: pathParams.getString('groupUuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: CreatePostPage(
+          key: args.key,
+          groupUuid: args.groupUuid,
+        ),
+      );
+    },
     FavoriteTimelineRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const FavoriteTimelinePage(),
+      );
+    },
+    GroupDetailRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<GroupDetailRouteArgs>(
+          orElse: () => GroupDetailRouteArgs(
+              groupUuid: pathParams.getString('groupUuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupDetailPage(
+          key: args.key,
+          groupUuid: args.groupUuid,
+        ),
+      );
+    },
+    GroupListRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const GroupListPage(),
+      );
+    },
+    GroupMembersRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<GroupMembersRouteArgs>(
+          orElse: () => GroupMembersRouteArgs(
+              groupUuid: pathParams.getString('groupUuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupMembersPage(
+          key: args.key,
+          groupUuid: args.groupUuid,
+        ),
       );
     },
     LanguageRoute.name: (routeData) {
@@ -78,6 +129,22 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const PermissionPage(),
+      );
+    },
+    PostDetailRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<PostDetailRouteArgs>(
+          orElse: () => PostDetailRouteArgs(
+                groupUuid: pathParams.getString('groupUuid'),
+                postId: pathParams.getInt('postId'),
+              ));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: PostDetailPage(
+          key: args.key,
+          groupUuid: args.groupUuid,
+          postId: args.postId,
+        ),
       );
     },
     PreferencesRoute.name: (routeData) {
@@ -186,6 +253,59 @@ class BackupSettingsRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [CreateGroupPage]
+class CreateGroupRoute extends PageRouteInfo<void> {
+  const CreateGroupRoute({List<PageRouteInfo>? children})
+      : super(
+          CreateGroupRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'CreateGroupRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [CreatePostPage]
+class CreatePostRoute extends PageRouteInfo<CreatePostRouteArgs> {
+  CreatePostRoute({
+    Key? key,
+    required String groupUuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          CreatePostRoute.name,
+          args: CreatePostRouteArgs(
+            key: key,
+            groupUuid: groupUuid,
+          ),
+          rawPathParams: {'groupUuid': groupUuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'CreatePostRoute';
+
+  static const PageInfo<CreatePostRouteArgs> page =
+      PageInfo<CreatePostRouteArgs>(name);
+}
+
+class CreatePostRouteArgs {
+  const CreatePostRouteArgs({
+    this.key,
+    required this.groupUuid,
+  });
+
+  final Key? key;
+
+  final String groupUuid;
+
+  @override
+  String toString() {
+    return 'CreatePostRouteArgs{key: $key, groupUuid: $groupUuid}';
+  }
+}
+
+/// generated route for
 /// [FavoriteTimelinePage]
 class FavoriteTimelineRoute extends PageRouteInfo<void> {
   const FavoriteTimelineRoute({List<PageRouteInfo>? children})
@@ -197,6 +317,98 @@ class FavoriteTimelineRoute extends PageRouteInfo<void> {
   static const String name = 'FavoriteTimelineRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [GroupDetailPage]
+class GroupDetailRoute extends PageRouteInfo<GroupDetailRouteArgs> {
+  GroupDetailRoute({
+    Key? key,
+    required String groupUuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupDetailRoute.name,
+          args: GroupDetailRouteArgs(
+            key: key,
+            groupUuid: groupUuid,
+          ),
+          rawPathParams: {'groupUuid': groupUuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupDetailRoute';
+
+  static const PageInfo<GroupDetailRouteArgs> page =
+      PageInfo<GroupDetailRouteArgs>(name);
+}
+
+class GroupDetailRouteArgs {
+  const GroupDetailRouteArgs({
+    this.key,
+    required this.groupUuid,
+  });
+
+  final Key? key;
+
+  final String groupUuid;
+
+  @override
+  String toString() {
+    return 'GroupDetailRouteArgs{key: $key, groupUuid: $groupUuid}';
+  }
+}
+
+/// generated route for
+/// [GroupListPage]
+class GroupListRoute extends PageRouteInfo<void> {
+  const GroupListRoute({List<PageRouteInfo>? children})
+      : super(
+          GroupListRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupListRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [GroupMembersPage]
+class GroupMembersRoute extends PageRouteInfo<GroupMembersRouteArgs> {
+  GroupMembersRoute({
+    Key? key,
+    required String groupUuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupMembersRoute.name,
+          args: GroupMembersRouteArgs(
+            key: key,
+            groupUuid: groupUuid,
+          ),
+          rawPathParams: {'groupUuid': groupUuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupMembersRoute';
+
+  static const PageInfo<GroupMembersRouteArgs> page =
+      PageInfo<GroupMembersRouteArgs>(name);
+}
+
+class GroupMembersRouteArgs {
+  const GroupMembersRouteArgs({
+    this.key,
+    required this.groupUuid,
+  });
+
+  final Key? key;
+
+  final String groupUuid;
+
+  @override
+  String toString() {
+    return 'GroupMembersRouteArgs{key: $key, groupUuid: $groupUuid}';
+  }
 }
 
 /// generated route for
@@ -310,6 +522,53 @@ class PermissionRoute extends PageRouteInfo<void> {
   static const String name = 'PermissionRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [PostDetailPage]
+class PostDetailRoute extends PageRouteInfo<PostDetailRouteArgs> {
+  PostDetailRoute({
+    Key? key,
+    required String groupUuid,
+    required int postId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          PostDetailRoute.name,
+          args: PostDetailRouteArgs(
+            key: key,
+            groupUuid: groupUuid,
+            postId: postId,
+          ),
+          rawPathParams: {
+            'groupUuid': groupUuid,
+            'postId': postId,
+          },
+          initialChildren: children,
+        );
+
+  static const String name = 'PostDetailRoute';
+
+  static const PageInfo<PostDetailRouteArgs> page =
+      PageInfo<PostDetailRouteArgs>(name);
+}
+
+class PostDetailRouteArgs {
+  const PostDetailRouteArgs({
+    this.key,
+    required this.groupUuid,
+    required this.postId,
+  });
+
+  final Key? key;
+
+  final String groupUuid;
+
+  final int postId;
+
+  @override
+  String toString() {
+    return 'PostDetailRouteArgs{key: $key, groupUuid: $groupUuid, postId: $postId}';
+  }
 }
 
 /// generated route for

@@ -4976,6 +4976,12 @@ class $UploadTaskEntityTable extends UploadTaskEntity
   late final GeneratedColumn<String> remotePath = GeneratedColumn<String>(
       'remote_path', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mediaUuidMeta =
+      const VerificationMeta('mediaUuid');
+  @override
+  late final GeneratedColumn<String> mediaUuid = GeneratedColumn<String>(
+      'media_uuid', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _fileSizeMeta =
       const VerificationMeta('fileSize');
   @override
@@ -5062,6 +5068,7 @@ class $UploadTaskEntityTable extends UploadTaskEntity
         assetId,
         localPath,
         remotePath,
+        mediaUuid,
         fileSize,
         taskType,
         priority,
@@ -5115,6 +5122,10 @@ class $UploadTaskEntityTable extends UploadTaskEntity
               data['remote_path']!, _remotePathMeta));
     } else if (isInserting) {
       context.missing(_remotePathMeta);
+    }
+    if (data.containsKey('media_uuid')) {
+      context.handle(_mediaUuidMeta,
+          mediaUuid.isAcceptableOrUnknown(data['media_uuid']!, _mediaUuidMeta));
     }
     if (data.containsKey('file_size')) {
       context.handle(_fileSizeMeta,
@@ -5187,6 +5198,8 @@ class $UploadTaskEntityTable extends UploadTaskEntity
           .read(DriftSqlType.string, data['${effectivePrefix}local_path'])!,
       remotePath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}remote_path'])!,
+      mediaUuid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_uuid']),
       fileSize: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}file_size'])!,
       taskType: $UploadTaskEntityTable.$convertertaskType.fromSql(
@@ -5244,6 +5257,9 @@ class UploadTaskEntityData extends DataClass
   /// 远程路径（上传目标路径）
   final String remotePath;
 
+  /// 媒体 UUID（上传成功后从服务器响应中提取）
+  final String? mediaUuid;
+
   /// 文件大小（字节）
   final int fileSize;
 
@@ -5282,6 +5298,7 @@ class UploadTaskEntityData extends DataClass
       required this.assetId,
       required this.localPath,
       required this.remotePath,
+      this.mediaUuid,
       required this.fileSize,
       required this.taskType,
       required this.priority,
@@ -5301,6 +5318,9 @@ class UploadTaskEntityData extends DataClass
     map['asset_id'] = Variable<String>(assetId);
     map['local_path'] = Variable<String>(localPath);
     map['remote_path'] = Variable<String>(remotePath);
+    if (!nullToAbsent || mediaUuid != null) {
+      map['media_uuid'] = Variable<String>(mediaUuid);
+    }
     map['file_size'] = Variable<int>(fileSize);
     {
       map['task_type'] = Variable<int>(
@@ -5332,6 +5352,9 @@ class UploadTaskEntityData extends DataClass
       assetId: Value(assetId),
       localPath: Value(localPath),
       remotePath: Value(remotePath),
+      mediaUuid: mediaUuid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaUuid),
       fileSize: Value(fileSize),
       taskType: Value(taskType),
       priority: Value(priority),
@@ -5359,6 +5382,7 @@ class UploadTaskEntityData extends DataClass
       assetId: serializer.fromJson<String>(json['assetId']),
       localPath: serializer.fromJson<String>(json['localPath']),
       remotePath: serializer.fromJson<String>(json['remotePath']),
+      mediaUuid: serializer.fromJson<String?>(json['mediaUuid']),
       fileSize: serializer.fromJson<int>(json['fileSize']),
       taskType: $UploadTaskEntityTable.$convertertaskType
           .fromJson(serializer.fromJson<int>(json['taskType'])),
@@ -5383,6 +5407,7 @@ class UploadTaskEntityData extends DataClass
       'assetId': serializer.toJson<String>(assetId),
       'localPath': serializer.toJson<String>(localPath),
       'remotePath': serializer.toJson<String>(remotePath),
+      'mediaUuid': serializer.toJson<String?>(mediaUuid),
       'fileSize': serializer.toJson<int>(fileSize),
       'taskType': serializer.toJson<int>(
           $UploadTaskEntityTable.$convertertaskType.toJson(taskType)),
@@ -5405,6 +5430,7 @@ class UploadTaskEntityData extends DataClass
           String? assetId,
           String? localPath,
           String? remotePath,
+          Value<String?> mediaUuid = const Value.absent(),
           int? fileSize,
           UploadTaskType? taskType,
           int? priority,
@@ -5422,6 +5448,7 @@ class UploadTaskEntityData extends DataClass
         assetId: assetId ?? this.assetId,
         localPath: localPath ?? this.localPath,
         remotePath: remotePath ?? this.remotePath,
+        mediaUuid: mediaUuid.present ? mediaUuid.value : this.mediaUuid,
         fileSize: fileSize ?? this.fileSize,
         taskType: taskType ?? this.taskType,
         priority: priority ?? this.priority,
@@ -5443,6 +5470,7 @@ class UploadTaskEntityData extends DataClass
       localPath: data.localPath.present ? data.localPath.value : this.localPath,
       remotePath:
           data.remotePath.present ? data.remotePath.value : this.remotePath,
+      mediaUuid: data.mediaUuid.present ? data.mediaUuid.value : this.mediaUuid,
       fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
       taskType: data.taskType.present ? data.taskType.value : this.taskType,
       priority: data.priority.present ? data.priority.value : this.priority,
@@ -5470,6 +5498,7 @@ class UploadTaskEntityData extends DataClass
           ..write('assetId: $assetId, ')
           ..write('localPath: $localPath, ')
           ..write('remotePath: $remotePath, ')
+          ..write('mediaUuid: $mediaUuid, ')
           ..write('fileSize: $fileSize, ')
           ..write('taskType: $taskType, ')
           ..write('priority: $priority, ')
@@ -5492,6 +5521,7 @@ class UploadTaskEntityData extends DataClass
       assetId,
       localPath,
       remotePath,
+      mediaUuid,
       fileSize,
       taskType,
       priority,
@@ -5512,6 +5542,7 @@ class UploadTaskEntityData extends DataClass
           other.assetId == this.assetId &&
           other.localPath == this.localPath &&
           other.remotePath == this.remotePath &&
+          other.mediaUuid == this.mediaUuid &&
           other.fileSize == this.fileSize &&
           other.taskType == this.taskType &&
           other.priority == this.priority &&
@@ -5531,6 +5562,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
   final Value<String> assetId;
   final Value<String> localPath;
   final Value<String> remotePath;
+  final Value<String?> mediaUuid;
   final Value<int> fileSize;
   final Value<UploadTaskType> taskType;
   final Value<int> priority;
@@ -5548,6 +5580,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     this.assetId = const Value.absent(),
     this.localPath = const Value.absent(),
     this.remotePath = const Value.absent(),
+    this.mediaUuid = const Value.absent(),
     this.fileSize = const Value.absent(),
     this.taskType = const Value.absent(),
     this.priority = const Value.absent(),
@@ -5566,6 +5599,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     required String assetId,
     required String localPath,
     required String remotePath,
+    this.mediaUuid = const Value.absent(),
     required int fileSize,
     required UploadTaskType taskType,
     this.priority = const Value.absent(),
@@ -5592,6 +5626,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     Expression<String>? assetId,
     Expression<String>? localPath,
     Expression<String>? remotePath,
+    Expression<String>? mediaUuid,
     Expression<int>? fileSize,
     Expression<int>? taskType,
     Expression<int>? priority,
@@ -5610,6 +5645,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
       if (assetId != null) 'asset_id': assetId,
       if (localPath != null) 'local_path': localPath,
       if (remotePath != null) 'remote_path': remotePath,
+      if (mediaUuid != null) 'media_uuid': mediaUuid,
       if (fileSize != null) 'file_size': fileSize,
       if (taskType != null) 'task_type': taskType,
       if (priority != null) 'priority': priority,
@@ -5630,6 +5666,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
       Value<String>? assetId,
       Value<String>? localPath,
       Value<String>? remotePath,
+      Value<String?>? mediaUuid,
       Value<int>? fileSize,
       Value<UploadTaskType>? taskType,
       Value<int>? priority,
@@ -5647,6 +5684,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
       assetId: assetId ?? this.assetId,
       localPath: localPath ?? this.localPath,
       remotePath: remotePath ?? this.remotePath,
+      mediaUuid: mediaUuid ?? this.mediaUuid,
       fileSize: fileSize ?? this.fileSize,
       taskType: taskType ?? this.taskType,
       priority: priority ?? this.priority,
@@ -5678,6 +5716,9 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     }
     if (remotePath.present) {
       map['remote_path'] = Variable<String>(remotePath.value);
+    }
+    if (mediaUuid.present) {
+      map['media_uuid'] = Variable<String>(mediaUuid.value);
     }
     if (fileSize.present) {
       map['file_size'] = Variable<int>(fileSize.value);
@@ -5725,6 +5766,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
           ..write('assetId: $assetId, ')
           ..write('localPath: $localPath, ')
           ..write('remotePath: $remotePath, ')
+          ..write('mediaUuid: $mediaUuid, ')
           ..write('fileSize: $fileSize, ')
           ..write('taskType: $taskType, ')
           ..write('priority: $priority, ')
@@ -6106,6 +6148,640 @@ class SyncCheckpointEntityCompanion
   }
 }
 
+class $PostTaskEntityTable extends PostTaskEntity
+    with TableInfo<$PostTaskEntityTable, PostTaskEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PostTaskEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES user_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+      'group_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _captionMeta =
+      const VerificationMeta('caption');
+  @override
+  late final GeneratedColumn<String> caption = GeneratedColumn<String>(
+      'caption', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _mediaPathsMeta =
+      const VerificationMeta('mediaPaths');
+  @override
+  late final GeneratedColumn<String> mediaPaths = GeneratedColumn<String>(
+      'media_paths', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mediaAssetIdsMeta =
+      const VerificationMeta('mediaAssetIds');
+  @override
+  late final GeneratedColumn<String> mediaAssetIds = GeneratedColumn<String>(
+      'media_asset_ids', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _mediaUuidsMeta =
+      const VerificationMeta('mediaUuids');
+  @override
+  late final GeneratedColumn<String> mediaUuids = GeneratedColumn<String>(
+      'media_uuids', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumnWithTypeConverter<PostTaskStatus, int> status =
+      GeneratedColumn<int>('status', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<PostTaskStatus>($PostTaskEntityTable.$converterstatus);
+  static const VerificationMeta _progressMeta =
+      const VerificationMeta('progress');
+  @override
+  late final GeneratedColumn<int> progress = GeneratedColumn<int>(
+      'progress', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _errorMessageMeta =
+      const VerificationMeta('errorMessage');
+  @override
+  late final GeneratedColumn<String> errorMessage = GeneratedColumn<String>(
+      'error_message', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        userId,
+        groupId,
+        caption,
+        mediaPaths,
+        mediaAssetIds,
+        mediaUuids,
+        status,
+        progress,
+        errorMessage,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'post_task_entity';
+  @override
+  VerificationContext validateIntegrity(Insertable<PostTaskEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('caption')) {
+      context.handle(_captionMeta,
+          caption.isAcceptableOrUnknown(data['caption']!, _captionMeta));
+    }
+    if (data.containsKey('media_paths')) {
+      context.handle(
+          _mediaPathsMeta,
+          mediaPaths.isAcceptableOrUnknown(
+              data['media_paths']!, _mediaPathsMeta));
+    } else if (isInserting) {
+      context.missing(_mediaPathsMeta);
+    }
+    if (data.containsKey('media_asset_ids')) {
+      context.handle(
+          _mediaAssetIdsMeta,
+          mediaAssetIds.isAcceptableOrUnknown(
+              data['media_asset_ids']!, _mediaAssetIdsMeta));
+    }
+    if (data.containsKey('media_uuids')) {
+      context.handle(
+          _mediaUuidsMeta,
+          mediaUuids.isAcceptableOrUnknown(
+              data['media_uuids']!, _mediaUuidsMeta));
+    }
+    context.handle(_statusMeta, const VerificationResult.success());
+    if (data.containsKey('progress')) {
+      context.handle(_progressMeta,
+          progress.isAcceptableOrUnknown(data['progress']!, _progressMeta));
+    }
+    if (data.containsKey('error_message')) {
+      context.handle(
+          _errorMessageMeta,
+          errorMessage.isAcceptableOrUnknown(
+              data['error_message']!, _errorMessageMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PostTaskEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PostTaskEntityData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
+      caption: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}caption']),
+      mediaPaths: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_paths'])!,
+      mediaAssetIds: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_asset_ids']),
+      mediaUuids: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_uuids']),
+      status: $PostTaskEntityTable.$converterstatus.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}status'])!),
+      progress: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}progress'])!,
+      errorMessage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error_message']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $PostTaskEntityTable createAlias(String alias) {
+    return $PostTaskEntityTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<PostTaskStatus, int, int> $converterstatus =
+      const EnumIndexConverter<PostTaskStatus>(PostTaskStatus.values);
+  @override
+  bool get withoutRowId => true;
+}
+
+class PostTaskEntityData extends DataClass
+    implements Insertable<PostTaskEntityData> {
+  /// 任务 ID（主键）
+  final String id;
+
+  /// 用户 ID（外键，用于多用户隔离）
+  final String userId;
+
+  /// 圈子 UUID
+  final String groupId;
+
+  /// 帖子文字说明
+  final String? caption;
+
+  /// 媒体文件路径列表（JSON 格式）
+  final String mediaPaths;
+
+  /// 媒体资产 ID 列表（JSON 格式，LocalAssetEntity 的 id，可选）
+  final String? mediaAssetIds;
+
+  /// 媒体 UUID 列表（JSON 格式，上传完成后填充）
+  final String? mediaUuids;
+
+  /// 任务状态
+  final PostTaskStatus status;
+
+  /// 进度百分比（0-100）
+  final int progress;
+
+  /// 错误信息
+  final String? errorMessage;
+
+  /// 创建时间
+  final DateTime createdAt;
+
+  /// 更新时间
+  final DateTime updatedAt;
+  const PostTaskEntityData(
+      {required this.id,
+      required this.userId,
+      required this.groupId,
+      this.caption,
+      required this.mediaPaths,
+      this.mediaAssetIds,
+      this.mediaUuids,
+      required this.status,
+      required this.progress,
+      this.errorMessage,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['user_id'] = Variable<String>(userId);
+    map['group_id'] = Variable<String>(groupId);
+    if (!nullToAbsent || caption != null) {
+      map['caption'] = Variable<String>(caption);
+    }
+    map['media_paths'] = Variable<String>(mediaPaths);
+    if (!nullToAbsent || mediaAssetIds != null) {
+      map['media_asset_ids'] = Variable<String>(mediaAssetIds);
+    }
+    if (!nullToAbsent || mediaUuids != null) {
+      map['media_uuids'] = Variable<String>(mediaUuids);
+    }
+    {
+      map['status'] =
+          Variable<int>($PostTaskEntityTable.$converterstatus.toSql(status));
+    }
+    map['progress'] = Variable<int>(progress);
+    if (!nullToAbsent || errorMessage != null) {
+      map['error_message'] = Variable<String>(errorMessage);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PostTaskEntityCompanion toCompanion(bool nullToAbsent) {
+    return PostTaskEntityCompanion(
+      id: Value(id),
+      userId: Value(userId),
+      groupId: Value(groupId),
+      caption: caption == null && nullToAbsent
+          ? const Value.absent()
+          : Value(caption),
+      mediaPaths: Value(mediaPaths),
+      mediaAssetIds: mediaAssetIds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaAssetIds),
+      mediaUuids: mediaUuids == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaUuids),
+      status: Value(status),
+      progress: Value(progress),
+      errorMessage: errorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorMessage),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PostTaskEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PostTaskEntityData(
+      id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
+      groupId: serializer.fromJson<String>(json['groupId']),
+      caption: serializer.fromJson<String?>(json['caption']),
+      mediaPaths: serializer.fromJson<String>(json['mediaPaths']),
+      mediaAssetIds: serializer.fromJson<String?>(json['mediaAssetIds']),
+      mediaUuids: serializer.fromJson<String?>(json['mediaUuids']),
+      status: $PostTaskEntityTable.$converterstatus
+          .fromJson(serializer.fromJson<int>(json['status'])),
+      progress: serializer.fromJson<int>(json['progress']),
+      errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<String>(userId),
+      'groupId': serializer.toJson<String>(groupId),
+      'caption': serializer.toJson<String?>(caption),
+      'mediaPaths': serializer.toJson<String>(mediaPaths),
+      'mediaAssetIds': serializer.toJson<String?>(mediaAssetIds),
+      'mediaUuids': serializer.toJson<String?>(mediaUuids),
+      'status': serializer
+          .toJson<int>($PostTaskEntityTable.$converterstatus.toJson(status)),
+      'progress': serializer.toJson<int>(progress),
+      'errorMessage': serializer.toJson<String?>(errorMessage),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PostTaskEntityData copyWith(
+          {String? id,
+          String? userId,
+          String? groupId,
+          Value<String?> caption = const Value.absent(),
+          String? mediaPaths,
+          Value<String?> mediaAssetIds = const Value.absent(),
+          Value<String?> mediaUuids = const Value.absent(),
+          PostTaskStatus? status,
+          int? progress,
+          Value<String?> errorMessage = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      PostTaskEntityData(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        groupId: groupId ?? this.groupId,
+        caption: caption.present ? caption.value : this.caption,
+        mediaPaths: mediaPaths ?? this.mediaPaths,
+        mediaAssetIds:
+            mediaAssetIds.present ? mediaAssetIds.value : this.mediaAssetIds,
+        mediaUuids: mediaUuids.present ? mediaUuids.value : this.mediaUuids,
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        errorMessage:
+            errorMessage.present ? errorMessage.value : this.errorMessage,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  PostTaskEntityData copyWithCompanion(PostTaskEntityCompanion data) {
+    return PostTaskEntityData(
+      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      caption: data.caption.present ? data.caption.value : this.caption,
+      mediaPaths:
+          data.mediaPaths.present ? data.mediaPaths.value : this.mediaPaths,
+      mediaAssetIds: data.mediaAssetIds.present
+          ? data.mediaAssetIds.value
+          : this.mediaAssetIds,
+      mediaUuids:
+          data.mediaUuids.present ? data.mediaUuids.value : this.mediaUuids,
+      status: data.status.present ? data.status.value : this.status,
+      progress: data.progress.present ? data.progress.value : this.progress,
+      errorMessage: data.errorMessage.present
+          ? data.errorMessage.value
+          : this.errorMessage,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PostTaskEntityData(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('groupId: $groupId, ')
+          ..write('caption: $caption, ')
+          ..write('mediaPaths: $mediaPaths, ')
+          ..write('mediaAssetIds: $mediaAssetIds, ')
+          ..write('mediaUuids: $mediaUuids, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      userId,
+      groupId,
+      caption,
+      mediaPaths,
+      mediaAssetIds,
+      mediaUuids,
+      status,
+      progress,
+      errorMessage,
+      createdAt,
+      updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PostTaskEntityData &&
+          other.id == this.id &&
+          other.userId == this.userId &&
+          other.groupId == this.groupId &&
+          other.caption == this.caption &&
+          other.mediaPaths == this.mediaPaths &&
+          other.mediaAssetIds == this.mediaAssetIds &&
+          other.mediaUuids == this.mediaUuids &&
+          other.status == this.status &&
+          other.progress == this.progress &&
+          other.errorMessage == this.errorMessage &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PostTaskEntityCompanion extends UpdateCompanion<PostTaskEntityData> {
+  final Value<String> id;
+  final Value<String> userId;
+  final Value<String> groupId;
+  final Value<String?> caption;
+  final Value<String> mediaPaths;
+  final Value<String?> mediaAssetIds;
+  final Value<String?> mediaUuids;
+  final Value<PostTaskStatus> status;
+  final Value<int> progress;
+  final Value<String?> errorMessage;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const PostTaskEntityCompanion({
+    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.caption = const Value.absent(),
+    this.mediaPaths = const Value.absent(),
+    this.mediaAssetIds = const Value.absent(),
+    this.mediaUuids = const Value.absent(),
+    this.status = const Value.absent(),
+    this.progress = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  PostTaskEntityCompanion.insert({
+    required String id,
+    required String userId,
+    required String groupId,
+    this.caption = const Value.absent(),
+    required String mediaPaths,
+    this.mediaAssetIds = const Value.absent(),
+    this.mediaUuids = const Value.absent(),
+    this.status = const Value.absent(),
+    this.progress = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  })  : id = Value(id),
+        userId = Value(userId),
+        groupId = Value(groupId),
+        mediaPaths = Value(mediaPaths),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<PostTaskEntityData> custom({
+    Expression<String>? id,
+    Expression<String>? userId,
+    Expression<String>? groupId,
+    Expression<String>? caption,
+    Expression<String>? mediaPaths,
+    Expression<String>? mediaAssetIds,
+    Expression<String>? mediaUuids,
+    Expression<int>? status,
+    Expression<int>? progress,
+    Expression<String>? errorMessage,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
+      if (groupId != null) 'group_id': groupId,
+      if (caption != null) 'caption': caption,
+      if (mediaPaths != null) 'media_paths': mediaPaths,
+      if (mediaAssetIds != null) 'media_asset_ids': mediaAssetIds,
+      if (mediaUuids != null) 'media_uuids': mediaUuids,
+      if (status != null) 'status': status,
+      if (progress != null) 'progress': progress,
+      if (errorMessage != null) 'error_message': errorMessage,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  PostTaskEntityCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? userId,
+      Value<String>? groupId,
+      Value<String?>? caption,
+      Value<String>? mediaPaths,
+      Value<String?>? mediaAssetIds,
+      Value<String?>? mediaUuids,
+      Value<PostTaskStatus>? status,
+      Value<int>? progress,
+      Value<String?>? errorMessage,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return PostTaskEntityCompanion(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      groupId: groupId ?? this.groupId,
+      caption: caption ?? this.caption,
+      mediaPaths: mediaPaths ?? this.mediaPaths,
+      mediaAssetIds: mediaAssetIds ?? this.mediaAssetIds,
+      mediaUuids: mediaUuids ?? this.mediaUuids,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      errorMessage: errorMessage ?? this.errorMessage,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (caption.present) {
+      map['caption'] = Variable<String>(caption.value);
+    }
+    if (mediaPaths.present) {
+      map['media_paths'] = Variable<String>(mediaPaths.value);
+    }
+    if (mediaAssetIds.present) {
+      map['media_asset_ids'] = Variable<String>(mediaAssetIds.value);
+    }
+    if (mediaUuids.present) {
+      map['media_uuids'] = Variable<String>(mediaUuids.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<int>(
+          $PostTaskEntityTable.$converterstatus.toSql(status.value));
+    }
+    if (progress.present) {
+      map['progress'] = Variable<int>(progress.value);
+    }
+    if (errorMessage.present) {
+      map['error_message'] = Variable<String>(errorMessage.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PostTaskEntityCompanion(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('groupId: $groupId, ')
+          ..write('caption: $caption, ')
+          ..write('mediaPaths: $mediaPaths, ')
+          ..write('mediaAssetIds: $mediaAssetIds, ')
+          ..write('mediaUuids: $mediaUuids, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6133,6 +6809,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $UploadTaskEntityTable(this);
   late final $SyncCheckpointEntityTable syncCheckpointEntity =
       $SyncCheckpointEntityTable(this);
+  late final $PostTaskEntityTable postTaskEntity = $PostTaskEntityTable(this);
   late final Index idxRemoteAssetOwnerChecksum = Index(
       'idx_remote_asset_owner_checksum',
       'CREATE INDEX idx_remote_asset_owner_checksum ON remote_asset_entity (owner_id, checksum)');
@@ -6150,6 +6827,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX idx_upload_task_priority ON upload_task_entity (priority)');
   late final Index idxUploadTaskAssetId = Index('idx_upload_task_asset_id',
       'CREATE INDEX idx_upload_task_asset_id ON upload_task_entity (asset_id)');
+  late final Index idxPostTaskUserId = Index('idx_post_task_user_id',
+      'CREATE INDEX idx_post_task_user_id ON post_task_entity (user_id)');
+  late final Index idxPostTaskStatus = Index('idx_post_task_status',
+      'CREATE INDEX idx_post_task_status ON post_task_entity (status)');
+  late final Index idxPostTaskGroupId = Index('idx_post_task_group_id',
+      'CREATE INDEX idx_post_task_group_id ON post_task_entity (group_id)');
   late final UserDao userDao = UserDao(this as AppDatabase);
   late final LocalAssetDao localAssetDao = LocalAssetDao(this as AppDatabase);
   late final RemoteAssetDao remoteAssetDao =
@@ -6161,6 +6844,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final SyncCheckpointDao syncCheckpointDao =
       SyncCheckpointDao(this as AppDatabase);
   late final RetryTaskDao retryTaskDao = RetryTaskDao(this as AppDatabase);
+  late final PostTaskDao postTaskDao = PostTaskDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6179,6 +6863,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         backupStatusEntity,
         uploadTaskEntity,
         syncCheckpointEntity,
+        postTaskEntity,
         idxRemoteAssetOwnerChecksum,
         idxRemoteAssetChecksum,
         idxBackupStatusUserId,
@@ -6186,7 +6871,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         idxUploadTaskStatus,
         idxUploadTaskType,
         idxUploadTaskPriority,
-        idxUploadTaskAssetId
+        idxUploadTaskAssetId,
+        idxPostTaskUserId,
+        idxPostTaskStatus,
+        idxPostTaskGroupId
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -6273,6 +6961,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('sync_checkpoint_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('user_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('post_task_entity', kind: UpdateKind.delete),
             ],
           ),
         ],
@@ -6460,6 +7155,19 @@ class $$UserEntityTableFilterComposer
                     $state.db.syncCheckpointEntity,
                     joinBuilder,
                     parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter postTaskEntityRefs(
+      ComposableFilter Function($$PostTaskEntityTableFilterComposer f) f) {
+    final $$PostTaskEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.postTaskEntity,
+        getReferencedColumn: (t) => t.userId,
+        builder: (joinBuilder, parentComposers) =>
+            $$PostTaskEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.postTaskEntity, joinBuilder, parentComposers)));
     return f(composer);
   }
 }
@@ -8512,6 +9220,7 @@ typedef $$UploadTaskEntityTableCreateCompanionBuilder
   required String assetId,
   required String localPath,
   required String remotePath,
+  Value<String?> mediaUuid,
   required int fileSize,
   required UploadTaskType taskType,
   Value<int> priority,
@@ -8531,6 +9240,7 @@ typedef $$UploadTaskEntityTableUpdateCompanionBuilder
   Value<String> assetId,
   Value<String> localPath,
   Value<String> remotePath,
+  Value<String?> mediaUuid,
   Value<int> fileSize,
   Value<UploadTaskType> taskType,
   Value<int> priority,
@@ -8567,6 +9277,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             Value<String> assetId = const Value.absent(),
             Value<String> localPath = const Value.absent(),
             Value<String> remotePath = const Value.absent(),
+            Value<String?> mediaUuid = const Value.absent(),
             Value<int> fileSize = const Value.absent(),
             Value<UploadTaskType> taskType = const Value.absent(),
             Value<int> priority = const Value.absent(),
@@ -8585,6 +9296,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             assetId: assetId,
             localPath: localPath,
             remotePath: remotePath,
+            mediaUuid: mediaUuid,
             fileSize: fileSize,
             taskType: taskType,
             priority: priority,
@@ -8603,6 +9315,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             required String assetId,
             required String localPath,
             required String remotePath,
+            Value<String?> mediaUuid = const Value.absent(),
             required int fileSize,
             required UploadTaskType taskType,
             Value<int> priority = const Value.absent(),
@@ -8621,6 +9334,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             assetId: assetId,
             localPath: localPath,
             remotePath: remotePath,
+            mediaUuid: mediaUuid,
             fileSize: fileSize,
             taskType: taskType,
             priority: priority,
@@ -8656,6 +9370,11 @@ class $$UploadTaskEntityTableFilterComposer
 
   ColumnFilters<String> get remotePath => $state.composableBuilder(
       column: $state.table.remotePath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mediaUuid => $state.composableBuilder(
+      column: $state.table.mediaUuid,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8751,6 +9470,11 @@ class $$UploadTaskEntityTableOrderingComposer
 
   ColumnOrderings<String> get remotePath => $state.composableBuilder(
       column: $state.table.remotePath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mediaUuid => $state.composableBuilder(
+      column: $state.table.mediaUuid,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -8975,6 +9699,257 @@ class $$SyncCheckpointEntityTableOrderingComposer
   }
 }
 
+typedef $$PostTaskEntityTableCreateCompanionBuilder = PostTaskEntityCompanion
+    Function({
+  required String id,
+  required String userId,
+  required String groupId,
+  Value<String?> caption,
+  required String mediaPaths,
+  Value<String?> mediaAssetIds,
+  Value<String?> mediaUuids,
+  Value<PostTaskStatus> status,
+  Value<int> progress,
+  Value<String?> errorMessage,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+});
+typedef $$PostTaskEntityTableUpdateCompanionBuilder = PostTaskEntityCompanion
+    Function({
+  Value<String> id,
+  Value<String> userId,
+  Value<String> groupId,
+  Value<String?> caption,
+  Value<String> mediaPaths,
+  Value<String?> mediaAssetIds,
+  Value<String?> mediaUuids,
+  Value<PostTaskStatus> status,
+  Value<int> progress,
+  Value<String?> errorMessage,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+});
+
+class $$PostTaskEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PostTaskEntityTable,
+    PostTaskEntityData,
+    $$PostTaskEntityTableFilterComposer,
+    $$PostTaskEntityTableOrderingComposer,
+    $$PostTaskEntityTableCreateCompanionBuilder,
+    $$PostTaskEntityTableUpdateCompanionBuilder> {
+  $$PostTaskEntityTableTableManager(
+      _$AppDatabase db, $PostTaskEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$PostTaskEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$PostTaskEntityTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> userId = const Value.absent(),
+            Value<String> groupId = const Value.absent(),
+            Value<String?> caption = const Value.absent(),
+            Value<String> mediaPaths = const Value.absent(),
+            Value<String?> mediaAssetIds = const Value.absent(),
+            Value<String?> mediaUuids = const Value.absent(),
+            Value<PostTaskStatus> status = const Value.absent(),
+            Value<int> progress = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              PostTaskEntityCompanion(
+            id: id,
+            userId: userId,
+            groupId: groupId,
+            caption: caption,
+            mediaPaths: mediaPaths,
+            mediaAssetIds: mediaAssetIds,
+            mediaUuids: mediaUuids,
+            status: status,
+            progress: progress,
+            errorMessage: errorMessage,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String userId,
+            required String groupId,
+            Value<String?> caption = const Value.absent(),
+            required String mediaPaths,
+            Value<String?> mediaAssetIds = const Value.absent(),
+            Value<String?> mediaUuids = const Value.absent(),
+            Value<PostTaskStatus> status = const Value.absent(),
+            Value<int> progress = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+          }) =>
+              PostTaskEntityCompanion.insert(
+            id: id,
+            userId: userId,
+            groupId: groupId,
+            caption: caption,
+            mediaPaths: mediaPaths,
+            mediaAssetIds: mediaAssetIds,
+            mediaUuids: mediaUuids,
+            status: status,
+            progress: progress,
+            errorMessage: errorMessage,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+        ));
+}
+
+class $$PostTaskEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $PostTaskEntityTable> {
+  $$PostTaskEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get groupId => $state.composableBuilder(
+      column: $state.table.groupId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get caption => $state.composableBuilder(
+      column: $state.table.caption,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mediaPaths => $state.composableBuilder(
+      column: $state.table.mediaPaths,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mediaAssetIds => $state.composableBuilder(
+      column: $state.table.mediaAssetIds,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mediaUuids => $state.composableBuilder(
+      column: $state.table.mediaUuids,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<PostTaskStatus, PostTaskStatus, int>
+      get status => $state.composableBuilder(
+          column: $state.table.status,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get errorMessage => $state.composableBuilder(
+      column: $state.table.errorMessage,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get userId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$PostTaskEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $PostTaskEntityTable> {
+  $$PostTaskEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get groupId => $state.composableBuilder(
+      column: $state.table.groupId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get caption => $state.composableBuilder(
+      column: $state.table.caption,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mediaPaths => $state.composableBuilder(
+      column: $state.table.mediaPaths,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mediaAssetIds => $state.composableBuilder(
+      column: $state.table.mediaAssetIds,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mediaUuids => $state.composableBuilder(
+      column: $state.table.mediaUuids,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get status => $state.composableBuilder(
+      column: $state.table.status,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get errorMessage => $state.composableBuilder(
+      column: $state.table.errorMessage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get userId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
@@ -9004,4 +9979,6 @@ class $AppDatabaseManager {
       $$UploadTaskEntityTableTableManager(_db, _db.uploadTaskEntity);
   $$SyncCheckpointEntityTableTableManager get syncCheckpointEntity =>
       $$SyncCheckpointEntityTableTableManager(_db, _db.syncCheckpointEntity);
+  $$PostTaskEntityTableTableManager get postTaskEntity =>
+      $$PostTaskEntityTableTableManager(_db, _db.postTaskEntity);
 }

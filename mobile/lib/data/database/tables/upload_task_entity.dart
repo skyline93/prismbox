@@ -33,6 +33,9 @@ class UploadTaskEntity extends Table with DriftDefaultsMixin {
   /// 远程路径（上传目标路径）
   TextColumn get remotePath => text()();
 
+  /// 媒体 UUID（上传成功后从服务器响应中提取）
+  TextColumn get mediaUuid => text().nullable()();
+
   /// 文件大小（字节）
   IntColumn get fileSize => integer()();
 
