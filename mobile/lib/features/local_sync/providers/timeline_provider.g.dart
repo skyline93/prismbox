@@ -177,29 +177,204 @@ class _TimelineAssetsProviderElement
       (origin as TimelineAssetsProvider).forcePhotoManager;
 }
 
-String _$timelineSectionsHash() => r'a3836a0084496b7c15924c71f29bc42383871160';
+String _$timelineSectionsHash() => r'05b795855f46f4ceb405fa3cda2e20afda81cddb';
 
 /// 时间线分组数据 Provider
 ///
 /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
 /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
-/// 支持根据筛选模式（全部/已备份/未备份/仅云端）过滤照片
+/// 支持多级过滤和排序：
+/// - 本地/远程隔离过滤（全局共享，通过 `PhotoFilterModeProvider`）
+/// - 内容过滤（页面级，通过 `TimelineContentFilterConfigProvider`）
+/// - 排序（页面级，通过 `TimelineSortConfigProvider`）
+///
+/// [pageId] 页面标识符，用于区分不同页面（如 'main', 'favorite', 'video', 'recentlyAdded'）
 ///
 /// Copied from [timelineSections].
 @ProviderFor(timelineSections)
-final timelineSectionsProvider =
-    AutoDisposeFutureProvider<List<TimelineSection>>.internal(
-  timelineSections,
-  name: r'timelineSectionsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$timelineSectionsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+const timelineSectionsProvider = TimelineSectionsFamily();
 
-typedef TimelineSectionsRef
-    = AutoDisposeFutureProviderRef<List<TimelineSection>>;
+/// 时间线分组数据 Provider
+///
+/// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
+/// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+/// 支持多级过滤和排序：
+/// - 本地/远程隔离过滤（全局共享，通过 `PhotoFilterModeProvider`）
+/// - 内容过滤（页面级，通过 `TimelineContentFilterConfigProvider`）
+/// - 排序（页面级，通过 `TimelineSortConfigProvider`）
+///
+/// [pageId] 页面标识符，用于区分不同页面（如 'main', 'favorite', 'video', 'recentlyAdded'）
+///
+/// Copied from [timelineSections].
+class TimelineSectionsFamily extends Family<AsyncValue<List<TimelineSection>>> {
+  /// 时间线分组数据 Provider
+  ///
+  /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
+  /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+  /// 支持多级过滤和排序：
+  /// - 本地/远程隔离过滤（全局共享，通过 `PhotoFilterModeProvider`）
+  /// - 内容过滤（页面级，通过 `TimelineContentFilterConfigProvider`）
+  /// - 排序（页面级，通过 `TimelineSortConfigProvider`）
+  ///
+  /// [pageId] 页面标识符，用于区分不同页面（如 'main', 'favorite', 'video', 'recentlyAdded'）
+  ///
+  /// Copied from [timelineSections].
+  const TimelineSectionsFamily();
+
+  /// 时间线分组数据 Provider
+  ///
+  /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
+  /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+  /// 支持多级过滤和排序：
+  /// - 本地/远程隔离过滤（全局共享，通过 `PhotoFilterModeProvider`）
+  /// - 内容过滤（页面级，通过 `TimelineContentFilterConfigProvider`）
+  /// - 排序（页面级，通过 `TimelineSortConfigProvider`）
+  ///
+  /// [pageId] 页面标识符，用于区分不同页面（如 'main', 'favorite', 'video', 'recentlyAdded'）
+  ///
+  /// Copied from [timelineSections].
+  TimelineSectionsProvider call({
+    String pageId = 'main',
+  }) {
+    return TimelineSectionsProvider(
+      pageId: pageId,
+    );
+  }
+
+  @override
+  TimelineSectionsProvider getProviderOverride(
+    covariant TimelineSectionsProvider provider,
+  ) {
+    return call(
+      pageId: provider.pageId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'timelineSectionsProvider';
+}
+
+/// 时间线分组数据 Provider
+///
+/// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
+/// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+/// 支持多级过滤和排序：
+/// - 本地/远程隔离过滤（全局共享，通过 `PhotoFilterModeProvider`）
+/// - 内容过滤（页面级，通过 `TimelineContentFilterConfigProvider`）
+/// - 排序（页面级，通过 `TimelineSortConfigProvider`）
+///
+/// [pageId] 页面标识符，用于区分不同页面（如 'main', 'favorite', 'video', 'recentlyAdded'）
+///
+/// Copied from [timelineSections].
+class TimelineSectionsProvider
+    extends AutoDisposeFutureProvider<List<TimelineSection>> {
+  /// 时间线分组数据 Provider
+  ///
+  /// 将原始的时间线数据转换为按时间分组的 TimelineSection 列表
+  /// 依赖 timelineAssetsProvider 获取原始数据，然后通过 TimelineGroupingService 进行分组转换
+  /// 支持多级过滤和排序：
+  /// - 本地/远程隔离过滤（全局共享，通过 `PhotoFilterModeProvider`）
+  /// - 内容过滤（页面级，通过 `TimelineContentFilterConfigProvider`）
+  /// - 排序（页面级，通过 `TimelineSortConfigProvider`）
+  ///
+  /// [pageId] 页面标识符，用于区分不同页面（如 'main', 'favorite', 'video', 'recentlyAdded'）
+  ///
+  /// Copied from [timelineSections].
+  TimelineSectionsProvider({
+    String pageId = 'main',
+  }) : this._internal(
+          (ref) => timelineSections(
+            ref as TimelineSectionsRef,
+            pageId: pageId,
+          ),
+          from: timelineSectionsProvider,
+          name: r'timelineSectionsProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$timelineSectionsHash,
+          dependencies: TimelineSectionsFamily._dependencies,
+          allTransitiveDependencies:
+              TimelineSectionsFamily._allTransitiveDependencies,
+          pageId: pageId,
+        );
+
+  TimelineSectionsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.pageId,
+  }) : super.internal();
+
+  final String pageId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<TimelineSection>> Function(TimelineSectionsRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: TimelineSectionsProvider._internal(
+        (ref) => create(ref as TimelineSectionsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        pageId: pageId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<TimelineSection>> createElement() {
+    return _TimelineSectionsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TimelineSectionsProvider && other.pageId == pageId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, pageId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin TimelineSectionsRef
+    on AutoDisposeFutureProviderRef<List<TimelineSection>> {
+  /// The parameter `pageId` of this provider.
+  String get pageId;
+}
+
+class _TimelineSectionsProviderElement
+    extends AutoDisposeFutureProviderElement<List<TimelineSection>>
+    with TimelineSectionsRef {
+  _TimelineSectionsProviderElement(super.provider);
+
+  @override
+  String get pageId => (origin as TimelineSectionsProvider).pageId;
+}
+
 String _$syncStatusHash() => r'bb068acf9f97f8b63ded82b67827d085cd2b0e56';
 
 /// 同步状态 Provider

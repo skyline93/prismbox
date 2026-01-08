@@ -43,11 +43,11 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   /// 直接从 Store 读取 token，不等待 Provider 初始化
   void _checkAndNavigateFast() {
     if (_hasNavigated) return;
-    
+
     try {
       final store = StoreService();
       _log.info('Store initialized: ${store.isInitialized}');
-      
+
       if (!store.isInitialized) {
         // Store 未初始化，等待一下再检查
         _log.warning('Store not initialized, retrying in 100ms');
@@ -61,7 +61,9 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
       final accessToken = store.tryGet<String>(StoreKey.accessToken);
 
-      _log.info('Token check: accessToken=${accessToken != null && accessToken.isNotEmpty}');
+      _log.info(
+        'Token check: accessToken=${accessToken != null && accessToken.isNotEmpty}',
+      );
 
       // 注意：serverUrl 和 serverEndpoint 现在从 app_config.dart 读取，不再存储在 Store 中
       // 所以只需要检查 accessToken 即可
@@ -77,7 +79,9 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       } else {
         // 没有 token，导航到登录页
         _log.info('❌ No token found. Navigating to login.');
-        _log.info('  accessToken: ${accessToken != null ? "exists (${accessToken.length} chars)" : "null"}');
+        _log.info(
+          '  accessToken: ${accessToken != null ? "exists (${accessToken.length} chars)" : "null"}',
+        );
         if (mounted && !_hasNavigated) {
           _hasNavigated = true;
           context.router.replaceAll([const LoginRoute()]);
@@ -114,26 +118,27 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   /// 预加载权限状态和相关数据
   void _preloadData() {
     // 预加载权限状态
-    ref.read(photoPermissionNotifierProvider.future).then((permissionState) {
-      // 如果权限已授予，预加载时间线相关数据
-      if (permissionState is PhotoPermissionGranted) {
-        // 预加载 assetEntityLoader
-        unawaited(
-          ref.read(assetEntityLoaderProvider.future).then(
-            (_) {},
-            onError: (_) {},
-          ),
-        );
-        
-        // 预加载时间线数据
-        unawaited(
-          ref.read(timelineSectionsProvider.future).then(
-            (_) {},
-            onError: (_) {},
-          ),
-        );
-      }
-    }).catchError((_) {});
+    ref
+        .read(photoPermissionNotifierProvider.future)
+        .then((permissionState) {
+          // 如果权限已授予，预加载时间线相关数据
+          if (permissionState is PhotoPermissionGranted) {
+            // 预加载 assetEntityLoader
+            unawaited(
+              ref
+                  .read(assetEntityLoaderProvider.future)
+                  .then((_) {}, onError: (_) {}),
+            );
+
+            // 预加载时间线数据
+            unawaited(
+              ref
+                  .read(timelineSectionsProvider(pageId: 'main').future)
+                  .then((_) {}, onError: (_) {}),
+            );
+          }
+        })
+        .catchError((_) {});
   }
 
   @override

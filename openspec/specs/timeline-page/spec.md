@@ -162,7 +162,7 @@ TBD - created by archiving change refactor-timeline-page-components. Update Purp
 
 ### Requirement: 时间线数据合并和展示
 
-时间线页面 SHALL 独立展示本地资产和远程资产，不进行自动关联去重。系统 SHALL 支持过滤选项，允许用户选择查看方式。系统 SHALL 支持删除功能，根据当前过滤模式决定删除行为。
+时间线页面 SHALL 独立展示本地资产和远程资产，不进行自动关联去重。系统 SHALL 支持过滤选项，允许用户选择查看方式。系统 SHALL 支持删除功能，根据当前过滤模式决定删除行为。系统 SHALL 支持内容过滤和灵活排序。
 
 #### Scenario: 独立数据合并
 - **WHEN** 获取时间线数据
@@ -171,7 +171,7 @@ TBD - created by archiving change refactor-timeline-page-components. Update Purp
 - **AND** 系统 SHALL 再添加所有本地资产（LocalAsset）到列表
 - **AND** 系统 SHALL 不进行基于 checksum 的关联
 - **AND** 系统 SHALL 不建立本地-远程资产关联
-- **AND** 系统 SHALL 按创建时间降序排序
+- **AND** 系统 SHALL 按配置的排序规则排序（默认按创建时间降序）
 
 #### Scenario: 过滤选项支持
 - **WHEN** 用户选择"全部"过滤模式
@@ -204,6 +204,11 @@ TBD - created by archiving change refactor-timeline-page-components. Update Purp
 - **THEN** 系统 SHALL 通过 `TimelineFilterButton` 组件提供过滤选项
 - **AND** 系统 SHALL 支持循环切换（全部 → 已备份 → 未备份 → 仅云端 → 全部）
 - **AND** 系统 SHALL 实时更新过滤结果
+
+- **WHEN** 应用内容过滤（收藏、视频等）
+- **THEN** 系统 SHALL 先应用本地/远程隔离过滤（`PhotoFilterModeEnum`）
+- **AND** 系统 SHALL 再应用内容过滤（`TimelineContentFilterConfig`）
+- **AND** 系统 SHALL 确保过滤顺序不影响结果正确性
 
 #### Scenario: 数据源选择
 - **WHEN** 选择时间线数据源
@@ -319,4 +324,88 @@ TBD - created by archiving change refactor-timeline-page-components. Update Purp
 - **THEN** 时间线 UI SHALL 自动刷新显示最新状态
 - **AND** 如果收藏状态从 false 变为 true，SHALL 显示收藏图标
 - **AND** 如果收藏状态从 true 变为 false，SHALL 隐藏收藏图标
+
+### Requirement: 时间线内容过滤
+
+时间线系统 SHALL 支持内容过滤功能，允许用户根据资产属性（如收藏状态、媒体类型）过滤时间线数据。内容过滤 SHALL 与本地/远程隔离过滤独立，可以组合使用。
+
+#### Scenario: 收藏过滤
+- **WHEN** 用户进入收藏时间线页面
+- **THEN** 系统 SHALL 仅显示 `isFavorite == true` 的资产
+- **AND** 系统 SHALL 支持本地/远程隔离切换（通过 `TimelineFilterButton`）
+- **AND** 系统 SHALL 先应用本地/远程隔离过滤，再应用收藏过滤
+
+#### Scenario: 视频过滤
+- **WHEN** 用户进入视频时间线页面
+- **THEN** 系统 SHALL 仅显示 `type == AssetType.video` 的资产
+- **AND** 系统 SHALL 支持本地/远程隔离切换（通过 `TimelineFilterButton`）
+- **AND** 系统 SHALL 先应用本地/远程隔离过滤，再应用视频过滤
+
+#### Scenario: 内容过滤配置管理
+- **WHEN** 实现内容过滤功能
+- **THEN** 系统 SHALL 使用 `TimelineContentFilterConfig` 类管理过滤配置
+- **AND** 配置 SHALL 包含 `favoriteOnly` 和 `videoOnly` 可选参数
+- **AND** 配置 SHALL 使用页面级 Provider（`TimelineContentFilterConfigProvider`）管理
+- **AND** 不同页面（收藏、视频、最近添加）SHALL 使用独立的过滤配置
+- **AND** 配置 SHALL 预留扩展接口，支持未来添加更多过滤条件（如地点、标签等）
+
+#### Scenario: 过滤顺序
+- **WHEN** 应用多个过滤条件
+- **THEN** 系统 SHALL 先应用本地/远程隔离过滤（`PhotoFilterModeEnum`）
+- **AND** 系统 SHALL 再应用内容过滤（`TimelineContentFilterConfig`）
+- **AND** 系统 SHALL 确保过滤顺序不影响结果正确性
+
+### Requirement: 时间线排序
+
+时间线系统 SHALL 支持灵活的排序功能，允许用户按不同字段和顺序排序时间线数据。排序 SHALL 独立于过滤配置，可以独立使用或与过滤组合使用。
+
+#### Scenario: 按创建时间排序（默认）
+- **WHEN** 用户进入照片时间线页面（默认）
+- **THEN** 系统 SHALL 按 `createdAt` 降序排序
+- **AND** 系统 SHALL 保持现有行为不变（向后兼容）
+
+#### Scenario: 按更新时间排序（最近添加）
+- **WHEN** 用户进入最近添加时间线页面
+- **THEN** 系统 SHALL 按 `updatedAt` 降序排序
+- **AND** 系统 SHALL 支持本地/远程隔离切换（通过 `TimelineFilterButton`）
+- **AND** 系统 SHALL 先应用过滤，再应用排序
+
+#### Scenario: 排序配置管理
+- **WHEN** 实现排序功能
+- **THEN** 系统 SHALL 使用 `TimelineSortConfig` 类管理排序配置
+- **AND** 配置 SHALL 包含 `sortBy`（`createdAt` 或 `updatedAt`）和 `order`（`asc` 或 `desc`）参数
+- **AND** 配置 SHALL 使用页面级 Provider（`TimelineSortConfigProvider`）管理
+- **AND** 不同页面 SHALL 使用独立的排序配置
+- **AND** 配置 SHALL 预留扩展接口，支持未来添加更多排序字段（如按名称、按大小等）
+
+#### Scenario: 排序与过滤组合
+- **WHEN** 同时应用过滤和排序
+- **THEN** 系统 SHALL 先应用过滤（本地/远程隔离 + 内容过滤）
+- **AND** 系统 SHALL 再应用排序
+- **AND** 系统 SHALL 确保排序在过滤后的数据上应用
+
+### Requirement: 合集页面时间线集成
+
+合集页面 SHALL 提供收藏、视频和最近添加功能的入口，这些功能 SHALL 基于时间线系统，支持本地/远程隔离切换。
+
+#### Scenario: 收藏页面入口
+- **WHEN** 用户在合集页面点击"收藏"按钮
+- **THEN** 系统 SHALL 导航到收藏时间线页面
+- **AND** 收藏时间线页面 SHALL 仅显示收藏资产
+- **AND** 收藏时间线页面 SHALL 显示 `TimelineFilterButton`（支持本地/远程切换）
+- **AND** 收藏时间线页面 SHALL 使用与照片页面相同的时间线组件
+
+#### Scenario: 视频页面入口
+- **WHEN** 用户在合集页面点击"视频"按钮
+- **THEN** 系统 SHALL 导航到视频时间线页面
+- **AND** 视频时间线页面 SHALL 仅显示视频资产
+- **AND** 视频时间线页面 SHALL 显示 `TimelineFilterButton`（支持本地/远程切换）
+- **AND** 视频时间线页面 SHALL 使用与照片页面相同的时间线组件
+
+#### Scenario: 最近添加页面入口
+- **WHEN** 用户在合集页面点击"最近添加"按钮
+- **THEN** 系统 SHALL 导航到最近添加时间线页面
+- **AND** 最近添加时间线页面 SHALL 按 `updatedAt` 降序排序
+- **AND** 最近添加时间线页面 SHALL 显示 `TimelineFilterButton`（支持本地/远程切换）
+- **AND** 最近添加时间线页面 SHALL 使用与照片页面相同的时间线组件
 

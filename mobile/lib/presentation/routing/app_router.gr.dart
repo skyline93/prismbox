@@ -33,6 +33,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const BackupSettingsPage(),
       );
     },
+    FavoriteTimelineRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const FavoriteTimelinePage(),
+      );
+    },
     LanguageRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -80,6 +86,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const PreferencesPage(),
       );
     },
+    RecentlyAddedTimelineRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const RecentlyAddedTimelinePage(),
+      );
+    },
     RegisterRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -120,6 +132,12 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const UploadDetailPage(),
+      );
+    },
+    VideoTimelineRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const VideoTimelinePage(),
       );
     },
   };
@@ -163,6 +181,20 @@ class BackupSettingsRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'BackupSettingsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [FavoriteTimelinePage]
+class FavoriteTimelineRoute extends PageRouteInfo<void> {
+  const FavoriteTimelineRoute({List<PageRouteInfo>? children})
+      : super(
+          FavoriteTimelineRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'FavoriteTimelineRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -295,6 +327,20 @@ class PreferencesRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [RecentlyAddedTimelinePage]
+class RecentlyAddedTimelineRoute extends PageRouteInfo<void> {
+  const RecentlyAddedTimelineRoute({List<PageRouteInfo>? children})
+      : super(
+          RecentlyAddedTimelineRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'RecentlyAddedTimelineRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [RegisterPage]
 class RegisterRoute extends PageRouteInfo<void> {
   const RegisterRoute({List<PageRouteInfo>? children})
@@ -388,6 +434,20 @@ class UploadDetailRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'UploadDetailRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [VideoTimelinePage]
+class VideoTimelineRoute extends PageRouteInfo<void> {
+  const VideoTimelineRoute({List<PageRouteInfo>? children})
+      : super(
+          VideoTimelineRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'VideoTimelineRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

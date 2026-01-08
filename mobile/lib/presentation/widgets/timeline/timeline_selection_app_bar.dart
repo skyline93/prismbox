@@ -9,14 +9,19 @@ import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 ///
 /// 显示选择模式下的 SliverAppBar，包含关闭按钮、选中数量显示和全选按钮
 class TimelineSelectionAppBar extends ConsumerWidget {
-  const TimelineSelectionAppBar({super.key});
+  final String pageId;
+
+  const TimelineSelectionAppBar({
+    super.key,
+    this.pageId = 'main',
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectionCount = ref.watch(
       assetSelectionProvider.select((s) => s.count),
     );
-    final timelineSectionsAsync = ref.watch(timelineSectionsProvider);
+    final timelineSectionsAsync = ref.watch(timelineSectionsProvider(pageId: pageId));
     final isAllSelected = _isAllSelected(ref, timelineSectionsAsync);
 
     return SliverAppBar(
@@ -139,7 +144,7 @@ class TimelineSelectionAppBar extends ConsumerWidget {
 
   /// 处理全选
   void _handleSelectAll(WidgetRef ref) {
-    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
+    final timelineSectionsAsync = ref.read(timelineSectionsProvider(pageId: pageId));
     timelineSectionsAsync.whenData((sections) {
       final allAssetIds = <String>[];
       for (final section in sections) {

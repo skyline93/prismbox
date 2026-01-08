@@ -88,7 +88,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                   icon: Icons.star_outline,
                   label: '收藏',
                   onTap: () {
-                    // TODO: 跳转到收藏页面
+                    context.router.push(const FavoriteTimelineRoute());
                   },
                 ),
               ),
@@ -306,14 +306,14 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
         icon: Icons.videocam_outlined,
         label: '视频',
         onTap: () {
-          // TODO: 跳转到视频页面
+          context.router.push(const VideoTimelineRoute());
         },
       ),
       _CategoryItem(
         icon: Icons.access_time_outlined,
         label: '最近添加',
         onTap: () {
-          // TODO: 跳转到最近添加页面
+          context.router.push(const RecentlyAddedTimelineRoute());
         },
       ),
       _CategoryItem(

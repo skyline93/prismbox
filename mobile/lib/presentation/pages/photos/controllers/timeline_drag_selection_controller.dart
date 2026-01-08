@@ -16,6 +16,7 @@ import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 class TimelineDragSelectionController {
   final WidgetRef ref;
   final ScrollController scrollController;
+  final String pageId;
 
   /// 拖动选择相关状态
   AssetIndex? _dragAnchorIndex;
@@ -25,11 +26,14 @@ class TimelineDragSelectionController {
   TimelineDragSelectionController({
     required this.ref,
     required this.scrollController,
+    this.pageId = 'main',
   });
 
   /// 处理拖动开始
   void handleDragStart(AssetIndex index) {
-    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
+    final timelineSectionsAsync = ref.read(
+      timelineSectionsProvider(pageId: pageId),
+    );
     timelineSectionsAsync.whenData((sections) {
       if (index.sectionIndex >= 0 && index.sectionIndex < sections.length) {
         final section = sections[index.sectionIndex];
@@ -57,7 +61,9 @@ class TimelineDragSelectionController {
   void handleDragAssetEnter(AssetIndex index) {
     if (_dragAnchorIndex == null || !_isDragging) return;
 
-    final timelineSectionsAsync = ref.read(timelineSectionsProvider);
+    final timelineSectionsAsync = ref.read(
+      timelineSectionsProvider(pageId: pageId),
+    );
     timelineSectionsAsync.whenData((sections) {
       if (index.sectionIndex >= 0 && index.sectionIndex < sections.length) {
         final section = sections[index.sectionIndex];
@@ -171,9 +177,7 @@ class TimelineDragSelectionController {
         for (int col = startColForRow; col <= endColForRow; col++) {
           final assetIndex = row * crossAxisCount + col;
           if (assetIndex >= 0 && assetIndex < startSection.assets.length) {
-            selectedAssets.add(
-              startSection.assets[assetIndex.toInt()].id,
-            );
+            selectedAssets.add(startSection.assets[assetIndex.toInt()].id);
           }
         }
       }
@@ -188,9 +192,7 @@ class TimelineDragSelectionController {
         for (int col = minCol; col <= maxCol; col++) {
           final assetIndex = row * crossAxisCount + col;
           if (assetIndex >= 0 && assetIndex < startSection.assets.length) {
-            selectedAssets.add(
-              startSection.assets[assetIndex.toInt()].id,
-            );
+            selectedAssets.add(startSection.assets[assetIndex.toInt()].id);
           }
         }
       }
@@ -225,4 +227,3 @@ class TimelineDragSelectionController {
     _draggedAssetIds.addAll(selectedAssets);
   }
 }
-

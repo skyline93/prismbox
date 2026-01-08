@@ -13,6 +13,8 @@ import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
 import 'package:prismbox/features/local_sync/models/data_source_type.dart';
+import 'package:prismbox/features/local_sync/models/timeline_content_filter_config.dart';
+import 'package:prismbox/features/local_sync/models/timeline_sort_config.dart';
 import 'package:prismbox/features/local_sync/services/data_source_selector.dart';
 import 'package:prismbox/platform/asset_native_api.g.dart';
 import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
@@ -37,12 +39,21 @@ class TimelineProviderService {
   /// 获取时间线数据
   ///
   /// [forcePhotoManager] 强制使用 photo_manager 数据源
-  /// [filterMode] 过滤模式（可选），如果提供则根据模式过滤资产
+  /// [filterMode] 本地/远程隔离过滤模式（可选），如果提供则根据模式过滤资产
+  /// [contentFilter] 内容过滤配置（可选），用于过滤收藏、视频等
+  /// [sortConfig] 排序配置（可选），用于控制排序方式
   ///
   /// 返回 BaseAsset 列表（包含 LocalAsset 和 RemoteAsset）
+  ///
+  /// **过滤顺序**：
+  /// 1. 先应用本地/远程隔离过滤（`filterMode`）
+  /// 2. 再应用内容过滤（`contentFilter`）
+  /// 3. 最后应用排序（`sortConfig`）
   Future<List<BaseAsset>> getTimelineAssets({
     bool forcePhotoManager = false,
     PhotoFilterModeEnum? filterMode,
+    TimelineContentFilterConfig? contentFilter,
+    TimelineSortConfig? sortConfig,
   }) async {
     try {
       // 选择数据源
@@ -60,9 +71,19 @@ class TimelineProviderService {
         assets = localAssets.cast<BaseAsset>();
       }
 
-      // 如果提供了过滤模式，则进行过滤
+      // 第一步：应用本地/远程隔离过滤
       if (filterMode != null) {
         assets = _filterAssets(assets, filterMode);
+      }
+
+      // 第二步：应用内容过滤（收藏、视频等）
+      if (contentFilter != null && contentFilter.hasContentFilter) {
+        assets = _filterByContent(assets, contentFilter);
+      }
+
+      // 第三步：应用排序
+      if (sortConfig != null) {
+        _applySort(assets, sortConfig);
       }
 
       return assets;
@@ -73,9 +94,38 @@ class TimelineProviderService {
         final localAssets = await _getFromPhotoManager();
         final assets = localAssets.cast<BaseAsset>();
 
-        // 如果提供了过滤模式，则进行过滤
+        // 第一步：应用本地/远程隔离过滤
         if (filterMode != null) {
-          return _filterAssets(assets, filterMode);
+          final filtered = _filterAssets(assets, filterMode);
+          // 第二步：应用内容过滤
+          if (contentFilter != null && contentFilter.hasContentFilter) {
+            final contentFiltered = _filterByContent(filtered, contentFilter);
+            // 第三步：应用排序
+            if (sortConfig != null) {
+              _applySort(contentFiltered, sortConfig);
+            }
+            return contentFiltered;
+          }
+          // 第三步：应用排序
+          if (sortConfig != null) {
+            _applySort(filtered, sortConfig);
+          }
+          return filtered;
+        }
+
+        // 第二步：应用内容过滤
+        if (contentFilter != null && contentFilter.hasContentFilter) {
+          final contentFiltered = _filterByContent(assets, contentFilter);
+          // 第三步：应用排序
+          if (sortConfig != null) {
+            _applySort(contentFiltered, sortConfig);
+          }
+          return contentFiltered;
+        }
+
+        // 第三步：应用排序
+        if (sortConfig != null) {
+          _applySort(assets, sortConfig);
         }
 
         return assets;
@@ -86,7 +136,7 @@ class TimelineProviderService {
     }
   }
 
-  /// 根据筛选模式过滤资产列表
+  /// 根据筛选模式过滤资产列表（本地/远程隔离）
   ///
   /// [assets] - 原始资产列表
   /// [filterMode] - 筛选模式
@@ -121,6 +171,71 @@ class TimelineProviderService {
         // 仅展示远程服务端的媒体资源
         return assets.whereType<RemoteAsset>().toList();
     }
+  }
+
+  /// 根据内容过滤配置过滤资产列表（收藏、视频等）
+  ///
+  /// [assets] - 原始资产列表
+  /// [contentFilter] - 内容过滤配置
+  /// 返回过滤后的资产列表
+  ///
+  /// **过滤逻辑**：
+  /// - `favoriteOnly: true` - 仅显示收藏资产
+  /// - `videoOnly: true` - 仅显示视频资产
+  /// - 可以同时应用多个过滤条件（组合过滤，预留接口）
+  List<BaseAsset> _filterByContent(
+    List<BaseAsset> assets,
+    TimelineContentFilterConfig contentFilter,
+  ) {
+    var result = assets;
+
+    // 收藏过滤
+    if (contentFilter.favoriteOnly == true) {
+      result = result.where((a) => a.isFavorite).toList();
+    } else if (contentFilter.favoriteOnly == false) {
+      // 预留：仅非收藏（当前未使用）
+      result = result.where((a) => !a.isFavorite).toList();
+    }
+
+    // 视频过滤
+    if (contentFilter.videoOnly == true) {
+      result = result.where((a) => a.isVideo).toList();
+    } else if (contentFilter.videoOnly == false) {
+      // 预留：仅非视频（当前未使用）
+      result = result.where((a) => !a.isVideo).toList();
+    }
+
+    // 预留扩展接口：未来可以添加更多过滤条件
+    // 如：地点过滤、标签过滤、日期范围过滤等
+
+    return result;
+  }
+
+  /// 应用排序配置
+  ///
+  /// [assets] - 资产列表（原地排序）
+  /// [sortConfig] - 排序配置
+  ///
+  /// **排序逻辑**：
+  /// - `sortBy: createdAt` - 按创建时间排序
+  /// - `sortBy: updatedAt` - 按更新时间排序（用于"最近添加"）
+  /// - `order: asc` - 升序
+  /// - `order: desc` - 降序（默认）
+  void _applySort(List<BaseAsset> assets, TimelineSortConfig sortConfig) {
+    assets.sort((a, b) {
+      DateTime aTime, bTime;
+      if (sortConfig.sortBy == TimelineSortField.updatedAt) {
+        aTime = a.updatedAt;
+        bTime = b.updatedAt;
+      } else {
+        // 默认按创建时间排序
+        aTime = a.createdAt;
+        bTime = b.createdAt;
+      }
+
+      final comparison = aTime.compareTo(bTime);
+      return sortConfig.order == SortOrder.desc ? -comparison : comparison;
+    });
   }
 
   /// 从数据库获取数据（合并本地和远程资产）
@@ -196,8 +311,8 @@ class TimelineProviderService {
         );
       }
 
-      // 5. 按创建时间降序排序
-      mergedAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // 5. 注意：排序将在 getTimelineAssets() 方法中根据 sortConfig 统一处理
+      // 这里不再硬编码排序，保持数据原始顺序
 
       _logger.info(
         '合并查询完成：本地资产 ${localAssetsData.length} 个，'
@@ -239,7 +354,8 @@ class TimelineProviderService {
       );
     }
 
-    localAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // 注意：排序将在 getTimelineAssets() 方法中根据 sortConfig 统一处理
+    // 这里不再硬编码排序，保持数据原始顺序
     return localAssets;
   }
 
@@ -314,8 +430,8 @@ class TimelineProviderService {
       // 过滤掉转换失败的结果
       final localAssets = localAssetsResults.whereType<LocalAsset>().toList();
 
-      // 按创建时间降序排序
-      localAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // 注意：排序将在 getTimelineAssets() 方法中根据 sortConfig 统一处理
+      // 这里不再硬编码排序，保持数据原始顺序
 
       _logger.info('从 photo_manager 加载 ${localAssets.length} 个资产');
 

@@ -2,6 +2,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/presentation/pages/albums/albums_page.dart';
+import 'package:prismbox/presentation/pages/collections/favorite_timeline_page.dart';
+import 'package:prismbox/presentation/pages/collections/video_timeline_page.dart';
+import 'package:prismbox/presentation/pages/collections/recently_added_timeline_page.dart';
 import 'package:prismbox/presentation/pages/library/library_page.dart';
 import 'package:prismbox/presentation/pages/login/login_page.dart';
 import 'package:prismbox/presentation/pages/register/register_page.dart';
@@ -49,118 +52,124 @@ class AppRouter extends _$AppRouter {
 
   @override
   List<AutoRoute> get routes => [
-        // 初始页面（无守卫）
-        AutoRoute(
-          page: SplashRoute.page,
-          path: '/splash',
-          initial: true,
-        ),
+    // 初始页面（无守卫）
+    AutoRoute(page: SplashRoute.page, path: '/splash', initial: true),
 
-        // 登录页面（无守卫）
-        AutoRoute(
-          page: LoginRoute.page,
-          path: '/login',
-        ),
+    // 登录页面（无守卫）
+    AutoRoute(page: LoginRoute.page, path: '/login'),
 
-        // 注册页面（无守卫）
-        AutoRoute(
-          page: RegisterRoute.page,
-          path: '/register',
-        ),
+    // 注册页面（无守卫）
+    AutoRoute(page: RegisterRoute.page, path: '/register'),
 
-        // 权限引导页面（需要认证但不强制）
+    // 权限引导页面（需要认证但不强制）
+    AutoRoute(
+      page: PermissionRoute.page,
+      path: '/permission',
+      guards: [_authGuard],
+    ),
+
+    // TabShell 容器（需要认证）
+    CustomRoute(
+      page: TabShellRoute.page,
+      path: '/home',
+      guards: [_authGuard, _duplicateGuard],
+      children: [
         AutoRoute(
-          page: PermissionRoute.page,
-          path: '/permission',
+          page: MainTimelineRoute.page,
+          path: 'photos', // 子路由路径不能以 "/" 开头
           guards: [_authGuard],
         ),
-
-        // TabShell 容器（需要认证）
-        CustomRoute(
-          page: TabShellRoute.page,
-          path: '/home',
-          guards: [_authGuard, _duplicateGuard],
-          children: [
-            AutoRoute(
-              page: MainTimelineRoute.page,
-              path: 'photos', // 子路由路径不能以 "/" 开头
-              guards: [_authGuard],
-            ),
-            AutoRoute(
-              page: SearchRoute.page,
-              path: 'search', // 子路由路径不能以 "/" 开头
-              guards: [_authGuard],
-              maintainState: false, // 不保持状态
-            ),
-            AutoRoute(
-              page: AlbumsRoute.page,
-              path: 'albums', // 子路由路径不能以 "/" 开头
-              guards: [_authGuard],
-            ),
-            AutoRoute(
-              page: LibraryRoute.page,
-              path: 'library', // 子路由路径不能以 "/" 开头
-              guards: [_authGuard],
-            ),
-          ],
-          transitionsBuilder: TransitionsBuilders.fadeIn,
-        ),
-
-        // 媒体查看器（需要认证和权限）
         AutoRoute(
-          page: MediaViewerRoute.page,
-          path: '/media/:assetId',
-          guards: [_authGuard, _permissionGuard],
+          page: SearchRoute.page,
+          path: 'search', // 子路由路径不能以 "/" 开头
+          guards: [_authGuard],
+          maintainState: false, // 不保持状态
         ),
-
-        // 备份设置页面（需要认证）
         AutoRoute(
-          page: BackupSettingsRoute.page,
-          path: '/backup/settings',
+          page: AlbumsRoute.page,
+          path: 'albums', // 子路由路径不能以 "/" 开头
           guards: [_authGuard],
         ),
-
-        // 备份管理页面（需要认证）
         AutoRoute(
-          page: BackupManagementRoute.page,
-          path: '/backup/management',
+          page: LibraryRoute.page,
+          path: 'library', // 子路由路径不能以 "/" 开头
           guards: [_authGuard],
         ),
+      ],
+      transitionsBuilder: TransitionsBuilders.fadeIn,
+    ),
 
-        // 上传详情页面（需要认证）
-        AutoRoute(
-          page: UploadDetailRoute.page,
-          path: '/backup/upload-detail',
-          guards: [_authGuard],
-        ),
+    // 媒体查看器（需要认证和权限）
+    AutoRoute(
+      page: MediaViewerRoute.page,
+      path: '/media/:assetId',
+      guards: [_authGuard, _permissionGuard],
+    ),
 
-        // 设置页面（需要认证）
-        AutoRoute(
-          page: SettingsRoute.page,
-          path: '/settings',
-          guards: [_authGuard],
-        ),
+    // 备份设置页面（需要认证）
+    AutoRoute(
+      page: BackupSettingsRoute.page,
+      path: '/backup/settings',
+      guards: [_authGuard],
+    ),
 
-        // 偏好设置页面（需要认证）
-        AutoRoute(
-          page: PreferencesRoute.page,
-          path: '/settings/preferences',
-          guards: [_authGuard],
-        ),
+    // 备份管理页面（需要认证）
+    AutoRoute(
+      page: BackupManagementRoute.page,
+      path: '/backup/management',
+      guards: [_authGuard],
+    ),
 
-        // 语言设置页面（需要认证）
-        AutoRoute(
-          page: LanguageRoute.page,
-          path: '/settings/language',
-          guards: [_authGuard],
-        ),
+    // 上传详情页面（需要认证）
+    AutoRoute(
+      page: UploadDetailRoute.page,
+      path: '/backup/upload-detail',
+      guards: [_authGuard],
+    ),
 
-        // 回收站页面（需要认证）
-        AutoRoute(
-          page: TrashRoute.page,
-          path: '/trash',
-          guards: [_authGuard],
-        ),
-      ];
+    // 设置页面（需要认证）
+    AutoRoute(
+      page: SettingsRoute.page,
+      path: '/settings',
+      guards: [_authGuard],
+    ),
+
+    // 偏好设置页面（需要认证）
+    AutoRoute(
+      page: PreferencesRoute.page,
+      path: '/settings/preferences',
+      guards: [_authGuard],
+    ),
+
+    // 语言设置页面（需要认证）
+    AutoRoute(
+      page: LanguageRoute.page,
+      path: '/settings/language',
+      guards: [_authGuard],
+    ),
+
+    // 回收站页面（需要认证）
+    AutoRoute(page: TrashRoute.page, path: '/trash', guards: [_authGuard]),
+
+    // 收藏时间线页面（需要认证）
+    AutoRoute(
+      page: FavoriteTimelineRoute.page,
+      path: '/collections/favorite',
+      guards: [_authGuard],
+    ),
+
+    // 视频时间线页面（需要认证）
+    AutoRoute(
+      page: VideoTimelineRoute.page,
+      path: '/collections/video',
+      guards: [_authGuard],
+    ),
+
+    // 最近添加时间线页面（需要认证）
+    AutoRoute(
+      page: RecentlyAddedTimelineRoute.page,
+      path: '/collections/recently-added',
+      guards: [_authGuard],
+    ),
+  ];
 }
-

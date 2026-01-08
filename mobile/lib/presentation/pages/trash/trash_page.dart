@@ -53,6 +53,7 @@ class _TrashPageState extends ConsumerState<TrashPage>
     _dragSelectionController = TimelineDragSelectionController(
       ref: ref,
       scrollController: _scrollController,
+      pageId: 'trash', // 回收站页面使用独立的 pageId
     );
     _scrollPositionManager = TimelineScrollPositionManager(
       scrollController: _scrollController,
@@ -130,7 +131,7 @@ class _TrashPageState extends ConsumerState<TrashPage>
                 slivers: [
                   // AppBar
                   if (isSelectionActive)
-                    const TimelineSelectionAppBar()
+                    const TimelineSelectionAppBar(pageId: 'trash')
                   else
                     SliverAppBar(
                       floating: true,
