@@ -40,6 +40,8 @@ TBD - created by archiving change refactor-media-viewer-page. Update Purpose aft
 - **AND** 组件 SHALL 包含顶部 AppBar（返回按钮、分享按钮、更多操作按钮）
 - **AND** 组件 SHALL 包含底部控制栏（收藏、信息、编辑等功能按钮）
 - **AND** 组件 SHALL 通过回调函数处理用户交互事件
+- **AND** 组件 SHALL 接收 `isFavorite` 参数表示当前资源的收藏状态
+- **AND** 收藏按钮图标 SHALL 根据 `isFavorite` 状态显示不同图标（`true` 显示实心图标 `Icons.favorite`，`false` 或 `null` 显示空心图标 `Icons.favorite_border`）
 
 #### Scenario: 图片查看页面为独立组件
 - **WHEN** 使用 ViewerImagePage 组件
@@ -95,6 +97,21 @@ TBD - created by archiving change refactor-media-viewer-page. Update Purpose aft
 - **AND** 组件 SHALL 通过回调函数通知父组件用户交互事件
 - **AND** 避免过度抽象，保持参数传递的简洁性
 
+#### Scenario: 收藏功能集成
+- **WHEN** 在 MediaViewerPage 中显示媒体资源
+- **THEN** 页面 SHALL 从 `timelineAssetsProvider` 获取当前资源的收藏状态（从 Prismbox 数据库读取）
+- **AND** 页面 SHALL 使用 `Consumer` 包装 `ViewerControlsBar`，直接响应 `timelineAssetsProvider` 的更新
+- **AND** 页面 SHALL 实现收藏切换逻辑，调用 `AssetFavoriteService.toggleFavorite` 方法（仅更新数据库）
+- **AND** 收藏操作成功后 SHALL 刷新 `timelineAssetsProvider` 或更新本地状态
+- **AND** 收藏操作失败时 SHALL 显示错误提示并回滚 UI 状态
+
+#### Scenario: 状态响应式更新
+- **WHEN** `timelineAssetsProvider` 数据更新（如收藏状态改变后刷新）
+- **THEN** `_assetMap` SHALL 每次 `allAssets` 更新时都重新构建，不使用 `??=` 操作符
+- **AND** `ViewerControlsBar` 的 `isFavorite` 参数 SHALL 直接从 `timelineAssetsProvider` 获取最新状态
+- **AND** 预览页面收藏按钮状态 SHALL 与照片页面缩略图收藏图标状态保持一致
+- **AND** 预览页面收藏按钮状态 SHALL 与数据库中的收藏状态保持一致
+
 #### Scenario: 功能保持完整
 - **WHEN** 重构完成后
 - **THEN** 所有原有功能 SHALL 保持不变
@@ -103,4 +120,5 @@ TBD - created by archiving change refactor-media-viewer-page. Update Purpose aft
 - **AND** 手势退出功能 SHALL 正常工作（下滑退出、动画等）
 - **AND** 控制栏功能 SHALL 正常工作（显示/隐藏、操作按钮等）
 - **AND** 页面切换功能 SHALL 正常工作（左右滑动切换媒体）
+- **AND** 收藏功能 SHALL 正常工作（状态显示、切换操作、数据库更新）
 
