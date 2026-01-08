@@ -5,6 +5,7 @@ import 'package:prismbox/data/database/daos/local_asset_dao.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart';
+import 'package:prismbox/services/asset/asset_favorite_service.dart';
 import 'package:prismbox/services/asset/asset_service.dart';
 
 part 'asset_providers.g.dart';
@@ -25,5 +26,16 @@ Future<AssetService> assetService(AssetServiceRef ref) async {
   return AssetService(
     localAssetDao: localAssetDao,
     remoteAssetDao: remoteAssetDao,
+  );
+}
+
+/// AssetFavoriteService Provider
+@riverpod
+Future<AssetFavoriteService> assetFavoriteService(
+    AssetFavoriteServiceRef ref) async {
+  final database = await ref.watch(databaseProvider.future);
+  final localAssetDao = LocalAssetDao(database);
+  return AssetFavoriteService(
+    localAssetDao: localAssetDao,
   );
 }

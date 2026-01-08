@@ -24,6 +24,9 @@ class ViewerControlsBar extends StatelessWidget {
   /// 收藏回调
   final VoidCallback? onFavorite;
 
+  /// 当前资源的收藏状态
+  final bool? isFavorite;
+
   /// 信息回调
   final VoidCallback? onInfo;
 
@@ -38,6 +41,7 @@ class ViewerControlsBar extends StatelessWidget {
     this.onShare,
     this.onMore,
     this.onFavorite,
+    this.isFavorite,
     this.onInfo,
     this.onEdit,
   });
@@ -99,7 +103,12 @@ class ViewerControlsBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.favorite_border, color: Colors.white),
+                    icon: Icon(
+                      isFavorite == true
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: Colors.white,
+                    ),
                     onPressed:
                         onFavorite ??
                         () {

@@ -40,5 +40,25 @@ final assetServiceProvider = AutoDisposeFutureProvider<AssetService>.internal(
 );
 
 typedef AssetServiceRef = AutoDisposeFutureProviderRef<AssetService>;
+String _$assetFavoriteServiceHash() =>
+    r'61616d525e651ea7e5440d80fdb1501ca0b956f2';
+
+/// AssetFavoriteService Provider
+///
+/// Copied from [assetFavoriteService].
+@ProviderFor(assetFavoriteService)
+final assetFavoriteServiceProvider =
+    AutoDisposeFutureProvider<AssetFavoriteService>.internal(
+  assetFavoriteService,
+  name: r'assetFavoriteServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$assetFavoriteServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef AssetFavoriteServiceRef
+    = AutoDisposeFutureProviderRef<AssetFavoriteService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

@@ -11,6 +11,8 @@ import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
+import 'package:prismbox/providers/infrastructure/asset_providers.dart';
+import 'package:flutter/material.dart' show ScaffoldMessenger;
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_manager.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_state_provider.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_dismiss_gesture.dart';
@@ -54,6 +56,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   // 需要保留资源的页面索引集合
   Set<int> _visiblePageIndices = {};
 
+  // 当前页面的资产 ID
+  String? _currentAssetId;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +67,11 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       _initialIndex = 0;
     }
     _pageController = PageController(initialPage: _initialIndex);
+
+    // 初始化当前资产 ID（不依赖 _assetMap，避免时序问题）
+    if (_initialIndex < widget.assetIds.length) {
+      _currentAssetId = widget.assetIds[_initialIndex];
+    }
 
     // 初始化视频管理器
     _videoManager = ViewerVideoManager();
@@ -98,7 +108,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     // 获取所有 assets 并构建映射
@@ -108,8 +117,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
     return assetsAsync.when(
       data: (allAssets) {
-        // 构建 assetId 到 BaseAsset 的映射
-        _assetMap ??= {for (final asset in allAssets) asset.id: asset};
+        // 构建 assetId 到 BaseAsset 的映射（每次更新时都重新构建，确保缓存最新）
+        _assetMap = {for (final asset in allAssets) asset.id: asset};
 
         // 获取服务器 URL（仅在第一次获取时）
         _serverUrl ??= _getServerUrl();
@@ -255,12 +264,36 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                   },
                 ),
 
-                // 控制栏
-                ViewerControlsBar(
-                  showControls: _showControls,
-                  onToggleControls: _toggleControls,
-                  onBack: () {
-                    context.router.pop();
+                // 控制栏（使用 Consumer 包装，直接响应 timelineAssetsProvider 更新）
+                Consumer(
+                  builder: (context, ref, child) {
+                    final assetsAsync = ref.watch(timelineAssetsProvider());
+                    final currentFavoriteStatus = assetsAsync.maybeWhen(
+                      data: (allAssets) {
+                        if (_currentAssetId == null) return null;
+                        try {
+                          final asset = allAssets.firstWhere(
+                            (a) => a.id == _currentAssetId,
+                          );
+                          return asset.isFavorite;
+                        } catch (e) {
+                          // 如果找不到，回退到缓存
+                          final asset = _assetMap?[_currentAssetId];
+                          return asset?.isFavorite;
+                        }
+                      },
+                      orElse: () => _getCurrentAssetFavoriteStatus(), // 回退到缓存
+                    );
+
+                    return ViewerControlsBar(
+                      showControls: _showControls,
+                      onToggleControls: _toggleControls,
+                      onBack: () {
+                        context.router.pop();
+                      },
+                      isFavorite: currentFavoriteStatus,
+                      onFavorite: _handleFavoriteToggle,
+                    );
                   },
                 ),
               ],
@@ -283,6 +316,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   }
 
   /// 处理页面切换
+  ///
+  /// 更新当前资产 ID，确保收藏按钮显示正确的状态
   void _handlePageChanged(int index) {
     // 计算新的可见页面范围
     final newVisibleIndices = _videoManager.calculateVisibleIndices(
@@ -298,6 +333,11 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     if (index < widget.assetIds.length) {
       final assetId = widget.assetIds[index];
       final asset = _assetMap?[assetId];
+
+      // 更新当前资产 ID
+      setState(() {
+        _currentAssetId = assetId;
+      });
 
       if (asset != null && asset.isVideo) {
         _videoManager.setCurrentVideoAssetId(assetId);
@@ -316,7 +356,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     });
     _resetControlsTimer();
   }
-
 
   void _toggleControls() {
     setState(() {
@@ -352,4 +391,73 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     }
   }
 
+  /// 获取当前资产的收藏状态
+  ///
+  /// 从缓存的 `_assetMap` 中获取当前资产的收藏状态
+  /// 注意：此方法主要用于回退场景，正常情况下应通过 Consumer 从 Provider 获取
+  bool? _getCurrentAssetFavoriteStatus() {
+    if (_currentAssetId == null) {
+      return null;
+    }
+    final asset = _assetMap?[_currentAssetId];
+    return asset?.isFavorite;
+  }
+
+  /// 处理收藏切换
+  ///
+  /// 调用 AssetFavoriteService 切换收藏状态（仅更新 Prismbox 数据库，不修改系统相册）
+  /// 操作成功后刷新 timelineAssetsProvider 以更新 UI 状态
+  Future<void> _handleFavoriteToggle() async {
+    if (_currentAssetId == null) {
+      return;
+    }
+
+    try {
+      // 获取 AssetFavoriteService
+      final favoriteService = await ref.read(
+        assetFavoriteServiceProvider.future,
+      );
+
+      // 获取当前状态用于提示
+      final currentStatus = _getCurrentAssetFavoriteStatus() ?? false;
+
+      // 调用服务切换收藏状态（仅更新数据库）
+      final assetId = _currentAssetId!;
+      await favoriteService.toggleFavorite(assetId);
+
+      // 刷新 timelineAssetsProvider 以获取最新状态
+      ref.invalidate(timelineAssetsProvider());
+
+      // 显示成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(currentStatus ? '已取消收藏' : '已添加收藏'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      // 显示错误提示
+      if (mounted) {
+        String errorMessage = '收藏操作失败';
+        if (e.toString().contains('not found')) {
+          errorMessage = '资源不存在';
+        } else {
+          errorMessage = '收藏操作失败: ${e.toString()}';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // 刷新 Provider 以确保状态一致
+      ref.invalidate(timelineAssetsProvider());
+    }
+  }
 }
