@@ -152,6 +152,7 @@ class _MediaGridSliverState extends State<MediaGridSliver> {
         onTap: () => widget.onTap?.call(asset, index),
         child: Stack(
           fit: StackFit.expand,
+          clipBehavior: Clip.none, // 确保 Positioned 子元素不会被裁剪
           children: [
             MediaImageWidget(
               asset: asset,
@@ -328,6 +329,7 @@ class _MediaGridViewState extends State<MediaGridView> {
         onTap: () => widget.onTap?.call(asset, index),
         child: Stack(
           fit: StackFit.expand,
+          clipBehavior: Clip.none, // 确保 Positioned 子元素不会被裁剪
           children: [
             MediaImageWidget(
               asset: asset,

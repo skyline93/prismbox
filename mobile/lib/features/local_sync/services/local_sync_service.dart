@@ -231,6 +231,13 @@ class LocalSyncService {
   }
 
   /// 增量同步
+  ///
+  /// 增量同步逻辑：
+  /// 1. 处理新增资产（数据库中不存在的资产）
+  /// 2. 处理修改的资产（modifiedDateTime 在最后同步时间之后的资产）
+  /// 3. 检查已存在资产的收藏状态变化（即使 modifiedDateTime 没有变化，如果收藏状态变化了，也要更新）
+  ///    注意：收藏状态变化不会改变 modifiedDateTime，所以需要单独检查
+  /// 4. 使用批量 API 获取收藏状态，优化性能
   Future<SyncResult> _incrementalSync(
     LocalAssetDao dao,
     void Function(int current, int total)? onProgress,
@@ -324,7 +331,7 @@ class LocalSyncService {
           }
         }
 
-        // 批量获取收藏状态
+        // 批量获取收藏状态（用于新资产和修改的资产）
         final favoriteMap = await _batchGetFavoriteStatus(
           assetsToProcess.map((a) => a.id).toList(),
         );
@@ -356,6 +363,69 @@ class LocalSyncService {
             }
           } catch (e) {
             _logger.warning('转换资产失败: ${asset.id}', e);
+          }
+        }
+
+        // 检查已存在资产的收藏状态变化
+        // 注意：收藏状态变化不会改变 modifiedDateTime，所以即使资产不在 assetsToProcess 中，
+        // 也需要检查收藏状态是否变化。如果收藏状态变化了，即使 modifiedDateTime 没有变化，
+        // 也要更新数据库。
+        //
+        // 收集当前批次中所有已存在资产的 ID（不包括已经在 assetsToProcess 中的）
+        final existingAssetsInBatch = <pm.AssetEntity>[];
+        for (final asset in assets) {
+          if (existingIds.contains(asset.id) &&
+              !assetsToProcess.any((a) => a.id == asset.id)) {
+            existingAssetsInBatch.add(asset);
+          }
+        }
+
+        // 批量获取已存在资产的收藏状态
+        // 使用批量 API 优化性能，每批最多 100 个资产只需 1 次原生调用
+        if (existingAssetsInBatch.isNotEmpty) {
+          final stopwatch = Stopwatch()..start();
+          final existingFavoriteMap = await _batchGetFavoriteStatus(
+            existingAssetsInBatch.map((a) => a.id).toList(),
+          );
+          stopwatch.stop();
+          _logger.fine(
+            '批量获取 ${existingAssetsInBatch.length} 个已存在资产的收藏状态耗时: ${stopwatch.elapsedMilliseconds}ms',
+          );
+
+          // 比较收藏状态并添加到更新列表
+          for (final asset in existingAssetsInBatch) {
+            try {
+              final existing = existingMap[asset.id];
+              if (existing == null || existing.isInPrivateSpace) {
+                // 跳过私有空间中的资产（保护私有空间状态）
+                continue;
+              }
+
+              // 获取系统相册中的收藏状态
+              final systemFavorite = existingFavoriteMap[asset.id] ?? false;
+
+              // 比较收藏状态：如果数据库中的收藏状态与系统相册中的不同，需要更新
+              if (existing.isFavorite != systemFavorite) {
+                // 收藏状态变化，需要更新
+                // 即使 modifiedDateTime 没有变化，也要更新数据库
+                final entity = await _convertToEntity(
+                  asset,
+                  favoriteMap: existingFavoriteMap,
+                );
+
+                // 检查是否已经在 toUpdate 中（避免重复添加）
+                if (!toUpdate.any((e) => e.id == entity.id)) {
+                  toUpdate.add(entity);
+                  _logger.fine(
+                    '检测到收藏状态变化: ${asset.id}, 数据库=${existing.isFavorite}, 系统=$systemFavorite',
+                  );
+                }
+              }
+            } catch (e) {
+              // 获取失败时跳过，不影响其他资产
+              // 如果批量获取失败，_batchGetFavoriteStatus 会返回空映射，这里会跳过检查
+              _logger.warning('检查收藏状态失败: ${asset.id}', e);
+            }
           }
         }
 

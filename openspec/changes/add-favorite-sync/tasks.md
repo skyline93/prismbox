@@ -49,12 +49,4 @@
 - [x] 4.1 在 `AssetNativeApi` 接口中添加中文注释，说明方法用途和参数
 - [x] 4.2 在 `LocalSyncService` 中添加中文注释，说明收藏状态获取逻辑
 - [x] 4.3 在 `FavoriteIndicator` 组件中添加中文注释
-- [x] 4.4 更新相关 README 文档（无需更新）
-
-## 5. 代码质量检查
-
-- [x] 5.1 运行 `dart analyze` 检查 Dart 代码
-- [x] 5.2 运行 `dart format` 格式化 Dart 代码
-- [x] 5.3 确保所有新增代码符合项目编码规范
-- [x] 5.4 确保没有引入 linter 错误
 

@@ -33,7 +33,6 @@ class AssetNativeApiImpl: AssetNativeApi {
       
       guard let asset = assets.firstObject else {
         // 资产不存在，返回 false（而不是错误，保持与设计一致）
-        print("[AssetNativeApi] Asset not found: \(assetId), returning false")
         completion(.success(false))
         return
       }

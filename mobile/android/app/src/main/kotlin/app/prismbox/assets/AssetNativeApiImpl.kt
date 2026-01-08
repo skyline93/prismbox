@@ -77,13 +77,11 @@ class AssetNativeApiImpl(context: Context) : AssetNativeApi {
     private fun queryIsFavorite(assetId: String): Boolean {
         // Android 10 及以下版本不支持收藏查询
         if (!isFavoriteSupported) {
-            Log.d(TAG, "IS_FAVORITE not supported on Android ${Build.VERSION.SDK_INT}, returning false")
             return false
         }
         
         val id = assetId.toLongOrNull()
         if (id == null) {
-            Log.w(TAG, "Invalid asset ID format: $assetId")
             return false
         }
         
@@ -110,7 +108,6 @@ class AssetNativeApiImpl(context: Context) : AssetNativeApi {
         }
         
         // 资产不存在或查询失败
-        Log.d(TAG, "Asset not found or query failed: $assetId")
         return false
     }
     
@@ -124,14 +121,13 @@ class AssetNativeApiImpl(context: Context) : AssetNativeApi {
         
         // Android 10 及以下版本不支持收藏查询，返回所有资产的 isFavorite = false
         if (!isFavoriteSupported) {
-            Log.d(TAG, "IS_FAVORITE not supported on Android ${Build.VERSION.SDK_INT}, returning all false")
             return assetIds.map { AssetMetadata(id = it, isFavorite = false) }
         }
         
         // 验证并转换 ID
         val validIds = assetIds.mapNotNull { it.toLongOrNull() }
+        
         if (validIds.isEmpty()) {
-            Log.w(TAG, "No valid asset IDs in the list")
             return emptyList()
         }
         
@@ -159,7 +155,6 @@ class AssetNativeApiImpl(context: Context) : AssetNativeApi {
             val favoriteIndex = cursor.getColumnIndex(MediaStore.MediaColumns.IS_FAVORITE)
             
             if (idIndex == -1 || favoriteIndex == -1) {
-                Log.w(TAG, "Required columns not found in cursor")
                 return emptyList()
             }
             
