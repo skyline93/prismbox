@@ -6,7 +6,7 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/platform/thumbnail_api.g.dart',
     swiftOut: 'ios/Runner/Images/Thumbnails.g.swift',
-    swiftOptions: SwiftOptions(includeErrorClass: true),
+    swiftOptions: SwiftOptions(includeErrorClass: false),
     kotlinOut:
         'android/app/src/main/kotlin/app/prismbox/images/Thumbnails.g.kt',
     kotlinOptions: KotlinOptions(

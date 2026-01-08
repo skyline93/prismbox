@@ -11,6 +11,41 @@ import Foundation
   #error("Unsupported platform.")
 #endif
 
+private func wrapResult(_ result: Any?) -> [Any?] {
+  return [result]
+}
+
+private func wrapError(_ error: Any) -> [Any?] {
+  if let pigeonError = error as? PigeonError {
+    return [
+      pigeonError.code,
+      pigeonError.message,
+      pigeonError.details,
+    ]
+  }
+  if let flutterError = error as? FlutterError {
+    return [
+      flutterError.code,
+      flutterError.message,
+      flutterError.details,
+    ]
+  }
+  return [
+    "\(error)",
+    "\(type(of: error))",
+    "Stacktrace: \(Thread.callStackSymbols)",
+  ]
+}
+
+private func isNullish(_ value: Any?) -> Bool {
+  return value is NSNull || value == nil
+}
+
+private func nilOrValue<T>(_ value: Any?) -> T? {
+  if value is NSNull { return nil }
+  return value as! T?
+}
+
 /// 网络能力枚举
 enum NetworkCapability: Int {
   /// WiFi 连接

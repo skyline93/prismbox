@@ -11,29 +11,11 @@ import Foundation
   #error("Unsupported platform.")
 #endif
 
-/// Error class for passing custom error details to Dart side.
-internal final class PigeonError: Error {
-  let code: String
-  let message: String?
-  let details: Any?
-
-  init(code: String, message: String?, details: Any?) {
-    self.code = code
-    self.message = message
-    self.details = details
-  }
-
-  var localizedDescription: String {
-    return
-      "PigeonError(code: \(code), message: \(message ?? "<nil>"), details: \(details ?? "<nil>")"
-      }
-}
-
-internal func wrapResult(_ result: Any?) -> [Any?] {
+private func wrapResult(_ result: Any?) -> [Any?] {
   return [result]
 }
 
-internal func wrapError(_ error: Any) -> [Any?] {
+private func wrapError(_ error: Any) -> [Any?] {
   if let pigeonError = error as? PigeonError {
     return [
       pigeonError.code,
@@ -55,11 +37,11 @@ internal func wrapError(_ error: Any) -> [Any?] {
   ]
 }
 
-internal func isNullish(_ value: Any?) -> Bool {
+private func isNullish(_ value: Any?) -> Bool {
   return value is NSNull || value == nil
 }
 
-internal func nilOrValue<T>(_ value: Any?) -> T? {
+private func nilOrValue<T>(_ value: Any?) -> T? {
   if value is NSNull { return nil }
   return value as! T?
 }

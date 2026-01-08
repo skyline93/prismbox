@@ -180,7 +180,7 @@ class BackgroundWorker: BackgroundWorkerBgHostApi {
      *
      * - Parameter result: The result returned from a Flutter API call
      */
-    private func handleHostResult(result: Result<Void, BackgroundWorkerError>) {
+    private func handleHostResult(result: Result<Void, PigeonError>) {
         if isComplete {
             return
         }

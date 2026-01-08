@@ -11,27 +11,43 @@ import Foundation
   #error("Unsupported platform.")
 #endif
 
-/// 错误类型，用于包装 FlutterError 以符合 Error 协议
-struct BackgroundWorkerError: Error {
-  let code: String
-  let message: String?
-  let details: Any?
-  
-  init(code: String, message: String?, details: Any?) {
-    self.code = code
-    self.message = message
-    self.details = details
-  }
-  
-  init(flutterError: FlutterError) {
-    self.code = flutterError.code
-    self.message = flutterError.message
-    self.details = flutterError.details
-  }
+private func wrapResult(_ result: Any?) -> [Any?] {
+  return [result]
 }
 
-private func createConnectionError(withChannelName channelName: String) -> BackgroundWorkerError {
-  return BackgroundWorkerError(code: "channel-error", message: "Unable to establish connection on channel: '\(channelName)'.", details: nil)
+private func wrapError(_ error: Any) -> [Any?] {
+  if let pigeonError = error as? PigeonError {
+    return [
+      pigeonError.code,
+      pigeonError.message,
+      pigeonError.details,
+    ]
+  }
+  if let flutterError = error as? FlutterError {
+    return [
+      flutterError.code,
+      flutterError.message,
+      flutterError.details,
+    ]
+  }
+  return [
+    "\(error)",
+    "\(type(of: error))",
+    "Stacktrace: \(Thread.callStackSymbols)",
+  ]
+}
+
+private func createConnectionError(withChannelName channelName: String) -> PigeonError {
+  return PigeonError(code: "channel-error", message: "Unable to establish connection on channel: '\(channelName)'.", details: "")
+}
+
+private func isNullish(_ value: Any?) -> Bool {
+  return value is NSNull || value == nil
+}
+
+private func nilOrValue<T>(_ value: Any?) -> T? {
+  if value is NSNull { return nil }
+  return value as! T?
 }
 
 /// 后台任务配置设置
@@ -305,11 +321,11 @@ protocol BackgroundWorkerFlutterApiProtocol {
   /// iOS 专用：iOS 后台上传触发
   /// [isRefresh] - 是否为刷新任务（BGAppRefreshTask）
   /// [maxSeconds] - 最大执行时间（秒），BGProcessingTask 使用
-  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void)
+  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, PigeonError>) -> Void)
   /// Android 专用：Android 后台上传触发
-  func onAndroidUpload(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void)
+  func onAndroidUpload(completion: @escaping (Result<Void, PigeonError>) -> Void)
   /// 取消任务
-  func cancel(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void)
+  func cancel(completion: @escaping (Result<Void, PigeonError>) -> Void)
 }
 class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
   private let binaryMessenger: FlutterBinaryMessenger
@@ -324,7 +340,7 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
   /// iOS 专用：iOS 后台上传触发
   /// [isRefresh] - 是否为刷新任务（BGAppRefreshTask）
   /// [maxSeconds] - 最大执行时间（秒），BGProcessingTask 使用
-  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void) {
+  func onIosUpload(isRefresh isRefreshArg: Bool, maxSeconds maxSecondsArg: Int64?, completion: @escaping (Result<Void, PigeonError>) -> Void) {
     let channelName: String = "dev.flutter.pigeon.prismbox.BackgroundWorkerFlutterApi.onIosUpload\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage([isRefreshArg, maxSecondsArg] as [Any?]) { response in
@@ -336,14 +352,14 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
         let code: String = listResponse[0] as! String
         let message: String? = nilOrValue(listResponse[1])
         let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(BackgroundWorkerError(code: code, message: message, details: details)))
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
       } else {
         completion(.success(Void()))
       }
     }
   }
   /// Android 专用：Android 后台上传触发
-  func onAndroidUpload(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void) {
+  func onAndroidUpload(completion: @escaping (Result<Void, PigeonError>) -> Void) {
     let channelName: String = "dev.flutter.pigeon.prismbox.BackgroundWorkerFlutterApi.onAndroidUpload\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage(nil) { response in
@@ -355,14 +371,14 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
         let code: String = listResponse[0] as! String
         let message: String? = nilOrValue(listResponse[1])
         let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(BackgroundWorkerError(code: code, message: message, details: details)))
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
       } else {
         completion(.success(Void()))
       }
     }
   }
   /// 取消任务
-  func cancel(completion: @escaping (Result<Void, BackgroundWorkerError>) -> Void) {
+  func cancel(completion: @escaping (Result<Void, PigeonError>) -> Void) {
     let channelName: String = "dev.flutter.pigeon.prismbox.BackgroundWorkerFlutterApi.cancel\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage(nil) { response in
@@ -374,7 +390,7 @@ class BackgroundWorkerFlutterApi: BackgroundWorkerFlutterApiProtocol {
         let code: String = listResponse[0] as! String
         let message: String? = nilOrValue(listResponse[1])
         let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(BackgroundWorkerError(code: code, message: message, details: details)))
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
       } else {
         completion(.success(Void()))
       }
