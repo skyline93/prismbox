@@ -81,6 +81,7 @@ class GroupFeedProvider extends _$GroupFeedProvider {
 
   /// 刷新 Feed 流（重新加载第一页）
   Future<void> refresh() async {
+    // 刷新时重置状态，避免重复数据
     await load(page: 1);
   }
 
@@ -96,6 +97,8 @@ class GroupFeedProvider extends _$GroupFeedProvider {
       return true;
     }
 
+    // 计算下一页：基于当前已加载的数量计算页码
+    // 例如：已加载 20 条，limit=20，则下一页是第 2 页
     final nextPage = (currentPosts.length ~/ limit) + 1;
 
     try {
@@ -110,10 +113,19 @@ class GroupFeedProvider extends _$GroupFeedProvider {
         return false; // 没有更多数据
       }
 
+      // 数据去重：使用 Set 存储已存在的帖子 ID，避免重复添加
+      final existingIds = currentPosts.map((p) => p.id).toSet();
+      final uniqueNewPosts = newPosts.where((post) => !existingIds.contains(post.id)).toList();
+
+      if (uniqueNewPosts.isEmpty) {
+        // 如果所有新帖子都已存在，说明没有更多数据
+        return false;
+      }
+
       // 合并新数据到现有列表
-      final updatedPosts = [...currentPosts, ...newPosts];
+      final updatedPosts = [...currentPosts, ...uniqueNewPosts];
       state = AsyncValue.data(updatedPosts);
-      return newPosts.length >= limit; // 如果返回的数据量等于 limit，可能还有更多
+      return uniqueNewPosts.length >= limit; // 如果返回的数据量等于 limit，可能还有更多
     } catch (e) {
       // 加载更多失败不影响现有数据
       return false;

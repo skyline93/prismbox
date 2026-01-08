@@ -2,12 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:prismbox/data/models/post/post_media.dart';
+import 'package:prismbox/presentation/widgets/posts/post_media_image_provider.dart';
 
-/// 帖子媒体网格组件
-/// 根据媒体数量使用不同布局：
-/// - 单图：大图显示
-/// - 2-4 图：2x2 网格
-/// - 5-9 图：3x3 网格
+/// 帖子媒体网格组件（Threads 风格）
+/// 使用横向滚动的 ListView.separated 显示多张图片
 class PostMediaGrid extends StatelessWidget {
   final List<PostMedia> media;
 
@@ -22,95 +20,23 @@ class PostMediaGrid extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    if (media.length == 1) {
-      return _buildSingleMedia(context, media[0]);
-    } else if (media.length <= 4) {
-      return _build2x2Grid(context);
-    } else {
-      return _build3x3Grid(context);
-    }
-  }
-
-  Widget _buildSingleMedia(BuildContext context, PostMedia mediaItem) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: AspectRatio(
-        aspectRatio: _getAspectRatio(mediaItem),
-        child: _buildMediaItem(context, mediaItem, fullWidth: true),
+    return SizedBox(
+      height: 150, // 固定高度（缩小一半：从 300 改为 150）
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: media.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 4),
+        itemBuilder: (context, index) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: _buildMediaItem(context, media[index]),
+          );
+        },
       ),
     );
   }
 
-  Widget _build2x2Grid(BuildContext context) {
-    final displayMedia = media.take(4).toList();
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: displayMedia.length,
-      itemBuilder: (context, index) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: _buildMediaItem(context, displayMedia[index]),
-        );
-      },
-    );
-  }
-
-  Widget _build3x3Grid(BuildContext context) {
-    final displayMedia = media.take(9).toList();
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: displayMedia.length,
-      itemBuilder: (context, index) {
-        final hasMore = media.length > 9 && index == 8;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: _buildMediaItem(context, displayMedia[index]),
-            ),
-            if (hasMore)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: Center(
-                  child: Text(
-                    '+${media.length - 9}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildMediaItem(
-    BuildContext context,
-    PostMedia mediaItem, {
-    bool fullWidth = false,
-  }) {
+  Widget _buildMediaItem(BuildContext context, PostMedia mediaItem) {
     final imageUrl = mediaItem.thumbnailUrl ?? mediaItem.previewUrl ?? '';
 
     if (mediaItem.isVideo) {
@@ -118,17 +44,7 @@ class PostMediaGrid extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (imageUrl.isNotEmpty)
-            Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholder();
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return _buildPlaceholder();
-              },
-            )
+            _buildImage(imageUrl, width: 110) // 缩小一半：从 220 改为 110
           else
             _buildPlaceholder(),
           Center(
@@ -151,8 +67,16 @@ class PostMediaGrid extends StatelessWidget {
       if (imageUrl.isEmpty) {
         return _buildPlaceholder();
       }
-      return Image.network(
-        imageUrl,
+        return _buildImage(imageUrl, width: 110); // 缩小一半：从 220 改为 110
+      }
+  }
+
+  Widget _buildImage(String imageUrl, {required double width}) {
+    // 使用自定义的 ImageProvider，支持认证头
+    return SizedBox(
+      width: width,
+      child: Image(
+        image: PostMediaImageProvider(url: imageUrl),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           return _buildPlaceholder();
@@ -161,12 +85,13 @@ class PostMediaGrid extends StatelessWidget {
           if (loadingProgress == null) return child;
           return _buildPlaceholder();
         },
+      ),
       );
-    }
   }
 
   Widget _buildPlaceholder() {
     return Container(
+      width: 110, // 缩小一半：从 220 改为 110
       color: Colors.grey.shade200,
       child: const Center(
         child: Icon(
@@ -177,12 +102,4 @@ class PostMediaGrid extends StatelessWidget {
       ),
     );
   }
-
-  double _getAspectRatio(PostMedia mediaItem) {
-    if (mediaItem.width != null && mediaItem.height != null && mediaItem.height! > 0) {
-      return mediaItem.width! / mediaItem.height!;
-    }
-    return 1.0; // 默认正方形
-  }
 }
-

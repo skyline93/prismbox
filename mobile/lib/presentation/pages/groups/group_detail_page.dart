@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
-import 'package:prismbox/presentation/widgets/groups/group_info_card.dart';
 import 'package:prismbox/presentation/widgets/posts/post_card.dart';
 import 'package:prismbox/providers/group/group_detail_provider.dart';
 import 'package:prismbox/providers/post/group_feed_provider.dart';
@@ -58,7 +57,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     if (_isLoadingMore) return;
 
     // 当滚动到底部时，加载更多
-    if (_scrollController.position.pixels >=
+    // 注意：NestedScrollView 的滚动控制器会同时控制 header 和 body 的滚动
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _loadMore();
     }
@@ -105,48 +106,33 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => context.router.maybePop(),
-        ),
-        title: detailAsync.when(
-          data: (detail) => Text(
-            detail?.name ?? '圈子详情',
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          loading: () => const Text(
-            '圈子详情',
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          error: (_, __) => const Text(
-            '圈子详情',
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.people_outline, color: Colors.black87),
-            onPressed: () {
-              context.router.push(GroupMembersRoute(groupUuid: widget.groupUuid));
-            },
-          ),
-        ],
-      ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverAppBar(
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    pinned: true,
+                    floating: true,
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
+                      onPressed: () => context.router.maybePop(),
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.people_outline, color: Colors.black, size: 24),
+                        onPressed: () {
+                          context.router.push(GroupMembersRoute(groupUuid: widget.groupUuid));
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ];
+              },
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         child: detailAsync.when(
@@ -154,7 +140,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             if (detail == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            return _buildContent(context, detail);
+                    return _buildContent(context);
           },
           loading: () => const Center(
             child: CircularProgressIndicator(),
@@ -162,44 +148,47 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
           error: (error, stackTrace) => _buildErrorState(context, error),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
+            ),
+          ),
+          // 底部悬浮按钮
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: GestureDetector(
+              onTap: () {
           context.router.push(CreatePostRoute(groupUuid: widget.groupUuid));
         },
-        child: const Icon(Icons.add),
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: const Icon(Icons.add, color: Colors.black, size: 32),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, detail) {
+  Widget _buildContent(BuildContext context) {
     final feedAsync = ref.watch(groupFeedProviderProvider(widget.groupUuid));
 
-    return CustomScrollView(
-      controller: _scrollController,
-      slivers: [
-        // 圈子信息卡片
-        SliverToBoxAdapter(
-          child: GroupInfoCard(groupDetail: detail),
-        ),
-        // Feed 流
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Text(
-              '动态',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ),
-        feedAsync.when(
+    return feedAsync.when(
           data: (posts) {
             if (posts.isEmpty) {
-              return const SliverToBoxAdapter(
-                child: Center(
+          return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
                     child: Text(
@@ -210,13 +199,34 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                       ),
                     ),
                   ),
+          );
+        }
+
+        return ListView.separated(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 80),
+          itemCount: posts.length + (_isLoadingMore ? 1 : 0),
+          separatorBuilder: (context, index) {
+            if (index < posts.length) {
+              return const Divider(
+                height: 1,
+                color: Color(0xFFEEEEEE),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+          itemBuilder: (context, index) {
+            if (index == posts.length) {
+              // 加载更多指示器
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
                 ),
               );
             }
 
-            return SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
                   final post = posts[index];
                   return PostCard(
                     post: post,
@@ -240,23 +250,19 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                     },
                   );
                 },
-                childCount: posts.length,
-              ),
             );
           },
-          loading: () => const SliverToBoxAdapter(
-            child: Center(
+      loading: () => const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: CircularProgressIndicator(),
               ),
             ),
-          ),
-          error: (error, stackTrace) => SliverToBoxAdapter(
-            child: Center(
+      error: (error, stackTrace) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       '加载 Feed 流失败',
@@ -278,19 +284,6 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                 ),
               ),
             ),
-          ),
-        ),
-        // 加载更多指示器
-        if (_isLoadingMore)
-          const SliverToBoxAdapter(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-          ),
-      ],
     );
   }
 

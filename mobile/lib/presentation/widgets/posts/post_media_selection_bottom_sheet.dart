@@ -45,6 +45,19 @@ class _PostMediaSelectionBottomSheetState
   void initState() {
     super.initState();
     _scrollController = DraggableScrollableController();
+    
+    // 监听控制器变化，防止抽屉缩小到最小高度以下
+    _scrollController.addListener(() {
+      if (!mounted) return;
+      final minHeight = 0.3;
+      // 如果抽屉高度小于最小高度，强制跳转到最小高度
+      if (_scrollController.isAttached) {
+        final currentSize = _scrollController.size;
+        if (currentSize < minHeight) {
+          _scrollController.jumpTo(minHeight);
+        }
+      }
+    });
 
     // 初始化选择状态
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -81,8 +94,8 @@ class _PostMediaSelectionBottomSheetState
 
   @override
   Widget build(BuildContext context) {
-    final minHeight = 0.12;
-    final initialHeight = 0.3;
+    final minHeight = 0.3;
+    final initialHeight = 0.7; // 提高默认高度：从 0.3 改为 0.7（70%）
     final maxHeight = 0.9;
 
     // 监听选择状态
@@ -109,8 +122,10 @@ class _PostMediaSelectionBottomSheetState
     final assetEntityLoaderAsync = ref.watch(assetEntityLoaderProvider);
 
     return PopScope(
-      // 处理用户通过返回按钮或滑动关闭抽屉的情况
+      // 完全阻止通过返回按钮或拖动关闭抽屉
+      canPop: false, // 禁止通过返回按钮关闭
       onPopInvoked: (didPop) {
+        // 抽屉不应该通过返回按钮关闭，只能通过取消/确定按钮关闭
         if (didPop) {
           // 抽屉已关闭，清理选择状态
           // 使用 Future.microtask 确保在 widget 树构建完成后执行
@@ -121,9 +136,10 @@ class _PostMediaSelectionBottomSheetState
       },
       child: DraggableScrollableSheet(
         initialChildSize: initialHeight,
-        minChildSize: minHeight,
+        minChildSize: minHeight, // 最小高度 30%，防止完全关闭
         maxChildSize: maxHeight,
         snap: true,
+        snapSizes: [minHeight, initialHeight, maxHeight], // 设置吸附点，确保最低时不会关闭
         controller: _scrollController,
         builder: (context, scrollController) {
         return Card(

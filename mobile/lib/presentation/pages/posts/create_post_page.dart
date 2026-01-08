@@ -52,6 +52,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
       final selectedAssetIds = await showModalBottomSheet<List<String>>(
         context: context,
         isScrollControlled: true,
+        isDismissible: false, // 禁止通过点击外部区域关闭
+        enableDrag: true, // 允许拖动，但通过 minChildSize 限制最小高度
         backgroundColor: Colors.transparent,
         builder: (context) => PostMediaSelectionBottomSheet(
           maxSelection: 9,
