@@ -16,6 +16,7 @@ import 'package:prismbox/data/database/enums/upload_task_status.dart';
 /// ```
 /// pending → queued → uploading → completed
 ///   ↓         ↓         ↓            ↑
+///   ↓         └─────────┘            │
 ///   ↓      failed ──────┘            │
 ///   ↓         ↓                      │
 /// cancelled   permanentlyFailed ─────┘
@@ -34,9 +35,10 @@ class UploadTaskStateMachine {
       UploadTaskStatus.queued,
       UploadTaskStatus.cancelled,
     },
-    // queued 可以转换为 uploading（开始上传）、failed（失败）、cancelled（取消）
+    // queued 可以转换为 uploading（开始上传）、completed（去重场景：文件已上传）、failed（失败）、cancelled（取消）
     UploadTaskStatus.queued: {
       UploadTaskStatus.uploading,
+      UploadTaskStatus.completed,  // 允许去重时直接完成
       UploadTaskStatus.failed,
       UploadTaskStatus.cancelled,
     },

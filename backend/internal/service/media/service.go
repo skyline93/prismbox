@@ -227,6 +227,21 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 		return nil, fmt.Errorf("calculate hash: %w", err)
 	}
 
+	// 2.5. 检查文件是否已存在（去重检查）
+	existingMedia, err := s.repo.FindByHash(ctx, req.UserID, hash)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("check existing media: %w", err)
+	}
+	if existingMedia != nil {
+		// 文件已存在，返回已存在的记录
+		s.log.Info("media already exists, skipping upload",
+			logger.String("uuid", existingMedia.UUID),
+			logger.String("hash", hash),
+			logger.Uint("user_id", req.UserID),
+		)
+		return existingMedia, nil
+	}
+
 	// 3. 使用计算得到的 hash 构建存储 key
 	storageKey, err := s.storageAdapter.BuildStorageKey(hash, req.ItemType, MediaFileTypeOriginal, normalizedExt)
 	if err != nil {
@@ -262,8 +277,18 @@ func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*mo
 
 	media := s.newMediaModel(req, hash, storageKey, mimeType, localPoolUUID)
 	if err := s.repo.Create(ctx, media); err != nil {
-		s.storageManager.Delete(ctx, storageKey)
-		return nil, fmt.Errorf("create media record: %w", err)
+		// ⚠️ 不再删除已上传的文件！这是一个危险操作，可能导致数据丢失。
+		// 如果数据库插入失败，保留文件并记录详细错误信息。
+		// 文件可以通过后续的清理任务或手动修复来处理。
+		s.log.Error("failed to create media record after file upload",
+			logger.Error(err),
+			logger.String("storage_key", storageKey),
+			logger.String("hash", hash),
+			logger.Uint("user_id", req.UserID),
+			logger.String("filename", req.Filename),
+			logger.String("note", "file remains in storage and may need manual cleanup"),
+		)
+		return nil, fmt.Errorf("create media record: %w (file uploaded but record creation failed, file may need manual cleanup)", err)
 	}
 
 	s.enqueueMediaProcessingTask(ctx, req, storageKey)
