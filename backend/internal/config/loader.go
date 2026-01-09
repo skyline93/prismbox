@@ -81,7 +81,9 @@ func (l *Loader) Load() (*Config, error) {
 	}
 
 	// 3. 使用 Viper 的 Unmarshal 自动覆盖存在的字段
-	// Viper 只会覆盖配置文件中存在的字段，不存在的字段保持默认值
+	// Viper 的 Unmarshal 会通过反射遍历结构体字段，对每个字段调用 Get 方法
+	// Get 方法会触发 AutomaticEnv() 的查找，因此环境变量会自动生效
+	// 优先级：命令行参数 > 环境变量 > 配置文件 > 默认值
 	if err := l.v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
@@ -244,7 +246,7 @@ func (l *Loader) defaultConfig() *Config {
 		Server: &server.Config{
 			Host:          "0.0.0.0",
 			Port:          8080,
-			PublicBaseURL: "http://10.168.1.161:8080",
+			PublicBaseURL: "http://10.168.1.161",
 			ReadTimeout:   types.Duration(1 * time.Hour),
 			WriteTimeout:  types.Duration(1 * time.Hour),
 			IdleTimeout:   types.Duration(2 * time.Minute),

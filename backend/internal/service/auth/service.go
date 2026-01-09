@@ -147,6 +147,11 @@ func NewService(
 
 	avatarBaseURL := strings.TrimRight(serverCfg.PublicBaseURL, "/") + "/static/avatars/"
 
+	// 确保头像保存目录存在
+	if err := os.MkdirAll(authCfg.AvatarSavePath, 0o755); err != nil {
+		return nil, fmt.Errorf("create avatar directory: %w", err)
+	}
+
 	return &service{
 		logger: logger.New("service.auth"),
 
