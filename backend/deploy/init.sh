@@ -17,13 +17,10 @@ mkdir -p deploy/data/postgresql
 mkdir -p deploy/data/logs/nginx
 mkdir -p deploy/data/cert
 mkdir -p deploy/data/certbot-www/.well-known/acme-challenge
-mkdir -p deploy/data/configs
-mkdir -p deploy/public
 
 # 设置目录权限
 echo "设置目录权限..."
 chmod -R 755 deploy/data
-chmod -R 755 deploy/public
 
 # 设置脚本执行权限
 echo "设置脚本执行权限..."
