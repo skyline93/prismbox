@@ -7,7 +7,7 @@ part of 'group_members_provider.dart';
 // **************************************************************************
 
 String _$groupMembersProviderHash() =>
-    r'69250028c31d170c0c32ed68f9e085e0791b5e22';
+    r'549066619b033fba97a8805e7d3acc5d649144a6';
 
 /// Copied from Dart SDK
 class _SystemHash {

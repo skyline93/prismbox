@@ -12,14 +12,14 @@ part 'group_members_provider.g.dart';
 class GroupMembersProvider extends _$GroupMembersProvider {
   @override
   Future<List<GroupMember>> build(String groupUuid) async {
-    // 初始状态：返回空列表
-    return [];
+    // 在 build 方法中直接加载成员列表，确保每次 Provider 重建时都会重新加载
+    final service = ref.read(groupServiceProvider);
+    final members = await service.getGroupMembers(groupUuid);
+    return members;
   }
 
-  /// 加载成员列表
-  Future<void> load() async {
-    if (state.isLoading) return; // 防止重复加载
-
+  /// 刷新成员列表
+  Future<void> refresh() async {
     state = const AsyncValue.loading();
     try {
       final service = ref.read(groupServiceProvider);
@@ -28,11 +28,6 @@ class GroupMembersProvider extends _$GroupMembersProvider {
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
     }
-  }
-
-  /// 刷新成员列表
-  Future<void> refresh() async {
-    await load();
   }
 }
 

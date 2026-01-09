@@ -18,6 +18,7 @@ import 'package:prismbox/presentation/widgets/posts/post_card.dart';
 import 'package:prismbox/providers/group/group_detail_provider.dart';
 import 'package:prismbox/providers/post/group_feed_provider.dart';
 import 'package:prismbox/data/models/post/post.dart';
+import 'package:prismbox/data/models/group/group_member.dart';
 
 /// 圈子详情页面
 @RoutePage()
@@ -171,10 +172,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                         detailAsync.when(
                           data: (group) {
                             if (group == null) return const SizedBox.shrink();
-                            // TODO: 暂时不显示设置按钮，因为还没有设置页面
-                            // final bool isOwnerOrAdmin =
-                            //     group.currentUserRole == GroupRole.owner ||
-                            //     group.currentUserRole == GroupRole.admin;
+                            final bool isOwnerOrAdmin =
+                                group.currentUserRole == GroupRole.owner ||
+                                group.currentUserRole == GroupRole.admin;
                             return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -187,17 +187,16 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                                     );
                                   },
                                 ),
-                                // TODO: 添加设置按钮，当有设置页面时
-                                // if (isOwnerOrAdmin)
-                                //   IconButton(
-                                //     icon: const Icon(Icons.settings),
-                                //     tooltip: 'Settings',
-                                //     onPressed: () {
-                                //       context.router.push(
-                                //         GroupSettingsRoute(groupUuid: widget.groupUuid),
-                                //       );
-                                //     },
-                                //   ),
+                                if (isOwnerOrAdmin)
+                                  IconButton(
+                                    icon: const Icon(Icons.settings),
+                                    tooltip: 'Settings',
+                                    onPressed: () {
+                                      context.router.push(
+                                        GroupSettingsRoute(groupUuid: widget.groupUuid),
+                                      );
+                                    },
+                                  ),
                               ],
                             );
                           },

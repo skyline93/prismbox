@@ -25,6 +25,7 @@ import 'package:prismbox/presentation/pages/groups/create_group_page.dart';
 import 'package:prismbox/presentation/pages/groups/group_list_page.dart';
 import 'package:prismbox/presentation/pages/groups/group_detail_page.dart';
 import 'package:prismbox/presentation/pages/groups/group_members_page.dart';
+import 'package:prismbox/presentation/pages/groups/group_settings_page.dart';
 import 'package:prismbox/presentation/pages/posts/create_post_page.dart';
 import 'package:prismbox/presentation/pages/posts/post_detail_page.dart';
 import 'package:prismbox/presentation/routing/guards/auth_guard.dart';
@@ -192,17 +193,24 @@ class AppRouter extends _$AppRouter {
       guards: [_authGuard],
     ),
 
+    // 成员管理页面（需要认证）- 放在详情页之前，因为路径更具体
+    AutoRoute(
+      page: GroupMembersRoute.page,
+      path: '/groups/:groupUuid/members',
+      guards: [_authGuard],
+    ),
+
+    // 圈子设置页面（需要认证）- 放在详情页之前，因为路径更具体
+    AutoRoute(
+      page: GroupSettingsRoute.page,
+      path: '/groups/:groupUuid/settings',
+      guards: [_authGuard],
+    ),
+
     // 圈子详情页面（需要认证）
     AutoRoute(
       page: GroupDetailRoute.page,
       path: '/groups/:groupUuid',
-      guards: [_authGuard],
-    ),
-
-    // 成员管理页面（需要认证）
-    AutoRoute(
-      page: GroupMembersRoute.page,
-      path: '/groups/:groupUuid/members',
       guards: [_authGuard],
     ),
 

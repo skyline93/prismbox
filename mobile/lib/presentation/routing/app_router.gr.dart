@@ -90,6 +90,19 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    GroupSettingsRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<GroupSettingsRouteArgs>(
+          orElse: () => GroupSettingsRouteArgs(
+              groupUuid: pathParams.getString('groupUuid')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: GroupSettingsPage(
+          key: args.key,
+          groupUuid: args.groupUuid,
+        ),
+      );
+    },
     LanguageRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -408,6 +421,45 @@ class GroupMembersRouteArgs {
   @override
   String toString() {
     return 'GroupMembersRouteArgs{key: $key, groupUuid: $groupUuid}';
+  }
+}
+
+/// generated route for
+/// [GroupSettingsPage]
+class GroupSettingsRoute extends PageRouteInfo<GroupSettingsRouteArgs> {
+  GroupSettingsRoute({
+    Key? key,
+    required String groupUuid,
+    List<PageRouteInfo>? children,
+  }) : super(
+          GroupSettingsRoute.name,
+          args: GroupSettingsRouteArgs(
+            key: key,
+            groupUuid: groupUuid,
+          ),
+          rawPathParams: {'groupUuid': groupUuid},
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupSettingsRoute';
+
+  static const PageInfo<GroupSettingsRouteArgs> page =
+      PageInfo<GroupSettingsRouteArgs>(name);
+}
+
+class GroupSettingsRouteArgs {
+  const GroupSettingsRouteArgs({
+    this.key,
+    required this.groupUuid,
+  });
+
+  final Key? key;
+
+  final String groupUuid;
+
+  @override
+  String toString() {
+    return 'GroupSettingsRouteArgs{key: $key, groupUuid: $groupUuid}';
   }
 }
 

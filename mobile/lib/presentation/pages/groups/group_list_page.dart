@@ -26,6 +26,102 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
     });
   }
 
+  Future<void> _showJoinGroupDialog() async {
+    final codeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('加入圈子'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: codeController,
+              decoration: const InputDecoration(
+                labelText: '邀请码',
+                hintText: '请输入邀请码',
+                border: OutlineInputBorder(),
+              ),
+              textCapitalization: TextCapitalization.characters,
+              enabled: !isLoading,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '请输入邀请码';
+                }
+                if (value.trim().length < 4) {
+                  return '邀请码格式不正确';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading
+                  ? null
+                  : () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (formKey.currentState!.validate()) {
+                        setDialogState(() {
+                          isLoading = true;
+                        });
+
+                        try {
+                          final service = ref.read(groupServiceProvider);
+                          final group = await service.joinGroup(codeController.text.trim());
+                          
+                          // 刷新圈子列表
+                          ref.invalidate(groupListProviderProvider);
+                          await ref.read(groupListProviderProvider.notifier).refresh();
+
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('成功加入圈子：${group.name}'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            // 跳转到新加入的圈子详情页
+                            context.router.push(GroupDetailRoute(groupUuid: group.uuid));
+                          }
+                        } catch (e) {
+                          setDialogState(() {
+                            isLoading = false;
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('加入失败: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('加入'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupListProviderProvider);
@@ -44,8 +140,20 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.black87),
+          TextButton.icon(
+            icon: const Icon(Icons.login, size: 18),
+            label: const Text('加入'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.black87,
+            ),
+            onPressed: _showJoinGroupDialog,
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('创建'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.black87,
+            ),
             onPressed: () {
               context.router.push(const CreateGroupRoute());
             },
@@ -79,12 +187,6 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
           ),
           error: (error, stackTrace) => _buildErrorState(context, error),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.router.push(const CreateGroupRoute());
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
