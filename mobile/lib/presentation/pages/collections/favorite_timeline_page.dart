@@ -196,7 +196,7 @@ class _FavoriteTimelinePageState extends ConsumerState<FavoriteTimelinePage>
                     SliverPadding(
                       padding: EdgeInsets.only(
                         bottom:
-                            MediaQuery.of(context).size.height * 0.12 +
+                            MediaQuery.of(context).size.height * 0.16 +
                             MediaQuery.of(context).padding.bottom,
                       ),
                     ),

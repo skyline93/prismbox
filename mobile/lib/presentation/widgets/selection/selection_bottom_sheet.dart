@@ -45,9 +45,9 @@ class _SelectionBottomSheetState extends ConsumerState<SelectionBottomSheet> {
   Widget build(BuildContext context) {
     // 调整高度使其更紧凑，与图标高度相匹配
     // 图标24 + 文字约20 + padding 20 + 拖拽手柄和间距约28 = 约92像素
-    // 使用屏幕高度的12%，比原来的24%更紧凑
-    final minHeight = 0.12; // 最小高度约12%的屏幕高度
-    final initialHeight = 0.12; // 初始高度与最小高度一致
+    // 提高最小高度以增加空气感：从 12% 改为 16%
+    final minHeight = 0.16; // 最小高度约16%的屏幕高度，增加空气感
+    final initialHeight = 0.16; // 初始高度与最小高度一致
 
     return DraggableScrollableSheet(
       initialChildSize: initialHeight,

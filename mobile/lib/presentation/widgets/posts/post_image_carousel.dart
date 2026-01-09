@@ -61,7 +61,7 @@ class _PostImageCarouselState extends State<PostImageCarousel> {
 
   // Feed 流中的横向滚动列表（参考 Album 项目的实现）
   Widget _buildFeedListView() {
-    const double imageHeight = 110.0; // 缩小到原来的 50%，更加精致
+    const double imageHeight = 220.0; // 增大一倍：从 110.0 改为 220.0
     const double imageGap = 3.0; // 图片之间的间距缩小，更紧凑
     const double imageBorderRadius = 8.0;
 
@@ -119,7 +119,7 @@ class _PostImageCarouselState extends State<PostImageCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: viewHeight.clamp(200, 450),
+          height: viewHeight.clamp(400, 900), // 增大一倍：从 clamp(200, 450) 改为 clamp(400, 900)
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.media.length,
