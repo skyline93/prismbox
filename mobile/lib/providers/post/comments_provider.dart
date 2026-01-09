@@ -13,11 +13,13 @@ part 'comments_provider.g.dart';
 class CommentsProvider extends _$CommentsProvider {
   @override
   Future<List<Comment>> build(int postId) async {
-    // 初始状态：返回空列表
-    return [];
+    // 在 build 方法中直接加载评论，确保每次 Provider 重建时都会重新加载
+    final service = ref.read(commentServiceProvider);
+    final comments = await service.getComments(postId: postId);
+    return comments;
   }
 
-  /// 加载评论列表
+  /// 加载评论列表（刷新）
   Future<void> load() async {
     if (state.isLoading) return; // 防止重复加载
 

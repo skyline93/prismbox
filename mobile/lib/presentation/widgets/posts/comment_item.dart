@@ -25,29 +25,55 @@ class CommentItem extends StatelessWidget {
     this.canDelete = false,
   });
 
+  // 布局常量（参考 PostCard 和 Album 项目的设计）
+  static const double avatarRadius = 15.0;
+  static const double horizontalPadding = 7.0;
+  static const double avatarColumnWidth = avatarRadius * 2;
+  static const double avatarContentGap = 12.0;
+  static const double indentWidth = 20.0; // 每级回复的缩进量
+
+  // 计算内容的左边距（和 PostCard 保持一致）
+  double get contentLeftPadding =>
+      horizontalPadding +
+      avatarColumnWidth +
+      avatarContentGap +
+      (depth * indentWidth);
+
+  // 计算头像的左边距（和 PostCard 保持一致）
+  double get avatarLeftPadding => horizontalPadding + (depth * indentWidth);
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: depth > 0 ? 48.0 : 0.0, // 回复缩进
-        bottom: 12.0,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Stack(
         children: [
-          // 头像
-          UserCircleAvatar(
-            user: UserProfile(
-              id: comment.author.userId,
-              username: comment.author.username,
-              email: '', // 评论中的用户信息不包含 email
-              avatarUrl: comment.author.avatarUrl,
+          // --- 左侧: 头像列 ---
+          Positioned(
+            left: avatarLeftPadding,
+            top: 0,
+            bottom: 0,
+            width: avatarColumnWidth,
+            child: Column(
+              children: [
+                UserCircleAvatar(
+                  user: UserProfile(
+                    id: comment.author.userId,
+                    username: comment.author.username,
+                    email: '', // 评论中的用户信息不包含 email
+                    avatarUrl: comment.author.avatarUrl,
+                  ),
+                  radius: avatarRadius,
+                ),
+              ],
             ),
-            radius: 16,
           ),
-          const SizedBox(width: 12),
-          // 评论内容
-          Expanded(
+          // --- 右侧: 评论内容区 ---
+          Padding(
+            padding: EdgeInsets.only(
+              left: contentLeftPadding,
+              right: horizontalPadding,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -160,4 +186,3 @@ class CommentItem extends StatelessWidget {
     }
   }
 }
-

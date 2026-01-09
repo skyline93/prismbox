@@ -40,12 +40,11 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
     super.initState();
     _log.info('[PostDetailPage] initState called, groupUuid: ${widget.groupUuid}, postId: ${widget.postId}');
     
-    // 加载评论列表
+    // 评论列表会在 Provider 的 build 方法中自动加载，不需要手动调用 load()
+    // 如果需要刷新评论，可以调用 refresh()
+    
+    // 检查 Feed 流状态，如果为空且不在加载中，触发加载（只尝试一次）
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _log.info('[PostDetailPage] PostFrameCallback executed');
-      ref.read(commentsProviderProvider(widget.postId).notifier).load();
-      
-      // 检查 Feed 流状态，如果为空且不在加载中，触发加载（只尝试一次）
       if (!_hasTriedLoad) {
         final feedAsync = ref.read(groupFeedProviderProvider(widget.groupUuid));
         _log.info('[PostDetailPage] Feed state check: isLoading=${feedAsync.isLoading}, hasValue=${feedAsync.hasValue}, hasError=${feedAsync.hasError}');

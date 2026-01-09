@@ -3,12 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:prismbox/data/models/post/post.dart';
-import 'package:prismbox/presentation/widgets/posts/post_media_grid.dart';
+import 'package:prismbox/presentation/widgets/posts/post_image_carousel.dart';
 import 'package:prismbox/presentation/widgets/user/user_circle_avatar.dart';
 import 'package:prismbox/domain/entities/user_profile.dart';
 
-/// 帖子卡片组件（Threads 风格）
-/// 展示帖子信息：左侧头像列 + 右侧内容区
+/// 帖子卡片组件（参考 Album 项目的布局方式）
+/// 展示帖子信息：左侧头像列 + 右侧内容区，图片不受屏幕左右限制
 class PostCard extends StatelessWidget {
   final Post post;
   final VoidCallback? onTap;
@@ -27,21 +27,185 @@ class PostCard extends StatelessWidget {
     this.hasAddIcon = false,
   });
 
+  // 布局常量（参考 Album 项目的设计）
+  static const double avatarRadius = 15.0; // 缩小头像，从 20.0 缩小到 15.0
+  static const double horizontalPadding = 7.0;
+  static const double avatarColumnWidth = avatarRadius * 2;
+  static const double avatarContentGap = 12.0;
+  static const double contentLeftPadding =
+      horizontalPadding + avatarColumnWidth + avatarContentGap;
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-          // 左侧：头像列
-          _buildAvatarColumn(context),
-          const SizedBox(width: 12),
-          // 右侧：内容区
-          Expanded(
-            child: _buildContentArea(context),
+    // 参考 Album 项目的布局方式：使用 Stack + Positioned，没有外层 padding
+    // 这样图片可以不受屏幕左右限制
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        // 底部边框
+        decoration: BoxDecoration(
+          border: const Border(
+            bottom: BorderSide(color: Colors.black12, width: 0.7),
           ),
-        ],
+        ),
+        child: Stack(
+          children: [
+            // --- 左侧: 头像列 ---
+            Positioned(
+              left: horizontalPadding,
+              top: 8.0,
+              bottom: 8.0,
+              width: avatarColumnWidth,
+              child: _buildAvatarColumn(context),
+            ),
+
+            // --- 右侧: 主要内容区 ---
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 顶部间距
+                const SizedBox(height: 12.0),
+
+                // --- 用户名和时间 ---
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: contentLeftPadding,
+                    right: horizontalPadding,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        post.creator.username,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Colors.black,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            _formatTime(post.createdAt),
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.more_horiz, color: Colors.black, size: 20),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // 用户名和内容之间的间距
+                const SizedBox(height: 2),
+
+                // --- 帖子正文 ---
+                if (post.caption.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: contentLeftPadding,
+                      right: horizontalPadding,
+                    ),
+                    child: Text(
+                      post.caption,
+                      style: const TextStyle(fontSize: 15, height: 1.3),
+                    ),
+                  ),
+                ],
+
+                // --- 图片轮播/列表（不受屏幕左右限制）---
+                if (post.media.isNotEmpty) ...[
+                  // 内容和图片之间的间距
+                  const SizedBox(height: 6),
+                  PostImageCarousel(
+                    media: post.media,
+                    isDetailView: false, // Feed流中不是详情页
+                  ),
+                ],
+
+                // --- 操作按钮和统计信息 ---
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: contentLeftPadding,
+                    right: horizontalPadding,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 图片/内容和操作按钮之间的间距
+                      const SizedBox(height: 15),
+                      // 底部操作栏（图标 + 统计数）
+                      Row(
+                        children: [
+                          // 点赞按钮 + 点赞数
+                          GestureDetector(
+                            onTap: onLikeTap,
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.favorite_border, size: 18),
+                                if (post.likesCount > 0) ...[
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    _formatCount(post.likesCount),
+                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          // 回复按钮 + 回复数
+                          GestureDetector(
+                            onTap: onCommentTap,
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.chat_bubble_outline, size: 18),
+                                if (post.commentsCount > 0) ...[
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    _formatCount(post.commentsCount),
+                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          // 转发按钮
+                          GestureDetector(
+                            onTap: () {
+                              // TODO: 实现转发功能
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: const Icon(Icons.autorenew, size: 18),
+                          ),
+                          const SizedBox(width: 20),
+                          // 分享按钮
+                          GestureDetector(
+                            onTap: onShareTap,
+                            behavior: HitTestBehavior.opaque,
+                            child: const Icon(Icons.send, size: 18),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 底部间距
+                const SizedBox(height: 15.0),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -58,11 +222,11 @@ class PostCard extends StatelessWidget {
     return Column(
       children: [
         Stack(
-      children: [
-        UserCircleAvatar(
-          user: userProfile,
-          radius: 20,
-        ),
+          children: [
+            UserCircleAvatar(
+              user: userProfile,
+              radius: avatarRadius,
+            ),
             if (hasAddIcon)
               Positioned(
                 bottom: 0,
@@ -78,127 +242,6 @@ class PostCard extends StatelessWidget {
               ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildContentArea(BuildContext context) {
-    return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 顶部：用户名、认证标、标签、时间、更多图标
-        _buildUserHeader(context),
-        // 帖子正文
-        if (post.caption.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
-            child: Text(
-              post.caption,
-              style: const TextStyle(fontSize: 15, height: 1.3),
-            ),
-          ),
-        ],
-        // 图片轮播区
-        if (post.media.isNotEmpty) ...[
-          PostMediaGrid(media: post.media),
-        ],
-        // 地点标签（如果有，暂时不显示，因为 Post 模型中没有 location 字段）
-        // if (location != null)
-        //   Padding(
-        //     padding: const EdgeInsets.only(top: 8.0),
-        //     child: Text(
-        //       location!,
-        //       style: TextStyle(color: Colors.grey[500], fontSize: 13),
-        //     ),
-        //   ),
-        // 底部操作栏（图标）
-        Padding(
-          padding: const EdgeInsets.only(top: 6.0, bottom: 4.0),
-          child: Row(
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.favorite_border, size: 18),
-                onPressed: onLikeTap,
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                onPressed: onCommentTap,
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.autorenew, size: 18),
-                onPressed: () {
-                  // TODO: 实现转发功能
-                },
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.send, size: 18),
-                onPressed: onShareTap,
-              ),
-            ],
-          ),
-        ),
-        // 点赞和回复数
-        Row(
-          children: [
-            Text(
-              '${_formatCount(post.likesCount)} likes',
-              style: TextStyle(color: Colors.grey[500], fontSize: 13),
-            ),
-            if (post.commentsCount > 0) ...[
-              const SizedBox(width: 8),
-              Text(
-                '${_formatCount(post.commentsCount)} reply',
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUserHeader(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          post.creator.username,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            color: Colors.black,
-          ),
-        ),
-        // 认证标记（暂时不显示，因为 UserSimpleInfo 中没有 isVerified 字段）
-        // if (isVerified) ...[
-        //   const SizedBox(width: 4),
-        //   const Icon(Icons.verified, color: Colors.blue, size: 14),
-        // ],
-        // 话题标签（暂时不显示，因为 Post 模型中没有 tagText 字段）
-        // if (tagText != null) ...[
-        //   const SizedBox(width: 4),
-        //   Text(
-        //     '› $tagText',
-        //     style: TextStyle(color: Colors.grey[500], fontSize: 14),
-        //   ),
-        // ],
-        const Spacer(),
-        Text(
-          _formatTime(post.createdAt),
-          style: TextStyle(color: Colors.grey[500], fontSize: 14),
-        ),
-        const SizedBox(width: 12),
-        const Icon(Icons.more_horiz, color: Colors.black, size: 20),
       ],
     );
   }
