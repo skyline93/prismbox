@@ -85,10 +85,13 @@ class _BackupIndicatorContent extends ConsumerWidget {
                       alignment: Alignment.bottomRight,
                       isLabelVisible: isBackingUp || hasError || !isEnabled,
                       offset: const Offset(-2, -12),
-                      child: Icon(
-                        Icons.backup_rounded,
-                        size: 24.0,
-                        color: Theme.of(context).colorScheme.primary,
+                      child: Transform.scale(
+                        scale: 1.0,
+                        child: Icon(
+                          Icons.cloud_upload_outlined,
+                          size: 24.0,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        ),
                       ),
                     ),
                   ),
@@ -120,10 +123,13 @@ class _BackupIndicatorContent extends ConsumerWidget {
         context.router.push(const BackupSettingsRoute());
       },
       borderRadius: BorderRadius.circular(12),
-      child: Icon(
-        Icons.backup_rounded,
-        size: 24.0,
-        color: Theme.of(context).colorScheme.primary,
+      child: Transform.scale(
+        scale: 1.0,
+        child: Icon(
+          Icons.cloud_upload_outlined,
+          size: 24.0,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+        ),
       ),
     );
   }

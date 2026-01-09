@@ -1,11 +1,14 @@
 // lib/presentation/widgets/user/user_profile_dialog.dart
 
+import 'dart:io';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/presentation/widgets/user/user_circle_avatar.dart';
 import 'package:prismbox/providers/auth/auth_state_provider.dart';
+import 'package:prismbox/providers/services/auth_service_provider.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 
 /// 用户主页对话框
@@ -71,7 +74,7 @@ class UserProfileDialog extends ConsumerWidget {
                       _buildTopBar(context),
 
                       // 用户账户信息卡片
-                      _buildUserAccountCard(context, user, theme),
+                      _buildUserAccountCard(context, ref, user, theme),
 
                       // 服务器存储卡片
                       _buildServerStorageCard(context, ref, theme),
@@ -132,7 +135,7 @@ class UserProfileDialog extends ConsumerWidget {
   }
 
   /// 构建用户账户信息卡片
-  Widget _buildUserAccountCard(BuildContext context, user, ThemeData theme) {
+  Widget _buildUserAccountCard(BuildContext context, WidgetRef ref, user, ThemeData theme) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(12),
@@ -159,18 +162,21 @@ class UserProfileDialog extends ConsumerWidget {
               Positioned(
                 right: -2,
                 bottom: -2,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    size: 10,
-                    color: Colors.white,
+                child: GestureDetector(
+                  onTap: () => _handleUploadAvatar(context, ref),
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 10,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -643,6 +649,62 @@ class UserProfileDialog extends ConsumerWidget {
           );
         }
       }
+    }
+  }
+
+  /// 处理上传头像
+  Future<void> _handleUploadAvatar(BuildContext context, WidgetRef ref) async {
+    try {
+      // 使用 ImagePicker 选择图片
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 400,
+        maxHeight: 400,
+      );
+
+      if (pickedFile == null) {
+        // 用户取消了选择
+        return;
+      }
+
+      // 显示加载提示
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('正在上传头像...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // 上传头像
+      final imageFile = File(pickedFile.path);
+      final authService = await ref.read(authServiceProvider.future);
+      await authService.uploadAvatar(imageFile);
+
+      // 刷新认证状态（更新用户信息）
+      ref.invalidate(authNotifierProvider);
+
+      // 显示成功提示
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('头像上传成功'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      // 显示错误提示
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('上传失败: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 }

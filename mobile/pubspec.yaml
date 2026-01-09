@@ -90,6 +90,9 @@ dependencies:
   # 本地相册资源访问
   photo_manager: ^3.7.1
 
+  # 图片选择器
+  image_picker: ^1.0.7
+
   # 缓存管理
   flutter_cache_manager: ^3.4.1
 

@@ -26,7 +26,7 @@ class TimelineNormalAppBar extends ConsumerWidget {
       ),
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 8.0),
+          padding: const EdgeInsets.only(right: 20.0),
           child: BackupStatusIndicator(),
         ),
         Padding(

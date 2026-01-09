@@ -32,18 +32,6 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.black),
-            onPressed: () {
-              // TODO: 添加新内容
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-            onPressed: () {
-              // TODO: 通知
-            },
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: UserProfileIndicator(),

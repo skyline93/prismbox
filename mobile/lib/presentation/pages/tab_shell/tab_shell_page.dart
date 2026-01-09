@@ -12,7 +12,6 @@ import 'package:prismbox/services/backup/providers/backup_providers.dart';
 import 'package:prismbox/utils/network_checker.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
 import 'package:prismbox/providers/app/read_only_mode_provider.dart';
-import 'package:prismbox/providers/navigation/search_input_focus_provider.dart';
 import 'package:prismbox/providers/navigation/timeline_scroll_to_top_provider.dart';
 import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 import 'package:prismbox/providers/permission/notification_permission_provider.dart';
@@ -257,7 +256,6 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
       routes: [
         const MainTimelineRoute(),
         const AlbumsRoute(),
-        const SearchRoute(),
         const GroupListRoute(),
       ],
       duration: const Duration(milliseconds: 600),
@@ -325,17 +323,6 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
         ),
         NavigationDestination(
           icon: Icon(
-            Icons.search_outlined,
-            color: isReadOnlyMode ? Colors.grey : null,
-          ),
-          selectedIcon: Icon(
-            Icons.search,
-            color: isReadOnlyMode ? Colors.grey : null,
-          ),
-          label: '搜索',
-        ),
-        NavigationDestination(
-          icon: Icon(
             Icons.people_outline,
             color: isReadOnlyMode ? Colors.grey : null,
           ),
@@ -386,17 +373,6 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
         ),
         NavigationRailDestination(
           icon: Icon(
-            Icons.search_outlined,
-            color: isReadOnlyMode ? Colors.grey : null,
-          ),
-          selectedIcon: Icon(
-            Icons.search,
-            color: isReadOnlyMode ? Colors.grey : null,
-          ),
-          label: const Text('搜索'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(
             Icons.people_outline,
             color: isReadOnlyMode ? Colors.grey : null,
           ),
@@ -422,11 +398,7 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
         case 1: // Collections (合集)
           // 可以添加滚动到顶部逻辑
           break;
-        case 2: // Search
-          // 聚焦搜索输入框
-          ref.read(searchInputFocusProvider.notifier).focus();
-          break;
-        case 3: // Circle (圈子)
+        case 2: // Circle (圈子)
           // 可以添加刷新逻辑
           break;
       }
@@ -441,7 +413,7 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
           // TODO: 实现合集模块后，取消注释以下代码
           // ref.refresh(collectionsProvider);
           break;
-        case 3: // Circle (圈子)
+        case 2: // Circle (圈子)
           // TODO: 实现圈子模块后，取消注释以下代码
           // ref.refresh(circleProvider);
           break;

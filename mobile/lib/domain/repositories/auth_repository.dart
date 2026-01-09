@@ -1,5 +1,6 @@
 // lib/domain/repositories/auth_repository.dart
 
+import 'dart:io';
 import 'package:prismbox/infrastructure/api/models/auth/auth_response_dto.dart';
 import 'package:prismbox/infrastructure/api/models/auth/login_request_dto.dart';
 import 'package:prismbox/infrastructure/api/models/auth/register_request_dto.dart';
@@ -49,5 +50,14 @@ abstract class AuthRepository {
   /// 
   /// 抛出 [ApiException] 如果未认证或用户不存在
   Future<UserProfileDto> getProfile();
+
+  /// 上传用户头像
+  /// 
+  /// [imageFile] 头像图片文件
+  /// 
+  /// 返回新的头像 URL
+  /// 
+  /// 抛出 [ApiException] 如果上传失败
+  Future<String> uploadAvatar(File imageFile);
 }
 

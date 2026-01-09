@@ -1,6 +1,7 @@
 // lib/services/auth/auth_service.dart
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:prismbox/core/storage/secure_storage_service.dart';
 import 'package:prismbox/core/storage/store_key.dart';
@@ -229,6 +230,38 @@ class AuthService {
     await _saveUserToStore(profile);
 
     return profile;
+  }
+
+  /// 上传用户头像
+  /// 
+  /// [imageFile] 头像图片文件
+  /// 
+  /// 返回新的头像 URL
+  /// 
+  /// 抛出 [ApiException] 如果上传失败
+  Future<String> uploadAvatar(File imageFile) async {
+    try {
+      _log.info('Uploading avatar');
+      final avatarUrl = await _repository.uploadAvatar(imageFile);
+      
+      // 上传成功后，刷新用户资料
+      final profile = await getProfile(useCache: false);
+      
+      // 更新本地数据库
+      await _saveUserToDatabase(profile);
+      
+      // 更新 Store
+      await _saveUserToStore(profile);
+      
+      // 清除认证检查缓存
+      _clearAuthCache();
+      
+      _log.info('Avatar uploaded successfully: $avatarUrl');
+      return avatarUrl;
+    } catch (e) {
+      _log.severe('Failed to upload avatar: $e', e);
+      rethrow;
+    }
   }
 
   /// 检查登录状态

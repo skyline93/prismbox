@@ -10,7 +10,6 @@ import 'package:prismbox/presentation/pages/login/login_page.dart';
 import 'package:prismbox/presentation/pages/register/register_page.dart';
 import 'package:prismbox/presentation/pages/permission/permission_page.dart';
 import 'package:prismbox/presentation/pages/photos/main_timeline_page.dart';
-import 'package:prismbox/presentation/pages/search/search_page.dart';
 import 'package:prismbox/presentation/pages/splash/splash_page.dart';
 import 'package:prismbox/presentation/pages/tab_shell/tab_shell_page.dart';
 import 'package:prismbox/presentation/pages/viewer/media_viewer_page.dart';
@@ -85,12 +84,6 @@ class AppRouter extends _$AppRouter {
           page: MainTimelineRoute.page,
           path: 'photos', // 子路由路径不能以 "/" 开头
           guards: [_authGuard],
-        ),
-        AutoRoute(
-          page: SearchRoute.page,
-          path: 'search', // 子路由路径不能以 "/" 开头
-          guards: [_authGuard],
-          maintainState: false, // 不保持状态
         ),
         AutoRoute(
           page: AlbumsRoute.page,

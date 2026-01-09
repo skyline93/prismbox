@@ -1,6 +1,8 @@
 // lib/infrastructure/repositories/auth_repository_impl.dart
 
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:path/path.dart' as path;
 import 'package:prismbox/domain/repositories/auth_repository.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 import 'package:prismbox/infrastructure/api/exceptions/api_exception.dart';
@@ -87,6 +89,34 @@ class AuthRepositoryImpl implements AuthRepository {
       // 使用工具类验证和提取数据
       final data = ResponseValidator.validateAndExtract(response);
       return UserProfileDto.fromJson(data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  @override
+  Future<String> uploadAvatar(File imageFile) async {
+    try {
+      // 获取文件名
+      final fileName = path.basename(imageFile.path);
+
+      // 创建 FormData
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: fileName,
+        ),
+      });
+
+      // 使用 fileDio 上传文件（支持更大的超时时间）
+      final response = await _apiService.fileDio.post(
+        '/api/v1/auth/avatar',
+        data: formData,
+      );
+
+      // 使用工具类验证和提取数据
+      final data = ResponseValidator.validateAndExtract(response);
+      return data['avatar_url'] as String;
     } on DioException catch (e) {
       throw _handleError(e);
     }

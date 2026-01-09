@@ -37,6 +37,7 @@ class GroupDetailPage extends ConsumerStatefulWidget {
 class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
+  bool _hasMore = true; // 是否还有更多数据
   bool _isUiVisible = true;
   final Logger _log = Logger('GroupDetailPage');
 
@@ -85,7 +86,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
   }
 
   Future<void> _loadMore() async {
-    if (_isLoadingMore) return;
+    if (_isLoadingMore || !_hasMore) return;
 
     setState(() {
       _isLoadingMore = true;
@@ -95,11 +96,13 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
       final hasMore = await ref
           .read(groupFeedProviderProvider(widget.groupUuid).notifier)
           .loadMore();
-      // 如果没有更多数据，可以显示提示
-      if (!hasMore) {
-        // 可以显示"没有更多数据"提示
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+          _hasMore = hasMore;
+        });
       }
-    } finally {
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isLoadingMore = false;
@@ -109,6 +112,10 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
   }
 
   Future<void> _onRefresh() async {
+    // 刷新时重置状态
+    setState(() {
+      _hasMore = true;
+    });
     await Future.wait([
       ref.read(groupDetailProviderProvider(widget.groupUuid).notifier).refresh(),
       ref.read(groupFeedProviderProvider(widget.groupUuid).notifier).refresh(),
@@ -259,7 +266,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
           );
         }
         return SliverList.separated(
-          itemCount: posts.length + (_isLoadingMore ? 1 : 0),
+          itemCount: posts.length + (_isLoadingMore ? 1 : 0) + (!_hasMore && posts.isNotEmpty ? 1 : 0),
           separatorBuilder: (context, index) {
             if (index < posts.length) {
               return const Divider(
@@ -270,11 +277,27 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             return const SizedBox.shrink();
           },
           itemBuilder: (context, index) {
-            if (index == posts.length) {
-              // 加载更多指示器
+            // 加载更多指示器
+            if (index == posts.length && _isLoadingMore) {
               return const Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            
+            // 没有更多内容提示
+            if (index == posts.length + (_isLoadingMore ? 1 : 0) && !_hasMore && posts.isNotEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0),
+                child: Center(
+                  child: Text(
+                    '没有更多内容了',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               );
             }
 
