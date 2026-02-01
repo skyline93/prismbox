@@ -115,6 +115,8 @@ type GroupPostRepository interface {
 	FindByID(ctx context.Context, id uint) (*models.GroupPost, error)
 	// FindByGroupID 查找圈子的帖子列表（分页）
 	FindByGroupID(ctx context.Context, groupID uint, limit, offset int) ([]*models.GroupPost, error)
+	// FindByGroupIDs 查找多个圈子的帖子列表（分页，按 created_at DESC）
+	FindByGroupIDs(ctx context.Context, groupIDs []uint, limit, offset int) ([]*models.GroupPost, error)
 	// Delete 删除帖子（软删除）
 	Delete(ctx context.Context, id uint) error
 }

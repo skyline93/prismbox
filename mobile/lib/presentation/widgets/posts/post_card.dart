@@ -15,6 +15,8 @@ class PostCard extends StatelessWidget {
   final VoidCallback? onCommentTap;
   final VoidCallback? onLikeTap;
   final VoidCallback? onShareTap;
+  /// 点击「来自 XX 圈子」区域时回调（用于 Feed 页切换选中圈子或跳转）
+  final VoidCallback? onGroupTap;
   final bool hasAddIcon; // 头像上的加号图标
 
   const PostCard({
@@ -24,6 +26,7 @@ class PostCard extends StatelessWidget {
     this.onCommentTap,
     this.onLikeTap,
     this.onShareTap,
+    this.onGroupTap,
     this.hasAddIcon = false,
   });
 
@@ -102,6 +105,28 @@ class PostCard extends StatelessWidget {
                 ),
                 // 用户名和内容之间的间距
                 const SizedBox(height: 2),
+
+                // --- 所属圈子标签（全部 Feed 时展示「来自 XX」）---
+                if (post.groupName != null && post.groupName!.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: contentLeftPadding,
+                      right: horizontalPadding,
+                    ),
+                    child: GestureDetector(
+                      onTap: onGroupTap,
+                      behavior: HitTestBehavior.opaque,
+                      child: Text(
+                        '来自 ${post.groupName}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
 
                 // --- 帖子正文 ---
                 if (post.caption.isNotEmpty) ...[

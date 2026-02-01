@@ -165,6 +165,21 @@ func (r *groupPostRepository) FindByGroupID(ctx context.Context, groupID uint, l
 	return posts, err
 }
 
+func (r *groupPostRepository) FindByGroupIDs(ctx context.Context, groupIDs []uint, limit, offset int) ([]*models.GroupPost, error) {
+	if len(groupIDs) == 0 {
+		return nil, nil
+	}
+	var posts []*models.GroupPost
+	err := r.db.WithContext(ctx).
+		Where("group_id IN ?", groupIDs).
+		Preload("Creator").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&posts).Error
+	return posts, err
+}
+
 func (r *groupPostRepository) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).
 		Delete(&models.GroupPost{}, id).Error
@@ -334,4 +349,3 @@ func (r *groupInviteRepository) FindByCode(ctx context.Context, code string) (*m
 	}
 	return &invite, nil
 }
-

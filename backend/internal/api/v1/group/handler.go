@@ -453,6 +453,50 @@ func (h *Handler) GetGroupFeed(c *gin.Context) {
 	response.Success(c, "Feed retrieved successfully", result.Posts)
 }
 
+// GetMyFeed 获取全部圈子 Feed 流（当前用户加入的所有圈子的帖子混排）
+// @Summary      获取全部圈子 Feed
+// @Description  获取当前用户作为成员的所有圈子中的帖子，按发布时间倒序分页（需要认证）
+// @Tags         Posts
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page query int false "页码（默认1）" default(1) minimum(1)
+// @Param        limit query int false "每页数量（默认20）" default(20) minimum(1)
+// @Success      200 {object} response.ApiResponse "获取成功"
+// @Failure      401 {object} response.ApiResponse "未认证"
+// @Router       /groups/feed [get]
+func (h *Handler) GetMyFeed(c *gin.Context) {
+	userID := middleware.MustGetUserID(c)
+	if c.IsAborted() {
+		return
+	}
+
+	page := 1
+	limit := 20
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	result, err := h.groupService.GetMyFeed(c.Request.Context(), userID, page, limit)
+	if err != nil {
+		response.Error(c, "Failed to fetch feed")
+		return
+	}
+
+	if len(result.Posts) == 0 {
+		response.Success(c, "Feed is empty", []interface{}{})
+		return
+	}
+
+	response.Success(c, "Feed retrieved successfully", result.Posts)
+}
+
 // AddComment 添加评论
 // @Summary      添加评论
 // @Description  为帖子添加评论，支持回复其他评论（需要认证，必须是圈子成员）

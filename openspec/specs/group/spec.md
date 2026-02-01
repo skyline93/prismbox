@@ -154,3 +154,85 @@ TBD - created by archiving change add-group-feature. Update Purpose after archiv
 - **AND** 系统 SHALL 提示用户检查网络连接
 - **AND** 系统 SHALL 提供重试按钮（网络恢复后）
 
+### Requirement: 全部圈子 Feed API
+
+后端 SHALL 提供「全部圈子 Feed」接口，供已登录用户获取其加入的所有圈子中的帖子，按发布时间倒序分页返回。
+
+#### Scenario: 全部 Feed 请求成功
+- **WHEN** 已认证用户请求 `GET /api/v1/groups/feed`（或约定的全部 Feed 路径）并携带有效鉴权
+- **THEN** 系统 SHALL 返回当前用户作为成员的所有圈子中的帖子列表
+- **AND** 帖子 SHALL 按 `created_at DESC` 排序
+- **AND** 支持 `page`、`limit` 分页参数（默认与单圈 Feed 一致，如 page=1、limit=20）
+- **AND** 每条帖子 SHALL 包含所属圈子的 `group_uuid`、`group_name`
+
+#### Scenario: 全部 Feed 无圈子
+- **WHEN** 用户未加入任何圈子时请求全部 Feed
+- **THEN** 系统 SHALL 返回空列表（与单圈无帖子一致）
+
+#### Scenario: 全部 Feed 鉴权
+- **WHEN** 未认证或无效鉴权请求全部 Feed
+- **THEN** 系统 SHALL 返回 401 未认证
+
+#### Scenario: 全部 Feed 仅限成员圈子
+- **WHEN** 组装全部 Feed 结果
+- **THEN** 系统 SHALL 仅包含当前用户为其成员的圈子中的帖子，不暴露非成员圈子内容
+
+### Requirement: Feed 帖子响应包含所属圈子信息
+
+Feed 接口返回的帖子项 SHALL 可包含所属圈子信息，以便前端在「全部 Feed」中展示来源圈子并支持跳转。
+
+#### Scenario: 全部 Feed 帖子带圈子信息
+- **WHEN** 客户端请求全部圈子 Feed
+- **THEN** 每条帖子项 SHALL 包含 `group_uuid`、`group_name`（所属圈子）
+
+#### Scenario: 单圈 Feed 帖子可选带圈子信息
+- **WHEN** 客户端请求单圈 Feed（`GET /groups/:uuid/feed`）
+- **THEN** 帖子项 MAY 包含当前圈子的 `group_uuid`、`group_name`，便于前端与全部 Feed 使用同一 Post 模型
+
+### Requirement: 圈子 Tab 默认页为 Feed 页
+
+用户点击底部栏圈子 Tab 时，系统 SHALL 默认进入圈子 Feed 页（展示全部圈子或当前选中的单圈 Feed），而非圈子列表页；圈子列表仍可通过 Feed 页内「我的圈子」等入口进入。
+
+#### Scenario: 点击圈子 Tab 进入 Feed 页
+- **WHEN** 用户点击底部栏圈子 Tab
+- **THEN** 系统 SHALL 进入圈子 Feed 页（首屏）
+- **AND** 系统 SHALL 默认展示「全部圈子」帖子 Feed（或空状态）
+
+#### Scenario: 从 Feed 页进入圈子列表
+- **WHEN** 用户在 Feed 页点击「我的圈子」入口
+- **THEN** 系统 SHALL 导航到圈子列表页面（GroupListPage）
+- **AND** 系统 SHALL 显示用户创建和加入的所有圈子
+
+### Requirement: 圈子选择器
+
+在圈子 Feed 页，系统 SHALL 提供圈子选择器，用于在「全部」与各圈子之间切换 Feed 数据源。
+
+#### Scenario: 选择全部展示全部 Feed
+- **WHEN** 用户在圈子选择器中选择「全部」
+- **THEN** 系统 SHALL 展示全部圈子帖子 Feed（调用全部 Feed 数据源）
+- **AND** 系统 SHALL 将 AppBar 标题显示为「全部动态」或等价文案
+
+#### Scenario: 选择某圈展示该圈 Feed
+- **WHEN** 用户在圈子选择器中选择某一圈子
+- **THEN** 系统 SHALL 展示该圈子的帖子 Feed（调用单圈 Feed 数据源）
+- **AND** 系统 SHALL 将 AppBar 标题显示为该圈子名称
+
+#### Scenario: 选择器数据源
+- **WHEN** 显示圈子选择器
+- **THEN** 系统 SHALL 显示「全部」与用户加入的圈子列表（数据来自圈子列表 API 或等价 Provider）
+- **AND** 系统 SHALL 随当前选中项更新 Feed 列表与标题
+
+### Requirement: 发帖 FAB 显示规则
+
+在圈子 Feed 页，系统 SHALL 仅在单圈视图显示发帖 FAB，在全部 Feed 视图不显示；后续可再优化。
+
+#### Scenario: 单圈 Feed 页显示发帖 FAB
+- **WHEN** 用户在圈子选择器中选中某一圈子（非「全部」）
+- **THEN** 系统 SHALL 在 Feed 页显示发帖 FAB
+- **AND** 用户点击 FAB 后发帖 SHALL 默认选中当前圈子
+
+#### Scenario: 全部 Feed 页不显示发帖 FAB
+- **WHEN** 用户在圈子选择器中选中「全部」
+- **THEN** 系统 SHALL 在 Feed 页不显示发帖 FAB
+- **AND** 用户可通过其他入口（如圈子详情、创建帖子页）发帖，后续再做优化
+

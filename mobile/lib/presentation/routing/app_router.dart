@@ -21,6 +21,7 @@ import 'package:prismbox/presentation/pages/settings/preferences_page.dart';
 import 'package:prismbox/presentation/pages/settings/language_page.dart';
 import 'package:prismbox/presentation/pages/trash/trash_page.dart';
 import 'package:prismbox/presentation/pages/groups/create_group_page.dart';
+import 'package:prismbox/presentation/pages/groups/group_feed_page.dart';
 import 'package:prismbox/presentation/pages/groups/group_list_page.dart';
 import 'package:prismbox/presentation/pages/groups/group_detail_page.dart';
 import 'package:prismbox/presentation/pages/groups/group_members_page.dart';
@@ -91,8 +92,8 @@ class AppRouter extends _$AppRouter {
           guards: [_authGuard],
         ),
         AutoRoute(
-          page: GroupListRoute.page,
-          path: 'groups', // 子路由路径不能以 "/" 开头
+          page: GroupFeedRoute.page,
+          path: 'groups', // Tab 默认进入 Feed 页
           guards: [_authGuard],
         ),
       ],
@@ -172,10 +173,10 @@ class AppRouter extends _$AppRouter {
       guards: [_authGuard],
     ),
 
-    // 圈子列表页面（需要认证）
+    // 圈子列表页面（需要认证）- 供 Feed 页「我的圈子」跳转
     AutoRoute(
       page: GroupListRoute.page,
-      path: '/groups',
+      path: '/groups/list',
       guards: [_authGuard],
     ),
 

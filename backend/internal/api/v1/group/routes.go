@@ -31,6 +31,8 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 		groupRoutes.POST("", handler.CreateGroup)
 		groupRoutes.GET("", handler.GetMyGroups)
 		groupRoutes.POST("/join", handler.JoinGroup)
+		// 全部圈子 Feed 必须在 GET /:uuid 之前注册，否则 "feed" 会被当作 uuid 匹配
+		groupRoutes.GET("/feed", handler.GetMyFeed)
 		groupRoutes.POST("/:uuid/leave", handler.LeaveGroup)
 		groupRoutes.GET("/:uuid", handler.GetGroupDetails)
 		groupRoutes.PUT("/:uuid", handler.UpdateGroup)

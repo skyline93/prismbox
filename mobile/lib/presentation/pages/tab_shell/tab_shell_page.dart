@@ -256,7 +256,7 @@ class _TabShellPageState extends ConsumerState<TabShellPage>
       routes: [
         const MainTimelineRoute(),
         const AlbumsRoute(),
-        const GroupListRoute(),
+        const GroupFeedRoute(),
       ],
       duration: const Duration(milliseconds: 600),
       transitionBuilder: (context, child, animation) =>

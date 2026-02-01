@@ -71,6 +71,12 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    GroupFeedRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const GroupFeedPage(),
+      );
+    },
     GroupListRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -363,6 +369,20 @@ class GroupDetailRouteArgs {
   String toString() {
     return 'GroupDetailRouteArgs{key: $key, groupUuid: $groupUuid}';
   }
+}
+
+/// generated route for
+/// [GroupFeedPage]
+class GroupFeedRoute extends PageRouteInfo<void> {
+  const GroupFeedRoute({List<PageRouteInfo>? children})
+      : super(
+          GroupFeedRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'GroupFeedRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for

@@ -105,6 +105,22 @@ class PostService {
   /// 获取圈子 Feed 流
   /// 
   /// [groupUuid] 圈子 UUID
+  /// 获取全部圈子 Feed 流（当前用户加入的所有圈子的帖子混排）
+  Future<List<Post>> getMyFeed({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    _log.info('[PostService] getMyFeed() called: page=$page, limit=$limit');
+    try {
+      final posts = await _apiClient.getMyFeed(page: page, limit: limit);
+      _log.info('[PostService] getMyFeed returned ${posts.length} posts');
+      return posts;
+    } catch (e, stackTrace) {
+      _log.severe('[PostService] Failed to fetch my feed: $e', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// [page] 页码（从 1 开始，默认 1）
   /// [limit] 每页数量（默认 20）
   /// 

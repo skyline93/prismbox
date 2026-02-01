@@ -38,6 +38,38 @@ class PostApiClient {
     }
   }
 
+  /// 获取全部圈子 Feed 流（当前用户加入的所有圈子的帖子混排）
+  Future<List<Post>> getMyFeed({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    _log.info('[PostApiClient] getMyFeed() called: page=$page, limit=$limit');
+    try {
+      const url = '/api/v1/groups/feed';
+      final response = await _apiService.dio.get(
+        url,
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      final data = response.data;
+      if (data is List) {
+        return data
+            .map((json) => Post.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+      if (data is Map<String, dynamic>) {
+        final listData = data['data'] as List?;
+        if (listData != null) {
+          return listData
+              .map((json) => Post.fromJson(json as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      return [];
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// 获取圈子 Feed 流
   Future<List<Post>> getGroupFeed({
     required String groupUuid,

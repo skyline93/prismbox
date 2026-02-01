@@ -12,6 +12,10 @@ class Post {
   final List<PostMedia> media;
   final int likesCount;
   final int commentsCount;
+  /// 所属圈子 UUID（全部 Feed 必带，单圈 Feed 可选）
+  final String? groupUuid;
+  /// 所属圈子名称（全部 Feed 必带，单圈 Feed 可选）
+  final String? groupName;
 
   Post({
     required this.id,
@@ -21,6 +25,8 @@ class Post {
     required this.media,
     required this.likesCount,
     required this.commentsCount,
+    this.groupUuid,
+    this.groupName,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -35,6 +41,8 @@ class Post {
           [],
       likesCount: json['likes_count'] as int? ?? 0,
       commentsCount: json['comments_count'] as int? ?? 0,
+      groupUuid: json['group_uuid'] as String?,
+      groupName: json['group_name'] as String?,
     );
   }
 
@@ -47,6 +55,8 @@ class Post {
       'media': media.map((m) => m.toJson()).toList(),
       'likes_count': likesCount,
       'comments_count': commentsCount,
+      if (groupUuid != null) 'group_uuid': groupUuid,
+      if (groupName != null) 'group_name': groupName,
     };
   }
 }

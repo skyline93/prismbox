@@ -71,6 +71,8 @@ type Service interface {
 	CreatePost(ctx context.Context, groupUUID string, userID uint, mediaUUIDs []string, caption string) (*models.GroupPost, error)
 	// GetGroupFeed 获取圈子Feed流
 	GetGroupFeed(ctx context.Context, groupUUID string, userID uint, page, pageSize int) (*GroupFeedResult, error)
+	// GetMyFeed 获取全部圈子Feed流（当前用户加入的所有圈子的帖子混排）
+	GetMyFeed(ctx context.Context, userID uint, page, pageSize int) (*GroupFeedResult, error)
 	// AddComment 添加评论
 	AddComment(ctx context.Context, postID uint, userID uint, content string, parentCommentID *uint) (*CommentInfo, error)
 	// GetComments 获取评论列表
@@ -124,6 +126,9 @@ type GroupPostInfo struct {
 	Media         []*MediaInfo    `json:"media"`
 	LikesCount    int64           `json:"likes_count"`
 	CommentsCount int64           `json:"comments_count"`
+	// 所属圈子信息：全部 Feed 必填，单圈 Feed 可选填便于前端统一模型
+	GroupUUID string `json:"group_uuid,omitempty"`
+	GroupName string `json:"group_name,omitempty"`
 }
 
 // UserSimpleInfo 用户简单信息
@@ -687,7 +692,7 @@ func (s *service) GetGroupFeed(ctx context.Context, groupUUID string, userID uin
 			creatorInfo.AvatarURL = s.avatarBaseURL + post.Creator.Avatar
 		}
 
-		result[i] = &GroupPostInfo{
+		info := &GroupPostInfo{
 			ID:            post.ID,
 			Caption:       post.Caption,
 			CreatedAt:     post.CreatedAt,
@@ -696,6 +701,157 @@ func (s *service) GetGroupFeed(ctx context.Context, groupUUID string, userID uin
 			LikesCount:    likesCountMap[post.ID],
 			CommentsCount: commentsCountMap[post.ID],
 		}
+		// 单圈 Feed 可选带当前圈子信息，便于前端与全部 Feed 使用同一 Post 模型
+		info.GroupUUID = group.UUID
+		info.GroupName = group.Name
+		result[i] = info
+	}
+
+	return &GroupFeedResult{
+		Posts: result,
+		Total: len(result),
+		Page:  page,
+		Limit: pageSize,
+	}, nil
+}
+
+func (s *service) GetMyFeed(ctx context.Context, userID uint, page, pageSize int) (*GroupFeedResult, error) {
+	groups, err := s.groupRepo.FindByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user groups: %w", err)
+	}
+	if len(groups) == 0 {
+		return &GroupFeedResult{
+			Posts: []*GroupPostInfo{},
+			Total: 0,
+			Page:  page,
+			Limit: pageSize,
+		}, nil
+	}
+
+	groupIDs := make([]uint, len(groups))
+	groupMap := make(map[uint]*models.Group)
+	for i, g := range groups {
+		groupIDs[i] = g.ID
+		groupMap[g.ID] = g
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	posts, err := s.groupPostRepo.FindByGroupIDs(ctx, groupIDs, pageSize, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get posts: %w", err)
+	}
+	if len(posts) == 0 {
+		return &GroupFeedResult{
+			Posts: []*GroupPostInfo{},
+			Total: 0,
+			Page:  page,
+			Limit: pageSize,
+		}, nil
+	}
+
+	postIDs := make([]uint, len(posts))
+	for i, p := range posts {
+		postIDs[i] = p.ID
+	}
+
+	var allGroupMedias []*models.GroupMedia
+	for _, postID := range postIDs {
+		medias, err := s.groupMediaRepo.FindByPostID(ctx, postID)
+		if err == nil {
+			allGroupMedias = append(allGroupMedias, medias...)
+		}
+	}
+
+	mediaUUIDs := make([]string, 0, len(allGroupMedias))
+	for _, gm := range allGroupMedias {
+		mediaUUIDs = append(mediaUUIDs, gm.MediaUUID)
+	}
+
+	mediaMap := make(map[string]*models.Media)
+	for _, mediaUUID := range mediaUUIDs {
+		media, err := s.mediaRepo.FindByUUID(ctx, mediaUUID)
+		if err == nil {
+			mediaMap[mediaUUID] = media
+		}
+	}
+
+	likesCountMap, err := s.likeRepo.CountByPostIDs(ctx, postIDs)
+	if err != nil {
+		likesCountMap = make(map[uint]int64)
+	}
+
+	commentsCountMap := make(map[uint]int64)
+	for _, postID := range postIDs {
+		count, err := s.commentRepo.CountByPostID(ctx, postID)
+		if err == nil {
+			commentsCountMap[postID] = count
+		}
+	}
+
+	postMediaMap := make(map[uint][]*MediaInfo)
+	for _, gm := range allGroupMedias {
+		group := groupMap[gm.GroupID]
+		if group == nil {
+			continue
+		}
+		groupUUID := group.UUID
+		if media, ok := mediaMap[gm.MediaUUID]; ok {
+			mediaInfo := &MediaInfo{
+				UUID:             media.UUID,
+				Filename:         media.Filename,
+				OriginalFilename: media.OriginalFilename,
+				ItemType:         media.ItemType,
+				Hash:             media.Hash,
+				Width:            media.Width,
+				Height:           media.Height,
+				CreatedAt:        media.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:        media.UpdatedAt.Format(time.RFC3339),
+			}
+			if media.MediaTakenAt != nil {
+				takenAt := media.MediaTakenAt.Format(time.RFC3339)
+				mediaInfo.MediaTakenAt = &takenAt
+			}
+			if s.urlBuilder != nil {
+				mediaInfo.ThumbnailURL = s.urlBuilder.BuildGroupMediaURL(groupUUID, media.UUID)
+				mediaInfo.PreviewURL = s.urlBuilder.BuildGroupMediaPreviewURL(groupUUID, media.UUID)
+				mediaInfo.DownloadURL = s.urlBuilder.BuildMediaDownloadURL(media.UUID)
+			}
+			postMediaMap[gm.PostID] = append(postMediaMap[gm.PostID], mediaInfo)
+		}
+	}
+
+	result := make([]*GroupPostInfo, len(posts))
+	for i, post := range posts {
+		creatorInfo := &UserSimpleInfo{
+			UserID:   post.Creator.ID,
+			Username: post.Creator.Username,
+		}
+		if post.Creator.Avatar != "" {
+			creatorInfo.AvatarURL = s.avatarBaseURL + post.Creator.Avatar
+		}
+		group := groupMap[post.GroupID]
+		info := &GroupPostInfo{
+			ID:            post.ID,
+			Caption:       post.Caption,
+			CreatedAt:     post.CreatedAt,
+			Creator:       creatorInfo,
+			Media:         postMediaMap[post.ID],
+			LikesCount:    likesCountMap[post.ID],
+			CommentsCount: commentsCountMap[post.ID],
+		}
+		if group != nil {
+			info.GroupUUID = group.UUID
+			info.GroupName = group.Name
+		}
+		result[i] = info
 	}
 
 	return &GroupFeedResult{
