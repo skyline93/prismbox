@@ -59,7 +59,7 @@ func main() {
 	loader := config.NewLoader(configPath)
 	loader.BindPFlags(flags) // 绑定命令行参数
 
-	cfg, err := loader.Load()
+	cfg, err := loader.Load(flags)
 	if err != nil {
 		log.Fatalf("Could not load config: %v", err)
 	}

@@ -3,3 +3,4 @@ bin/
 uploads/
 data/
 .env
+configs/

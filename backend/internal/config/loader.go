@@ -17,6 +17,7 @@ import (
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -55,10 +56,12 @@ func (l *Loader) BindPFlags(flags *pflag.FlagSet) {
 	_ = l.v.BindPFlags(flags)
 }
 
-// Load 加载配置
-// 优先级：命令行参数 > 环境变量 > 配置文件 > 默认值
-// 如果配置文件不存在，会自动生成一份默认配置文件
-func (l *Loader) Load() (*Config, error) {
+// Load 加载配置。
+// 优先级：命令行参数（仅当显式传入）> 环境变量 > 配置文件 > 默认值。
+// 未显式设置的命令行 flag 不会以其默认值覆盖配置文件或环境变量（即仅当用户传入如 --server.public_base_url 时命令行才覆盖）；传入 flags 为 nil 时仍会从配置文件或环境变量补全。
+// 自定义类型（types.Duration、types.Size）在 Unmarshal 阶段通过 DecodeHook 统一解析，所有需合并字段均带 mapstructure tag，仅此一条解析路径，无 bindCustomTypes 等第二套逻辑。
+// 如果配置文件不存在，会自动生成一份默认配置文件。
+func (l *Loader) Load(flags *pflag.FlagSet) (*Config, error) {
 	// 1. 先创建完整默认配置
 	cfg := l.defaultConfig()
 
@@ -80,22 +83,62 @@ func (l *Loader) Load() (*Config, error) {
 		}
 	}
 
-	// 3. 使用 Viper 的 Unmarshal 自动覆盖存在的字段
-	// Viper 的 Unmarshal 会通过反射遍历结构体字段，对每个字段调用 Get 方法
-	// Get 方法会触发 AutomaticEnv() 的查找，因此环境变量会自动生效
-	// 优先级：命令行参数 > 环境变量 > 配置文件 > 默认值
-	if err := l.v.Unmarshal(cfg); err != nil {
+	// 3. 使用 Viper 的 Unmarshal 覆盖存在的字段；自定义类型（Duration、Size）在 Unmarshal 阶段通过 DecodeHook 统一解析，所有需合并字段均带 mapstructure tag，仅此一条解析路径。
+	if err := l.v.Unmarshal(cfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		decodeHookDurationAndSize(),
+	))); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
-	// 4. 处理自定义类型（Duration 和 Size）
-	// 因为 Viper 可能无法直接处理这些自定义类型，需要手动转换
-	if err := l.bindCustomTypes(cfg); err != nil {
-		return nil, fmt.Errorf("bind custom types: %w", err)
+	// 4. 未显式设置的 flag 不覆盖 config/env：仅当用户显式传入该参数时才用 flag 值；否则从配置文件或环境变量补全（保证「仅 env」或「仅文件」均生效）
+	if cfg.Server != nil {
+		useFlag := flags != nil && flags.Changed("server.public_base_url")
+		if !useFlag {
+			if v := l.getFromConfigOrEnv("server.public_base_url"); v != "" {
+				cfg.Server.PublicBaseURL = v
+			}
+		}
 	}
 
-	// 不再验证，让运行时错误自然暴露
 	return cfg, nil
+}
+
+// decodeHookDurationAndSize 将配置中的字符串解码为 types.Duration 与 types.Size，供 Viper Unmarshal 使用，使自定义类型与其它字段在同一阶段完成合并。
+func decodeHookDurationAndSize() mapstructure.DecodeHookFunc {
+	return func(f, t reflect.Type, data interface{}) (interface{}, error) {
+		if f != nil && f.Kind() != reflect.String {
+			return data, nil
+		}
+		s, _ := data.(string)
+		if t == reflect.TypeOf(types.Duration(0)) {
+			d, err := time.ParseDuration(s)
+			if err != nil {
+				return nil, err
+			}
+			return types.Duration(d), nil
+		}
+		if t == reflect.TypeOf(types.Size(0)) {
+			n, err := parseSizeString(s)
+			if err != nil {
+				return nil, err
+			}
+			return types.Size(n), nil
+		}
+		return data, nil
+	}
+}
+
+// getFromConfigOrEnv 从仅包含配置文件与环境变量的 Viper 中读取 key（不包含已绑定的 flag），用于「未显式设置的 flag 不覆盖」时的还原。
+func (l *Loader) getFromConfigOrEnv(key string) string {
+	v := viper.New()
+	v.SetEnvPrefix("ALBUM")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	v.SetConfigFile(l.configPath)
+	_ = v.ReadInConfig() // 忽略错误，无文件时仅依赖 env
+	return v.GetString(key)
 }
 
 // isFileNotFoundError 检查错误是否是文件不存在的错误
@@ -107,89 +150,7 @@ func (l *Loader) isFileNotFoundError(err error) bool {
 		(errors.As(err, &pathErr) && os.IsNotExist(pathErr.Err))
 }
 
-// bindCustomTypes 处理自定义类型（Duration 和 Size）
-// 从 Viper 读取字符串值，然后转换为自定义类型
-func (l *Loader) bindCustomTypes(cfg *Config) error {
-	// 使用反射遍历配置结构体，处理 Duration 和 Size 字段
-	return l.bindCustomTypesRecursive(cfg, "")
-}
-
-// bindCustomTypesRecursive 递归处理自定义类型
-func (l *Loader) bindCustomTypesRecursive(v interface{}, prefix string) error {
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		if val.IsNil() {
-			return nil
-		}
-		val = val.Elem()
-	}
-
-	if val.Kind() != reflect.Struct {
-		return nil
-	}
-
-	typ := val.Type()
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		fieldType := typ.Field(i)
-
-		// 跳过不可设置的字段
-		if !field.CanSet() {
-			continue
-		}
-
-		// 获取字段的 YAML 标签
-		yamlTag := fieldType.Tag.Get("yaml")
-		if yamlTag == "" || yamlTag == "-" {
-			continue
-		}
-
-		// 构建配置路径
-		fieldPath := yamlTag
-		if prefix != "" {
-			fieldPath = prefix + "." + yamlTag
-		}
-
-		// 处理指针字段
-		if field.Kind() == reflect.Ptr {
-			if field.IsNil() {
-				continue
-			}
-			field = field.Elem()
-		}
-
-		// 处理 Duration 类型
-		if field.Type() == reflect.TypeOf(types.Duration(0)) {
-			if str := l.v.GetString(fieldPath); str != "" {
-				if d, err := time.ParseDuration(str); err == nil {
-					field.Set(reflect.ValueOf(types.Duration(d)))
-				}
-			}
-			continue
-		}
-
-		// 处理 Size 类型
-		if field.Type() == reflect.TypeOf(types.Size(0)) {
-			if str := l.v.GetString(fieldPath); str != "" {
-				if size, err := parseSizeString(str); err == nil {
-					field.Set(reflect.ValueOf(types.Size(size)))
-				}
-			}
-			continue
-		}
-
-		// 递归处理嵌套结构
-		if field.Kind() == reflect.Struct {
-			if err := l.bindCustomTypesRecursive(field.Addr().Interface(), fieldPath); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// parseSizeString 解析大小字符串（如 "1GB", "500MB"）
+// parseSizeString 解析大小字符串（如 "1GB", "500MB"），供 DecodeHook 与 YAML 序列化复用。
 func parseSizeString(s string) (int64, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToUpper(s)

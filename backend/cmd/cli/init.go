@@ -91,7 +91,7 @@ func newInitConfigCommand() *cli.Command {
 			}
 
 			loader := config.NewLoader(cfgPath)
-			cfg, err := loader.Load()
+			cfg, err := loader.Load(nil)
 			if err != nil {
 				return fmt.Errorf("加载默认配置失败: %w", err)
 			}
@@ -394,7 +394,7 @@ func newInitMigrateCommand() *cli.Command {
 func loadConfigFromContext(c *cli.Context) (*config.Config, error) {
 	cfgPath := c.String("config")
 	loader := config.NewLoader(cfgPath)
-	return loader.Load()
+	return loader.Load(nil)
 }
 
 func applyInitConfigOverrides(cfg *config.Config, c *cli.Context) error {
