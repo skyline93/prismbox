@@ -125,7 +125,8 @@ class _PhotoViewerPageState extends State<PhotoViewerPage>
       onVerticalDragStart: _onVerticalDragStart,
       onVerticalDragUpdate: _onVerticalDragUpdate,
       onVerticalDragEnd: _onVerticalDragEnd,
-      child: Scaffold(
+        child: Scaffold(
+        extendBodyBehindAppBar: true,
         // 背景颜色会随着拖动而变化
         backgroundColor: Colors.black.withOpacity(backgroundOpacity),
         // AppBar 也随着拖动而渐隐
