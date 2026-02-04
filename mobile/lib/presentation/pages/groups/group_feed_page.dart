@@ -128,21 +128,75 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
         ? '全部动态'
         : (selectedGroup?.name ?? '圈子');
 
+    final toolbarHeight = kToolbarHeight;
+    // SafeArea(top: true) so the pinned circle bar stays below the status bar when scrolled up.
+    final topPadding = 0.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          appBarTitle,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildTopBar(context, appBarTitle, topPadding, toolbarHeight),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _GroupSelectorSliverDelegate(
+                  groups: groups,
+                  selectedGroupUuid: _selectedGroupUuid,
+                  onSelectGroup: _onSelectGroup,
+                ),
+              ),
+              ..._buildFeedSlivers(context, groups, feedAsync),
+            ],
           ),
         ),
-        actions: [
+      ),
+      floatingActionButton: _selectedGroupUuid != null && _isFabVisible
+          ? FloatingActionButton(
+              onPressed: _showCreatePost,
+              tooltip: '发帖',
+              shape: const CircleBorder(),
+              child: const Icon(Icons.border_color),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildTopBar(
+    BuildContext context,
+    String appBarTitle,
+    double topPadding,
+    double toolbarHeight,
+  ) {
+    return Container(
+      height: topPadding + toolbarHeight,
+      color: Colors.white,
+      padding: EdgeInsets.only(top: topPadding),
+      child: Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Text(
+                  appBarTitle,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
           TextButton.icon(
             icon: const Icon(Icons.list, size: 18),
             label: const Text('我的圈子'),
@@ -157,131 +211,133 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
           ),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildGroupSelector(groups),
-          Expanded(
-            child: _buildBody(groups, feedAsync),
-          ),
-        ],
-      ),
-      floatingActionButton: _selectedGroupUuid != null && _isFabVisible
-          ? FloatingActionButton(
-              onPressed: _showCreatePost,
-              tooltip: '发帖',
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 
-  Widget _buildGroupSelector(List<Group> groups) {
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: [
-          _buildChip('全部', selected: _selectedGroupUuid == null, onTap: () => _onSelectGroup(null)),
-          ...groups.map<Widget>((g) => _buildChip(
-                g.name,
-                selected: _selectedGroupUuid == g.uuid,
-                onTap: () => _onSelectGroup(g.uuid),
-              )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChip(String label, {required bool selected, required VoidCallback onTap}) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      ),
-    );
-  }
-
-  Widget _buildBody(List<Group> groups, AsyncValue<List<Post>> feedAsync) {
+  List<Widget> _buildFeedSlivers(
+    BuildContext context,
+    List<Group> groups,
+    AsyncValue<List<Post>> feedAsync,
+  ) {
     if (groups.isEmpty && !feedAsync.isLoading) {
-      return _buildNoGroupsEmpty();
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildNoGroupsEmpty(),
+        ),
+      ];
     }
     return feedAsync.when(
       data: (posts) {
         if (posts.isEmpty) {
-          return _buildNoPostsEmpty();
-        }
-        return RefreshIndicator(
-          onRefresh: _onRefresh,
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.only(bottom: 24),
-            itemCount: posts.length + (_isLoadingMore ? 1 : 0) + (!_hasMore && posts.isNotEmpty ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == posts.length && _isLoadingMore) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (index == posts.length + (_isLoadingMore ? 1 : 0) && !_hasMore && posts.isNotEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      '没有更多内容了',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                    ),
-                  ),
-                );
-              }
-              final post = posts[index];
-              return PostCard(
-                post: post,
-                onTap: () {
-                  final uuid = post.groupUuid ?? _selectedGroupUuid;
-                  if (uuid != null) {
-                    context.router.push(PostDetailRoute(groupUuid: uuid, postId: post.id));
-                  }
-                },
-                onCommentTap: () {
-                  final uuid = post.groupUuid ?? _selectedGroupUuid;
-                  if (uuid != null) {
-                    context.router.push(PostDetailRoute(groupUuid: uuid, postId: post.id));
-                  }
-                },
-                onGroupTap: post.groupUuid != null && post.groupName != null
-                    ? () => _onSelectGroup(post.groupUuid)
-                    : null,
-              );
-            },
-          ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('加载失败: $err', style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                if (_selectedGroupUuid == null) {
-                  ref.read(allGroupsFeedProviderProvider.notifier).refresh();
-                } else {
-                  ref.read(groupFeedProviderProvider(_selectedGroupUuid!).notifier).refresh();
-                }
-              },
-              child: const Text('重试'),
+          return [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildNoPostsEmpty(),
             ),
-          ],
+          ];
+        }
+        return [
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == posts.length && _isLoadingMore) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (index ==
+                          posts.length + (_isLoadingMore ? 1 : 0) &&
+                      !_hasMore &&
+                      posts.isNotEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          '没有更多内容了',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final post = posts[index];
+                  return PostCard(
+                    post: post,
+                    onTap: () {
+                      final uuid =
+                          post.groupUuid ?? _selectedGroupUuid;
+                      if (uuid != null) {
+                        context.router.push(PostDetailRoute(
+                            groupUuid: uuid, postId: post.id));
+                      }
+                    },
+                    onCommentTap: () {
+                      final uuid =
+                          post.groupUuid ?? _selectedGroupUuid;
+                      if (uuid != null) {
+                        context.router.push(PostDetailRoute(
+                            groupUuid: uuid, postId: post.id));
+                      }
+                    },
+                    onGroupTap: post.groupUuid != null &&
+                            post.groupName != null
+                        ? () => _onSelectGroup(post.groupUuid)
+                        : null,
+                  );
+                },
+                childCount: posts.length +
+                    (_isLoadingMore ? 1 : 0) +
+                    (!_hasMore && posts.isNotEmpty ? 1 : 0),
+              ),
+            ),
+          ),
+        ];
+      },
+      loading: () => [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: const Center(child: CircularProgressIndicator()),
         ),
-      ),
+      ],
+      error: (err, _) => [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '加载失败: $err',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    if (_selectedGroupUuid == null) {
+                      ref
+                          .read(allGroupsFeedProviderProvider.notifier)
+                          .refresh();
+                    } else {
+                      ref
+                          .read(groupFeedProviderProvider(
+                              _selectedGroupUuid!)
+                              .notifier)
+                          .refresh();
+                    }
+                  },
+                  child: const Text('重试'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -333,5 +389,73 @@ class _GroupFeedPageState extends ConsumerState<GroupFeedPage> {
         ],
       ),
     );
+  }
+}
+
+/// [SliverPersistentHeaderDelegate] that paints the group selector (全部 + chips).
+/// Pinned so it stays at the top when the user scrolls up.
+class _GroupSelectorSliverDelegate extends SliverPersistentHeaderDelegate {
+  _GroupSelectorSliverDelegate({
+    required this.groups,
+    required this.selectedGroupUuid,
+    required this.onSelectGroup,
+  });
+
+  final List<Group> groups;
+  final String? selectedGroupUuid;
+  final void Function(String? uuid) onSelectGroup;
+
+  static const double _height = 44;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      height: _height,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('全部'),
+              selected: selectedGroupUuid == null,
+              onSelected: (_) => onSelectGroup(null),
+            ),
+          ),
+          ...groups.map<Widget>(
+            (g) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(g.name),
+                selected: selectedGroupUuid == g.uuid,
+                onSelected: (_) => onSelectGroup(g.uuid),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _GroupSelectorSliverDelegate old) {
+    return old.selectedGroupUuid != selectedGroupUuid ||
+        !const ListEquality().equals(
+          old.groups.map((e) => e.uuid).toList(),
+          groups.map((e) => e.uuid).toList(),
+        );
   }
 }
