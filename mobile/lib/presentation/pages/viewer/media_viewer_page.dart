@@ -41,7 +41,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   late int _initialIndex;
   bool _showControls = true;
   bool _isZoomed = false;
-  Timer? _controlsTimer;
+
+  // 用于抑制长按播放 Live 后松手产生的「伪点击」导致的下一次控制栏切换
+  bool _suppressNextToggleControls = false;
 
   // 视频管理器
   late ViewerVideoManager _videoManager;
@@ -82,9 +84,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       widget.assetIds.length,
     );
 
-    // 自动隐藏控制栏
-    _startControlsTimer();
-
     // 如果初始项是视频，标记为当前视频（会在 build 后自动播放）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_assetMap != null && _initialIndex < widget.assetIds.length) {
@@ -99,7 +98,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   @override
   void dispose() {
-    _controlsTimer?.cancel();
     _pageController.dispose();
 
     // 注意：不再需要释放 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller
@@ -271,14 +269,28 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                       serverUrl: _serverUrl,
                       assetEntityLoader: _assetEntityLoader,
                       onTap: _toggleControls,
+                      // Live Photo 支持长按播放：与控制栏的播放按钮复用同一状态
+                      onLongPress: asset.isMotionPhoto
+                          ? () {
+                              final next =
+                                  !ref.read(isPlayingMotionVideoProvider);
+                              ref
+                                  .read(isPlayingMotionVideoProvider.notifier)
+                                  .state = next;
+                              if (next) {
+                                // 本次交互是「长按开始播放」，抑制随后的那次 onTap 切换控制栏
+                                _suppressNextToggleControls = true;
+                                ref
+                                    .read(
+                                      currentVideoAssetIdProvider.notifier,
+                                    )
+                                    .state = assetId;
+                              }
+                            }
+                          : null,
                       onScaleStateChanged: (PhotoViewScaleState state) {
                         setState(() {
                           _isZoomed = state != PhotoViewScaleState.initial;
-                          if (_isZoomed) {
-                            _hideControls();
-                          } else {
-                            _startControlsTimer();
-                          }
                         });
                       },
                     );
@@ -388,41 +400,21 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     setState(() {
       _isZoomed = false;
     });
-    _resetControlsTimer();
   }
 
   void _toggleControls() {
+    // 若刚刚通过长按触发了 Live 播放，忽略紧接着的一次切换请求，保持当前控制栏状态不变
+    if (_suppressNextToggleControls) {
+      _suppressNextToggleControls = false;
+      return;
+    }
+
     setState(() {
       _showControls = !_showControls;
     });
-    if (_showControls) {
-      _startControlsTimer();
-    } else {
-      _hideControls();
-    }
-  }
-
-  void _hideControls() {
-    setState(() {
-      _showControls = false;
-    });
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-  }
-
-  void _startControlsTimer() {
-    _controlsTimer?.cancel();
-    _controlsTimer = Timer(const Duration(seconds: 3), () {
-      if (!_isZoomed) {
-        _hideControls();
-      }
-    });
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  }
-
-  void _resetControlsTimer() {
-    if (_showControls) {
-      _startControlsTimer();
-    }
+    SystemChrome.setEnabledSystemUIMode(
+      _showControls ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
+    );
   }
 
   /// 获取当前资产的收藏状态
