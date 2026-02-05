@@ -364,7 +364,7 @@ class _VideoIndicatorWithAsset extends StatelessWidget {
   static const _padding = EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0);
   static const _iconColor = Color.fromRGBO(255, 255, 255, 1.0);
   static const _textColor = Color.fromRGBO(255, 255, 255, 1.0);
-  static const _backgroundColor = Color.fromRGBO(0, 0, 0, 0.6);
+  static const _backgroundColor = Colors.transparent;
   static const _shadow = Shadow(
     blurRadius: 2.0,
     color: Color.fromRGBO(0, 0, 0, 0.8),
