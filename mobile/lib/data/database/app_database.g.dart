@@ -5109,6 +5109,12 @@ class $UploadTaskEntityTable extends UploadTaskEntity
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _livePhotoMetadataJsonMeta =
+      const VerificationMeta('livePhotoMetadataJson');
+  @override
+  late final GeneratedColumn<String> livePhotoMetadataJson =
+      GeneratedColumn<String>('live_photo_metadata_json', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -5127,7 +5133,8 @@ class $UploadTaskEntityTable extends UploadTaskEntity
         uploadedAt,
         createdAt,
         updatedAt,
-        progress
+        progress,
+        livePhotoMetadataJson
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5227,6 +5234,12 @@ class $UploadTaskEntityTable extends UploadTaskEntity
       context.handle(_progressMeta,
           progress.isAcceptableOrUnknown(data['progress']!, _progressMeta));
     }
+    if (data.containsKey('live_photo_metadata_json')) {
+      context.handle(
+          _livePhotoMetadataJsonMeta,
+          livePhotoMetadataJson.isAcceptableOrUnknown(
+              data['live_photo_metadata_json']!, _livePhotoMetadataJsonMeta));
+    }
     return context;
   }
 
@@ -5272,6 +5285,9 @@ class $UploadTaskEntityTable extends UploadTaskEntity
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       progress: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}progress'])!,
+      livePhotoMetadataJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}live_photo_metadata_json']),
     );
   }
 
@@ -5340,6 +5356,17 @@ class UploadTaskEntityData extends DataClass
 
   /// 进度百分比（0-100）
   final int progress;
+
+  /// Live Photo 任务元数据（JSON 字符串）
+  ///
+  /// 用于存储与 Live Photo 成对上传相关的额外信息，例如：
+  /// - 本地资产 ID（冗余，便于从任务直接恢复上下文）
+  /// - 是否为 Live Photo
+  /// - 子任务类型（video / image）
+  /// - 已上传的视频资产远程 ID（remoteVideoId）
+  ///
+  /// 对于非 Live Photo 任务，该字段可以为空。
+  final String? livePhotoMetadataJson;
   const UploadTaskEntityData(
       {required this.id,
       required this.userId,
@@ -5357,7 +5384,8 @@ class UploadTaskEntityData extends DataClass
       this.uploadedAt,
       required this.createdAt,
       required this.updatedAt,
-      required this.progress});
+      required this.progress,
+      this.livePhotoMetadataJson});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -5390,6 +5418,9 @@ class UploadTaskEntityData extends DataClass
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['progress'] = Variable<int>(progress);
+    if (!nullToAbsent || livePhotoMetadataJson != null) {
+      map['live_photo_metadata_json'] = Variable<String>(livePhotoMetadataJson);
+    }
     return map;
   }
 
@@ -5418,6 +5449,9 @@ class UploadTaskEntityData extends DataClass
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       progress: Value(progress),
+      livePhotoMetadataJson: livePhotoMetadataJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(livePhotoMetadataJson),
     );
   }
 
@@ -5444,6 +5478,8 @@ class UploadTaskEntityData extends DataClass
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       progress: serializer.fromJson<int>(json['progress']),
+      livePhotoMetadataJson:
+          serializer.fromJson<String?>(json['livePhotoMetadataJson']),
     );
   }
   @override
@@ -5469,6 +5505,8 @@ class UploadTaskEntityData extends DataClass
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'progress': serializer.toJson<int>(progress),
+      'livePhotoMetadataJson':
+          serializer.toJson<String?>(livePhotoMetadataJson),
     };
   }
 
@@ -5489,7 +5527,8 @@ class UploadTaskEntityData extends DataClass
           Value<DateTime?> uploadedAt = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
-          int? progress}) =>
+          int? progress,
+          Value<String?> livePhotoMetadataJson = const Value.absent()}) =>
       UploadTaskEntityData(
         id: id ?? this.id,
         userId: userId ?? this.userId,
@@ -5509,6 +5548,9 @@ class UploadTaskEntityData extends DataClass
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         progress: progress ?? this.progress,
+        livePhotoMetadataJson: livePhotoMetadataJson.present
+            ? livePhotoMetadataJson.value
+            : this.livePhotoMetadataJson,
       );
   UploadTaskEntityData copyWithCompanion(UploadTaskEntityCompanion data) {
     return UploadTaskEntityData(
@@ -5535,6 +5577,9 @@ class UploadTaskEntityData extends DataClass
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       progress: data.progress.present ? data.progress.value : this.progress,
+      livePhotoMetadataJson: data.livePhotoMetadataJson.present
+          ? data.livePhotoMetadataJson.value
+          : this.livePhotoMetadataJson,
     );
   }
 
@@ -5557,7 +5602,8 @@ class UploadTaskEntityData extends DataClass
           ..write('uploadedAt: $uploadedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('progress: $progress')
+          ..write('progress: $progress, ')
+          ..write('livePhotoMetadataJson: $livePhotoMetadataJson')
           ..write(')'))
         .toString();
   }
@@ -5580,7 +5626,8 @@ class UploadTaskEntityData extends DataClass
       uploadedAt,
       createdAt,
       updatedAt,
-      progress);
+      progress,
+      livePhotoMetadataJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5601,7 +5648,8 @@ class UploadTaskEntityData extends DataClass
           other.uploadedAt == this.uploadedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.progress == this.progress);
+          other.progress == this.progress &&
+          other.livePhotoMetadataJson == this.livePhotoMetadataJson);
 }
 
 class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
@@ -5622,6 +5670,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> progress;
+  final Value<String?> livePhotoMetadataJson;
   const UploadTaskEntityCompanion({
     this.id = const Value.absent(),
     this.userId = const Value.absent(),
@@ -5640,6 +5689,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.progress = const Value.absent(),
+    this.livePhotoMetadataJson = const Value.absent(),
   });
   UploadTaskEntityCompanion.insert({
     required String id,
@@ -5659,6 +5709,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.progress = const Value.absent(),
+    this.livePhotoMetadataJson = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
         assetId = Value(assetId),
@@ -5686,6 +5737,7 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? progress,
+    Expression<String>? livePhotoMetadataJson,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5705,6 +5757,8 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (progress != null) 'progress': progress,
+      if (livePhotoMetadataJson != null)
+        'live_photo_metadata_json': livePhotoMetadataJson,
     });
   }
 
@@ -5725,7 +5779,8 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
       Value<DateTime?>? uploadedAt,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
-      Value<int>? progress}) {
+      Value<int>? progress,
+      Value<String?>? livePhotoMetadataJson}) {
     return UploadTaskEntityCompanion(
       id: id ?? this.id,
       userId: userId ?? this.userId,
@@ -5744,6 +5799,8 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       progress: progress ?? this.progress,
+      livePhotoMetadataJson:
+          livePhotoMetadataJson ?? this.livePhotoMetadataJson,
     );
   }
 
@@ -5803,6 +5860,10 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
     if (progress.present) {
       map['progress'] = Variable<int>(progress.value);
     }
+    if (livePhotoMetadataJson.present) {
+      map['live_photo_metadata_json'] =
+          Variable<String>(livePhotoMetadataJson.value);
+    }
     return map;
   }
 
@@ -5825,7 +5886,8 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
           ..write('uploadedAt: $uploadedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('progress: $progress')
+          ..write('progress: $progress, ')
+          ..write('livePhotoMetadataJson: $livePhotoMetadataJson')
           ..write(')'))
         .toString();
   }
@@ -9296,6 +9358,7 @@ typedef $$UploadTaskEntityTableCreateCompanionBuilder
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> progress,
+  Value<String?> livePhotoMetadataJson,
 });
 typedef $$UploadTaskEntityTableUpdateCompanionBuilder
     = UploadTaskEntityCompanion Function({
@@ -9316,6 +9379,7 @@ typedef $$UploadTaskEntityTableUpdateCompanionBuilder
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> progress,
+  Value<String?> livePhotoMetadataJson,
 });
 
 class $$UploadTaskEntityTableTableManager extends RootTableManager<
@@ -9353,6 +9417,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> progress = const Value.absent(),
+            Value<String?> livePhotoMetadataJson = const Value.absent(),
           }) =>
               UploadTaskEntityCompanion(
             id: id,
@@ -9372,6 +9437,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             progress: progress,
+            livePhotoMetadataJson: livePhotoMetadataJson,
           ),
           createCompanionCallback: ({
             required String id,
@@ -9391,6 +9457,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             required DateTime createdAt,
             required DateTime updatedAt,
             Value<int> progress = const Value.absent(),
+            Value<String?> livePhotoMetadataJson = const Value.absent(),
           }) =>
               UploadTaskEntityCompanion.insert(
             id: id,
@@ -9410,6 +9477,7 @@ class $$UploadTaskEntityTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             progress: progress,
+            livePhotoMetadataJson: livePhotoMetadataJson,
           ),
         ));
 }
@@ -9498,6 +9566,11 @@ class $$UploadTaskEntityTableFilterComposer
 
   ColumnFilters<int> get progress => $state.composableBuilder(
       column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get livePhotoMetadataJson => $state.composableBuilder(
+      column: $state.table.livePhotoMetadataJson,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -9594,6 +9667,11 @@ class $$UploadTaskEntityTableOrderingComposer
 
   ColumnOrderings<int> get progress => $state.composableBuilder(
       column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get livePhotoMetadataJson => $state.composableBuilder(
+      column: $state.table.livePhotoMetadataJson,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

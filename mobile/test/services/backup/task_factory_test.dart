@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/migration_status.dart';
@@ -9,11 +10,13 @@ import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/infrastructure/asset/asset_path_resolver.dart';
 import 'package:prismbox/services/backup/file_metadata_extractor.dart';
+import 'package:prismbox/services/backup/models/live_photo_upload_metadata.dart';
 import 'package:prismbox/services/backup/task_factory.dart';
 
 // Mock classes
 class MockAssetPathResolver implements AssetPathResolver {
   final Map<String, String?> _pathMap = {};
+  final Map<String, String?> _livePhotoVideoPathMap = {};
   final AppDatabase? database;
 
   MockAssetPathResolver({this.database});
@@ -22,9 +25,20 @@ class MockAssetPathResolver implements AssetPathResolver {
     _pathMap[assetId] = path;
   }
 
+  void setLivePhotoVideoPath(String imageAssetId, String? path) {
+    _livePhotoVideoPathMap[imageAssetId] = path;
+  }
+
   @override
   Future<String?> resolveAssetPath(LocalAssetEntityData asset) async {
     return _pathMap[asset.id];
+  }
+
+  @override
+  Future<String?> resolveLivePhotoVideoPath(
+    LocalAssetEntityData imageAsset,
+  ) async {
+    return _livePhotoVideoPathMap[imageAsset.id];
   }
 
   @override
@@ -51,12 +65,15 @@ void main() {
   group('TaskFactory', () {
     late MockAssetPathResolver mockPathResolver;
     late MockFileMetadataExtractor mockMetadataExtractor;
+    late AppDatabase database;
     late TaskFactory taskFactory;
 
     setUp(() {
       mockPathResolver = MockAssetPathResolver();
       mockMetadataExtractor = MockFileMetadataExtractor();
+      database = AppDatabase(NativeDatabase.memory());
       taskFactory = TaskFactory(
+        database: database,
         pathResolver: mockPathResolver,
         metadataExtractor: mockMetadataExtractor,
       );
@@ -206,6 +223,77 @@ void main() {
 
         // Assert
         expect(task, isNull);
+      });
+    });
+
+    group('Live Photo', () {
+      test('识别 Live Photo 主图并仅创建视频任务元数据', () async {
+        // Arrange
+        // 插入 Live Photo 对应的视频本地资产
+        final videoAsset = LocalAssetEntityData(
+          id: 'video_asset_id',
+          name: 'video.mov',
+          type: AssetType.video,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          isUploaded: false,
+          path: '/path/to/video.mov',
+          isFavorite: false,
+          orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
+        );
+        await database.localAssetDao.insertAsset(videoAsset);
+
+        // Live Photo 主图（图片），通过 livePhotoVideoId 指向视频资产
+        final imageAsset = LocalAssetEntityData(
+          id: 'image_asset_id',
+          name: 'image.jpg',
+          type: AssetType.image,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          isUploaded: false,
+          path: '/path/to/image.jpg',
+          isFavorite: false,
+          orientation: 0,
+          isInPrivateSpace: false,
+          migrationStatus: MigrationStatus.none,
+          livePhotoVideoId: videoAsset.id,
+        );
+
+        const userId = 'test_user_id';
+        const remotePath = 'https://api.example.com/upload';
+        const videoSize = 2048;
+
+        // 路径解析与文件大小针对视频资产配置
+        mockPathResolver.setPath(videoAsset.id, videoAsset.path);
+        mockMetadataExtractor.setSize(videoAsset.path, videoSize);
+
+        // Act
+        final task = await taskFactory.createTask(
+          asset: imageAsset,
+          userId: userId,
+          remotePath: remotePath,
+          taskType: UploadTaskType.auto,
+          priority: 5,
+        );
+
+        // Assert
+        expect(task, isNotNull);
+        final nonNullTask = task!;
+
+        // 任务仍然以主图 assetId 标识
+        expect(nonNullTask.assetId, equals(imageAsset.id));
+        // 实际上传文件路径应为视频路径
+        expect(nonNullTask.localPath, equals(videoAsset.path));
+        expect(nonNullTask.fileSize, equals(videoSize));
+
+        // Live Photo 元数据应存在且标记为视频子任务
+        final metadata = nonNullTask.livePhotoMetadata;
+        expect(metadata, isNotNull);
+        expect(metadata!.isLivePhoto, isTrue);
+        expect(metadata.part, LivePhotoTaskPart.video);
+        expect(metadata.localAssetId, equals(imageAsset.id));
       });
     });
 

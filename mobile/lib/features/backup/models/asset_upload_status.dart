@@ -15,6 +15,36 @@ enum AssetUploadStatus {
   failed,
 }
 
+/// Live Photo 上传状态枚举（从视频任务 + 图片任务组合计算）
+enum LivePhotoUploadState {
+  /// 还没有任何与 Live Photo 相关的上传任务
+  none,
+
+  /// 正在上传视频（图片任务尚未开始）
+  uploadingVideo,
+
+  /// 视频已完成，正在上传图片
+  uploadingPhoto,
+
+  /// 仅视频已成功上传，图片尚未成功
+  videoOnlyUploaded,
+
+  /// 仅图片已成功上传（理论上少见，兼容异常场景）
+  photoOnlyUploaded,
+
+  /// 视频与图片均已成功上传
+  bothUploaded,
+
+  /// 视频上传失败（图片尚未成功）
+  failedVideo,
+
+  /// 图片上传失败（视频已成功或不存在）
+  failedPhoto,
+
+  /// 视频与图片都处于失败状态
+  failedBoth,
+}
+
 /// 资产上传状态信息
 class AssetUploadStatusInfo {
   /// 当前状态
@@ -25,11 +55,15 @@ class AssetUploadStatusInfo {
   
   /// 错误信息，仅在失败时有效
   final String? errorMessage;
+
+  /// Live Photo 聚合上传状态（非 Live Photo 资产为 null）
+  final LivePhotoUploadState? livePhotoState;
   
   const AssetUploadStatusInfo({
     required this.status,
     this.progress,
     this.errorMessage,
+    this.livePhotoState,
   });
   
   /// 是否正在上传
@@ -49,11 +83,13 @@ class AssetUploadStatusInfo {
     AssetUploadStatus? status,
     double? progress,
     String? errorMessage,
+    LivePhotoUploadState? livePhotoState,
   }) {
     return AssetUploadStatusInfo(
       status: status ?? this.status,
       progress: progress ?? this.progress,
       errorMessage: errorMessage ?? this.errorMessage,
+      livePhotoState: livePhotoState ?? this.livePhotoState,
     );
   }
 }

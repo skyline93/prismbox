@@ -19,10 +19,12 @@ type MediaResponse struct {
 	Width            int     `json:"width"`
 	Height           int     `json:"height"`
 	MediaTakenAt     *string `json:"media_taken_at,omitempty"`
-	ThumbHash        string  `json:"thumb_hash,omitempty"` // ThumbHash 占位符（base64 编码）
+	ThumbHash        string  `json:"thumb_hash,omitempty"`          // ThumbHash 占位符（base64 编码）
 	ThumbnailURL     string  `json:"thumbnail_url,omitempty"`
 	PreviewURL       string  `json:"preview_url,omitempty"`
 	DownloadURL      string  `json:"download_url,omitempty"`
+	// Live Photo：图片资产上保存的关联视频 UUID
+	LivePhotoVideoID *string `json:"live_photo_video_id,omitempty"`
 }
 
 // GetMediasRequest 获取媒体列表请求

@@ -36,6 +36,8 @@ type UploadMediaRequest struct {
 	Filename         string
 	FileSize         int64
 	Data             io.Reader
+	// LivePhotoVideoUUID 关联的 Live Photo 视频媒体 UUID（仅当当前上传的是图片时有效）
+	LivePhotoVideoUUID *string
 }
 
 // GetMediasRequest 获取媒体列表请求
@@ -206,6 +208,30 @@ func (s *service) CheckInstantUpload(ctx context.Context, userID uint, hash stri
 func (s *service) UploadMedia(ctx context.Context, req *UploadMediaRequest) (*models.Media, error) {
 	ext, normalizedExt := resolveExtensions(req.ItemType, req.Filename)
 
+	// 0. 可选：校验 Live Photo 关联视频 UUID（仅对图片资产有效）
+	// 为保持简单与鲁棒性，如果引用无效则记录日志并忽略该字段（不返回 4xx）。
+	if req.LivePhotoVideoUUID != nil && *req.LivePhotoVideoUUID != "" && strings.ToLower(req.ItemType) == "image" {
+		videoUUID := *req.LivePhotoVideoUUID
+		videoMedia, err := s.repo.FindActiveByUUIDAndUser(ctx, videoUUID, req.UserID)
+		if err != nil {
+			// 如果不存在或查询错误，记录并忽略关联字段
+			s.log.Warn("live photo video media not found, ignoring live_photo_video_uuid",
+				logger.String("live_photo_video_uuid", videoUUID),
+				logger.Uint("user_id", req.UserID),
+				logger.Error(err),
+			)
+			req.LivePhotoVideoUUID = nil
+		} else if !strings.EqualFold(videoMedia.ItemType, "video") {
+			// 仅允许指向视频资产
+			s.log.Warn("live photo video uuid does not point to a video item, ignoring",
+				logger.String("live_photo_video_uuid", videoUUID),
+				logger.String("item_type", videoMedia.ItemType),
+				logger.Uint("user_id", req.UserID),
+			)
+			req.LivePhotoVideoUUID = nil
+		}
+	}
+
 	// 1. 读取数据到临时文件（用于计算 hash 和后续存储）
 	tempFile, err := os.CreateTemp("", "media_upload_*.tmp")
 	if err != nil {
@@ -362,20 +388,21 @@ func lookupMimeType(value string) string {
 
 func (s *service) newMediaModel(req *UploadMediaRequest, hash, storageKey, mimeType string, localPoolUUID string) *models.Media {
 	return &models.Media{
-		UUID:             req.CloudUUID,
-		UserID:           req.UserID,
-		Hash:             hash,
-		ItemType:         strings.ToLower(req.ItemType),
-		OriginalFilename: req.OriginalFilename,
-		Filename:         req.Filename,
-		FileSize:         req.FileSize,
-		MimeType:         mimeType,
-		MediaTakenAt:     req.MediaTakenAt,
-		ProcessingStatus: "PROCESSING",
-		Deleted:          false,
-		LocalPath:        storageKey,
-		LocalPoolUUID:    localPoolUUID,
-		BackupStatus:     "pending",
+		UUID:               req.CloudUUID,
+		UserID:             req.UserID,
+		Hash:               hash,
+		ItemType:           strings.ToLower(req.ItemType),
+		OriginalFilename:   req.OriginalFilename,
+		Filename:           req.Filename,
+		FileSize:           req.FileSize,
+		MimeType:           mimeType,
+		MediaTakenAt:       req.MediaTakenAt,
+		ProcessingStatus:   "PROCESSING",
+		Deleted:            false,
+		LocalPath:          storageKey,
+		LocalPoolUUID:      localPoolUUID,
+		BackupStatus:       "pending",
+		LivePhotoVideoUUID: req.LivePhotoVideoUUID,
 	}
 }
 

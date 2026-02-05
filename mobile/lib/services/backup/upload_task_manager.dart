@@ -387,34 +387,18 @@ class UploadTaskManager {
       case TaskStatus.complete:
         newStatus = UploadTaskStatus.completed;
         // uploadedAt 由状态机自动设置
-        
+
+        _logger.info(
+          '[LivePhoto] TaskManager: task completed, checking Live Photo: '
+          'taskId=$taskId',
+        );
+
         // 在状态变为 completed 之前，先提取并存储 UUID
         if (responseBody != null && responseBody.isNotEmpty) {
           await _extractAndStoreMediaUuid(taskId, responseBody);
         }
-        
-        // 处理并发状态更新：如果当前状态是 queued，说明 running 状态更新还没完成或失败了
-        // 需要先转换到 uploading，再转换到 completed
-        if (task.status == UploadTaskStatus.queued) {
-          _logger.fine(
-            'Complete status received but task is still queued, '
-            'transitioning through uploading first: taskId=$taskId',
-          );
-          // 先转换到 uploading
-          try {
-            final uploadingTask = await _stateMachine.transition(
-              task,
-              UploadTaskStatus.uploading,
-            );
-            // 更新 task 引用，使用最新的状态
-            task = uploadingTask;
-          } catch (e) {
-            _logger.warning(
-              'Failed to transition queued -> uploading before complete: taskId=$taskId, error=$e',
-            );
-            // 如果转换失败，继续尝试直接转换（可能会失败，但至少记录了错误）
-          }
-        }
+
+        // Live Photo 视频完成后的派生图片任务由 UploadOrchestrator 在同一轮队列中创建并调度
         break;
       case TaskStatus.failed:
         newStatus = UploadTaskStatus.failed;

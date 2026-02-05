@@ -358,7 +358,10 @@ class RemoteSyncService {
         // 因为同步 API 只返回未删除的资产（deleted = false）
         deletedAt = null;
       }
-
+      // 解析 Live Photo 关联视频 ID（与后端约定字段名）
+      // 优先使用 snake_case：live_photo_video_id；兼容可能的 camelCase：livePhotoVideoId
+      final livePhotoVideoId = (data['live_photo_video_id'] ??
+              data['livePhotoVideoId']) as String?;
       return RemoteAssetEntityData(
         id: data['uuid'] as String,
         checksum: data['hash'] as String? ?? '',
@@ -376,7 +379,7 @@ class RemoteSyncService {
         localDateTime: mediaTakenAt,
         thumbHash: null, // 服务器数据中可能没有这个字段
         deletedAt: deletedAt,
-        livePhotoVideoId: null, // 服务器数据中可能没有这个字段
+        livePhotoVideoId: livePhotoVideoId,
         visibility: AssetVisibility.private,
         stackId: null,
         libraryId: null,

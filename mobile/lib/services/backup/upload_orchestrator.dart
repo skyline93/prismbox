@@ -9,6 +9,7 @@ import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
+import 'package:prismbox/services/backup/models/live_photo_upload_metadata.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/services/backup/upload_concurrency_controller.dart';
 import 'package:prismbox/services/backup/upload_task_manager.dart';
@@ -59,6 +60,19 @@ enum ErrorType {
   local, // 本地错误（文件不存在、权限不足等，不可重试）
   timeout, // 超时错误（可重试）
   cancelled, // 取消错误（不可重试）
+}
+
+/// 单任务执行结果（用于可扩展队列：返回派生任务与成功/失败）
+class _SingleTaskResult {
+  final List<UploadTaskEntityData> derived;
+  final bool success;
+  final UploadError? error;
+
+  _SingleTaskResult({
+    required this.derived,
+    required this.success,
+    this.error,
+  });
 }
 
 /// 上传编排器：流程编排层
@@ -171,8 +185,28 @@ class UploadOrchestrator {
     final duplicateTasks = <UploadTaskEntityData>[];
 
     for (final task in candidates) {
-      if (!uploadedAssetIds.contains(task.assetId)) {
+      final isUploadedAsset = uploadedAssetIds.contains(task.assetId);
+
+      if (!isUploadedAsset) {
+        // 资产未标记为已上传，任务直接进入待执行列表
         filtered.add(task);
+        continue;
+      }
+
+      // 资产已标记为 isUploaded=true，根据任务类型（尤其是 Live Photo）做细粒度判断
+      final lpMeta = task.livePhotoMetadata;
+      final isLivePhoto = lpMeta != null && lpMeta.isLivePhoto;
+      final isLivePhotoImageTask =
+          isLivePhoto && lpMeta.part == LivePhotoTaskPart.image;
+
+      if (isLivePhotoImageTask) {
+        // Live Photo 图片任务：即便资产整体被标记为已上传，
+        // 仍允许图片任务执行一次，以修复潜在的不一致状态（例如之前只上传了视频）。
+        filtered.add(task);
+        _logger.fine(
+          'Keeping Live Photo image task despite asset isUploaded=true: '
+          'taskId=${task.id}, assetId=${task.assetId}',
+        );
       } else {
         _logger.fine(
           'Skipping uploaded asset: assetId=${task.assetId}',
@@ -231,7 +265,7 @@ class UploadOrchestrator {
   ///
   /// **执行流程**：
   /// 1. 按优先级排序任务
-  /// 2. 并发执行上传任务（最大 6 个并发）
+  /// 2. 可扩展队列 + 循环调度：每批最多 6 个并发，Live Photo 视频完成后派生图片任务并加入同一轮队列
   /// 3. 更新进度和状态
   /// 4. 处理错误和重试（指数退避策略）
   /// 5. 根据成功比例更新 lastBackupTime（仅自动备份）
@@ -254,189 +288,103 @@ class UploadOrchestrator {
     // 1. 按优先级排序任务
     final sortedTasks = _sortTasksByPriority(tasks);
 
-    // 2. 并发执行上传（最大 6 个并发）
+    // 2. 可扩展队列 + 循环调度：支持 Live Photo 视频完成后派生图片任务并在同一轮执行
     int successCount = 0;
     int failedCount = 0;
     final errors = <UploadError>[];
-    final completedCount = <int>[0]; // 使用列表包装以便在闭包中修改
+    final mediaUuids = <String, String>{};
+    final queue = List<UploadTaskEntityData>.from(sortedTasks);
 
     _logger.info(
-      'Starting upload orchestration: totalTasks=${sortedTasks.length}',
+      'Starting upload orchestration: initialTasks=${queue.length}',
     );
 
-    // 使用并发控制器执行上传任务
-    await Future.wait(
-      sortedTasks.map((task) async {
-        if (cancellationToken.isCancelled) {
-          _logger.warning('Upload cancelled, skipping task: taskId=${task.id}');
-          return;
-        }
+    while (queue.isNotEmpty && !cancellationToken.isCancelled) {
+      final batchSize = queue.length > 6 ? 6 : queue.length;
+      final batch = queue.take(batchSize).toList();
+      for (var i = 0; i < batchSize; i++) {
+        queue.removeAt(0);
+      }
 
-        _logger.fine('Waiting for concurrency slot: taskId=${task.id}');
-
-        // 使用并发控制器控制并发数
-        await _concurrencyController.execute(() async {
-          final fileName = task.localPath.split('/').last;
-          _logger.info(
-            'Acquired concurrency slot: taskId=${task.id}, '
-            'assetId=${task.assetId}, filename=$fileName',
-          );
-          try {
-            // 执行上传（带自动重试）
-            // 注意：
-            // 1. 状态更新由 background_downloader 的状态回调驱动（单一数据源原则）
-            // 2. background_downloader 会依次报告：enqueued -> running -> complete
-            // 3. UploadTaskManager 的回调会将它们映射为：queued -> uploading -> completed
-            // 4. 不在入队前提前更新状态，避免状态冲突
-            await _executeUploadWithRetry(task);
-
-            // 验证任务状态（应该已经被 UploadTaskManager 更新为 completed）
-            final completedTask = await _database.uploadTaskDao.getTaskById(
-              task.id,
-            );
-            if (completedTask?.status != UploadTaskStatus.completed) {
-              final fileName = task.localPath.split('/').last;
-              _logger.warning(
-                'Task status mismatch after completion: '
-                'taskId=${task.id}, '
-                'assetId=${task.assetId}, '
-                'filename=$fileName, '
-                'expected=completed, actual=${completedTask?.status}',
-              );
-            }
-
-            successCount++;
+      final results = await Future.wait(
+        batch.map((task) async {
+          _logger.fine('Waiting for concurrency slot: taskId=${task.id}');
+          return _concurrencyController.execute(() async {
             final fileName = task.localPath.split('/').last;
+            final taskLpMeta = task.livePhotoMetadata;
             _logger.info(
-              'Upload completed successfully: '
-              'taskId=${task.id}, '
-              'assetId=${task.assetId}, '
-              'filename=$fileName',
+              'Acquired concurrency slot: taskId=${task.id}, '
+              'assetId=${task.assetId}, filename=$fileName',
             );
-          } catch (e, stackTrace) {
-            final fileName = task.localPath.split('/').last;
-            _logger.warning(
-              'Upload error in orchestration: '
-              'taskId=${task.id}, '
-              'assetId=${task.assetId}, '
-              'filename=$fileName, '
-              'error=$e',
-            );
-            _logger.warning(
-              'Upload failed: taskId=${task.id}, assetId=${task.assetId}, filename=$fileName, error=$e',
-              e,
-              stackTrace,
-            );
-
-            // 使用统一的错误处理器
-            final backupError = _errorHandler.handleError(
-              e,
-              context: 'upload_orchestration',
-            );
-
-            // 处理上传错误
-            await _errorHandler.handleUploadError(backupError, task);
-
-            // 获取当前任务状态（UploadTaskManager 的回调可能已经更新了状态）
-            // 注意：正常情况下，background_downloader 会通过回调更新状态
-            // 但如果异常发生在入队之前，或者回调未触发，需要手动更新状态
-            try {
-              final currentTask = await _database.uploadTaskDao.getTaskById(
-                task.id,
-              );
-              if (currentTask != null) {
-                // 如果状态已经是最终状态（failed、permanentlyFailed、cancelled），不需要再次更新
-                final isFinalStatus =
-                    currentTask.status == UploadTaskStatus.failed ||
-                    currentTask.status == UploadTaskStatus.permanentlyFailed ||
-                    currentTask.status == UploadTaskStatus.cancelled;
-
-                if (!isFinalStatus) {
-                  // 状态还未更新，手动更新（异常情况下的兜底处理）
-                  final newStatus = backupError.isRetryable
-                      ? (currentTask.retryCount >= task.maxRetries
-                            ? UploadTaskStatus.permanentlyFailed
-                            : UploadTaskStatus.failed)
-                      : UploadTaskStatus.permanentlyFailed;
-
-                  // 通过状态机更新状态
-                  await _stateMachine.transition(
-                    currentTask,
-                    newStatus,
-                    errorMessage: backupError.message,
-                  );
-                }
-              }
-            } catch (stateError, stateStackTrace) {
-              // 状态更新失败，记录错误但不抛出异常，避免影响其他任务
-              _logger.warning(
-                'Failed to update task status after error: '
-                'taskId=${task.id}, error=$stateError',
-                stateError,
-                stateStackTrace,
+            if (taskLpMeta != null) {
+              _logger.info(
+                '[LivePhoto] Orchestrator: task has livePhotoMetadata '
+                'part=${taskLpMeta.part.name}, isLivePhoto=${taskLpMeta.isLivePhoto}, '
+                'localAssetId=${taskLpMeta.localAssetId}',
               );
             }
+            return _executeSingleTaskAndReturnDerived(task, cancellationToken);
+          });
+        }),
+      );
 
-            // 添加错误到错误列表（用于返回）
-            errors.add(
-              UploadError(
-                assetId: task.assetId,
-                errorMessage: backupError.message,
-                type: _mapBackupErrorTypeToErrorType(backupError.type),
-              ),
-            );
-
-            failedCount++;
-          } finally {
-            // 更新进度
-            completedCount[0]++;
-            onProgress?.call(completedCount[0], sortedTasks.length);
-            _logger.fine(
-              'Task finished: taskId=${task.id}, '
-              'completed=${completedCount[0]}/${sortedTasks.length}',
+      for (var i = 0; i < batch.length; i++) {
+        final task = batch[i];
+        final result = results[i];
+        if (result.success) {
+          successCount++;
+          queue.addAll(result.derived);
+          try {
+            final completedTask =
+                await _database.uploadTaskDao.getTaskById(task.id);
+            if (completedTask?.status == UploadTaskStatus.completed) {
+              final uuid = completedTask!.mediaUuid;
+              if (uuid != null && uuid.isNotEmpty) {
+                mediaUuids[task.id] = uuid;
+              }
+            }
+          } catch (e) {
+            _logger.warning(
+              'Failed to read media UUID for task: taskId=${task.id}, error=$e',
             );
           }
-        });
-      }),
-    );
+          final fileName = task.localPath.split('/').last;
+          _logger.info(
+            'Upload completed successfully: '
+            'taskId=${task.id}, assetId=${task.assetId}, filename=$fileName',
+          );
+        } else {
+          failedCount++;
+          if (result.error != null) {
+            errors.add(result.error!);
+          }
+        }
+      }
 
-    _logger.info(
-      'Upload orchestration finished: totalTasks=${sortedTasks.length}, '
-      'success=$successCount, failed=$failedCount',
-    );
-
-    // 3. 根据成功比例更新 lastBackupTime（仅自动备份）
-    if (taskType == UploadTaskType.auto) {
-      await _updateLastBackupTime(
-        userId: userId,
-        successCount: successCount,
-        totalCount: sortedTasks.length,
+      final completed = successCount + failedCount;
+      final total = completed + queue.length;
+      onProgress?.call(completed, total);
+      _logger.fine(
+        'Batch finished: completed=$completed, remaining=${queue.length}',
       );
     }
 
-    // 4. 收集成功任务的 UUID（从数据库读取，此时应该已经存储）
-    final mediaUuids = <String, String>{};
-    for (final task in sortedTasks) {
-      try {
-        final completedTask = await _database.uploadTaskDao.getTaskById(task.id);
-        if (completedTask?.status == UploadTaskStatus.completed) {
-          final uuid = completedTask!.mediaUuid;
-          if (uuid != null && uuid.isNotEmpty) {
-            mediaUuids[task.id] = uuid;
-            _logger.fine(
-              'Collected media UUID: taskId=${task.id}, mediaUuid=$uuid',
-            );
-          } else {
-            _logger.warning(
-              'Task completed but mediaUuid is missing: taskId=${task.id}',
-            );
-          }
-        }
-      } catch (e) {
-        _logger.warning(
-          'Failed to read media UUID for task: taskId=${task.id}, error=$e',
-        );
-      }
+    if (cancellationToken.isCancelled) {
+      _logger.warning('Upload cancelled during orchestration');
+    }
+
+    _logger.info(
+      'Upload orchestration finished: success=$successCount, failed=$failedCount',
+    );
+
+    // 3. 根据成功比例更新 lastBackupTime（仅自动备份）
+    final totalRan = successCount + failedCount;
+    if (taskType == UploadTaskType.auto && totalRan > 0) {
+      await _updateLastBackupTime(
+        userId: userId,
+        successCount: successCount,
+        totalCount: totalRan,
+      );
     }
 
     final result = UploadResult(
@@ -456,14 +404,202 @@ class UploadOrchestrator {
   }
 
 
+  /// 在编排层为 Live Photo 视频任务完成后创建并插入对应的图片上传任务，
+  /// 供同一轮队列调度。返回新创建的图片任务（供加入队列），失败或无需创建时返回 null。
+  ///
+  /// 归属编排器以便派生任务能在同一轮备份中被调度。
+  Future<UploadTaskEntityData?> _createLivePhotoImageTaskForOrchestration({
+    required UploadTaskEntityData completedTask,
+    required LivePhotoUploadMetadata metadata,
+  }) async {
+    final imageLocalAssetId = metadata.localAssetId;
+    final remoteVideoId = completedTask.mediaUuid;
+
+    if (remoteVideoId == null || remoteVideoId.isEmpty) {
+      _logger.warning(
+        'Live Photo video completed but mediaUuid is missing, '
+        'skip creating image task: videoTaskId=${completedTask.id}, '
+        'imageAssetId=$imageLocalAssetId',
+      );
+      return null;
+    }
+
+    try {
+      final imageAsset = await _database.localAssetDao.getAssetById(
+        imageLocalAssetId,
+      );
+      if (imageAsset == null) {
+        _logger.warning(
+          'Live Photo image asset not found, skip creating image task: '
+          'imageAssetId=$imageLocalAssetId, videoTaskId=${completedTask.id}',
+        );
+        return null;
+      }
+
+      final imageTaskId =
+          'auto_livephoto_image_${imageLocalAssetId}_${DateTime.now().millisecondsSinceEpoch}';
+
+      final imageTask = UploadTaskEntityData(
+        id: imageTaskId,
+        userId: completedTask.userId,
+        assetId: imageLocalAssetId,
+        localPath: imageAsset.path,
+        remotePath: completedTask.remotePath,
+        mediaUuid: null,
+        fileSize: completedTask.fileSize,
+        taskType: completedTask.taskType,
+        priority: (completedTask.priority > 1)
+            ? completedTask.priority - 1
+            : completedTask.priority,
+        status: UploadTaskStatus.pending,
+        retryCount: 0,
+        maxRetries: completedTask.maxRetries,
+        errorMessage: null,
+        uploadedAt: null,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        progress: 0,
+        livePhotoMetadataJson: LivePhotoUploadMetadata(
+          localAssetId: imageLocalAssetId,
+          isLivePhoto: true,
+          part: LivePhotoTaskPart.image,
+          remoteVideoId: remoteVideoId,
+        ).toJsonString(),
+      );
+
+      await _database.uploadTaskDao.insertTask(imageTask);
+
+      _logger.info(
+        '[LivePhoto] Orchestrator: created derived image task: '
+        'videoTaskId=${completedTask.id}, imageTaskId=$imageTaskId, '
+        'imageAssetId=$imageLocalAssetId, remoteVideoId=$remoteVideoId',
+      );
+      return imageTask;
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Failed to create Live Photo image task in orchestrator: '
+        'videoTaskId=${completedTask.id}, imageAssetId=$imageLocalAssetId, '
+        'error=$e',
+        e,
+        stackTrace,
+      );
+      return null;
+    }
+  }
+
+  /// 执行单个上传任务，并在 Live Photo 视频任务成功时同步创建派生图片任务。
+  /// 返回 [_SingleTaskResult]：成功时可能带 derived 列表，失败时带 error。
+  /// 用于可扩展队列：主循环可将 derived 加入队列在同一轮中调度。
+  Future<_SingleTaskResult> _executeSingleTaskAndReturnDerived(
+    UploadTaskEntityData task,
+    CancellationToken cancellationToken,
+  ) async {
+    if (cancellationToken.isCancelled) {
+      return _SingleTaskResult(
+        derived: [],
+        success: false,
+        error: UploadError(
+          assetId: task.assetId,
+          errorMessage: 'Upload cancelled',
+          type: ErrorType.cancelled,
+        ),
+      );
+    }
+
+    try {
+      await _executeUploadWithRetry(task);
+
+      final completedTask =
+          await _database.uploadTaskDao.getTaskById(task.id);
+      if (completedTask?.status != UploadTaskStatus.completed) {
+        return _SingleTaskResult(derived: [], success: true);
+      }
+
+      final metadata = completedTask!.livePhotoMetadata;
+      final bool isLpVideoComplete = metadata != null &&
+          metadata.isLivePhoto &&
+          metadata.part == LivePhotoTaskPart.video &&
+          (completedTask.mediaUuid ?? '').isNotEmpty;
+
+      if (!isLpVideoComplete) {
+        return _SingleTaskResult(derived: [], success: true);
+      }
+
+      final derivedTask = await _createLivePhotoImageTaskForOrchestration(
+        completedTask: completedTask,
+        metadata: metadata,
+      );
+      final derived =
+          derivedTask != null ? [derivedTask] : <UploadTaskEntityData>[];
+
+      return _SingleTaskResult(derived: derived, success: true);
+    } catch (e, stackTrace) {
+      final fileName = task.localPath.split('/').last;
+      _logger.warning(
+        'Upload error in single-task execution: '
+        'taskId=${task.id}, assetId=${task.assetId}, filename=$fileName, error=$e',
+        e,
+        stackTrace,
+      );
+
+      final backupError = _errorHandler.handleError(
+        e,
+        context: 'upload_orchestration',
+      );
+
+      await _errorHandler.handleUploadError(backupError, task);
+
+      try {
+        final currentTask = await _database.uploadTaskDao.getTaskById(task.id);
+        if (currentTask != null) {
+          final isFinalStatus =
+              currentTask.status == UploadTaskStatus.failed ||
+              currentTask.status == UploadTaskStatus.permanentlyFailed ||
+              currentTask.status == UploadTaskStatus.cancelled;
+
+          if (!isFinalStatus) {
+            final newStatus = backupError.isRetryable
+                ? (currentTask.retryCount >= task.maxRetries
+                    ? UploadTaskStatus.permanentlyFailed
+                    : UploadTaskStatus.failed)
+                : UploadTaskStatus.permanentlyFailed;
+
+            await _stateMachine.transition(
+              currentTask,
+              newStatus,
+              errorMessage: backupError.message,
+            );
+          }
+        }
+      } catch (stateError, stateStackTrace) {
+        _logger.warning(
+          'Failed to update task status after error: '
+          'taskId=${task.id}, error=$stateError',
+          stateError,
+          stateStackTrace,
+        );
+      }
+
+      return _SingleTaskResult(
+        derived: [],
+        success: false,
+        error: UploadError(
+          assetId: task.assetId,
+          errorMessage: backupError.message,
+          type: _mapBackupErrorTypeToErrorType(backupError.type),
+        ),
+      );
+    }
+  }
+
   /// 按优先级排序任务
   List<UploadTaskEntityData> _sortTasksByPriority(
     List<UploadTaskEntityData> tasks,
   ) {
     // 优先级排序规则：
     // 1. 任务类型优先：手动备份优先于自动备份
-    // 2. 优先级字段：数字越小优先级越高
-    // 3. 文件类型：图片优先于视频
+    // 2. Live Photo 图片任务优先于其他任务
+    // 3. 优先级字段：数字越小优先级越高
     // 4. 文件大小：小文件优先（可选）
     // 5. 创建时间：早创建的任务优先
 
@@ -474,14 +610,24 @@ class UploadOrchestrator {
         return a.taskType == UploadTaskType.manual ? -1 : 1;
       }
 
-      // 2. 优先级字段
+      // 2. Live Photo 图片任务优先
+      final aMeta = a.livePhotoMetadata;
+      final bMeta = b.livePhotoMetadata;
+      final aIsLivePhotoImage =
+          aMeta != null && aMeta.isLivePhoto && aMeta.part == LivePhotoTaskPart.image;
+      final bIsLivePhotoImage =
+          bMeta != null && bMeta.isLivePhoto && bMeta.part == LivePhotoTaskPart.image;
+
+      if (aIsLivePhotoImage != bIsLivePhotoImage) {
+        // true 优先
+        return aIsLivePhotoImage ? -1 : 1;
+      }
+
+      // 3. 优先级字段
       final priorityDiff = a.priority.compareTo(b.priority);
       if (priorityDiff != 0) {
         return priorityDiff;
       }
-
-      // 3. 文件类型（需要从 localAsset 获取，这里简化处理）
-      // TODO: 从 localAsset 获取 type 进行比较
 
       // 4. 文件大小（小文件优先）
       final sizeDiff = a.fileSize.compareTo(b.fileSize);
@@ -494,6 +640,27 @@ class UploadOrchestrator {
     });
 
     return sorted;
+  }
+
+  /// 当本次上传为 Live Photo 图片任务且任务元数据中已有远程视频 UUID 时，
+  /// 向 [fields] 写入 [live_photo_video_id]，供上传请求携带。
+  /// 用于后台上传派生任务及前台上传成对逻辑，确保服务端能建立图片→视频关联。
+  /// 对测试可见，便于单测覆盖。
+  static void applyLivePhotoVideoIdToFields(
+    UploadTaskEntityData task,
+    bool isImageAsset,
+    Map<String, String> fields,
+  ) {
+    final lpMeta = task.livePhotoMetadata;
+    if (!isImageAsset ||
+        lpMeta == null ||
+        !lpMeta.isLivePhoto ||
+        lpMeta.part != LivePhotoTaskPart.image ||
+        lpMeta.remoteVideoId == null ||
+        lpMeta.remoteVideoId!.isEmpty) {
+      return;
+    }
+    fields['live_photo_video_id'] = lpMeta.remoteVideoId!;
   }
 
   /// 执行上传（带自动重试）
@@ -592,18 +759,69 @@ class UploadOrchestrator {
     );
 
     try {
-      // 1. 获取本地资产信息（必需，用于路径解析和构建上传表单字段）
-      final localAsset = await _database.localAssetDao.getAssetById(
-        task.assetId,
-      );
-      if (localAsset == null) {
-        throw Exception('Local asset not found: ${task.assetId}');
-      }
+      // 1. 确定实际上传的资产与路径（Live Photo 视频任务上传视频文件，其余按 task.assetId）
+      final LocalAssetEntityData assetForUpload;
+      final String actualPath;
 
-      // 2. 使用 AssetPathResolver 解析文件路径（如果不存在则尝试从 photo_manager 重新获取）
-      final actualPath = await _pathResolver.resolveAssetPath(localAsset);
-      if (actualPath == null) {
-        throw FileSystemException('File not found', task.localPath);
+      final lpMeta = task.livePhotoMetadata;
+      _logger.info(
+        '[LivePhoto] _executeUpload: taskId=${task.id}, '
+        'livePhotoMetadataJson=${task.livePhotoMetadataJson == null || task.livePhotoMetadataJson!.isEmpty ? "null_or_empty" : "present(len=${task.livePhotoMetadataJson!.length})"}, '
+        'parsed part=${lpMeta?.part.name ?? "null"}, isLivePhoto=${lpMeta?.isLivePhoto ?? false}',
+      );
+
+      if (lpMeta != null &&
+          lpMeta.isLivePhoto &&
+          lpMeta.part == LivePhotoTaskPart.video) {
+        _logger.info(
+          '[LivePhoto] _executeUpload: using VIDEO branch (Live Photo video task)',
+        );
+        // Live Photo 视频任务：主图与视频由同一 AssetEntity 提供，用主图资产 + 子类型接口取视频路径
+        final imageAsset = await _database.localAssetDao.getAssetById(
+          task.assetId,
+        );
+        if (imageAsset == null) {
+          throw Exception(
+            'Live Photo image asset not found: ${task.assetId}',
+          );
+        }
+        final resolvedVideoPath =
+            await _pathResolver.resolveLivePhotoVideoPath(imageAsset);
+        if (resolvedVideoPath == null || resolvedVideoPath.isEmpty) {
+          throw FileSystemException(
+            'Live Photo video file not found for asset: ${task.assetId}',
+            task.localPath,
+          );
+        }
+        actualPath = resolvedVideoPath;
+        assetForUpload = imageAsset;
+        _logger.info(
+          '[LivePhoto] _executeUpload: VIDEO branch resolved (same AssetEntity), '
+          'actualPathTail=${actualPath.split("/").last}, assetForUpload.type=${assetForUpload.type.name}',
+        );
+      } else {
+        _logger.info(
+          '[LivePhoto] _executeUpload: using NON-VIDEO branch '
+          '(image task or non-LivePhoto), assetId=${task.assetId}',
+        );
+        final localAsset = await _database.localAssetDao.getAssetById(
+          task.assetId,
+        );
+        if (localAsset == null) {
+          throw Exception('Local asset not found: ${task.assetId}');
+        }
+        final resolved =
+            await _pathResolver.resolveAssetPath(localAsset);
+        if (resolved == null || resolved.isEmpty) {
+          throw FileSystemException('File not found', task.localPath);
+        }
+        actualPath = resolved;
+        assetForUpload = localAsset;
+        _logger.info(
+          '[LivePhoto] _executeUpload: NON-VIDEO branch resolved, '
+          'actualPathTail=${actualPath.split("/").last}, '
+          'assetForUpload.type=${assetForUpload.type.name}',
+        );
       }
 
       // 3. 更新任务中的文件路径（如果路径已改变）
@@ -646,37 +864,56 @@ class UploadOrchestrator {
       // 7. 获取请求头（包含认证信息和设备信息）
       final headers = await ApiService.getRequestHeaders();
 
-      // 8. 构建表单字段（后端 API 要求的格式）
-      // 转换 AssetType 为后端期望的 item_type
+      // 8. 构建表单字段（后端 API 要求的格式，使用 assetForUpload 以支持 Live Photo 视频任务）
+      // Live Photo 视频任务时 assetForUpload 为主图资产，需显式传 item_type=video
       String itemType;
-      switch (localAsset.type) {
-        case AssetType.image:
-          itemType = 'image';
-          break;
-        case AssetType.video:
-          itemType = 'video';
-          break;
-        default:
-          itemType = 'image'; // 默认处理为图片
-          _logger.warning(
-            'Unknown asset type: ${localAsset.type}, defaulting to image',
-          );
+      if (lpMeta != null &&
+          lpMeta.isLivePhoto &&
+          lpMeta.part == LivePhotoTaskPart.video) {
+        itemType = 'video';
+      } else {
+        switch (assetForUpload.type) {
+          case AssetType.image:
+            itemType = 'image';
+            break;
+          case AssetType.video:
+            itemType = 'video';
+            break;
+          default:
+            itemType = 'image';
+            _logger.warning(
+              'Unknown asset type: ${assetForUpload.type}, defaulting to image',
+            );
+        }
       }
 
-      // 生成 cloud_uuid（客户端生成的 UUID）
       const uuid = Uuid();
       final cloudUuid = uuid.v4();
+      final mediaTakenAt =
+          assetForUpload.createdAt.toUtc().toIso8601String();
 
-      // 格式化 media_taken_at（RFC3339 格式，UTC 时间）
-      final mediaTakenAt = localAsset.createdAt.toUtc().toIso8601String();
-
-      // 后端统一计算 hash，前端不再计算
       final fields = <String, String>{
         'item_type': itemType,
         'cloud_uuid': cloudUuid,
-        'original_filename': localAsset.name,
+        'original_filename': assetForUpload.name,
         'media_taken_at': mediaTakenAt,
       };
+
+      applyLivePhotoVideoIdToFields(
+        task,
+        assetForUpload.type == AssetType.image,
+        fields,
+      );
+      _logger.info(
+        '[LivePhoto] _executeUpload: request built: item_type=$itemType, '
+        'has_live_photo_video_id=${fields.containsKey("live_photo_video_id")}, '
+        'original_filename=${assetForUpload.name}',
+      );
+      if (fields.containsKey('live_photo_video_id')) {
+        _logger.fine(
+          'Live Photo image upload: attaching live_photo_video_id for assetId=${assetForUpload.id}',
+        );
+      }
 
       // 9. 确定任务组
       final group = task.taskType == UploadTaskType.manual
@@ -813,14 +1050,47 @@ class UploadOrchestrator {
             }
           }
           
-          // 任务成功完成，更新本地资产的 isUploaded = true
-          await _updateLocalAssetUploadedStatus(task.assetId, true);
-          // 发出上传完成通知
-          _logger.info(
-            'Task completed: assetId=${task.assetId}, '
-            'isUploaded updated to true',
-          );
-          _uploadCompleteController.add(task.assetId);
+          // 任务成功完成，视任务类型决定是否更新本地资产的 isUploaded = true
+          // 语义约定：
+          // - 非 Live Photo 任务：单一媒体文件，完成即视为已上传
+          // - Live Photo 视频任务：仅完成视频部分，不更新 isUploaded
+          // - Live Photo 图片任务：在已有关联远程视频 UUID 时，视为整套 Live Photo 完成，更新 isUploaded
+          final effectiveAssetId = task.assetId;
+          final lpMeta = task.livePhotoMetadata;
+          var shouldMarkUploaded = false;
+
+          if (lpMeta == null || !lpMeta.isLivePhoto) {
+            // 普通资产，完成即视为已上传
+            shouldMarkUploaded = true;
+          } else {
+            switch (lpMeta.part) {
+              case LivePhotoTaskPart.video:
+                // 仅完成 Live Photo 视频，不标记整体已上传
+                shouldMarkUploaded = false;
+                break;
+              case LivePhotoTaskPart.image:
+                // 图片任务完成，通常意味着整套 Live Photo 已经可用
+                // 若需要更严格判断，可在此检查是否已有 remoteVideoId
+                shouldMarkUploaded = true;
+                break;
+            }
+          }
+
+          if (shouldMarkUploaded) {
+            await _updateLocalAssetUploadedStatus(effectiveAssetId, true);
+            _logger.info(
+              'Task completed: assetId=$effectiveAssetId, '
+              'isUploaded updated to true',
+            );
+            _uploadCompleteController.add(effectiveAssetId);
+          } else {
+            _logger.info(
+              'Task completed without marking isUploaded: '
+              'taskId=$taskId, assetId=$effectiveAssetId',
+            );
+            _uploadCompleteController.add(effectiveAssetId);
+          }
+
           return; // 任务成功完成
 
         case UploadTaskStatus.failed:

@@ -11,14 +11,16 @@ type Media struct {
 	gorm.Model
 
 	// 核心字段
-	UUID             string `gorm:"type:varchar(255);uniqueIndex;not null"`
-	UserID           uint   `gorm:"index:idx_media_user_hash,unique;index;not null"`
-	Hash             string `gorm:"type:varchar(255);index:idx_media_user_hash,unique;not null"`
-	ItemType         string `gorm:"type:varchar(50);not null"` // "image", "video"
-	OriginalFilename string `gorm:"type:varchar(255)"`
-	Filename         string `gorm:"type:varchar(255)"`
-	FileSize         int64  `gorm:"not null"`
-	MimeType         string `gorm:"type:varchar(100)"`
+	UUID             string  `gorm:"type:varchar(255);uniqueIndex;not null"`
+	UserID           uint    `gorm:"index:idx_media_user_hash,unique;index;not null"`
+	Hash             string  `gorm:"type:varchar(255);index:idx_media_user_hash,unique;not null"`
+	ItemType         string  `gorm:"type:varchar(50);not null"` // "image", "video"
+	OriginalFilename string  `gorm:"type:varchar(255)"`
+	Filename         string  `gorm:"type:varchar(255)"`
+	FileSize         int64   `gorm:"not null"`
+	MimeType         string  `gorm:"type:varchar(100)"`
+	// Live Photo 视频资产 UUID（仅对图片资产有效，用于指向关联的视频媒体记录）
+	LivePhotoVideoUUID *string `gorm:"column:live_photo_video_uuid;type:varchar(255);index"`
 
 	// 媒体元数据
 	Width        int

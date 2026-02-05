@@ -6,6 +6,7 @@ import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/daos/upload_task_dao.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
+import 'package:prismbox/services/backup/models/live_photo_upload_metadata.dart';
 import 'package:prismbox/providers/infrastructure/database_provider.dart' as infra;
 
 part 'asset_upload_status_provider.g.dart';
@@ -66,7 +67,11 @@ Stream<AssetUploadStatusInfo> assetUploadStatus(
   // 1.1 优先查询上传任务状态（用于显示上传进度）
   final initialTask = await uploadDao.getTaskByLocalAssetId(assetId);
   if (initialTask != null) {
-    lastStatus = _getStatusFromTask(initialTask);
+    final livePhotoState =
+        await _computeLivePhotoUploadState(uploadDao, assetId);
+    lastStatus = _getStatusFromTask(initialTask).copyWith(
+      livePhotoState: livePhotoState,
+    );
     yield lastStatus;
   } else {
     // 1.2 如果没有任务记录，检查本地资产的 isUploaded 字段
@@ -87,10 +92,14 @@ Stream<AssetUploadStatusInfo> assetUploadStatus(
   // 2. 监听上传任务变化（主要数据源）
   await for (final task in uploadDao.watchTaskByLocalAssetId(assetId)) {
     AssetUploadStatusInfo newStatus;
+    final livePhotoState =
+        await _computeLivePhotoUploadState(uploadDao, assetId);
     
     if (task != null) {
       // 任务存在，使用任务状态
-      newStatus = _getStatusFromTask(task);
+      newStatus = _getStatusFromTask(task).copyWith(
+        livePhotoState: livePhotoState,
+      );
     } else {
       // 任务不存在，检查本地资产的 isUploaded 字段
       final localAsset = await localDao.getAssetById(assetId);
@@ -99,8 +108,9 @@ Stream<AssetUploadStatusInfo> assetUploadStatus(
           status: AssetUploadStatus.uploaded,
         );
       } else {
-        newStatus = const AssetUploadStatusInfo(
+        newStatus = AssetUploadStatusInfo(
           status: AssetUploadStatus.notUploaded,
+          livePhotoState: livePhotoState,
         );
       }
     }
@@ -171,5 +181,108 @@ AssetUploadStatusInfo _getStatusFromTask(dynamic task) {
         status: AssetUploadStatus.notUploaded,
       );
   }
+}
+
+/// 计算指定资产的 Live Photo 聚合上传状态。
+///
+/// - 如果该资产不存在任何 Live Photo 相关任务，返回 null；
+/// - 否则根据视频任务与图片任务的组合状态计算枚举值。
+Future<LivePhotoUploadState?> _computeLivePhotoUploadState(
+  UploadTaskDao uploadDao,
+  String assetId,
+) async {
+  final tasks = await uploadDao.getTasksByLocalAssetIdAll(assetId);
+  if (tasks.isEmpty) {
+    return null;
+  }
+
+  final videoTasks = <dynamic>[];
+  final imageTasks = <dynamic>[];
+
+  for (final task in tasks) {
+    final metadata = task.livePhotoMetadata;
+    if (metadata == null || !metadata.isLivePhoto) {
+      continue;
+    }
+
+    switch (metadata.part) {
+      case LivePhotoTaskPart.video:
+        videoTasks.add(task);
+        break;
+      case LivePhotoTaskPart.image:
+        imageTasks.add(task);
+        break;
+    }
+  }
+
+  final hasVideo = videoTasks.isNotEmpty;
+  final hasImage = imageTasks.isNotEmpty;
+
+  if (!hasVideo && !hasImage) {
+    // 虽然有任务，但都不是 Live Photo 相关
+    return null;
+  }
+
+  bool _anyCompleted(List<dynamic> ts) =>
+      ts.any((t) => t.status == UploadTaskStatus.completed);
+
+  bool _anyUploading(List<dynamic> ts) => ts.any(
+        (t) =>
+            t.status == UploadTaskStatus.pending ||
+            t.status == UploadTaskStatus.queued ||
+            t.status == UploadTaskStatus.uploading ||
+            t.status == UploadTaskStatus.paused,
+      );
+
+  bool _anyFailed(List<dynamic> ts) => ts.any(
+        (t) =>
+            t.status == UploadTaskStatus.failed ||
+            t.status == UploadTaskStatus.permanentlyFailed ||
+            t.status == UploadTaskStatus.cancelled,
+      );
+
+  final videoCompleted = hasVideo && _anyCompleted(videoTasks);
+  final imageCompleted = hasImage && _anyCompleted(imageTasks);
+  final videoUploading = hasVideo && _anyUploading(videoTasks);
+  final imageUploading = hasImage && _anyUploading(imageTasks);
+  final videoFailed = hasVideo && _anyFailed(videoTasks);
+  final imageFailed = hasImage && _anyFailed(imageTasks);
+
+  // 组合逻辑（按“进行中” > “成功” > “失败”的优先级）：
+
+  // 1. 仍在进行中的场景优先
+  if (videoUploading && !hasImage) {
+    return LivePhotoUploadState.uploadingVideo;
+  }
+  if (videoCompleted && imageUploading) {
+    return LivePhotoUploadState.uploadingPhoto;
+  }
+
+  // 2. 全部成功
+  if (videoCompleted && imageCompleted) {
+    return LivePhotoUploadState.bothUploaded;
+  }
+
+  // 3. 仅一边成功
+  if (videoCompleted && !imageCompleted && !imageUploading && !imageFailed) {
+    return LivePhotoUploadState.videoOnlyUploaded;
+  }
+  if (imageCompleted && !videoCompleted && !videoUploading && !videoFailed) {
+    return LivePhotoUploadState.photoOnlyUploaded;
+  }
+
+  // 4. 失败场景
+  if (videoFailed && imageFailed) {
+    return LivePhotoUploadState.failedBoth;
+  }
+  if (videoFailed) {
+    return LivePhotoUploadState.failedVideo;
+  }
+  if (imageFailed) {
+    return LivePhotoUploadState.failedPhoto;
+  }
+
+  // 5. 无任务或未知组合，回退为 none
+  return LivePhotoUploadState.none;
 }
 

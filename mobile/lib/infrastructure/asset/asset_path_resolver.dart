@@ -90,6 +90,50 @@ class AssetPathResolver {
     }
   }
 
+  /// 解析 Live Photo 主图资产对应的视频文件路径（motion 子类型）
+  ///
+  /// 本地模型下 Live Photo 只有一条主图资产，视频由同一 AssetEntity 提供。
+  /// 通过 photo_manager 的 originFileWithSubtype / loadFile(withSubtype: true) 取视频文件。
+  ///
+  /// **参数**：
+  /// - [imageAsset] - Live Photo 的主图本地资产（同一 AssetEntity 提供图片与视频）
+  ///
+  /// **返回**：
+  /// - 视频文件路径；无法获取时返回 null
+  Future<String?> resolveLivePhotoVideoPath(
+    LocalAssetEntityData imageAsset,
+  ) async {
+    try {
+      final assetEntity = await pm.AssetEntity.fromId(imageAsset.id);
+      if (assetEntity == null) {
+        _logger.warning(
+          'AssetEntity not found for Live Photo video: ${imageAsset.id}',
+        );
+        return null;
+      }
+      // 与 video_provider 一致：优先 originFileWithSubtype，回退 loadFile(withSubtype: true)
+      File? file = await assetEntity.originFileWithSubtype;
+      file ??= await assetEntity.loadFile(withSubtype: true);
+      if (file == null || !await file.exists()) {
+        _logger.warning(
+          'Live Photo video file not found for asset: ${imageAsset.id}',
+        );
+        return null;
+      }
+      final path = file.path;
+      if (path.isEmpty) return null;
+      _logger.info(
+        'Resolved Live Photo video path for ${imageAsset.id}: ${path.split("/").last}',
+      );
+      return path;
+    } catch (e) {
+      _logger.warning(
+        'Failed to resolve Live Photo video path for ${imageAsset.id}: $e',
+      );
+      return null;
+    }
+  }
+
   /// 验证文件是否存在
   ///
   /// **参数**：

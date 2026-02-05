@@ -74,6 +74,17 @@ class UploadTaskEntity extends Table with DriftDefaultsMixin {
   IntColumn get progress => integer()
       .withDefault(const Constant(0))();
 
+  /// Live Photo 任务元数据（JSON 字符串）
+  ///
+  /// 用于存储与 Live Photo 成对上传相关的额外信息，例如：
+  /// - 本地资产 ID（冗余，便于从任务直接恢复上下文）
+  /// - 是否为 Live Photo
+  /// - 子任务类型（video / image）
+  /// - 已上传的视频资产远程 ID（remoteVideoId）
+  ///
+  /// 对于非 Live Photo 任务，该字段可以为空。
+  TextColumn get livePhotoMetadataJson => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

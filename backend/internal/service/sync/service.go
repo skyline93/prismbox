@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/album/backend/internal/database/models"
@@ -310,6 +311,10 @@ func (s *service) sendAssetBatch(writer io.Writer, medias []*models.Media, ack s
 		}
 		if media.ThumbHash != "" {
 			asset["thumb_hash"] = media.ThumbHash
+		}
+		// Live Photo：如果当前资产为图片且存在关联视频 UUID，则在同步数据中返回 live_photo_video_id 字段
+		if media.LivePhotoVideoUUID != nil && *media.LivePhotoVideoUUID != "" && strings.EqualFold(media.ItemType, "image") {
+			asset["live_photo_video_id"] = *media.LivePhotoVideoUUID
 		}
 
 		assetData = append(assetData, asset)

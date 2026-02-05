@@ -6,6 +6,7 @@ import 'package:prismbox/config/app_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
+import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/backup_candidate_selector.dart';
@@ -306,12 +307,47 @@ class BackupService {
 
     _logger.info('Found ${candidates.length} candidates for auto backup');
 
+    // 3.1 针对 Live Photo 做候选集归一化：
+    //     - 对于 Live Photo，仅保留「主图」资产（image + livePhotoVideoId 非空）作为候选；
+    //     - 排除被任何主图引用的「视频资产」，避免后续为同一 Live Photo 创建重复任务。
+    final livePhotoVideoIds = <String>{};
+    for (final asset in candidates) {
+      if (asset.type == AssetType.image &&
+          asset.livePhotoVideoId != null &&
+          asset.livePhotoVideoId!.isNotEmpty) {
+        livePhotoVideoIds.add(asset.livePhotoVideoId!);
+      }
+    }
+
+    final normalizedCandidates = <LocalAssetEntityData>[];
+    for (final asset in candidates) {
+      final isLivePhotoVideo = asset.type == AssetType.video &&
+          livePhotoVideoIds.contains(asset.id);
+
+      // 仅保留：非 Live Photo 资产 + Live Photo 主图资产
+      if (!isLivePhotoVideo) {
+        normalizedCandidates.add(asset);
+      }
+
+      if (isLivePhotoVideo) {
+        _logger.fine(
+          'Skip Live Photo video candidate because it will be uploaded via its '
+          'paired image asset: videoAssetId=${asset.id}',
+        );
+      }
+    }
+
+    _logger.info(
+      'Normalized auto-backup candidates: '
+      'original=${candidates.length}, normalized=${normalizedCandidates.length}',
+    );
+
     // 4. 创建上传任务（正常优先级，auto 类型）
     final endpoint = _apiService.endpoint ?? ApiConfig.apiEndpoint;
     final remotePath = '$endpoint$_uploadEndpoint';
 
     final tasks = await _taskFactory.createTasks(
-      assets: candidates,
+      assets: normalizedCandidates,
       userId: userId,
       remotePath: remotePath,
       taskType: UploadTaskType.auto,

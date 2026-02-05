@@ -129,9 +129,11 @@ FileMetadataExtractor fileMetadataExtractor(FileMetadataExtractorRef ref) {
 /// TaskFactory Provider
 @riverpod
 Future<TaskFactory> taskFactory(TaskFactoryRef ref) async {
+  final database = await ref.watch(infra.databaseProvider.future);
   final pathResolver = await ref.watch(infra_asset.assetPathResolverProvider.future);
   final metadataExtractor = ref.watch(fileMetadataExtractorProvider);
   return TaskFactory(
+    database: database,
     pathResolver: pathResolver,
     metadataExtractor: metadataExtractor,
   );

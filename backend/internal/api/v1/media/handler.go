@@ -63,6 +63,8 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	originalFilename := c.PostForm("original_filename")
 	cloudUUID := c.PostForm("cloud_uuid")
 	mediaTakenAtStr := c.PostForm("media_taken_at")
+	// Live Photo 关联视频 UUID（可选，仅当上传图片主资产时使用）
+	livePhotoVideoUUID := c.PostForm("live_photo_video_id")
 
 	// 2. 校验必填参数
 	if cloudUUID == "" {
@@ -149,14 +151,21 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 
 	// 6. 调用Service层上传媒体（后端会计算 hash）
 	media, err := h.mediaService.UploadMedia(c.Request.Context(), &mediaservice.UploadMediaRequest{
-		UserID:           userID,
-		ItemType:         itemType,
-		OriginalFilename: originalFilename,
-		CloudUUID:        cloudUUID,
-		MediaTakenAt:     mediaTakenAt,
-		Filename:         file.Filename,
-		FileSize:         file.Size,
-		Data:             src,
+		UserID:             userID,
+		ItemType:           itemType,
+		OriginalFilename:   originalFilename,
+		CloudUUID:          cloudUUID,
+		MediaTakenAt:       mediaTakenAt,
+		Filename:           file.Filename,
+		FileSize:           file.Size,
+		Data:               src,
+		LivePhotoVideoUUID: func() *string {
+			if livePhotoVideoUUID == "" {
+				return nil
+			}
+			v := livePhotoVideoUUID
+			return &v
+		}(),
 	})
 	if err != nil {
 		h.log.Error("failed to upload media",
@@ -305,6 +314,12 @@ func (h *Handler) GetMedias(c *gin.Context) {
 		if media.MediaTakenAt != nil {
 			takenAt := media.MediaTakenAt.Format(time.RFC3339)
 			response.MediaTakenAt = &takenAt
+		}
+
+		// Live Photo 关联视频 UUID
+		if media.LivePhotoVideoUUID != nil && *media.LivePhotoVideoUUID != "" {
+			v := *media.LivePhotoVideoUUID
+			response.LivePhotoVideoID = &v
 		}
 
 		// 构建URL（仅在处理完成时提供）
@@ -568,6 +583,12 @@ func (h *Handler) GetMediaDetail(c *gin.Context) {
 	if media.MediaTakenAt != nil {
 		takenAt := media.MediaTakenAt.Format(time.RFC3339)
 		response.MediaTakenAt = &takenAt
+	}
+
+	// 4. Live Photo 关联视频 UUID
+	if media.LivePhotoVideoUUID != nil && *media.LivePhotoVideoUUID != "" {
+		v := *media.LivePhotoVideoUUID
+		response.LivePhotoVideoID = &v
 	}
 
 	// 4. 构建URL（仅在处理完成时提供）

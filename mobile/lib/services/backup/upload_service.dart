@@ -6,6 +6,7 @@ import 'package:prismbox/data/database/enums/upload_task_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/services/backup/backup_query_builder.dart';
 import 'package:prismbox/services/backup/task_conflict_resolver.dart';
+import 'package:prismbox/services/backup/models/live_photo_upload_metadata.dart';
 import 'package:prismbox/services/backup/upload_orchestrator.dart';
 import 'package:prismbox/services/backup/upload_task_state_machine.dart';
 import 'package:prismbox/services/backup/task_update_service.dart';
@@ -236,6 +237,17 @@ class UploadService implements TaskUpdateService {
 
     _logger.info('Found ${pendingTasks.length} pending tasks');
 
+    for (final t in pendingTasks) {
+      final lp = t.livePhotoMetadata;
+      _logger.info(
+        '[LivePhoto] UploadService: pending task from DB: '
+        'taskId=${t.id}, assetId=${t.assetId}, '
+        'livePhotoMetadataJson=${t.livePhotoMetadataJson == null || t.livePhotoMetadataJson!.isEmpty ? "null_or_empty" : "present"}, '
+        'part=${lp?.part.name ?? "null"}, isLivePhoto=${lp?.isLivePhoto ?? false}, '
+        'localPathTail=${t.localPath.split("/").last}',
+      );
+    }
+
     // 2. 过滤已上传资产（去重）
     // 注意：这里需要确定任务类型，以便决定是否跳过去重
     // 暂时假设都是自动备份（需要后续从任务中获取）
@@ -332,14 +344,34 @@ class UploadService implements TaskUpdateService {
 
     final allTasks = [...pendingTasks, ...uploadingTasks];
 
+    // 策略调整：仅取消「非 Live Photo 任务」与「Live Photo 视频任务」，
+    // 保留已派生的 Live Photo 图片任务继续执行，避免出现长期“只有视频”的状态。
+    final tasksToCancel = allTasks.where((task) {
+      final metadata = task.livePhotoMetadata;
+      if (metadata == null || !metadata.isLivePhoto) {
+        // 非 Live Photo 任务：按原语义全部取消
+        return true;
+      }
+
+      // Live Photo：只取消视频任务，保留图片任务
+      return metadata.part == LivePhotoTaskPart.video;
+    }).toList();
+
+    if (tasksToCancel.isEmpty) {
+      _logger.info(
+        'No tasks to cancel for userId=$userId after Live Photo filtering',
+      );
+      return;
+    }
+
     // 通过状态机批量更新状态
     await _stateMachine.transitionBatch(
-      allTasks,
+      tasksToCancel,
       UploadTaskStatus.cancelled,
       errorMessage: 'Cancelled by user',
     );
 
-    _logger.info('Cancelled ${allTasks.length} tasks');
+    _logger.info('Cancelled ${tasksToCancel.length} tasks (after Live Photo filtering)');
   }
 
   /// 获取上传队列状态
@@ -440,6 +472,23 @@ class UploadService implements TaskUpdateService {
         'Cannot retry task $taskId with status ${task.status}',
       );
       return;
+    }
+
+    final metadata = task.livePhotoMetadata;
+
+    // Live Photo 取消/重试策略：
+    // - 视频任务失败：允许直接重试视频任务；
+    // - 图片任务失败：只重试图片任务，继续携带已有 remoteVideoId，不重新上传视频。
+    if (metadata != null && metadata.isLivePhoto) {
+      if (metadata.part == LivePhotoTaskPart.image &&
+          (metadata.remoteVideoId == null ||
+              metadata.remoteVideoId!.isEmpty)) {
+        _logger.warning(
+          'Cannot retry Live Photo image task without remoteVideoId, '
+          'taskId=$taskId, assetId=${task.assetId}',
+        );
+        return;
+      }
     }
 
     // 通过状态机更新状态（failed/permanentlyFailed -> uploading，重试时直接开始上传）

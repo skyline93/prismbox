@@ -280,6 +280,9 @@ definitions:
         type: string
       width:
         type: integer
+      live_photo_video_id:
+        description: 关联的 Live Photo 视频媒体 UUID（仅对图片资产有效）
+        type: string
     type: object
   dto.SetCheckpointRequest:
     properties:
@@ -1523,6 +1526,10 @@ paths:
       - description: 媒体拍摄时间（RFC3339 格式）
         in: formData
         name: media_taken_at
+        type: string
+      - description: 关联的 Live Photo 视频媒体 UUID（仅当当前上传的是图片主资产时使用）
+        in: formData
+        name: live_photo_video_id
         type: string
       produces:
       - application/json
