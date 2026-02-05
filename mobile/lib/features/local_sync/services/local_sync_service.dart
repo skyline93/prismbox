@@ -575,6 +575,17 @@ class LocalSyncService {
       }
     }
 
+    // Live Photo：仅图片类型且 isLivePhoto 为 true 时写入 livePhotoVideoId（存主图 id，motion 由同一 AssetEntity 提供）
+    String? livePhotoVideoId;
+    if (assetType == AssetType.image) {
+      try {
+        final isLive = asset.isLivePhoto;
+        if (isLive) livePhotoVideoId = asset.id;
+      } catch (e) {
+        _logger.fine('获取 Live Photo 状态失败: ${asset.id}, 默认为非 Live Photo');
+      }
+    }
+
     return LocalAssetEntityData(
       id: asset.id,
       name: originalFileName, // 使用 asset.title 获取的原始文件名
@@ -592,6 +603,7 @@ class LocalSyncService {
       path: path.isNotEmpty ? path : asset.id, // 如果路径为空，使用 ID 作为备用
       isInPrivateSpace: false, // 新同步的资产默认不在私有空间
       migrationStatus: MigrationStatus.none, // 新同步的资产默认无迁移状态
+      livePhotoVideoId: livePhotoVideoId,
     );
   }
 

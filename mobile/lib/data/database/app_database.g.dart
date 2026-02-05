@@ -474,6 +474,12 @@ class $LocalAssetEntityTable extends LocalAssetEntity
   late final GeneratedColumn<String> trashPath = GeneratedColumn<String>(
       'trash_path', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _livePhotoVideoIdMeta =
+      const VerificationMeta('livePhotoVideoId');
+  @override
+  late final GeneratedColumn<String> livePhotoVideoId = GeneratedColumn<String>(
+      'live_photo_video_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         name,
@@ -492,7 +498,8 @@ class $LocalAssetEntityTable extends LocalAssetEntity
         migrationStatus,
         deletedAt,
         originalPath,
-        trashPath
+        trashPath,
+        livePhotoVideoId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -588,6 +595,12 @@ class $LocalAssetEntityTable extends LocalAssetEntity
       context.handle(_trashPathMeta,
           trashPath.isAcceptableOrUnknown(data['trash_path']!, _trashPathMeta));
     }
+    if (data.containsKey('live_photo_video_id')) {
+      context.handle(
+          _livePhotoVideoIdMeta,
+          livePhotoVideoId.isAcceptableOrUnknown(
+              data['live_photo_video_id']!, _livePhotoVideoIdMeta));
+    }
     return context;
   }
 
@@ -633,6 +646,8 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           .read(DriftSqlType.string, data['${effectivePrefix}original_path']),
       trashPath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}trash_path']),
+      livePhotoVideoId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}live_photo_video_id']),
     );
   }
 
@@ -716,6 +731,9 @@ class LocalAssetEntityData extends DataClass
   /// 回收站路径（在应用私有回收站空间的路径）
   /// 用于永久删除时定位文件
   final String? trashPath;
+
+  /// Live Photo 关联视频 ID（仅图片类型，对应本地视频资产 ID）
+  final String? livePhotoVideoId;
   const LocalAssetEntityData(
       {required this.name,
       required this.type,
@@ -733,7 +751,8 @@ class LocalAssetEntityData extends DataClass
       required this.migrationStatus,
       this.deletedAt,
       this.originalPath,
-      this.trashPath});
+      this.trashPath,
+      this.livePhotoVideoId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -773,6 +792,9 @@ class LocalAssetEntityData extends DataClass
     if (!nullToAbsent || trashPath != null) {
       map['trash_path'] = Variable<String>(trashPath);
     }
+    if (!nullToAbsent || livePhotoVideoId != null) {
+      map['live_photo_video_id'] = Variable<String>(livePhotoVideoId);
+    }
     return map;
   }
 
@@ -805,6 +827,9 @@ class LocalAssetEntityData extends DataClass
       trashPath: trashPath == null && nullToAbsent
           ? const Value.absent()
           : Value(trashPath),
+      livePhotoVideoId: livePhotoVideoId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(livePhotoVideoId),
     );
   }
 
@@ -831,6 +856,7 @@ class LocalAssetEntityData extends DataClass
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       originalPath: serializer.fromJson<String?>(json['originalPath']),
       trashPath: serializer.fromJson<String?>(json['trashPath']),
+      livePhotoVideoId: serializer.fromJson<String?>(json['livePhotoVideoId']),
     );
   }
   @override
@@ -857,6 +883,7 @@ class LocalAssetEntityData extends DataClass
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'originalPath': serializer.toJson<String?>(originalPath),
       'trashPath': serializer.toJson<String?>(trashPath),
+      'livePhotoVideoId': serializer.toJson<String?>(livePhotoVideoId),
     };
   }
 
@@ -877,7 +904,8 @@ class LocalAssetEntityData extends DataClass
           MigrationStatus? migrationStatus,
           Value<DateTime?> deletedAt = const Value.absent(),
           Value<String?> originalPath = const Value.absent(),
-          Value<String?> trashPath = const Value.absent()}) =>
+          Value<String?> trashPath = const Value.absent(),
+          Value<String?> livePhotoVideoId = const Value.absent()}) =>
       LocalAssetEntityData(
         name: name ?? this.name,
         type: type ?? this.type,
@@ -899,6 +927,9 @@ class LocalAssetEntityData extends DataClass
         originalPath:
             originalPath.present ? originalPath.value : this.originalPath,
         trashPath: trashPath.present ? trashPath.value : this.trashPath,
+        livePhotoVideoId: livePhotoVideoId.present
+            ? livePhotoVideoId.value
+            : this.livePhotoVideoId,
       );
   LocalAssetEntityData copyWithCompanion(LocalAssetEntityCompanion data) {
     return LocalAssetEntityData(
@@ -930,6 +961,9 @@ class LocalAssetEntityData extends DataClass
           ? data.originalPath.value
           : this.originalPath,
       trashPath: data.trashPath.present ? data.trashPath.value : this.trashPath,
+      livePhotoVideoId: data.livePhotoVideoId.present
+          ? data.livePhotoVideoId.value
+          : this.livePhotoVideoId,
     );
   }
 
@@ -952,7 +986,8 @@ class LocalAssetEntityData extends DataClass
           ..write('migrationStatus: $migrationStatus, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('originalPath: $originalPath, ')
-          ..write('trashPath: $trashPath')
+          ..write('trashPath: $trashPath, ')
+          ..write('livePhotoVideoId: $livePhotoVideoId')
           ..write(')'))
         .toString();
   }
@@ -975,7 +1010,8 @@ class LocalAssetEntityData extends DataClass
       migrationStatus,
       deletedAt,
       originalPath,
-      trashPath);
+      trashPath,
+      livePhotoVideoId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -996,7 +1032,8 @@ class LocalAssetEntityData extends DataClass
           other.migrationStatus == this.migrationStatus &&
           other.deletedAt == this.deletedAt &&
           other.originalPath == this.originalPath &&
-          other.trashPath == this.trashPath);
+          other.trashPath == this.trashPath &&
+          other.livePhotoVideoId == this.livePhotoVideoId);
 }
 
 class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
@@ -1017,6 +1054,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
   final Value<DateTime?> deletedAt;
   final Value<String?> originalPath;
   final Value<String?> trashPath;
+  final Value<String?> livePhotoVideoId;
   const LocalAssetEntityCompanion({
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -1035,6 +1073,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.deletedAt = const Value.absent(),
     this.originalPath = const Value.absent(),
     this.trashPath = const Value.absent(),
+    this.livePhotoVideoId = const Value.absent(),
   });
   LocalAssetEntityCompanion.insert({
     required String name,
@@ -1054,6 +1093,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.deletedAt = const Value.absent(),
     this.originalPath = const Value.absent(),
     this.trashPath = const Value.absent(),
+    this.livePhotoVideoId = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         createdAt = Value(createdAt),
@@ -1078,6 +1118,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     Expression<DateTime>? deletedAt,
     Expression<String>? originalPath,
     Expression<String>? trashPath,
+    Expression<String>? livePhotoVideoId,
   }) {
     return RawValuesInsertable({
       if (name != null) 'name': name,
@@ -1097,6 +1138,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (originalPath != null) 'original_path': originalPath,
       if (trashPath != null) 'trash_path': trashPath,
+      if (livePhotoVideoId != null) 'live_photo_video_id': livePhotoVideoId,
     });
   }
 
@@ -1117,7 +1159,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       Value<MigrationStatus>? migrationStatus,
       Value<DateTime?>? deletedAt,
       Value<String?>? originalPath,
-      Value<String?>? trashPath}) {
+      Value<String?>? trashPath,
+      Value<String?>? livePhotoVideoId}) {
     return LocalAssetEntityCompanion(
       name: name ?? this.name,
       type: type ?? this.type,
@@ -1136,6 +1179,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       deletedAt: deletedAt ?? this.deletedAt,
       originalPath: originalPath ?? this.originalPath,
       trashPath: trashPath ?? this.trashPath,
+      livePhotoVideoId: livePhotoVideoId ?? this.livePhotoVideoId,
     );
   }
 
@@ -1196,6 +1240,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     if (trashPath.present) {
       map['trash_path'] = Variable<String>(trashPath.value);
     }
+    if (livePhotoVideoId.present) {
+      map['live_photo_video_id'] = Variable<String>(livePhotoVideoId.value);
+    }
     return map;
   }
 
@@ -1218,7 +1265,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           ..write('migrationStatus: $migrationStatus, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('originalPath: $originalPath, ')
-          ..write('trashPath: $trashPath')
+          ..write('trashPath: $trashPath, ')
+          ..write('livePhotoVideoId: $livePhotoVideoId')
           ..write(')'))
         .toString();
   }
@@ -7225,6 +7273,7 @@ typedef $$LocalAssetEntityTableCreateCompanionBuilder
   Value<DateTime?> deletedAt,
   Value<String?> originalPath,
   Value<String?> trashPath,
+  Value<String?> livePhotoVideoId,
 });
 typedef $$LocalAssetEntityTableUpdateCompanionBuilder
     = LocalAssetEntityCompanion Function({
@@ -7245,6 +7294,7 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<DateTime?> deletedAt,
   Value<String?> originalPath,
   Value<String?> trashPath,
+  Value<String?> livePhotoVideoId,
 });
 
 class $$LocalAssetEntityTableTableManager extends RootTableManager<
@@ -7282,6 +7332,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String?> originalPath = const Value.absent(),
             Value<String?> trashPath = const Value.absent(),
+            Value<String?> livePhotoVideoId = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion(
             name: name,
@@ -7301,6 +7352,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             originalPath: originalPath,
             trashPath: trashPath,
+            livePhotoVideoId: livePhotoVideoId,
           ),
           createCompanionCallback: ({
             required String name,
@@ -7320,6 +7372,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String?> originalPath = const Value.absent(),
             Value<String?> trashPath = const Value.absent(),
+            Value<String?> livePhotoVideoId = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion.insert(
             name: name,
@@ -7339,6 +7392,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             originalPath: originalPath,
             trashPath: trashPath,
+            livePhotoVideoId: livePhotoVideoId,
           ),
         ));
 }
@@ -7432,6 +7486,11 @@ class $$LocalAssetEntityTableFilterComposer
 
   ColumnFilters<String> get trashPath => $state.composableBuilder(
       column: $state.table.trashPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get livePhotoVideoId => $state.composableBuilder(
+      column: $state.table.livePhotoVideoId,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -7539,6 +7598,11 @@ class $$LocalAssetEntityTableOrderingComposer
 
   ColumnOrderings<String> get trashPath => $state.composableBuilder(
       column: $state.table.trashPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get livePhotoVideoId => $state.composableBuilder(
+      column: $state.table.livePhotoVideoId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }

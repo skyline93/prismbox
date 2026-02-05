@@ -9,3 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// 初始值为 null，表示没有当前视频。
 final currentVideoAssetIdProvider = StateProvider<String?>((ref) => null);
 
+/// 当前是否正在播放 Live Photo 关联的短视频
+///
+/// 用于媒体查看器内「静态主图」与「Live 短视频」视图切换。
+/// 与 Immich isPlayingMotionVideoProvider 对齐；页面切换时应重置为 false。
+final isPlayingMotionVideoProvider = StateProvider<bool>((ref) => false);
+

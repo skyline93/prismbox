@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:native_video_player/native_video_player.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
@@ -26,14 +27,32 @@ class VideoProvider {
   /// [asset] 资产对象
   /// [serverUrl] 服务器 URL（可选，用于远程视频）
   /// [assetEntityLoader] AssetEntity 加载器（可选，用于延迟加载本地视频）
+  /// [videoIdOverride] 视频资产 ID 覆盖（可选；用于 Live Photo 时传 livePhotoVideoId，仅用该 ID 拼远程 URL）
   ///
   /// 返回 native_video_player.VideoSource，如果无法获取则返回 null
   static Future<VideoSource?> getVideoSource(
     BaseAsset asset, {
     String? serverUrl,
     AssetEntityLoader? assetEntityLoader,
+    String? videoIdOverride,
   }) async {
     try {
+      // 本地 Live Photo motion：asset 为 LocalAsset 且传入了 videoIdOverride 时，从 AssetEntity 取 motion 文件
+      if (videoIdOverride != null && asset is LocalAsset) {
+        final motionSource = await _getLocalMotionVideoSource(
+          asset,
+          assetEntityLoader,
+        );
+        if (motionSource != null) return motionSource;
+        // 取不到本地 motion 时 fallback 到远程（若后续支持远程 Live Photo）
+        return await _getRemoteVideoSource(asset, serverUrl, videoIdOverride);
+      }
+
+      // Live Photo 关联视频（仅远程）：用 videoIdOverride 拼远程 URL
+      if (videoIdOverride != null) {
+        return await _getRemoteVideoSource(asset, serverUrl, videoIdOverride);
+      }
+
       // 本地视频
       if (asset is LocalAsset) {
         return await _getLocalVideoSource(asset, assetEntityLoader);
@@ -41,7 +60,7 @@ class VideoProvider {
 
       // 远程视频
       if (asset is RemoteAsset) {
-        return await _getRemoteVideoSource(asset, serverUrl);
+        return await _getRemoteVideoSource(asset, serverUrl, null);
       }
 
       // 合并资产（本地和远程都存在）
@@ -59,13 +78,13 @@ class VideoProvider {
 
         // 如果本地不可用，使用远程视频
         if (asset is RemoteAsset || asset.remoteId != null) {
-          return await _getRemoteVideoSource(asset, serverUrl);
+          return await _getRemoteVideoSource(asset, serverUrl, null);
         }
       }
 
       // 仅远程资产
       if (asset.storage == AssetState.remote && asset.remoteId != null) {
-        return await _getRemoteVideoSource(asset, serverUrl);
+        return await _getRemoteVideoSource(asset, serverUrl, null);
       }
 
       _log.warning('Unable to determine video source for asset: ${asset.id}');
@@ -73,6 +92,47 @@ class VideoProvider {
     } catch (e, stackTrace) {
       _log.severe(
         'Failed to get video source for asset: ${asset.id}',
+        e,
+        stackTrace,
+      );
+      return null;
+    }
+  }
+
+  /// 获取本地 Live Photo motion 视频源
+  ///
+  /// 当 asset 为 LocalAsset 且为 Live Photo 时，通过 AssetEntity 的 originFileWithSubtype / loadFile(withSubtype: true) 取 motion 文件
+  static Future<VideoSource?> _getLocalMotionVideoSource(
+    LocalAsset asset,
+    AssetEntityLoader? assetEntityLoader,
+  ) async {
+    try {
+      AssetEntity? entity = asset.assetEntity;
+      if (entity == null && assetEntityLoader != null) {
+        entity = await assetEntityLoader.loadAsync(asset);
+      }
+      if (entity == null) {
+        _log.fine('Local Live Photo: no AssetEntity for asset ${asset.id}');
+        return null;
+      }
+      // 取 motion 子类型文件：iOS originFileWithSubtype / Android loadFile(withSubtype: true)。
+      // 注意：photo_manager 的 isLivePhoto 仅 iOS/macOS 有效；Android Motion Photo 形态因厂商而异，若插件未暴露 motion 文件则此处可能为 null。
+      File? file = await entity.originFileWithSubtype;
+      file ??= await entity.loadFile(withSubtype: true);
+      if (file == null) {
+        _log.fine('Local Live Photo: no motion file for asset ${asset.id}');
+        return null;
+      }
+      final path = file.path;
+      if (path.isEmpty) return null;
+      if (!await File(path).exists()) {
+        _log.warning('Local Live Photo motion file does not exist: $path');
+        return null;
+      }
+      return await VideoSource.init(path: path, type: VideoSourceType.file);
+    } catch (e, stackTrace) {
+      _log.warning(
+        'Failed to get local motion video source for asset: ${asset.id}',
         e,
         stackTrace,
       );
@@ -130,10 +190,13 @@ class VideoProvider {
   }
 
   /// 获取远程视频源
+  ///
+  /// [videoIdOverride] 若不为 null（如 Live Photo 的 livePhotoVideoId），用其替代 asset.remoteId/id 拼 URL
   static Future<VideoSource?> _getRemoteVideoSource(
     BaseAsset asset,
-    String? serverUrl,
-  ) async {
+    String? serverUrl, [
+    String? videoIdOverride,
+  ]) async {
     try {
       // 获取服务器 URL
       String baseUrl = serverUrl ?? '';
@@ -151,10 +214,10 @@ class VideoProvider {
         return null;
       }
 
-      // 构建视频下载 URL
-      // 使用后端路由：/api/v1/media/:uuid/download/original
+      // 构建视频下载 URL；Live Photo 时使用 videoIdOverride（livePhotoVideoId）
+      final mediaId = videoIdOverride ?? asset.remoteId ?? asset.id;
       final videoUrl =
-          '$baseUrl/api/v1/media/${asset.remoteId ?? asset.id}/download/original';
+          '$baseUrl/api/v1/media/$mediaId/download/original';
 
       // 获取请求头（用于认证）
       final headers = await ApiService.getRequestHeaders();

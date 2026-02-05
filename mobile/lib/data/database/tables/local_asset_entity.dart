@@ -57,6 +57,9 @@ class LocalAssetEntity extends Table with DriftDefaultsMixin, AssetEntityMixin {
   /// 用于永久删除时定位文件
   TextColumn get trashPath => text().nullable()();
 
+  /// Live Photo 关联视频 ID（仅图片类型，对应本地视频资产 ID）
+  TextColumn get livePhotoVideoId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

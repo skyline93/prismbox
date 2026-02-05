@@ -23,6 +23,7 @@ class ViewerVideoManager {
   /// [assetId] 资产 ID
   /// [serverUrl] 服务器 URL（可选）
   /// [assetEntityLoader] AssetEntity 加载器（可选）
+  /// [videoIdOverride] 视频 ID 覆盖（可选；Live Photo 时传 livePhotoVideoId）
   ///
   /// 返回 Future&lt;VideoSource?&gt;，如果无法获取则返回 null
   Future<VideoSource?> getVideoSource(
@@ -30,19 +31,21 @@ class ViewerVideoManager {
     String assetId, {
     String? serverUrl,
     AssetEntityLoader? assetEntityLoader,
+    String? videoIdOverride,
   }) async {
-    // 如果已有缓存的视频源，直接返回
-    if (_videoSources.containsKey(assetId)) {
-      return await _videoSources[assetId];
+    final cacheKey =
+        videoIdOverride != null ? 'live_$videoIdOverride' : assetId;
+    if (_videoSources.containsKey(cacheKey)) {
+      return await _videoSources[cacheKey];
     }
 
-    // 获取视频源并缓存
     final videoSourceFuture = VideoProvider.getVideoSource(
       asset,
       serverUrl: serverUrl,
       assetEntityLoader: assetEntityLoader,
+      videoIdOverride: videoIdOverride,
     );
-    _videoSources[assetId] = videoSourceFuture;
+    _videoSources[cacheKey] = videoSourceFuture;
 
     return await videoSourceFuture;
   }

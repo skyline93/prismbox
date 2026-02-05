@@ -219,6 +219,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                   itemBuilder: (context, index) {
                     final assetId = widget.assetIds[index];
                     final asset = _assetMap?[assetId];
+                    final isPlayingMotionVideo =
+                        ref.watch(isPlayingMotionVideoProvider);
 
                     if (asset == null) {
                       return const Center(
@@ -226,7 +228,27 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                       );
                     }
 
-                    // 根据资产类型显示不同的内容
+                    // Live Photo 且正在播放关联短视频：显示 ViewerVideoPage（视频源为 livePhotoVideoId）
+                    if (asset.isMotionPhoto &&
+                        isPlayingMotionVideo &&
+                        asset.livePhotoVideoId != null) {
+                      return ViewerVideoPage(
+                        asset: asset,
+                        assetId: assetId,
+                        videoManager: _videoManager,
+                        serverUrl: _serverUrl,
+                        assetEntityLoader: _assetEntityLoader,
+                        showControls: _showControls,
+                        onToggleControls: _toggleControls,
+                        onMuteChanged: (muted) {},
+                        currentIndex: index,
+                        visiblePageIndices: _visiblePageIndices,
+                        livePhotoVideoId: asset.livePhotoVideoId,
+                        isLivePhotoVideo: true,
+                      );
+                    }
+
+                    // 普通视频
                     if (asset.isVideo) {
                       return ViewerVideoPage(
                         asset: asset,
@@ -236,31 +258,30 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                         assetEntityLoader: _assetEntityLoader,
                         showControls: _showControls,
                         onToggleControls: _toggleControls,
-                        onMuteChanged: (muted) {
-                          // 静音状态由视频管理器管理，这里不需要额外处理
-                        },
+                        onMuteChanged: (muted) {},
                         currentIndex: index,
                         visiblePageIndices: _visiblePageIndices,
                       );
-                    } else {
-                      return ViewerImagePage(
-                        asset: asset,
-                        assetId: assetId,
-                        serverUrl: _serverUrl,
-                        assetEntityLoader: _assetEntityLoader,
-                        onTap: _toggleControls,
-                        onScaleStateChanged: (PhotoViewScaleState state) {
-                          setState(() {
-                            _isZoomed = state != PhotoViewScaleState.initial;
-                            if (_isZoomed) {
-                              _hideControls();
-                            } else {
-                              _startControlsTimer();
-                            }
-                          });
-                        },
-                      );
                     }
+
+                    // 图片或 Live Photo 静态主图
+                    return ViewerImagePage(
+                      asset: asset,
+                      assetId: assetId,
+                      serverUrl: _serverUrl,
+                      assetEntityLoader: _assetEntityLoader,
+                      onTap: _toggleControls,
+                      onScaleStateChanged: (PhotoViewScaleState state) {
+                        setState(() {
+                          _isZoomed = state != PhotoViewScaleState.initial;
+                          if (_isZoomed) {
+                            _hideControls();
+                          } else {
+                            _startControlsTimer();
+                          }
+                        });
+                      },
+                    );
                   },
                 ),
 
@@ -277,13 +298,18 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                           );
                           return asset.isFavorite;
                         } catch (e) {
-                          // 如果找不到，回退到缓存
                           final asset = _assetMap?[_currentAssetId];
                           return asset?.isFavorite;
                         }
                       },
-                      orElse: () => _getCurrentAssetFavoriteStatus(), // 回退到缓存
+                      orElse: () => _getCurrentAssetFavoriteStatus(),
                     );
+                    final currentAsset = _currentAssetId == null
+                        ? null
+                        : _assetMap?[_currentAssetId];
+                    final isMotionPhoto = currentAsset?.isMotionPhoto ?? false;
+                    final isPlayingMotionVideo =
+                        ref.watch(isPlayingMotionVideoProvider);
 
                     return ViewerControlsBar(
                       showControls: _showControls,
@@ -293,6 +319,20 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                       },
                       isFavorite: currentFavoriteStatus,
                       onFavorite: _handleFavoriteToggle,
+                      isMotionPhoto: isMotionPhoto,
+                      isPlayingMotionVideo: isPlayingMotionVideo,
+                      onPlayMotionVideo: isMotionPhoto
+                          ? () {
+                              final next = !ref.read(isPlayingMotionVideoProvider);
+                              ref.read(isPlayingMotionVideoProvider.notifier).state =
+                                  next;
+                              if (next && _currentAssetId != null) {
+                                ref
+                                    .read(currentVideoAssetIdProvider.notifier)
+                                    .state = _currentAssetId;
+                              }
+                            }
+                          : null,
                     );
                   },
                 ),
@@ -317,36 +357,30 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   /// 处理页面切换
   ///
-  /// 更新当前资产 ID，确保收藏按钮显示正确的状态
+  /// 更新当前资产 ID，确保收藏按钮显示正确的状态；离开当前页时重置 Live 播放状态。
   void _handlePageChanged(int index) {
-    // 计算新的可见页面范围
+    ref.read(isPlayingMotionVideoProvider.notifier).state = false;
+
     final newVisibleIndices = _videoManager.calculateVisibleIndices(
       index,
       widget.assetIds.length,
     );
-
-    // 更新可见页面索引集合
     _videoManager.updateVisibleIndices(newVisibleIndices);
     _visiblePageIndices = newVisibleIndices;
 
-    // 处理当前页面
     if (index < widget.assetIds.length) {
       final assetId = widget.assetIds[index];
       final asset = _assetMap?[assetId];
 
-      // 更新当前资产 ID
       setState(() {
         _currentAssetId = assetId;
       });
 
       if (asset != null && asset.isVideo) {
         _videoManager.setCurrentVideoAssetId(assetId);
-        // 更新 Provider，触发响应式更新（ViewerVideoPage 会通过 ref.listen 响应并自动播放）
         ref.read(currentVideoAssetIdProvider.notifier).state = assetId;
-        // 注意：不再调用 playController，播放控制由 ViewerVideoPage 的 onPlaybackReady 完成
       } else {
         _videoManager.setCurrentVideoAssetId(null);
-        // 切换到非视频页面时，将 Provider 状态设置为 null
         ref.read(currentVideoAssetIdProvider.notifier).state = null;
       }
     }

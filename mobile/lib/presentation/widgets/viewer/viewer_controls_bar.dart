@@ -33,6 +33,15 @@ class ViewerControlsBar extends StatelessWidget {
   /// 编辑回调
   final VoidCallback? onEdit;
 
+  /// 当前资产是否为 Live Photo（显示「播放 Live 视频」按钮）
+  final bool isMotionPhoto;
+
+  /// 当前是否正在播放 Live 关联短视频（按钮图标：播放 / 暂停）
+  final bool isPlayingMotionVideo;
+
+  /// 播放/暂停 Live 视频回调
+  final VoidCallback? onPlayMotionVideo;
+
   const ViewerControlsBar({
     super.key,
     required this.showControls,
@@ -44,6 +53,9 @@ class ViewerControlsBar extends StatelessWidget {
     this.isFavorite,
     this.onInfo,
     this.onEdit,
+    this.isMotionPhoto = false,
+    this.isPlayingMotionVideo = false,
+    this.onPlayMotionVideo,
   });
 
   @override
@@ -69,6 +81,19 @@ class ViewerControlsBar extends StatelessWidget {
                 onPressed: onBack ?? () => Navigator.of(context).pop(),
               ),
               actions: [
+                if (isMotionPhoto && onPlayMotionVideo != null)
+                  Semantics(
+                    label: '播放动态视频',
+                    child: IconButton(
+                      icon: Icon(
+                        isPlayingMotionVideo
+                            ? Icons.motion_photos_pause_outlined
+                            : Icons.play_circle_outline_rounded,
+                        color: Colors.white,
+                      ),
+                      onPressed: onPlayMotionVideo,
+                    ),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.share),
                   onPressed:

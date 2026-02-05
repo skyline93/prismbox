@@ -48,6 +48,12 @@ class ViewerVideoPage extends ConsumerStatefulWidget {
   /// 可见页面索引集合
   final Set<int> visiblePageIndices;
 
+  /// Live Photo 关联视频资产 ID（非 null 时使用该 ID 获取视频源，不循环，播完回图）
+  final String? livePhotoVideoId;
+
+  /// 是否为 Live Photo 关联短视频（用于不循环、播完重置 isPlayingMotionVideoProvider）
+  final bool isLivePhotoVideo;
+
   const ViewerVideoPage({
     super.key,
     required this.asset,
@@ -60,6 +66,8 @@ class ViewerVideoPage extends ConsumerStatefulWidget {
     this.onMuteChanged,
     required this.currentIndex,
     required this.visiblePageIndices,
+    this.livePhotoVideoId,
+    this.isLivePhotoVideo = false,
   });
 
   @override
@@ -284,6 +292,7 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         widget.assetId,
         serverUrl: widget.serverUrl,
         assetEntityLoader: widget.assetEntityLoader,
+        videoIdOverride: widget.livePhotoVideoId,
       );
 
       if (mounted) {
@@ -457,7 +466,9 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
   /// 播放结束回调
   void _onPlaybackEnded() {
     if (!mounted) return;
-    // 播放结束后的处理逻辑
+    if (widget.isLivePhotoVideo) {
+      ref.read(isPlayingMotionVideoProvider.notifier).state = false;
+    }
   }
 
   /// 初始化控制器（由 NativeVideoPlayerView 的 onViewReady 调用）
@@ -483,6 +494,7 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         widget.assetId,
         serverUrl: widget.serverUrl,
         assetEntityLoader: widget.assetEntityLoader,
+        videoIdOverride: widget.livePhotoVideoId,
       );
 
       if (!mounted) {
@@ -492,6 +504,9 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
 
       if (videoSource == null) {
         _log.severe('_initController: 视频源为空，设置错误状态');
+        if (widget.isLivePhotoVideo) {
+          ref.read(isPlayingMotionVideoProvider.notifier).state = false;
+        }
         setState(() {
           _hasError = true;
           _isLoading = false;
@@ -508,6 +523,9 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         controller.loadVideoSource(videoSource).catchError((error) {
           _log.severe('_initController: 加载视频源失败', error);
           if (mounted) {
+            if (widget.isLivePhotoVideo) {
+              ref.read(isPlayingMotionVideoProvider.notifier).state = false;
+            }
             setState(() {
               _hasError = true;
               _isLoading = false;
@@ -517,8 +535,9 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
       );
 
       // 参考 Immich: 在 controller 刚创建时设置状态（此时原生实现肯定存在）
-      // 设置循环播放
-      unawaited(controller.setLoop(true).catchError((error) {
+      // Live Photo 不循环，播完回图；普通视频默认循环
+      final loop = !widget.isLivePhotoVideo;
+      unawaited(controller.setLoop(loop).catchError((error) {
         _log.warning('_initController: 设置循环播放失败', error);
       }));
       

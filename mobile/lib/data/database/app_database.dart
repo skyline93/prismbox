@@ -74,7 +74,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -305,7 +305,13 @@ class AppDatabase extends _$AppDatabase {
           ''');
         }
         break;
-      // ... 其他版本迁移
+      case 14:
+        // 本地 Live Photo 支持：为 local_asset_entity 添加 live_photo_video_id
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.livePhotoVideoId,
+        );
+        break;
       default:
         throw ArgumentError('未知的数据库版本: $version');
     }

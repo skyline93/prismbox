@@ -307,6 +307,7 @@ class TimelineProviderService {
             orientation: localData.orientation,
             remoteAssetId: null, // 完全解耦，不关联远程资产
             assetEntity: null,
+            livePhotoVideoId: localData.livePhotoVideoId,
           ),
         );
       }
@@ -350,6 +351,7 @@ class TimelineProviderService {
           orientation: data.orientation,
           remoteAssetId: null, // 完全解耦，不关联远程资产
           assetEntity: null,
+          livePhotoVideoId: data.livePhotoVideoId,
         ),
       );
     }
@@ -495,6 +497,17 @@ class TimelineProviderService {
       _logger.fine('获取收藏状态失败: ${asset.id}, 默认为 false');
     }
 
+    // Live Photo：仅图片且 isLivePhoto 为 true 时传入 livePhotoVideoId（主图 id，motion 由同一 AssetEntity 提供）
+    String? livePhotoVideoId;
+    if (assetType == AssetType.image) {
+      try {
+        final isLive = asset.isLivePhoto;
+        if (isLive) livePhotoVideoId = asset.id;
+      } catch (e) {
+        _logger.fine('获取 Live Photo 状态失败: ${asset.id}, 默认为非 Live Photo');
+      }
+    }
+
     return LocalAsset.fromData(
       id: asset.id,
       name: originalFileName, // 使用 asset.title 获取的原始文件名
@@ -510,6 +523,7 @@ class TimelineProviderService {
       orientation: asset.orientation,
       remoteAssetId: null, // 完全解耦，不关联远程资产
       assetEntity: asset, // photo_manager 数据源包含 AssetEntity
+      livePhotoVideoId: livePhotoVideoId,
     );
   }
 }

@@ -106,12 +106,18 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
             // 上传状态图标（右上角）
             _UploadStatusIcon(asset: widget.asset),
 
-            // 视频标识（右下角，仅视频显示）
+            // 视频时长或 Live Photo 角标（右下角，互斥）
             if (widget.asset.isVideo)
               Positioned(
                 bottom: 4,
                 right: 4,
                 child: _VideoIndicatorWithAsset(asset: widget.asset),
+              )
+            else if (widget.asset.isMotionPhoto)
+              const Positioned(
+                bottom: 4,
+                right: 4,
+                child: _LivePhotoIndicator(),
               ),
 
             // 收藏指示器（左下角）
@@ -418,6 +424,42 @@ class _VideoIndicatorWithAsset extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Live Photo 角标（右下角，与视频时长角标互斥）
+/// 语义：动态照片，便于无障碍
+class _LivePhotoIndicator extends StatelessWidget {
+  const _LivePhotoIndicator();
+
+  static const _iconSize = 16.0;
+  static const _padding =
+      EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0);
+  static const _iconColor = Color.fromRGBO(255, 255, 255, 1.0);
+  static const _shadow = Shadow(
+    blurRadius: 2.0,
+    color: Color.fromRGBO(0, 0, 0, 0.8),
+    offset: Offset(0.0, 1.0),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '动态照片',
+      child: Container(
+        padding: _padding,
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.all(Radius.circular(4.0)),
+        ),
+        child: const Icon(
+          Icons.motion_photos_on_rounded,
+          color: _iconColor,
+          size: _iconSize,
+          shadows: [_shadow],
+        ),
       ),
     );
   }
