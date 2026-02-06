@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:native_video_player/native_video_player.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -45,12 +46,20 @@ class VideoProvider {
         );
         if (motionSource != null) return motionSource;
         // 取不到本地 motion 时 fallback 到远程（若后续支持远程 Live Photo）
-        return await _getRemoteVideoSource(asset, serverUrl, videoIdOverride);
+        return await _getRemoteLivePhotoVideoSource(
+          asset,
+          serverUrl,
+          videoIdOverride,
+        );
       }
 
-      // Live Photo 关联视频（仅远程）：用 videoIdOverride 拼远程 URL
+      // Live Photo 关联视频（仅远程）：优先预览 URL，不可用时回退到原片
       if (videoIdOverride != null) {
-        return await _getRemoteVideoSource(asset, serverUrl, videoIdOverride);
+        return await _getRemoteLivePhotoVideoSource(
+          asset,
+          serverUrl,
+          videoIdOverride,
+        );
       }
 
       // 本地视频
@@ -189,6 +198,61 @@ class VideoProvider {
     }
   }
 
+  /// 远程 Live Photo 视频（仅用于预览播放）：优先 preview，不可用时回退 original。
+  /// 若需下载/导出原片，应使用 .../download/original（同一 mediaId）。
+  static Future<VideoSource?> _getRemoteLivePhotoVideoSource(
+    BaseAsset asset,
+    String? serverUrl,
+    String mediaId,
+  ) async {
+    final baseUrl = await _resolveBaseUrl(serverUrl);
+    if (baseUrl.isEmpty) {
+      _log.warning('No server URL available for remote Live video: ${asset.id}');
+      return null;
+    }
+    final headers = await ApiService.getRequestHeaders();
+    final previewUrl = '$baseUrl/api/v1/media/$mediaId/download/preview';
+    final originalUrl = '$baseUrl/api/v1/media/$mediaId/download/original';
+    try {
+      final response = await http.head(
+        Uri.parse(previewUrl),
+        headers: Map<String, String>.from(headers),
+      ).timeout(const Duration(seconds: 10));
+      final usePreview = response.statusCode == 200;
+      final videoUrl = usePreview ? previewUrl : originalUrl;
+      _log.fine(
+        'Remote Live video: using ${usePreview ? "preview" : "original"} '
+        'statusCode=${response.statusCode}',
+      );
+      return await VideoSource.init(
+        path: videoUrl,
+        type: VideoSourceType.network,
+        headers: headers,
+      );
+    } catch (e, stackTrace) {
+      _log.warning(
+        'Preview check failed, using original: ${asset.id}',
+        e,
+        stackTrace,
+      );
+      return await _getRemoteVideoSource(
+        asset,
+        serverUrl,
+        mediaId,
+      );
+    }
+  }
+
+  static Future<String> _resolveBaseUrl(String? serverUrl) async {
+    if (serverUrl != null && serverUrl.isNotEmpty) return serverUrl;
+    try {
+      return ApiService().endpoint ?? '';
+    } catch (e) {
+      _log.warning('Failed to get endpoint from ApiService', e);
+      return '';
+    }
+  }
+
   /// 获取远程视频源
   ///
   /// [videoIdOverride] 若不为 null（如 Live Photo 的 livePhotoVideoId），用其替代 asset.remoteId/id 拼 URL
@@ -198,31 +262,18 @@ class VideoProvider {
     String? videoIdOverride,
   ]) async {
     try {
-      // 获取服务器 URL
-      String baseUrl = serverUrl ?? '';
-      if (baseUrl.isEmpty) {
-        try {
-          final apiService = ApiService();
-          baseUrl = apiService.endpoint ?? '';
-        } catch (e) {
-          _log.warning('Failed to get endpoint from ApiService', e);
-        }
-      }
-
+      final baseUrl = await _resolveBaseUrl(serverUrl);
       if (baseUrl.isEmpty) {
         _log.warning('No server URL available for remote video: ${asset.id}');
         return null;
       }
 
-      // 构建视频下载 URL；Live Photo 时使用 videoIdOverride（livePhotoVideoId）
       final mediaId = videoIdOverride ?? asset.remoteId ?? asset.id;
       final videoUrl =
           '$baseUrl/api/v1/media/$mediaId/download/original';
 
-      // 获取请求头（用于认证）
       final headers = await ApiService.getRequestHeaders();
 
-      // 使用 native_video_player 的 VideoSource.init 创建远程视频源
       return await VideoSource.init(
         path: videoUrl,
         type: VideoSourceType.network,

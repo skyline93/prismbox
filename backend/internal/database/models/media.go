@@ -21,6 +21,8 @@ type Media struct {
 	MimeType         string  `gorm:"type:varchar(100)"`
 	// Live Photo 视频资产 UUID（仅对图片资产有效，用于指向关联的视频媒体记录）
 	LivePhotoVideoUUID *string `gorm:"column:live_photo_video_uuid;type:varchar(255);index"`
+	// IsLivePhotoVideo 是否为 Live Photo 附属视频（仅对视频资产有效；在上传该视频时由客户端携带标记写入，用于同步时排除）
+	IsLivePhotoVideo bool `gorm:"column:is_live_photo_video;default:false"`
 
 	// 媒体元数据
 	Width        int

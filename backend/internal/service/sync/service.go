@@ -281,6 +281,10 @@ func (s *service) sendAssetBatch(writer io.Writer, medias []*models.Media, ack s
 	ids := make([]string, 0, len(medias))
 
 	for _, media := range medias {
+		// 排除 Live Photo 附属视频，不同步该条记录；客户端仅通过 Live 照片的 live_photo_video_id 请求预览/原片
+		if strings.EqualFold(media.ItemType, "video") && media.IsLivePhotoVideo {
+			continue
+		}
 		ids = append(ids, media.UUID)
 
 		asset := map[string]interface{}{

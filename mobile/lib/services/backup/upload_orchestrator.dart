@@ -904,9 +904,16 @@ class UploadOrchestrator {
         assetForUpload.type == AssetType.image,
         fields,
       );
+      // Live Photo 视频任务：携带 is_live_photo_video=1，供服务端在创建该视频媒体记录时标记并同步时排除
+      if (lpMeta != null &&
+          lpMeta.isLivePhoto &&
+          lpMeta.part == LivePhotoTaskPart.video) {
+        fields['is_live_photo_video'] = '1';
+      }
       _logger.info(
         '[LivePhoto] _executeUpload: request built: item_type=$itemType, '
         'has_live_photo_video_id=${fields.containsKey("live_photo_video_id")}, '
+        'has_is_live_photo_video=${fields.containsKey("is_live_photo_video")}, '
         'original_filename=${assetForUpload.name}',
       );
       if (fields.containsKey('live_photo_video_id')) {

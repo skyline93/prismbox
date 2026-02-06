@@ -40,7 +40,9 @@ func RegisterRoutes(rg *gin.RouterGroup, app *appctx.App) {
 	download.Use(middleware.FlexibleAuthMiddleware(app.AuthService, app.URLSigner))
 	{
 		download.GET("/:uuid/download/original", handler.DownloadOriginal)
+		download.HEAD("/:uuid/download/original", handler.DownloadOriginal)
 		download.GET("/:uuid/download/preview", handler.DownloadPreview)
+		download.HEAD("/:uuid/download/preview", handler.DownloadPreview)
 		download.GET("/:uuid/download/thumbnail", handler.DownloadThumbnail)
 	}
 

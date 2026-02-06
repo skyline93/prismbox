@@ -65,6 +65,8 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	mediaTakenAtStr := c.PostForm("media_taken_at")
 	// Live Photo 关联视频 UUID（可选，仅当上传图片主资产时使用）
 	livePhotoVideoUUID := c.PostForm("live_photo_video_id")
+	// Live Photo 附属视频标记（可选，仅当上传视频时使用；传 "1" 或 "true" 表示该视频为 Live Photo 附属）
+	isLivePhotoVideoStr := c.PostForm("is_live_photo_video")
 
 	// 2. 校验必填参数
 	if cloudUUID == "" {
@@ -150,6 +152,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	defer src.Close()
 
 	// 6. 调用Service层上传媒体（后端会计算 hash）
+	isLivePhotoVideo := isLivePhotoVideoStr == "1" || strings.EqualFold(isLivePhotoVideoStr, "true")
 	media, err := h.mediaService.UploadMedia(c.Request.Context(), &mediaservice.UploadMediaRequest{
 		UserID:             userID,
 		ItemType:           itemType,
@@ -166,6 +169,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 			v := livePhotoVideoUUID
 			return &v
 		}(),
+		IsLivePhotoVideo: isLivePhotoVideo,
 	})
 	if err != nil {
 		h.log.Error("failed to upload media",
@@ -783,7 +787,20 @@ func (h *Handler) DownloadOriginal(c *gin.Context) {
 	// 3. 获取原始文件的MIME类型
 	mimeType := h.mediaService.GetOriginalMimeType(media)
 
-	// 4. 提供文件
+	// 4. HEAD 请求：仅检查原文件是否存在，不返回 body
+	if c.Request.Method == http.MethodHead {
+		reader, err := h.mediaService.GetFileReader(c.Request.Context(), media.LocalPath)
+		if err != nil {
+			apiresponse.Error(c, "File not found or permission denied")
+			return
+		}
+		_ = reader.Close()
+		c.Header("Content-Type", mimeType)
+		c.Status(http.StatusOK)
+		return
+	}
+
+	// 5. 提供文件
 	h.downloadFile(c, media.LocalPath, mimeType)
 }
 
@@ -848,7 +865,20 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 	// 4. 获取预览图的MIME类型
 	mimeType := h.mediaService.GetPreviewMimeType(media)
 
-	// 5. 提供文件
+	// 5. HEAD 请求：仅检查预览是否存在，不返回 body
+	if c.Request.Method == http.MethodHead {
+		reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+		if err != nil {
+			apiresponse.Error(c, "Preview not found or permission denied")
+			return
+		}
+		_ = reader.Close()
+		c.Header("Content-Type", mimeType)
+		c.Status(http.StatusOK)
+		return
+	}
+
+	// 6. 提供文件
 	h.downloadFile(c, storageKey, mimeType)
 }
 

@@ -38,6 +38,8 @@ type UploadMediaRequest struct {
 	Data             io.Reader
 	// LivePhotoVideoUUID 关联的 Live Photo 视频媒体 UUID（仅当当前上传的是图片时有效）
 	LivePhotoVideoUUID *string
+	// IsLivePhotoVideo 当前上传的是否为 Live Photo 附属视频（仅当 item_type=video 时有效；在上传视频时由客户端携带，用于同步时排除）
+	IsLivePhotoVideo bool
 }
 
 // GetMediasRequest 获取媒体列表请求
@@ -387,7 +389,7 @@ func lookupMimeType(value string) string {
 }
 
 func (s *service) newMediaModel(req *UploadMediaRequest, hash, storageKey, mimeType string, localPoolUUID string) *models.Media {
-	return &models.Media{
+	m := &models.Media{
 		UUID:               req.CloudUUID,
 		UserID:             req.UserID,
 		Hash:               hash,
@@ -404,6 +406,10 @@ func (s *service) newMediaModel(req *UploadMediaRequest, hash, storageKey, mimeT
 		BackupStatus:       "pending",
 		LivePhotoVideoUUID: req.LivePhotoVideoUUID,
 	}
+	if strings.ToLower(req.ItemType) == "video" && req.IsLivePhotoVideo {
+		m.IsLivePhotoVideo = true
+	}
+	return m
 }
 
 func (s *service) enqueueMediaProcessingTask(ctx context.Context, req *UploadMediaRequest, storageKey string) {

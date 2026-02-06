@@ -1531,6 +1531,10 @@ paths:
         in: formData
         name: live_photo_video_id
         type: string
+      - description: 是否为 Live Photo 附属视频（仅当 item_type=video 时使用；传 "1" 或 "true" 表示该视频为 Live Photo 附属，同步时将排除该条记录）
+        in: formData
+        name: is_live_photo_video
+        type: string
       produces:
       - application/json
       responses:
