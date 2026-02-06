@@ -9,6 +9,9 @@ import 'package:uuid/uuid.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/enums/post_task_status.dart';
 import 'package:prismbox/services/post/post_service.dart';
+import 'package:prismbox/config/app_config.dart';
+import 'package:prismbox/infrastructure/api/api_service.dart';
+import 'package:prismbox/services/backup/task_factory.dart';
 import 'package:prismbox/services/backup/upload_service.dart';
 import 'package:prismbox/services/backup/upload_orchestrator.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
@@ -18,12 +21,17 @@ import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 帖子任务管理器
 /// 管理帖子发布任务的生命周期：媒体上传 → 创建帖子
+/// 发帖媒体上传与手动备份共用同一套任务创建（TaskFactory）与编排，以支持完整 Live Photo 成对上传。
 class PostTaskManager {
   final AppDatabase _database;
   final PostService _postService;
   final UploadService _uploadService;
   final UploadOrchestrator _uploadOrchestrator;
+  final TaskFactory _taskFactory;
+  final ApiService _apiService;
   final Logger _logger = Logger('PostTaskManager');
+
+  static const String _uploadEndpoint = '/api/v1/media/upload-stream';
 
   // 任务执行流控制器
   final _taskStatusController = StreamController<PostTaskStatusUpdate>.broadcast();
@@ -36,10 +44,14 @@ class PostTaskManager {
     required PostService postService,
     required UploadService uploadService,
     required UploadOrchestrator uploadOrchestrator,
+    required TaskFactory taskFactory,
+    required ApiService apiService,
   })  : _database = database,
         _postService = postService,
         _uploadService = uploadService,
-        _uploadOrchestrator = uploadOrchestrator;
+        _uploadOrchestrator = uploadOrchestrator,
+        _taskFactory = taskFactory,
+        _apiService = apiService;
 
   /// 创建帖子发布任务
   /// 
@@ -146,6 +158,8 @@ class PostTaskManager {
   }
 
   /// 上传媒体文件
+  /// 当提供 mediaAssetIds 时与手动备份对齐：使用 TaskFactory 建任务（支持 Live Photo 成对上传），
+  /// 并按 displayAssetIdToUuid 得到有序展示用 UUID；否则回退为按路径建任务。
   Future<void> _uploadMedia(PostTaskEntityData task) async {
     await _database.postTaskDao.updateTaskStatus(
       task.id,
@@ -160,9 +174,6 @@ class PostTaskManager {
     ));
 
     final mediaPaths = jsonDecode(task.mediaPaths) as List;
-    final mediaUuids = <String>[];
-    
-    // 解析 mediaAssetIds（如果存在）
     List<String>? mediaAssetIds;
     if (task.mediaAssetIds != null) {
       mediaAssetIds = (jsonDecode(task.mediaAssetIds!) as List)
@@ -170,75 +181,27 @@ class PostTaskManager {
           .toList();
     }
 
-    _logger.info('Uploading ${mediaPaths.length} media files for task: ${task.id}');
-
-    // 如果提供了 mediaAssetIds，从 LocalAssetDao 获取资产信息
-    Map<String, LocalAssetEntityData>? localAssetsMap;
+    final List<UploadTaskEntityData> uploadTasks;
     if (mediaAssetIds != null && mediaAssetIds.isNotEmpty) {
-      localAssetsMap = await _database.localAssetDao.getAssetsByIds(mediaAssetIds);
-      _logger.info('Loaded ${localAssetsMap.length} local assets from database');
-    }
-
-    // 为每个媒体文件创建上传任务
-    final uploadTasks = <UploadTaskEntityData>[];
-    for (int i = 0; i < mediaPaths.length; i++) {
-      final mediaPath = mediaPaths[i] as String;
-      final file = File(mediaPath);
-      
-      if (!await file.exists()) {
-        throw Exception('Media file not found: $mediaPath');
-      }
-
-      // 获取文件大小
-      final fileSize = await FileMetadataExtractor().extractFileSize(mediaPath);
-      
-      // 确定 assetId：如果提供了 mediaAssetIds，使用真实的 assetId；否则使用临时 ID
-      final assetId = (mediaAssetIds != null && i < mediaAssetIds.length)
-          ? mediaAssetIds[i]
-          : '${task.id}_media_$i';
-      
-      // 验证 assetId 是否存在于 LocalAssetEntity 中（如果提供了 mediaAssetIds）
-      if (mediaAssetIds != null && i < mediaAssetIds.length) {
-        final localAsset = localAssetsMap?[assetId];
-        if (localAsset == null) {
-          throw Exception('Local asset not found: $assetId');
-        }
-        // 验证文件路径是否匹配
-        if (localAsset.path != mediaPath) {
-          _logger.warning(
-            'Path mismatch for asset $assetId: expected ${localAsset.path}, got $mediaPath',
-          );
-        }
-      }
-      
-      // 创建上传任务
-      final uploadTaskId = '${task.id}_media_$i';
-      final uploadTask = UploadTaskEntityData(
-        id: uploadTaskId,
-        userId: task.userId,
-        assetId: assetId, // 使用真实的 assetId（如果提供）
-        localPath: mediaPath,
-        remotePath: '', // 由上传服务填充
-        fileSize: fileSize,
-        taskType: UploadTaskType.manual,
-        priority: 1, // 高优先级
-        status: UploadTaskStatus.pending,
-        retryCount: 0,
-        maxRetries: 3,
-        errorMessage: null,
-        uploadedAt: null,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        progress: 0,
+      // 与手动备份一致：按资产建任务（含 Live Photo 先视频后图片）
+      uploadTasks = await _createUploadTasksFromAssets(
+        task: task,
+        mediaAssetIds: mediaAssetIds,
+        mediaPaths: mediaPaths,
       );
-
-      uploadTasks.add(uploadTask);
+    } else {
+      uploadTasks = await _createUploadTasksFromPaths(
+        task: task,
+        mediaPaths: mediaPaths,
+      );
     }
 
-    // 添加上传任务到队列
+    if (uploadTasks.isEmpty) {
+      throw Exception('No upload tasks created for task: ${task.id}');
+    }
+
     await _uploadService.addTasks(uploadTasks);
 
-    // 等待所有上传完成
     final cancellationToken = CancellationToken();
     final result = await _uploadOrchestrator.orchestrateUpload(
       userId: task.userId,
@@ -246,7 +209,7 @@ class PostTaskManager {
       cancellationToken: cancellationToken,
       taskType: UploadTaskType.manual,
       onProgress: (current, total) {
-        final progress = ((current / total) * 50).round(); // 媒体上传占 50% 进度
+        final progress = ((current / total) * 50).round();
         _database.postTaskDao.updateTaskProgress(task.id, progress);
         _taskStatusController.add(PostTaskStatusUpdate(
           taskId: task.id,
@@ -260,30 +223,13 @@ class PostTaskManager {
       throw Exception('Failed to upload ${result.failedCount} media files');
     }
 
-    // 获取上传后的媒体 UUID
-    // 从 orchestrateUpload 的返回值获取 UUID（不再直接读取数据库）
-    if (result.mediaUuids != null && result.mediaUuids!.isNotEmpty) {
-      // 按照 uploadTasks 的顺序提取 UUID
-      for (int i = 0; i < uploadTasks.length; i++) {
-        final taskId = uploadTasks[i].id;
-        final mediaUuid = result.mediaUuids![taskId];
-        if (mediaUuid != null && mediaUuid.isNotEmpty) {
-          mediaUuids.add(mediaUuid);
-        } else {
-          _logger.warning(
-            'Media UUID not found in result for task: taskId=$taskId',
-          );
-          throw Exception(
-            'Media UUID not available for upload task: $taskId',
-          );
-        }
-      }
-    } else {
-      _logger.warning(
-        'Media UUIDs not available in upload result: taskId=${task.id}',
-      );
-      throw Exception('Media UUIDs not available in upload result');
-    }
+    final mediaUuids = _collectOrderedMediaUuids(
+      result: result,
+      uploadTasks: uploadTasks,
+      mediaAssetIds: mediaAssetIds,
+      mediaPathsCount: mediaPaths.length,
+      taskId: task.id,
+    );
 
     if (mediaUuids.length != mediaPaths.length) {
       throw Exception(
@@ -292,7 +238,6 @@ class PostTaskManager {
       );
     }
 
-    // 保存媒体 UUID 列表
     await _database.postTaskDao.updateMediaUuids(task.id, mediaUuids);
 
     await _database.postTaskDao.updateTaskStatus(
@@ -306,6 +251,112 @@ class PostTaskManager {
       status: PostTaskStatus.mediaUploaded,
       progress: 50,
     ));
+  }
+
+  /// 使用 TaskFactory 按资产创建上传任务（与 BackupService 手动备份一致，支持 Live Photo）
+  Future<List<UploadTaskEntityData>> _createUploadTasksFromAssets({
+    required PostTaskEntityData task,
+    required List<String> mediaAssetIds,
+    required List mediaPaths,
+  }) async {
+    final localAssets = <LocalAssetEntityData>[];
+    for (final assetId in mediaAssetIds) {
+      final asset = await _database.localAssetDao.getAssetById(assetId);
+      if (asset == null) {
+        throw Exception('Local asset not found: $assetId');
+      }
+      localAssets.add(asset);
+    }
+    final endpoint = _apiService.endpoint ?? ApiConfig.apiEndpoint;
+    final remotePath = '$endpoint$_uploadEndpoint';
+    final tasks = await _taskFactory.createTasks(
+      assets: localAssets,
+      userId: task.userId,
+      remotePath: remotePath,
+      taskType: UploadTaskType.manual,
+      priority: 1,
+    );
+    _logger.info(
+      'Created ${tasks.length} upload tasks from assets for post task: ${task.id}',
+    );
+    return tasks;
+  }
+
+  /// 按路径创建上传任务（回退路径，无 Live Photo 成对逻辑）
+  Future<List<UploadTaskEntityData>> _createUploadTasksFromPaths({
+    required PostTaskEntityData task,
+    required List mediaPaths,
+  }) async {
+    final uploadTasks = <UploadTaskEntityData>[];
+    for (int i = 0; i < mediaPaths.length; i++) {
+      final mediaPath = mediaPaths[i] as String;
+      final file = File(mediaPath);
+      if (!await file.exists()) {
+        throw Exception('Media file not found: $mediaPath');
+      }
+      final fileSize = await FileMetadataExtractor().extractFileSize(mediaPath);
+      final assetId = '${task.id}_media_$i';
+      uploadTasks.add(UploadTaskEntityData(
+        id: '${task.id}_media_$i',
+        userId: task.userId,
+        assetId: assetId,
+        localPath: mediaPath,
+        remotePath: '',
+        fileSize: fileSize,
+        taskType: UploadTaskType.manual,
+        priority: 1,
+        status: UploadTaskStatus.pending,
+        retryCount: 0,
+        maxRetries: 3,
+        errorMessage: null,
+        uploadedAt: null,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        progress: 0,
+      ));
+    }
+    return uploadTasks;
+  }
+
+  /// 按选中顺序收集媒体 UUID：优先 displayAssetIdToUuid，否则按 taskId 顺序
+  List<String> _collectOrderedMediaUuids({
+    required UploadResult result,
+    required List<UploadTaskEntityData> uploadTasks,
+    required List<String>? mediaAssetIds,
+    required int mediaPathsCount,
+    required String taskId,
+  }) {
+    if (result.displayAssetIdToUuid != null &&
+        result.displayAssetIdToUuid!.isNotEmpty &&
+        mediaAssetIds != null &&
+        mediaAssetIds.length == mediaPathsCount) {
+      final ordered = <String>[];
+      for (final id in mediaAssetIds) {
+        final uuid = result.displayAssetIdToUuid![id];
+        if (uuid == null || uuid.isEmpty) {
+          throw Exception(
+            'Media UUID not available for display asset: $id (post task: $taskId)',
+          );
+        }
+        ordered.add(uuid);
+      }
+      return ordered;
+    }
+    // 回退：按初始任务顺序从 mediaUuids 取
+    if (result.mediaUuids == null || result.mediaUuids!.isEmpty) {
+      throw Exception('Media UUIDs not available in upload result');
+    }
+    final ordered = <String>[];
+    for (final uploadTask in uploadTasks) {
+      final uuid = result.mediaUuids![uploadTask.id];
+      if (uuid == null || uuid.isEmpty) {
+        throw Exception(
+          'Media UUID not available for upload task: ${uploadTask.id}',
+        );
+      }
+      ordered.add(uuid);
+    }
+    return ordered;
   }
 
   /// 创建帖子

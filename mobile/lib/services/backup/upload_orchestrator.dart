@@ -27,12 +27,17 @@ class UploadResult {
   final int failedCount;
   final List<UploadError> errors;
   final Map<String, String>? mediaUuids;
+  /// 按「展示用资产 ID」到媒体 UUID 的映射（可选）。
+  /// 用于需要按选中资产顺序得到每格展示用 UUID 的调用方（如发布帖子）；
+  /// Live Photo 的展示用为图片资产 ID，非 Live Photo 为 task.assetId。
+  final Map<String, String>? displayAssetIdToUuid;
 
   UploadResult({
     required this.successCount,
     required this.failedCount,
     required this.errors,
     this.mediaUuids,
+    this.displayAssetIdToUuid,
   });
 
   int get totalCount => successCount + failedCount;
@@ -293,6 +298,7 @@ class UploadOrchestrator {
     int failedCount = 0;
     final errors = <UploadError>[];
     final mediaUuids = <String, String>{};
+    final displayAssetIdToUuid = <String, String>{};
     final queue = List<UploadTaskEntityData>.from(sortedTasks);
 
     _logger.info(
@@ -341,6 +347,14 @@ class UploadOrchestrator {
               final uuid = completedTask!.mediaUuid;
               if (uuid != null && uuid.isNotEmpty) {
                 mediaUuids[task.id] = uuid;
+                // 展示用任务才写入 displayAssetIdToUuid：非 Live Photo 或 Live Photo 的 image 部分
+                final lpMeta = task.livePhotoMetadata;
+                final isDisplayTask = lpMeta == null ||
+                    !lpMeta.isLivePhoto ||
+                    lpMeta.part == LivePhotoTaskPart.image;
+                if (isDisplayTask) {
+                  displayAssetIdToUuid[task.assetId] = uuid;
+                }
               }
             }
           } catch (e) {
@@ -392,12 +406,15 @@ class UploadOrchestrator {
       failedCount: failedCount,
       errors: errors,
       mediaUuids: mediaUuids.isNotEmpty ? mediaUuids : null,
+      displayAssetIdToUuid:
+          displayAssetIdToUuid.isNotEmpty ? displayAssetIdToUuid : null,
     );
 
     _logger.info(
       'Upload orchestration completed: userId=$userId, '
       'success=$successCount, failed=$failedCount, '
-      'mediaUuidsCount=${mediaUuids.length}',
+      'mediaUuidsCount=${mediaUuids.length}, '
+      'displayAssetIdToUuidCount=${displayAssetIdToUuid.length}',
     );
 
     return result;

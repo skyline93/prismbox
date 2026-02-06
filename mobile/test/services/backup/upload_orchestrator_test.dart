@@ -128,4 +128,33 @@ void main() {
       expect(fields.containsKey('live_photo_video_id'), isFalse);
     });
   });
+
+  group('UploadResult.displayAssetIdToUuid', () {
+    test('UploadResult 可携带 displayAssetIdToUuid 映射', () {
+      final displayAssetIdToUuid = <String, String>{
+        'asset_1': 'uuid-1',
+        'asset_2': 'uuid-2',
+      };
+      final result = UploadResult(
+        successCount: 2,
+        failedCount: 0,
+        errors: [],
+        mediaUuids: {'task_1': 'uuid-1', 'task_2': 'uuid-2'},
+        displayAssetIdToUuid: displayAssetIdToUuid,
+      );
+      expect(result.displayAssetIdToUuid, isNotNull);
+      expect(result.displayAssetIdToUuid!['asset_1'], equals('uuid-1'));
+      expect(result.displayAssetIdToUuid!['asset_2'], equals('uuid-2'));
+    });
+
+    test('UploadResult 可不带 displayAssetIdToUuid', () {
+      final result = UploadResult(
+        successCount: 1,
+        failedCount: 0,
+        errors: [],
+        mediaUuids: {'task_1': 'uuid-1'},
+      );
+      expect(result.displayAssetIdToUuid, isNull);
+    });
+  });
 }

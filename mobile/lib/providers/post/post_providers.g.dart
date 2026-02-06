@@ -40,7 +40,7 @@ final postServiceBaseProvider = AutoDisposeProvider<PostService>.internal(
 );
 
 typedef PostServiceBaseRef = AutoDisposeProviderRef<PostService>;
-String _$postTaskManagerHash() => r'52bca44897189a6232da71fddecb608c9ee988e0';
+String _$postTaskManagerHash() => r'1b69922471a7c070fc68866404e8e225c9656df3';
 
 /// PostTaskManager Provider
 ///

@@ -40,12 +40,16 @@ Future<PostTaskManager> postTaskManager(PostTaskManagerRef ref) async {
   final postService = ref.watch(postServiceBaseProvider);
   final uploadService = await ref.watch(backup.uploadServiceProvider.future);
   final uploadOrchestrator = await ref.watch(backup.uploadOrchestratorProvider.future);
+  final taskFactory = await ref.watch(backup.taskFactoryProvider.future);
+  final apiService = ref.watch(apiServiceProvider);
   _log.info('[PostProviders] Dependencies watched, creating PostTaskManager');
   return PostTaskManager(
     database: database,
     postService: postService,
     uploadService: uploadService,
     uploadOrchestrator: uploadOrchestrator,
+    taskFactory: taskFactory,
+    apiService: apiService,
   );
 }
 

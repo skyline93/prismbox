@@ -6,7 +6,7 @@ part of 'asset_upload_status_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$assetUploadStatusHash() => r'f9daba40e8d4978d0e368fc5485fba0b45bcc17d';
+String _$assetUploadStatusHash() => r'b4b08bb235058333befbdb2e5760633f5fc59cf7';
 
 /// Copied from Dart SDK
 class _SystemHash {

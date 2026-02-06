@@ -144,7 +144,7 @@ final fileMetadataExtractorProvider =
 
 typedef FileMetadataExtractorRef
     = AutoDisposeProviderRef<FileMetadataExtractor>;
-String _$taskFactoryHash() => r'704623bfc11d77b34ab8c19dfed34a5f0e8f05ae';
+String _$taskFactoryHash() => r'efc9bda3850723437b244798442edf8e79b9ab10';
 
 /// TaskFactory Provider
 ///
