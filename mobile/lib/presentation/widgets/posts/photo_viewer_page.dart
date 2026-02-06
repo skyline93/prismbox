@@ -9,11 +9,14 @@ import 'package:prismbox/presentation/widgets/posts/post_media_image_provider.da
 class PhotoViewerPage extends StatefulWidget {
   final List<PostMedia> media;
   final int initialIndex;
+  /// 下载回调：参数为当前预览的 PostMedia，返回是否已加入队列
+  final Future<bool> Function(PostMedia media)? onDownload;
 
   const PhotoViewerPage({
     super.key,
     required this.media,
     required this.initialIndex,
+    this.onDownload,
   });
 
   @override
@@ -136,7 +139,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage>
           iconTheme: IconThemeData(
             color: Colors.white.withOpacity(backgroundOpacity),
           ),
-          // 使用 AnimatedOpacity 使标题在拖动时平滑地消失
           title: AnimatedOpacity(
             duration: const Duration(milliseconds: 100),
             opacity: _isDragging ? 0.0 : 1.0,
@@ -148,6 +150,25 @@ class _PhotoViewerPageState extends State<PhotoViewerPage>
             ),
           ),
           centerTitle: true,
+          actions: [
+            if (widget.onDownload != null)
+              IconButton(
+                icon: const Icon(Icons.download),
+                onPressed: () async {
+                  final media = widget.media[_currentIndex];
+                  final added = await widget.onDownload!(media);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          added ? '已加入下载队列' : '已在下载队列中',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+          ],
         ),
         // 将 PageView 包裹在 Transform.translate 中，使其跟随手势移动
         body: Transform.translate(

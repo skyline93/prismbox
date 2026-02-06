@@ -5893,6 +5893,782 @@ class UploadTaskEntityCompanion extends UpdateCompanion<UploadTaskEntityData> {
   }
 }
 
+class $DownloadTaskEntityTable extends DownloadTaskEntity
+    with TableInfo<$DownloadTaskEntityTable, DownloadTaskEntityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadTaskEntityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES user_entity (id) ON DELETE CASCADE'));
+  static const VerificationMeta _sourceTypeMeta =
+      const VerificationMeta('sourceType');
+  @override
+  late final GeneratedColumnWithTypeConverter<MediaDownloadSourceType, int>
+      sourceType = GeneratedColumn<int>('source_type', aliasedName, false,
+              type: DriftSqlType.int, requiredDuringInsert: true)
+          .withConverter<MediaDownloadSourceType>(
+              $DownloadTaskEntityTable.$convertersourceType);
+  static const VerificationMeta _sourceIdMeta =
+      const VerificationMeta('sourceId');
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+      'source_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mediaUuidMeta =
+      const VerificationMeta('mediaUuid');
+  @override
+  late final GeneratedColumn<String> mediaUuid = GeneratedColumn<String>(
+      'media_uuid', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _livePhotoVideoUuidMeta =
+      const VerificationMeta('livePhotoVideoUuid');
+  @override
+  late final GeneratedColumn<String> livePhotoVideoUuid =
+      GeneratedColumn<String>('live_photo_video_uuid', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _filenameMeta =
+      const VerificationMeta('filename');
+  @override
+  late final GeneratedColumn<String> filename = GeneratedColumn<String>(
+      'filename', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _itemTypeMeta =
+      const VerificationMeta('itemType');
+  @override
+  late final GeneratedColumn<String> itemType = GeneratedColumn<String>(
+      'item_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumnWithTypeConverter<DownloadTaskStatus, int> status =
+      GeneratedColumn<int>('status', aliasedName, false,
+              type: DriftSqlType.int,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0))
+          .withConverter<DownloadTaskStatus>(
+              $DownloadTaskEntityTable.$converterstatus);
+  static const VerificationMeta _progressMeta =
+      const VerificationMeta('progress');
+  @override
+  late final GeneratedColumn<int> progress = GeneratedColumn<int>(
+      'progress', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _errorMessageMeta =
+      const VerificationMeta('errorMessage');
+  @override
+  late final GeneratedColumn<String> errorMessage = GeneratedColumn<String>(
+      'error_message', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _imageTempPathMeta =
+      const VerificationMeta('imageTempPath');
+  @override
+  late final GeneratedColumn<String> imageTempPath = GeneratedColumn<String>(
+      'image_temp_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _videoTempPathMeta =
+      const VerificationMeta('videoTempPath');
+  @override
+  late final GeneratedColumn<String> videoTempPath = GeneratedColumn<String>(
+      'video_temp_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        userId,
+        sourceType,
+        sourceId,
+        mediaUuid,
+        livePhotoVideoUuid,
+        filename,
+        itemType,
+        status,
+        progress,
+        errorMessage,
+        imageTempPath,
+        videoTempPath,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'download_task_entity';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<DownloadTaskEntityData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    context.handle(_sourceTypeMeta, const VerificationResult.success());
+    if (data.containsKey('source_id')) {
+      context.handle(_sourceIdMeta,
+          sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta));
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('media_uuid')) {
+      context.handle(_mediaUuidMeta,
+          mediaUuid.isAcceptableOrUnknown(data['media_uuid']!, _mediaUuidMeta));
+    } else if (isInserting) {
+      context.missing(_mediaUuidMeta);
+    }
+    if (data.containsKey('live_photo_video_uuid')) {
+      context.handle(
+          _livePhotoVideoUuidMeta,
+          livePhotoVideoUuid.isAcceptableOrUnknown(
+              data['live_photo_video_uuid']!, _livePhotoVideoUuidMeta));
+    }
+    if (data.containsKey('filename')) {
+      context.handle(_filenameMeta,
+          filename.isAcceptableOrUnknown(data['filename']!, _filenameMeta));
+    } else if (isInserting) {
+      context.missing(_filenameMeta);
+    }
+    if (data.containsKey('item_type')) {
+      context.handle(_itemTypeMeta,
+          itemType.isAcceptableOrUnknown(data['item_type']!, _itemTypeMeta));
+    } else if (isInserting) {
+      context.missing(_itemTypeMeta);
+    }
+    context.handle(_statusMeta, const VerificationResult.success());
+    if (data.containsKey('progress')) {
+      context.handle(_progressMeta,
+          progress.isAcceptableOrUnknown(data['progress']!, _progressMeta));
+    }
+    if (data.containsKey('error_message')) {
+      context.handle(
+          _errorMessageMeta,
+          errorMessage.isAcceptableOrUnknown(
+              data['error_message']!, _errorMessageMeta));
+    }
+    if (data.containsKey('image_temp_path')) {
+      context.handle(
+          _imageTempPathMeta,
+          imageTempPath.isAcceptableOrUnknown(
+              data['image_temp_path']!, _imageTempPathMeta));
+    }
+    if (data.containsKey('video_temp_path')) {
+      context.handle(
+          _videoTempPathMeta,
+          videoTempPath.isAcceptableOrUnknown(
+              data['video_temp_path']!, _videoTempPathMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DownloadTaskEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadTaskEntityData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      sourceType: $DownloadTaskEntityTable.$convertersourceType.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.int, data['${effectivePrefix}source_type'])!),
+      sourceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_id'])!,
+      mediaUuid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_uuid'])!,
+      livePhotoVideoUuid: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}live_photo_video_uuid']),
+      filename: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}filename'])!,
+      itemType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item_type'])!,
+      status: $DownloadTaskEntityTable.$converterstatus.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}status'])!),
+      progress: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}progress'])!,
+      errorMessage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error_message']),
+      imageTempPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}image_temp_path']),
+      videoTempPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}video_temp_path']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $DownloadTaskEntityTable createAlias(String alias) {
+    return $DownloadTaskEntityTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<MediaDownloadSourceType, int, int>
+      $convertersourceType = const EnumIndexConverter<MediaDownloadSourceType>(
+          MediaDownloadSourceType.values);
+  static JsonTypeConverter2<DownloadTaskStatus, int, int> $converterstatus =
+      const EnumIndexConverter<DownloadTaskStatus>(DownloadTaskStatus.values);
+  @override
+  bool get withoutRowId => true;
+}
+
+class DownloadTaskEntityData extends DataClass
+    implements Insertable<DownloadTaskEntityData> {
+  /// 任务 ID（主键）
+  final String id;
+
+  /// 用户 ID（外键）
+  final String userId;
+
+  /// 来源类型：timeline_asset | post_media
+  final MediaDownloadSourceType sourceType;
+
+  /// 来源 ID：时间线为 assetId，帖子为 media.uuid
+  final String sourceId;
+
+  /// 主资源 media UUID（原图/主图）
+  final String mediaUuid;
+
+  /// Live Photo 时视频的 media UUID，非 Live 为 null
+  final String? livePhotoVideoUuid;
+
+  /// 展示用文件名
+  final String filename;
+
+  /// 主资源类型：IMAGE | VIDEO
+  final String itemType;
+
+  /// 任务状态
+  final DownloadTaskStatus status;
+
+  /// 进度 0–100，Live Photo 可为两文件综合进度
+  final int progress;
+
+  /// 失败原因
+  final String? errorMessage;
+
+  /// 主图下载完成后的临时路径（后处理写相册后删除）
+  final String? imageTempPath;
+
+  /// Live 视频临时路径（仅 Live Photo）
+  final String? videoTempPath;
+
+  /// 创建时间
+  final DateTime createdAt;
+
+  /// 更新时间
+  final DateTime updatedAt;
+  const DownloadTaskEntityData(
+      {required this.id,
+      required this.userId,
+      required this.sourceType,
+      required this.sourceId,
+      required this.mediaUuid,
+      this.livePhotoVideoUuid,
+      required this.filename,
+      required this.itemType,
+      required this.status,
+      required this.progress,
+      this.errorMessage,
+      this.imageTempPath,
+      this.videoTempPath,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['user_id'] = Variable<String>(userId);
+    {
+      map['source_type'] = Variable<int>(
+          $DownloadTaskEntityTable.$convertersourceType.toSql(sourceType));
+    }
+    map['source_id'] = Variable<String>(sourceId);
+    map['media_uuid'] = Variable<String>(mediaUuid);
+    if (!nullToAbsent || livePhotoVideoUuid != null) {
+      map['live_photo_video_uuid'] = Variable<String>(livePhotoVideoUuid);
+    }
+    map['filename'] = Variable<String>(filename);
+    map['item_type'] = Variable<String>(itemType);
+    {
+      map['status'] = Variable<int>(
+          $DownloadTaskEntityTable.$converterstatus.toSql(status));
+    }
+    map['progress'] = Variable<int>(progress);
+    if (!nullToAbsent || errorMessage != null) {
+      map['error_message'] = Variable<String>(errorMessage);
+    }
+    if (!nullToAbsent || imageTempPath != null) {
+      map['image_temp_path'] = Variable<String>(imageTempPath);
+    }
+    if (!nullToAbsent || videoTempPath != null) {
+      map['video_temp_path'] = Variable<String>(videoTempPath);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DownloadTaskEntityCompanion toCompanion(bool nullToAbsent) {
+    return DownloadTaskEntityCompanion(
+      id: Value(id),
+      userId: Value(userId),
+      sourceType: Value(sourceType),
+      sourceId: Value(sourceId),
+      mediaUuid: Value(mediaUuid),
+      livePhotoVideoUuid: livePhotoVideoUuid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(livePhotoVideoUuid),
+      filename: Value(filename),
+      itemType: Value(itemType),
+      status: Value(status),
+      progress: Value(progress),
+      errorMessage: errorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorMessage),
+      imageTempPath: imageTempPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageTempPath),
+      videoTempPath: videoTempPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(videoTempPath),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DownloadTaskEntityData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadTaskEntityData(
+      id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
+      sourceType: $DownloadTaskEntityTable.$convertersourceType
+          .fromJson(serializer.fromJson<int>(json['sourceType'])),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      mediaUuid: serializer.fromJson<String>(json['mediaUuid']),
+      livePhotoVideoUuid:
+          serializer.fromJson<String?>(json['livePhotoVideoUuid']),
+      filename: serializer.fromJson<String>(json['filename']),
+      itemType: serializer.fromJson<String>(json['itemType']),
+      status: $DownloadTaskEntityTable.$converterstatus
+          .fromJson(serializer.fromJson<int>(json['status'])),
+      progress: serializer.fromJson<int>(json['progress']),
+      errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      imageTempPath: serializer.fromJson<String?>(json['imageTempPath']),
+      videoTempPath: serializer.fromJson<String?>(json['videoTempPath']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<String>(userId),
+      'sourceType': serializer.toJson<int>(
+          $DownloadTaskEntityTable.$convertersourceType.toJson(sourceType)),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'mediaUuid': serializer.toJson<String>(mediaUuid),
+      'livePhotoVideoUuid': serializer.toJson<String?>(livePhotoVideoUuid),
+      'filename': serializer.toJson<String>(filename),
+      'itemType': serializer.toJson<String>(itemType),
+      'status': serializer.toJson<int>(
+          $DownloadTaskEntityTable.$converterstatus.toJson(status)),
+      'progress': serializer.toJson<int>(progress),
+      'errorMessage': serializer.toJson<String?>(errorMessage),
+      'imageTempPath': serializer.toJson<String?>(imageTempPath),
+      'videoTempPath': serializer.toJson<String?>(videoTempPath),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DownloadTaskEntityData copyWith(
+          {String? id,
+          String? userId,
+          MediaDownloadSourceType? sourceType,
+          String? sourceId,
+          String? mediaUuid,
+          Value<String?> livePhotoVideoUuid = const Value.absent(),
+          String? filename,
+          String? itemType,
+          DownloadTaskStatus? status,
+          int? progress,
+          Value<String?> errorMessage = const Value.absent(),
+          Value<String?> imageTempPath = const Value.absent(),
+          Value<String?> videoTempPath = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      DownloadTaskEntityData(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        sourceType: sourceType ?? this.sourceType,
+        sourceId: sourceId ?? this.sourceId,
+        mediaUuid: mediaUuid ?? this.mediaUuid,
+        livePhotoVideoUuid: livePhotoVideoUuid.present
+            ? livePhotoVideoUuid.value
+            : this.livePhotoVideoUuid,
+        filename: filename ?? this.filename,
+        itemType: itemType ?? this.itemType,
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        errorMessage:
+            errorMessage.present ? errorMessage.value : this.errorMessage,
+        imageTempPath:
+            imageTempPath.present ? imageTempPath.value : this.imageTempPath,
+        videoTempPath:
+            videoTempPath.present ? videoTempPath.value : this.videoTempPath,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  DownloadTaskEntityData copyWithCompanion(DownloadTaskEntityCompanion data) {
+    return DownloadTaskEntityData(
+      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      sourceType:
+          data.sourceType.present ? data.sourceType.value : this.sourceType,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      mediaUuid: data.mediaUuid.present ? data.mediaUuid.value : this.mediaUuid,
+      livePhotoVideoUuid: data.livePhotoVideoUuid.present
+          ? data.livePhotoVideoUuid.value
+          : this.livePhotoVideoUuid,
+      filename: data.filename.present ? data.filename.value : this.filename,
+      itemType: data.itemType.present ? data.itemType.value : this.itemType,
+      status: data.status.present ? data.status.value : this.status,
+      progress: data.progress.present ? data.progress.value : this.progress,
+      errorMessage: data.errorMessage.present
+          ? data.errorMessage.value
+          : this.errorMessage,
+      imageTempPath: data.imageTempPath.present
+          ? data.imageTempPath.value
+          : this.imageTempPath,
+      videoTempPath: data.videoTempPath.present
+          ? data.videoTempPath.value
+          : this.videoTempPath,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadTaskEntityData(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('mediaUuid: $mediaUuid, ')
+          ..write('livePhotoVideoUuid: $livePhotoVideoUuid, ')
+          ..write('filename: $filename, ')
+          ..write('itemType: $itemType, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('imageTempPath: $imageTempPath, ')
+          ..write('videoTempPath: $videoTempPath, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      userId,
+      sourceType,
+      sourceId,
+      mediaUuid,
+      livePhotoVideoUuid,
+      filename,
+      itemType,
+      status,
+      progress,
+      errorMessage,
+      imageTempPath,
+      videoTempPath,
+      createdAt,
+      updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadTaskEntityData &&
+          other.id == this.id &&
+          other.userId == this.userId &&
+          other.sourceType == this.sourceType &&
+          other.sourceId == this.sourceId &&
+          other.mediaUuid == this.mediaUuid &&
+          other.livePhotoVideoUuid == this.livePhotoVideoUuid &&
+          other.filename == this.filename &&
+          other.itemType == this.itemType &&
+          other.status == this.status &&
+          other.progress == this.progress &&
+          other.errorMessage == this.errorMessage &&
+          other.imageTempPath == this.imageTempPath &&
+          other.videoTempPath == this.videoTempPath &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DownloadTaskEntityCompanion
+    extends UpdateCompanion<DownloadTaskEntityData> {
+  final Value<String> id;
+  final Value<String> userId;
+  final Value<MediaDownloadSourceType> sourceType;
+  final Value<String> sourceId;
+  final Value<String> mediaUuid;
+  final Value<String?> livePhotoVideoUuid;
+  final Value<String> filename;
+  final Value<String> itemType;
+  final Value<DownloadTaskStatus> status;
+  final Value<int> progress;
+  final Value<String?> errorMessage;
+  final Value<String?> imageTempPath;
+  final Value<String?> videoTempPath;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DownloadTaskEntityCompanion({
+    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.mediaUuid = const Value.absent(),
+    this.livePhotoVideoUuid = const Value.absent(),
+    this.filename = const Value.absent(),
+    this.itemType = const Value.absent(),
+    this.status = const Value.absent(),
+    this.progress = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.imageTempPath = const Value.absent(),
+    this.videoTempPath = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DownloadTaskEntityCompanion.insert({
+    required String id,
+    required String userId,
+    required MediaDownloadSourceType sourceType,
+    required String sourceId,
+    required String mediaUuid,
+    this.livePhotoVideoUuid = const Value.absent(),
+    required String filename,
+    required String itemType,
+    this.status = const Value.absent(),
+    this.progress = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.imageTempPath = const Value.absent(),
+    this.videoTempPath = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  })  : id = Value(id),
+        userId = Value(userId),
+        sourceType = Value(sourceType),
+        sourceId = Value(sourceId),
+        mediaUuid = Value(mediaUuid),
+        filename = Value(filename),
+        itemType = Value(itemType),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<DownloadTaskEntityData> custom({
+    Expression<String>? id,
+    Expression<String>? userId,
+    Expression<int>? sourceType,
+    Expression<String>? sourceId,
+    Expression<String>? mediaUuid,
+    Expression<String>? livePhotoVideoUuid,
+    Expression<String>? filename,
+    Expression<String>? itemType,
+    Expression<int>? status,
+    Expression<int>? progress,
+    Expression<String>? errorMessage,
+    Expression<String>? imageTempPath,
+    Expression<String>? videoTempPath,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
+      if (sourceType != null) 'source_type': sourceType,
+      if (sourceId != null) 'source_id': sourceId,
+      if (mediaUuid != null) 'media_uuid': mediaUuid,
+      if (livePhotoVideoUuid != null)
+        'live_photo_video_uuid': livePhotoVideoUuid,
+      if (filename != null) 'filename': filename,
+      if (itemType != null) 'item_type': itemType,
+      if (status != null) 'status': status,
+      if (progress != null) 'progress': progress,
+      if (errorMessage != null) 'error_message': errorMessage,
+      if (imageTempPath != null) 'image_temp_path': imageTempPath,
+      if (videoTempPath != null) 'video_temp_path': videoTempPath,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DownloadTaskEntityCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? userId,
+      Value<MediaDownloadSourceType>? sourceType,
+      Value<String>? sourceId,
+      Value<String>? mediaUuid,
+      Value<String?>? livePhotoVideoUuid,
+      Value<String>? filename,
+      Value<String>? itemType,
+      Value<DownloadTaskStatus>? status,
+      Value<int>? progress,
+      Value<String?>? errorMessage,
+      Value<String?>? imageTempPath,
+      Value<String?>? videoTempPath,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return DownloadTaskEntityCompanion(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      sourceType: sourceType ?? this.sourceType,
+      sourceId: sourceId ?? this.sourceId,
+      mediaUuid: mediaUuid ?? this.mediaUuid,
+      livePhotoVideoUuid: livePhotoVideoUuid ?? this.livePhotoVideoUuid,
+      filename: filename ?? this.filename,
+      itemType: itemType ?? this.itemType,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      errorMessage: errorMessage ?? this.errorMessage,
+      imageTempPath: imageTempPath ?? this.imageTempPath,
+      videoTempPath: videoTempPath ?? this.videoTempPath,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<int>($DownloadTaskEntityTable
+          .$convertersourceType
+          .toSql(sourceType.value));
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (mediaUuid.present) {
+      map['media_uuid'] = Variable<String>(mediaUuid.value);
+    }
+    if (livePhotoVideoUuid.present) {
+      map['live_photo_video_uuid'] = Variable<String>(livePhotoVideoUuid.value);
+    }
+    if (filename.present) {
+      map['filename'] = Variable<String>(filename.value);
+    }
+    if (itemType.present) {
+      map['item_type'] = Variable<String>(itemType.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<int>(
+          $DownloadTaskEntityTable.$converterstatus.toSql(status.value));
+    }
+    if (progress.present) {
+      map['progress'] = Variable<int>(progress.value);
+    }
+    if (errorMessage.present) {
+      map['error_message'] = Variable<String>(errorMessage.value);
+    }
+    if (imageTempPath.present) {
+      map['image_temp_path'] = Variable<String>(imageTempPath.value);
+    }
+    if (videoTempPath.present) {
+      map['video_temp_path'] = Variable<String>(videoTempPath.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadTaskEntityCompanion(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('mediaUuid: $mediaUuid, ')
+          ..write('livePhotoVideoUuid: $livePhotoVideoUuid, ')
+          ..write('filename: $filename, ')
+          ..write('itemType: $itemType, ')
+          ..write('status: $status, ')
+          ..write('progress: $progress, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('imageTempPath: $imageTempPath, ')
+          ..write('videoTempPath: $videoTempPath, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncCheckpointEntityTable extends SyncCheckpointEntity
     with TableInfo<$SyncCheckpointEntityTable, SyncCheckpointEntityData> {
   @override
@@ -6917,6 +7693,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $BackupStatusEntityTable(this);
   late final $UploadTaskEntityTable uploadTaskEntity =
       $UploadTaskEntityTable(this);
+  late final $DownloadTaskEntityTable downloadTaskEntity =
+      $DownloadTaskEntityTable(this);
   late final $SyncCheckpointEntityTable syncCheckpointEntity =
       $SyncCheckpointEntityTable(this);
   late final $PostTaskEntityTable postTaskEntity = $PostTaskEntityTable(this);
@@ -6937,6 +7715,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX idx_upload_task_priority ON upload_task_entity (priority)');
   late final Index idxUploadTaskAssetId = Index('idx_upload_task_asset_id',
       'CREATE INDEX idx_upload_task_asset_id ON upload_task_entity (asset_id)');
+  late final Index idxDownloadTaskUserId = Index('idx_download_task_user_id',
+      'CREATE INDEX idx_download_task_user_id ON download_task_entity (user_id)');
+  late final Index idxDownloadTaskStatus = Index('idx_download_task_status',
+      'CREATE INDEX idx_download_task_status ON download_task_entity (status)');
+  late final Index idxDownloadTaskSourceType = Index(
+      'idx_download_task_source_type',
+      'CREATE INDEX idx_download_task_source_type ON download_task_entity (source_type)');
+  late final Index idxDownloadTaskSourceId = Index(
+      'idx_download_task_source_id',
+      'CREATE INDEX idx_download_task_source_id ON download_task_entity (source_id)');
   late final Index idxPostTaskUserId = Index('idx_post_task_user_id',
       'CREATE INDEX idx_post_task_user_id ON post_task_entity (user_id)');
   late final Index idxPostTaskStatus = Index('idx_post_task_status',
@@ -6951,6 +7739,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final BackupStatusDao backupStatusDao =
       BackupStatusDao(this as AppDatabase);
   late final UploadTaskDao uploadTaskDao = UploadTaskDao(this as AppDatabase);
+  late final DownloadTaskDao downloadTaskDao =
+      DownloadTaskDao(this as AppDatabase);
   late final SyncCheckpointDao syncCheckpointDao =
       SyncCheckpointDao(this as AppDatabase);
   late final RetryTaskDao retryTaskDao = RetryTaskDao(this as AppDatabase);
@@ -6972,6 +7762,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         storeEntity,
         backupStatusEntity,
         uploadTaskEntity,
+        downloadTaskEntity,
         syncCheckpointEntity,
         postTaskEntity,
         idxRemoteAssetOwnerChecksum,
@@ -6982,6 +7773,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         idxUploadTaskType,
         idxUploadTaskPriority,
         idxUploadTaskAssetId,
+        idxDownloadTaskUserId,
+        idxDownloadTaskStatus,
+        idxDownloadTaskSourceType,
+        idxDownloadTaskSourceId,
         idxPostTaskUserId,
         idxPostTaskStatus,
         idxPostTaskGroupId
@@ -7064,6 +7859,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('upload_task_entity', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('user_entity',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('download_task_entity', kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -7247,6 +8049,23 @@ class $$UserEntityTableFilterComposer
             builder: (joinBuilder, parentComposers) =>
                 $$UploadTaskEntityTableFilterComposer(ComposerState($state.db,
                     $state.db.uploadTaskEntity, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter downloadTaskEntityRefs(
+      ComposableFilter Function($$DownloadTaskEntityTableFilterComposer f) f) {
+    final $$DownloadTaskEntityTableFilterComposer composer = $state
+        .composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.downloadTaskEntity,
+            getReferencedColumn: (t) => t.userId,
+            builder: (joinBuilder, parentComposers) =>
+                $$DownloadTaskEntityTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.downloadTaskEntity,
+                    joinBuilder,
+                    parentComposers)));
     return f(composer);
   }
 
@@ -9688,6 +10507,308 @@ class $$UploadTaskEntityTableOrderingComposer
   }
 }
 
+typedef $$DownloadTaskEntityTableCreateCompanionBuilder
+    = DownloadTaskEntityCompanion Function({
+  required String id,
+  required String userId,
+  required MediaDownloadSourceType sourceType,
+  required String sourceId,
+  required String mediaUuid,
+  Value<String?> livePhotoVideoUuid,
+  required String filename,
+  required String itemType,
+  Value<DownloadTaskStatus> status,
+  Value<int> progress,
+  Value<String?> errorMessage,
+  Value<String?> imageTempPath,
+  Value<String?> videoTempPath,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+});
+typedef $$DownloadTaskEntityTableUpdateCompanionBuilder
+    = DownloadTaskEntityCompanion Function({
+  Value<String> id,
+  Value<String> userId,
+  Value<MediaDownloadSourceType> sourceType,
+  Value<String> sourceId,
+  Value<String> mediaUuid,
+  Value<String?> livePhotoVideoUuid,
+  Value<String> filename,
+  Value<String> itemType,
+  Value<DownloadTaskStatus> status,
+  Value<int> progress,
+  Value<String?> errorMessage,
+  Value<String?> imageTempPath,
+  Value<String?> videoTempPath,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+});
+
+class $$DownloadTaskEntityTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DownloadTaskEntityTable,
+    DownloadTaskEntityData,
+    $$DownloadTaskEntityTableFilterComposer,
+    $$DownloadTaskEntityTableOrderingComposer,
+    $$DownloadTaskEntityTableCreateCompanionBuilder,
+    $$DownloadTaskEntityTableUpdateCompanionBuilder> {
+  $$DownloadTaskEntityTableTableManager(
+      _$AppDatabase db, $DownloadTaskEntityTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$DownloadTaskEntityTableFilterComposer(ComposerState(db, table)),
+          orderingComposer: $$DownloadTaskEntityTableOrderingComposer(
+              ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> userId = const Value.absent(),
+            Value<MediaDownloadSourceType> sourceType = const Value.absent(),
+            Value<String> sourceId = const Value.absent(),
+            Value<String> mediaUuid = const Value.absent(),
+            Value<String?> livePhotoVideoUuid = const Value.absent(),
+            Value<String> filename = const Value.absent(),
+            Value<String> itemType = const Value.absent(),
+            Value<DownloadTaskStatus> status = const Value.absent(),
+            Value<int> progress = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<String?> imageTempPath = const Value.absent(),
+            Value<String?> videoTempPath = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              DownloadTaskEntityCompanion(
+            id: id,
+            userId: userId,
+            sourceType: sourceType,
+            sourceId: sourceId,
+            mediaUuid: mediaUuid,
+            livePhotoVideoUuid: livePhotoVideoUuid,
+            filename: filename,
+            itemType: itemType,
+            status: status,
+            progress: progress,
+            errorMessage: errorMessage,
+            imageTempPath: imageTempPath,
+            videoTempPath: videoTempPath,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String userId,
+            required MediaDownloadSourceType sourceType,
+            required String sourceId,
+            required String mediaUuid,
+            Value<String?> livePhotoVideoUuid = const Value.absent(),
+            required String filename,
+            required String itemType,
+            Value<DownloadTaskStatus> status = const Value.absent(),
+            Value<int> progress = const Value.absent(),
+            Value<String?> errorMessage = const Value.absent(),
+            Value<String?> imageTempPath = const Value.absent(),
+            Value<String?> videoTempPath = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+          }) =>
+              DownloadTaskEntityCompanion.insert(
+            id: id,
+            userId: userId,
+            sourceType: sourceType,
+            sourceId: sourceId,
+            mediaUuid: mediaUuid,
+            livePhotoVideoUuid: livePhotoVideoUuid,
+            filename: filename,
+            itemType: itemType,
+            status: status,
+            progress: progress,
+            errorMessage: errorMessage,
+            imageTempPath: imageTempPath,
+            videoTempPath: videoTempPath,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+        ));
+}
+
+class $$DownloadTaskEntityTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $DownloadTaskEntityTable> {
+  $$DownloadTaskEntityTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<MediaDownloadSourceType,
+          MediaDownloadSourceType, int>
+      get sourceType => $state.composableBuilder(
+          column: $state.table.sourceType,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get sourceId => $state.composableBuilder(
+      column: $state.table.sourceId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mediaUuid => $state.composableBuilder(
+      column: $state.table.mediaUuid,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get livePhotoVideoUuid => $state.composableBuilder(
+      column: $state.table.livePhotoVideoUuid,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get filename => $state.composableBuilder(
+      column: $state.table.filename,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get itemType => $state.composableBuilder(
+      column: $state.table.itemType,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<DownloadTaskStatus, DownloadTaskStatus, int>
+      get status => $state.composableBuilder(
+          column: $state.table.status,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get errorMessage => $state.composableBuilder(
+      column: $state.table.errorMessage,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get imageTempPath => $state.composableBuilder(
+      column: $state.table.imageTempPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get videoTempPath => $state.composableBuilder(
+      column: $state.table.videoTempPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableFilterComposer get userId {
+    final $$UserEntityTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableFilterComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$DownloadTaskEntityTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $DownloadTaskEntityTable> {
+  $$DownloadTaskEntityTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get sourceType => $state.composableBuilder(
+      column: $state.table.sourceType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get sourceId => $state.composableBuilder(
+      column: $state.table.sourceId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mediaUuid => $state.composableBuilder(
+      column: $state.table.mediaUuid,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get livePhotoVideoUuid => $state.composableBuilder(
+      column: $state.table.livePhotoVideoUuid,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get filename => $state.composableBuilder(
+      column: $state.table.filename,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get itemType => $state.composableBuilder(
+      column: $state.table.itemType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get status => $state.composableBuilder(
+      column: $state.table.status,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get progress => $state.composableBuilder(
+      column: $state.table.progress,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get errorMessage => $state.composableBuilder(
+      column: $state.table.errorMessage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get imageTempPath => $state.composableBuilder(
+      column: $state.table.imageTempPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get videoTempPath => $state.composableBuilder(
+      column: $state.table.videoTempPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$UserEntityTableOrderingComposer get userId {
+    final $$UserEntityTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $state.db.userEntity,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$UserEntityTableOrderingComposer(ComposerState($state.db,
+                $state.db.userEntity, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 typedef $$SyncCheckpointEntityTableCreateCompanionBuilder
     = SyncCheckpointEntityCompanion Function({
   required String userId,
@@ -10119,6 +11240,8 @@ class $AppDatabaseManager {
       $$BackupStatusEntityTableTableManager(_db, _db.backupStatusEntity);
   $$UploadTaskEntityTableTableManager get uploadTaskEntity =>
       $$UploadTaskEntityTableTableManager(_db, _db.uploadTaskEntity);
+  $$DownloadTaskEntityTableTableManager get downloadTaskEntity =>
+      $$DownloadTaskEntityTableTableManager(_db, _db.downloadTaskEntity);
   $$SyncCheckpointEntityTableTableManager get syncCheckpointEntity =>
       $$SyncCheckpointEntityTableTableManager(_db, _db.syncCheckpointEntity);
   $$PostTaskEntityTableTableManager get postTaskEntity =>

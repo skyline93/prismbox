@@ -42,6 +42,12 @@ class ViewerControlsBar extends StatelessWidget {
   /// 播放/暂停 Live 视频回调
   final VoidCallback? onPlayMotionVideo;
 
+  /// 是否显示下载按钮（仅远程资源可下载）
+  final bool showDownloadButton;
+
+  /// 下载回调
+  final VoidCallback? onDownload;
+
   const ViewerControlsBar({
     super.key,
     required this.showControls,
@@ -56,6 +62,8 @@ class ViewerControlsBar extends StatelessWidget {
     this.isMotionPhoto = false,
     this.isPlayingMotionVideo = false,
     this.onPlayMotionVideo,
+    this.showDownloadButton = false,
+    this.onDownload,
   });
 
   @override
@@ -92,6 +100,14 @@ class ViewerControlsBar extends StatelessWidget {
                         color: Colors.white,
                       ),
                       onPressed: onPlayMotionVideo,
+                    ),
+                  ),
+                if (showDownloadButton && onDownload != null)
+                  Semantics(
+                    label: '下载到相册',
+                    child: IconButton(
+                      icon: const Icon(Icons.download),
+                      onPressed: onDownload,
                     ),
                   ),
                 IconButton(

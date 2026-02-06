@@ -6,8 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:photo_view/photo_view.dart';
 
+import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
+import 'package:prismbox/data/database/enums/media_download_source_type.dart';
+import 'package:prismbox/providers/auth/auth_state_provider.dart';
+import 'package:prismbox/services/download/media_download_request.dart';
+import 'package:prismbox/services/download/providers/download_providers.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/providers/infrastructure/api_service_provider.dart';
@@ -322,6 +327,11 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                     final isMotionPhoto = currentAsset?.isMotionPhoto ?? false;
                     final isPlayingMotionVideo =
                         ref.watch(isPlayingMotionVideoProvider);
+                    final canDownload = currentAsset?.remoteId != null;
+                    final authState = ref.watch(authNotifierProvider).value;
+                    final userId = authState is AuthStateAuthenticated
+                        ? authState.user.id.toString()
+                        : null;
 
                     return ViewerControlsBar(
                       showControls: _showControls,
@@ -342,6 +352,31 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                                 ref
                                     .read(currentVideoAssetIdProvider.notifier)
                                     .state = _currentAssetId;
+                              }
+                            }
+                          : null,
+                      showDownloadButton: canDownload && userId != null,
+                      onDownload: (canDownload && userId != null && currentAsset != null)
+                          ? () async {
+                              final downloadService = await ref.read(downloadServiceProvider.future);
+                              final request = MediaDownloadRequest(
+                                userId: userId,
+                                sourceType: MediaDownloadSourceType.timeline_asset,
+                                sourceId: currentAsset.id,
+                                mediaUuid: currentAsset.remoteId!,
+                                livePhotoVideoUuid: currentAsset.livePhotoVideoId,
+                                itemType: currentAsset.type == AssetType.image ? 'IMAGE' : 'VIDEO',
+                                filename: currentAsset.name,
+                              );
+                              final added = await downloadService.addDownload(request);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      added ? '已加入下载队列' : '已在下载队列中',
+                                    ),
+                                  ),
+                                );
                               }
                             }
                           : null,

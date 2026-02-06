@@ -11,6 +11,7 @@ import 'package:prismbox/data/database/tables/local_album_asset_entity.dart';
 import 'package:prismbox/data/database/tables/store_entity.dart';
 import 'package:prismbox/data/database/tables/backup_status_entity.dart';
 import 'package:prismbox/data/database/tables/upload_task_entity.dart';
+import 'package:prismbox/data/database/tables/download_task_entity.dart';
 import 'package:prismbox/data/database/tables/sync_checkpoint_entity.dart';
 import 'package:prismbox/data/database/tables/album_session_entity.dart';
 import 'package:prismbox/data/database/tables/retry_task_entity.dart';
@@ -21,6 +22,7 @@ import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/daos/album_dao.dart';
 import 'package:prismbox/data/database/daos/backup_status_dao.dart';
 import 'package:prismbox/data/database/daos/upload_task_dao.dart';
+import 'package:prismbox/data/database/daos/download_task_dao.dart';
 import 'package:prismbox/data/database/daos/sync_checkpoint_dao.dart';
 import 'package:prismbox/data/database/daos/retry_task_dao.dart';
 import 'package:prismbox/data/database/daos/post_task_dao.dart';
@@ -34,6 +36,8 @@ import 'package:prismbox/data/database/enums/album_type.dart';
 import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/data/database/enums/upload_task_type.dart';
 import 'package:prismbox/data/database/enums/upload_task_status.dart';
+import 'package:prismbox/data/database/enums/download_task_status.dart';
+import 'package:prismbox/data/database/enums/media_download_source_type.dart';
 import 'package:prismbox/data/database/enums/auto_backup_mode.dart';
 import 'package:prismbox/data/database/enums/post_task_status.dart';
 
@@ -55,6 +59,7 @@ part 'app_database.g.dart';
     StoreEntity,
     BackupStatusEntity,
     UploadTaskEntity,
+    DownloadTaskEntity,
     SyncCheckpointEntity,
     PostTaskEntity,
   ],
@@ -65,6 +70,7 @@ part 'app_database.g.dart';
     AlbumDao,
     BackupStatusDao,
     UploadTaskDao,
+    DownloadTaskDao,
     SyncCheckpointDao,
     RetryTaskDao,
     PostTaskDao,
@@ -74,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -311,6 +317,10 @@ class AppDatabase extends _$AppDatabase {
           localAssetEntity,
           localAssetEntity.livePhotoVideoId,
         );
+        break;
+      case 15:
+        // 媒体下载：新增下载任务表
+        await m.createTable(downloadTaskEntity);
         break;
       default:
         throw ArgumentError('未知的数据库版本: $version');

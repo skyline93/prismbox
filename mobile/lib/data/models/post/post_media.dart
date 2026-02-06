@@ -15,6 +15,8 @@ class PostMedia {
   final String? thumbnailUrl;
   final String? previewUrl;
   final String? downloadUrl;
+  /// Live Photo 关联视频的 media UUID（后端返回 live_photo_video_id）
+  final String? livePhotoVideoId;
 
   PostMedia({
     required this.uuid,
@@ -30,6 +32,7 @@ class PostMedia {
     this.thumbnailUrl,
     this.previewUrl,
     this.downloadUrl,
+    this.livePhotoVideoId,
   });
 
   factory PostMedia.fromJson(Map<String, dynamic> json) {
@@ -47,6 +50,7 @@ class PostMedia {
       thumbnailUrl: json['thumbnail_url'] as String?,
       previewUrl: json['preview_url'] as String?,
       downloadUrl: json['download_url'] as String?,
+      livePhotoVideoId: json['live_photo_video_id'] as String?,
     );
   }
 
@@ -65,6 +69,7 @@ class PostMedia {
       if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
       if (previewUrl != null) 'preview_url': previewUrl,
       if (downloadUrl != null) 'download_url': downloadUrl,
+      if (livePhotoVideoId != null) 'live_photo_video_id': livePhotoVideoId,
     };
   }
 

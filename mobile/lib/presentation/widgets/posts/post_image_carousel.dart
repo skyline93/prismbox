@@ -1,14 +1,19 @@
 // lib/presentation/widgets/posts/post_image_carousel.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/data/models/post/post_media.dart';
+import 'package:prismbox/providers/auth/auth_state_provider.dart';
 import 'package:prismbox/presentation/widgets/posts/post_media_image_provider.dart';
 import 'package:prismbox/presentation/widgets/posts/photo_viewer_page.dart';
+import 'package:prismbox/services/download/media_download_request.dart';
+import 'package:prismbox/services/download/providers/download_providers.dart';
+import 'package:prismbox/data/database/enums/media_download_source_type.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 /// 帖子图片轮播组件
 /// 支持 Feed 流横向滚动和详情页 PageView 两种模式
-class PostImageCarousel extends StatefulWidget {
+class PostImageCarousel extends ConsumerStatefulWidget {
   final List<PostMedia> media;
   final bool isDetailView; // 是否为详情页视图
 
@@ -19,10 +24,10 @@ class PostImageCarousel extends StatefulWidget {
   });
 
   @override
-  State<PostImageCarousel> createState() => _PostImageCarouselState();
+  ConsumerState<PostImageCarousel> createState() => _PostImageCarouselState();
 }
 
-class _PostImageCarouselState extends State<PostImageCarousel> {
+class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
   final PageController _pageController = PageController();
 
   @override
@@ -31,7 +36,23 @@ class _PostImageCarouselState extends State<PostImageCarousel> {
     super.dispose();
   }
 
-  // 图片点击事件
+  Future<bool> _onDownload(PostMedia media) async {
+    final authState = ref.read(authNotifierProvider).value;
+    if (authState is! AuthStateAuthenticated) return false;
+    final userId = authState.user.id.toString();
+    final downloadService = await ref.read(downloadServiceProvider.future);
+    final request = MediaDownloadRequest(
+      userId: userId,
+      sourceType: MediaDownloadSourceType.post_media,
+      sourceId: media.uuid,
+      mediaUuid: media.uuid,
+      livePhotoVideoUuid: media.livePhotoVideoId,
+      itemType: media.itemType,
+      filename: media.originalFilename ?? media.filename ?? media.uuid,
+    );
+    return downloadService.addDownload(request);
+  }
+
   void _onImageTap(int index) {
     Navigator.push(
       context,
@@ -39,6 +60,7 @@ class _PostImageCarouselState extends State<PostImageCarousel> {
         builder: (context) => PhotoViewerPage(
           media: widget.media,
           initialIndex: index,
+          onDownload: _onDownload,
         ),
       ),
     );

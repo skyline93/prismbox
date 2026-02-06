@@ -153,6 +153,7 @@ type MediaInfo struct {
 	ThumbnailURL     string  `json:"thumbnail_url,omitempty"`
 	PreviewURL       string  `json:"preview_url,omitempty"`
 	DownloadURL      string  `json:"download_url,omitempty"`
+	LivePhotoVideoID *string `json:"live_photo_video_id,omitempty"`
 }
 
 // CommentInfo 评论信息
@@ -678,6 +679,9 @@ func (s *service) GetGroupFeed(ctx context.Context, groupUUID string, userID uin
 				mediaInfo.PreviewURL = s.urlBuilder.BuildGroupMediaPreviewURL(groupUUID, media.UUID)
 				mediaInfo.DownloadURL = s.urlBuilder.BuildMediaDownloadURL(media.UUID)
 			}
+			if media.LivePhotoVideoUUID != nil && *media.LivePhotoVideoUUID != "" {
+				mediaInfo.LivePhotoVideoID = media.LivePhotoVideoUUID
+			}
 			postMediaMap[gm.PostID] = append(postMediaMap[gm.PostID], mediaInfo)
 		}
 	}
@@ -823,6 +827,9 @@ func (s *service) GetMyFeed(ctx context.Context, userID uint, page, pageSize int
 				mediaInfo.ThumbnailURL = s.urlBuilder.BuildGroupMediaURL(groupUUID, media.UUID)
 				mediaInfo.PreviewURL = s.urlBuilder.BuildGroupMediaPreviewURL(groupUUID, media.UUID)
 				mediaInfo.DownloadURL = s.urlBuilder.BuildMediaDownloadURL(media.UUID)
+			}
+			if media.LivePhotoVideoUUID != nil && *media.LivePhotoVideoUUID != "" {
+				mediaInfo.LivePhotoVideoID = media.LivePhotoVideoUUID
 			}
 			postMediaMap[gm.PostID] = append(postMediaMap[gm.PostID], mediaInfo)
 		}
