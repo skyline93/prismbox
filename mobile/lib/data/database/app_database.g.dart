@@ -480,6 +480,60 @@ class $LocalAssetEntityTable extends LocalAssetEntity
   late final GeneratedColumn<String> livePhotoVideoId = GeneratedColumn<String>(
       'live_photo_video_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fileSizeMeta =
+      const VerificationMeta('fileSize');
+  @override
+  late final GeneratedColumn<int> fileSize = GeneratedColumn<int>(
+      'file_size', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _latitudeMeta =
+      const VerificationMeta('latitude');
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+      'latitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _longitudeMeta =
+      const VerificationMeta('longitude');
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+      'longitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _deviceMakeMeta =
+      const VerificationMeta('deviceMake');
+  @override
+  late final GeneratedColumn<String> deviceMake = GeneratedColumn<String>(
+      'device_make', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deviceModelMeta =
+      const VerificationMeta('deviceModel');
+  @override
+  late final GeneratedColumn<String> deviceModel = GeneratedColumn<String>(
+      'device_model', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _exifExposureTimeMeta =
+      const VerificationMeta('exifExposureTime');
+  @override
+  late final GeneratedColumn<String> exifExposureTime = GeneratedColumn<String>(
+      'exif_exposure_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _exifFNumberMeta =
+      const VerificationMeta('exifFNumber');
+  @override
+  late final GeneratedColumn<double> exifFNumber = GeneratedColumn<double>(
+      'exif_f_number', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _exifIsoMeta =
+      const VerificationMeta('exifIso');
+  @override
+  late final GeneratedColumn<int> exifIso = GeneratedColumn<int>(
+      'exif_iso', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _exifFocalLengthMeta =
+      const VerificationMeta('exifFocalLength');
+  @override
+  late final GeneratedColumn<double> exifFocalLength = GeneratedColumn<double>(
+      'exif_focal_length', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         name,
@@ -499,7 +553,16 @@ class $LocalAssetEntityTable extends LocalAssetEntity
         deletedAt,
         originalPath,
         trashPath,
-        livePhotoVideoId
+        livePhotoVideoId,
+        fileSize,
+        latitude,
+        longitude,
+        deviceMake,
+        deviceModel,
+        exifExposureTime,
+        exifFNumber,
+        exifIso,
+        exifFocalLength
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -601,6 +664,52 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           livePhotoVideoId.isAcceptableOrUnknown(
               data['live_photo_video_id']!, _livePhotoVideoIdMeta));
     }
+    if (data.containsKey('file_size')) {
+      context.handle(_fileSizeMeta,
+          fileSize.isAcceptableOrUnknown(data['file_size']!, _fileSizeMeta));
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(_latitudeMeta,
+          latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta));
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(_longitudeMeta,
+          longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta));
+    }
+    if (data.containsKey('device_make')) {
+      context.handle(
+          _deviceMakeMeta,
+          deviceMake.isAcceptableOrUnknown(
+              data['device_make']!, _deviceMakeMeta));
+    }
+    if (data.containsKey('device_model')) {
+      context.handle(
+          _deviceModelMeta,
+          deviceModel.isAcceptableOrUnknown(
+              data['device_model']!, _deviceModelMeta));
+    }
+    if (data.containsKey('exif_exposure_time')) {
+      context.handle(
+          _exifExposureTimeMeta,
+          exifExposureTime.isAcceptableOrUnknown(
+              data['exif_exposure_time']!, _exifExposureTimeMeta));
+    }
+    if (data.containsKey('exif_f_number')) {
+      context.handle(
+          _exifFNumberMeta,
+          exifFNumber.isAcceptableOrUnknown(
+              data['exif_f_number']!, _exifFNumberMeta));
+    }
+    if (data.containsKey('exif_iso')) {
+      context.handle(_exifIsoMeta,
+          exifIso.isAcceptableOrUnknown(data['exif_iso']!, _exifIsoMeta));
+    }
+    if (data.containsKey('exif_focal_length')) {
+      context.handle(
+          _exifFocalLengthMeta,
+          exifFocalLength.isAcceptableOrUnknown(
+              data['exif_focal_length']!, _exifFocalLengthMeta));
+    }
     return context;
   }
 
@@ -648,6 +757,24 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           .read(DriftSqlType.string, data['${effectivePrefix}trash_path']),
       livePhotoVideoId: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}live_photo_video_id']),
+      fileSize: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}file_size']),
+      latitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}latitude']),
+      longitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}longitude']),
+      deviceMake: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_make']),
+      deviceModel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_model']),
+      exifExposureTime: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}exif_exposure_time']),
+      exifFNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}exif_f_number']),
+      exifIso: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}exif_iso']),
+      exifFocalLength: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}exif_focal_length']),
     );
   }
 
@@ -734,6 +861,33 @@ class LocalAssetEntityData extends DataClass
 
   /// Live Photo 关联视频 ID（仅图片类型，对应本地视频资产 ID）
   final String? livePhotoVideoId;
+
+  /// 文件大小（字节）
+  final int? fileSize;
+
+  /// 拍摄纬度
+  final double? latitude;
+
+  /// 拍摄经度
+  final double? longitude;
+
+  /// 设备品牌（EXIF Make）
+  final String? deviceMake;
+
+  /// 设备型号（EXIF Model）
+  final String? deviceModel;
+
+  /// 快门（EXIF ExposureTime，如 "1/125"）
+  final String? exifExposureTime;
+
+  /// 光圈（EXIF FNumber）
+  final double? exifFNumber;
+
+  /// ISO（EXIF ISOSpeedRatings）
+  final int? exifIso;
+
+  /// 焦距 mm（EXIF FocalLength）
+  final double? exifFocalLength;
   const LocalAssetEntityData(
       {required this.name,
       required this.type,
@@ -752,7 +906,16 @@ class LocalAssetEntityData extends DataClass
       this.deletedAt,
       this.originalPath,
       this.trashPath,
-      this.livePhotoVideoId});
+      this.livePhotoVideoId,
+      this.fileSize,
+      this.latitude,
+      this.longitude,
+      this.deviceMake,
+      this.deviceModel,
+      this.exifExposureTime,
+      this.exifFNumber,
+      this.exifIso,
+      this.exifFocalLength});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -795,6 +958,33 @@ class LocalAssetEntityData extends DataClass
     if (!nullToAbsent || livePhotoVideoId != null) {
       map['live_photo_video_id'] = Variable<String>(livePhotoVideoId);
     }
+    if (!nullToAbsent || fileSize != null) {
+      map['file_size'] = Variable<int>(fileSize);
+    }
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    if (!nullToAbsent || deviceMake != null) {
+      map['device_make'] = Variable<String>(deviceMake);
+    }
+    if (!nullToAbsent || deviceModel != null) {
+      map['device_model'] = Variable<String>(deviceModel);
+    }
+    if (!nullToAbsent || exifExposureTime != null) {
+      map['exif_exposure_time'] = Variable<String>(exifExposureTime);
+    }
+    if (!nullToAbsent || exifFNumber != null) {
+      map['exif_f_number'] = Variable<double>(exifFNumber);
+    }
+    if (!nullToAbsent || exifIso != null) {
+      map['exif_iso'] = Variable<int>(exifIso);
+    }
+    if (!nullToAbsent || exifFocalLength != null) {
+      map['exif_focal_length'] = Variable<double>(exifFocalLength);
+    }
     return map;
   }
 
@@ -830,6 +1020,33 @@ class LocalAssetEntityData extends DataClass
       livePhotoVideoId: livePhotoVideoId == null && nullToAbsent
           ? const Value.absent()
           : Value(livePhotoVideoId),
+      fileSize: fileSize == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fileSize),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      deviceMake: deviceMake == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceMake),
+      deviceModel: deviceModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceModel),
+      exifExposureTime: exifExposureTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifExposureTime),
+      exifFNumber: exifFNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifFNumber),
+      exifIso: exifIso == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifIso),
+      exifFocalLength: exifFocalLength == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifFocalLength),
     );
   }
 
@@ -857,6 +1074,15 @@ class LocalAssetEntityData extends DataClass
       originalPath: serializer.fromJson<String?>(json['originalPath']),
       trashPath: serializer.fromJson<String?>(json['trashPath']),
       livePhotoVideoId: serializer.fromJson<String?>(json['livePhotoVideoId']),
+      fileSize: serializer.fromJson<int?>(json['fileSize']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      deviceMake: serializer.fromJson<String?>(json['deviceMake']),
+      deviceModel: serializer.fromJson<String?>(json['deviceModel']),
+      exifExposureTime: serializer.fromJson<String?>(json['exifExposureTime']),
+      exifFNumber: serializer.fromJson<double?>(json['exifFNumber']),
+      exifIso: serializer.fromJson<int?>(json['exifIso']),
+      exifFocalLength: serializer.fromJson<double?>(json['exifFocalLength']),
     );
   }
   @override
@@ -884,6 +1110,15 @@ class LocalAssetEntityData extends DataClass
       'originalPath': serializer.toJson<String?>(originalPath),
       'trashPath': serializer.toJson<String?>(trashPath),
       'livePhotoVideoId': serializer.toJson<String?>(livePhotoVideoId),
+      'fileSize': serializer.toJson<int?>(fileSize),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'deviceMake': serializer.toJson<String?>(deviceMake),
+      'deviceModel': serializer.toJson<String?>(deviceModel),
+      'exifExposureTime': serializer.toJson<String?>(exifExposureTime),
+      'exifFNumber': serializer.toJson<double?>(exifFNumber),
+      'exifIso': serializer.toJson<int?>(exifIso),
+      'exifFocalLength': serializer.toJson<double?>(exifFocalLength),
     };
   }
 
@@ -905,7 +1140,16 @@ class LocalAssetEntityData extends DataClass
           Value<DateTime?> deletedAt = const Value.absent(),
           Value<String?> originalPath = const Value.absent(),
           Value<String?> trashPath = const Value.absent(),
-          Value<String?> livePhotoVideoId = const Value.absent()}) =>
+          Value<String?> livePhotoVideoId = const Value.absent(),
+          Value<int?> fileSize = const Value.absent(),
+          Value<double?> latitude = const Value.absent(),
+          Value<double?> longitude = const Value.absent(),
+          Value<String?> deviceMake = const Value.absent(),
+          Value<String?> deviceModel = const Value.absent(),
+          Value<String?> exifExposureTime = const Value.absent(),
+          Value<double?> exifFNumber = const Value.absent(),
+          Value<int?> exifIso = const Value.absent(),
+          Value<double?> exifFocalLength = const Value.absent()}) =>
       LocalAssetEntityData(
         name: name ?? this.name,
         type: type ?? this.type,
@@ -930,6 +1174,19 @@ class LocalAssetEntityData extends DataClass
         livePhotoVideoId: livePhotoVideoId.present
             ? livePhotoVideoId.value
             : this.livePhotoVideoId,
+        fileSize: fileSize.present ? fileSize.value : this.fileSize,
+        latitude: latitude.present ? latitude.value : this.latitude,
+        longitude: longitude.present ? longitude.value : this.longitude,
+        deviceMake: deviceMake.present ? deviceMake.value : this.deviceMake,
+        deviceModel: deviceModel.present ? deviceModel.value : this.deviceModel,
+        exifExposureTime: exifExposureTime.present
+            ? exifExposureTime.value
+            : this.exifExposureTime,
+        exifFNumber: exifFNumber.present ? exifFNumber.value : this.exifFNumber,
+        exifIso: exifIso.present ? exifIso.value : this.exifIso,
+        exifFocalLength: exifFocalLength.present
+            ? exifFocalLength.value
+            : this.exifFocalLength,
       );
   LocalAssetEntityData copyWithCompanion(LocalAssetEntityCompanion data) {
     return LocalAssetEntityData(
@@ -964,6 +1221,22 @@ class LocalAssetEntityData extends DataClass
       livePhotoVideoId: data.livePhotoVideoId.present
           ? data.livePhotoVideoId.value
           : this.livePhotoVideoId,
+      fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      deviceMake:
+          data.deviceMake.present ? data.deviceMake.value : this.deviceMake,
+      deviceModel:
+          data.deviceModel.present ? data.deviceModel.value : this.deviceModel,
+      exifExposureTime: data.exifExposureTime.present
+          ? data.exifExposureTime.value
+          : this.exifExposureTime,
+      exifFNumber:
+          data.exifFNumber.present ? data.exifFNumber.value : this.exifFNumber,
+      exifIso: data.exifIso.present ? data.exifIso.value : this.exifIso,
+      exifFocalLength: data.exifFocalLength.present
+          ? data.exifFocalLength.value
+          : this.exifFocalLength,
     );
   }
 
@@ -987,31 +1260,50 @@ class LocalAssetEntityData extends DataClass
           ..write('deletedAt: $deletedAt, ')
           ..write('originalPath: $originalPath, ')
           ..write('trashPath: $trashPath, ')
-          ..write('livePhotoVideoId: $livePhotoVideoId')
+          ..write('livePhotoVideoId: $livePhotoVideoId, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('deviceMake: $deviceMake, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('exifExposureTime: $exifExposureTime, ')
+          ..write('exifFNumber: $exifFNumber, ')
+          ..write('exifIso: $exifIso, ')
+          ..write('exifFocalLength: $exifFocalLength')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      name,
-      type,
-      createdAt,
-      updatedAt,
-      width,
-      height,
-      durationInSeconds,
-      id,
-      isUploaded,
-      path,
-      isFavorite,
-      orientation,
-      isInPrivateSpace,
-      migrationStatus,
-      deletedAt,
-      originalPath,
-      trashPath,
-      livePhotoVideoId);
+  int get hashCode => Object.hashAll([
+        name,
+        type,
+        createdAt,
+        updatedAt,
+        width,
+        height,
+        durationInSeconds,
+        id,
+        isUploaded,
+        path,
+        isFavorite,
+        orientation,
+        isInPrivateSpace,
+        migrationStatus,
+        deletedAt,
+        originalPath,
+        trashPath,
+        livePhotoVideoId,
+        fileSize,
+        latitude,
+        longitude,
+        deviceMake,
+        deviceModel,
+        exifExposureTime,
+        exifFNumber,
+        exifIso,
+        exifFocalLength
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1033,7 +1325,16 @@ class LocalAssetEntityData extends DataClass
           other.deletedAt == this.deletedAt &&
           other.originalPath == this.originalPath &&
           other.trashPath == this.trashPath &&
-          other.livePhotoVideoId == this.livePhotoVideoId);
+          other.livePhotoVideoId == this.livePhotoVideoId &&
+          other.fileSize == this.fileSize &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.deviceMake == this.deviceMake &&
+          other.deviceModel == this.deviceModel &&
+          other.exifExposureTime == this.exifExposureTime &&
+          other.exifFNumber == this.exifFNumber &&
+          other.exifIso == this.exifIso &&
+          other.exifFocalLength == this.exifFocalLength);
 }
 
 class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
@@ -1055,6 +1356,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
   final Value<String?> originalPath;
   final Value<String?> trashPath;
   final Value<String?> livePhotoVideoId;
+  final Value<int?> fileSize;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<String?> deviceMake;
+  final Value<String?> deviceModel;
+  final Value<String?> exifExposureTime;
+  final Value<double?> exifFNumber;
+  final Value<int?> exifIso;
+  final Value<double?> exifFocalLength;
   const LocalAssetEntityCompanion({
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -1074,6 +1384,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.originalPath = const Value.absent(),
     this.trashPath = const Value.absent(),
     this.livePhotoVideoId = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.deviceMake = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.exifExposureTime = const Value.absent(),
+    this.exifFNumber = const Value.absent(),
+    this.exifIso = const Value.absent(),
+    this.exifFocalLength = const Value.absent(),
   });
   LocalAssetEntityCompanion.insert({
     required String name,
@@ -1094,6 +1413,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.originalPath = const Value.absent(),
     this.trashPath = const Value.absent(),
     this.livePhotoVideoId = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.deviceMake = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.exifExposureTime = const Value.absent(),
+    this.exifFNumber = const Value.absent(),
+    this.exifIso = const Value.absent(),
+    this.exifFocalLength = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         createdAt = Value(createdAt),
@@ -1119,6 +1447,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     Expression<String>? originalPath,
     Expression<String>? trashPath,
     Expression<String>? livePhotoVideoId,
+    Expression<int>? fileSize,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<String>? deviceMake,
+    Expression<String>? deviceModel,
+    Expression<String>? exifExposureTime,
+    Expression<double>? exifFNumber,
+    Expression<int>? exifIso,
+    Expression<double>? exifFocalLength,
   }) {
     return RawValuesInsertable({
       if (name != null) 'name': name,
@@ -1139,6 +1476,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       if (originalPath != null) 'original_path': originalPath,
       if (trashPath != null) 'trash_path': trashPath,
       if (livePhotoVideoId != null) 'live_photo_video_id': livePhotoVideoId,
+      if (fileSize != null) 'file_size': fileSize,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (deviceMake != null) 'device_make': deviceMake,
+      if (deviceModel != null) 'device_model': deviceModel,
+      if (exifExposureTime != null) 'exif_exposure_time': exifExposureTime,
+      if (exifFNumber != null) 'exif_f_number': exifFNumber,
+      if (exifIso != null) 'exif_iso': exifIso,
+      if (exifFocalLength != null) 'exif_focal_length': exifFocalLength,
     });
   }
 
@@ -1160,7 +1506,16 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       Value<DateTime?>? deletedAt,
       Value<String?>? originalPath,
       Value<String?>? trashPath,
-      Value<String?>? livePhotoVideoId}) {
+      Value<String?>? livePhotoVideoId,
+      Value<int?>? fileSize,
+      Value<double?>? latitude,
+      Value<double?>? longitude,
+      Value<String?>? deviceMake,
+      Value<String?>? deviceModel,
+      Value<String?>? exifExposureTime,
+      Value<double?>? exifFNumber,
+      Value<int?>? exifIso,
+      Value<double?>? exifFocalLength}) {
     return LocalAssetEntityCompanion(
       name: name ?? this.name,
       type: type ?? this.type,
@@ -1180,6 +1535,15 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       originalPath: originalPath ?? this.originalPath,
       trashPath: trashPath ?? this.trashPath,
       livePhotoVideoId: livePhotoVideoId ?? this.livePhotoVideoId,
+      fileSize: fileSize ?? this.fileSize,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      deviceMake: deviceMake ?? this.deviceMake,
+      deviceModel: deviceModel ?? this.deviceModel,
+      exifExposureTime: exifExposureTime ?? this.exifExposureTime,
+      exifFNumber: exifFNumber ?? this.exifFNumber,
+      exifIso: exifIso ?? this.exifIso,
+      exifFocalLength: exifFocalLength ?? this.exifFocalLength,
     );
   }
 
@@ -1243,6 +1607,33 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     if (livePhotoVideoId.present) {
       map['live_photo_video_id'] = Variable<String>(livePhotoVideoId.value);
     }
+    if (fileSize.present) {
+      map['file_size'] = Variable<int>(fileSize.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (deviceMake.present) {
+      map['device_make'] = Variable<String>(deviceMake.value);
+    }
+    if (deviceModel.present) {
+      map['device_model'] = Variable<String>(deviceModel.value);
+    }
+    if (exifExposureTime.present) {
+      map['exif_exposure_time'] = Variable<String>(exifExposureTime.value);
+    }
+    if (exifFNumber.present) {
+      map['exif_f_number'] = Variable<double>(exifFNumber.value);
+    }
+    if (exifIso.present) {
+      map['exif_iso'] = Variable<int>(exifIso.value);
+    }
+    if (exifFocalLength.present) {
+      map['exif_focal_length'] = Variable<double>(exifFocalLength.value);
+    }
     return map;
   }
 
@@ -1266,7 +1657,16 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           ..write('deletedAt: $deletedAt, ')
           ..write('originalPath: $originalPath, ')
           ..write('trashPath: $trashPath, ')
-          ..write('livePhotoVideoId: $livePhotoVideoId')
+          ..write('livePhotoVideoId: $livePhotoVideoId, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('deviceMake: $deviceMake, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('exifExposureTime: $exifExposureTime, ')
+          ..write('exifFNumber: $exifFNumber, ')
+          ..write('exifIso: $exifIso, ')
+          ..write('exifFocalLength: $exifFocalLength')
           ..write(')'))
         .toString();
   }
@@ -8155,6 +8555,15 @@ typedef $$LocalAssetEntityTableCreateCompanionBuilder
   Value<String?> originalPath,
   Value<String?> trashPath,
   Value<String?> livePhotoVideoId,
+  Value<int?> fileSize,
+  Value<double?> latitude,
+  Value<double?> longitude,
+  Value<String?> deviceMake,
+  Value<String?> deviceModel,
+  Value<String?> exifExposureTime,
+  Value<double?> exifFNumber,
+  Value<int?> exifIso,
+  Value<double?> exifFocalLength,
 });
 typedef $$LocalAssetEntityTableUpdateCompanionBuilder
     = LocalAssetEntityCompanion Function({
@@ -8176,6 +8585,15 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<String?> originalPath,
   Value<String?> trashPath,
   Value<String?> livePhotoVideoId,
+  Value<int?> fileSize,
+  Value<double?> latitude,
+  Value<double?> longitude,
+  Value<String?> deviceMake,
+  Value<String?> deviceModel,
+  Value<String?> exifExposureTime,
+  Value<double?> exifFNumber,
+  Value<int?> exifIso,
+  Value<double?> exifFocalLength,
 });
 
 class $$LocalAssetEntityTableTableManager extends RootTableManager<
@@ -8214,6 +8632,15 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<String?> originalPath = const Value.absent(),
             Value<String?> trashPath = const Value.absent(),
             Value<String?> livePhotoVideoId = const Value.absent(),
+            Value<int?> fileSize = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
+            Value<String?> deviceMake = const Value.absent(),
+            Value<String?> deviceModel = const Value.absent(),
+            Value<String?> exifExposureTime = const Value.absent(),
+            Value<double?> exifFNumber = const Value.absent(),
+            Value<int?> exifIso = const Value.absent(),
+            Value<double?> exifFocalLength = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion(
             name: name,
@@ -8234,6 +8661,15 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             originalPath: originalPath,
             trashPath: trashPath,
             livePhotoVideoId: livePhotoVideoId,
+            fileSize: fileSize,
+            latitude: latitude,
+            longitude: longitude,
+            deviceMake: deviceMake,
+            deviceModel: deviceModel,
+            exifExposureTime: exifExposureTime,
+            exifFNumber: exifFNumber,
+            exifIso: exifIso,
+            exifFocalLength: exifFocalLength,
           ),
           createCompanionCallback: ({
             required String name,
@@ -8254,6 +8690,15 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<String?> originalPath = const Value.absent(),
             Value<String?> trashPath = const Value.absent(),
             Value<String?> livePhotoVideoId = const Value.absent(),
+            Value<int?> fileSize = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
+            Value<String?> deviceMake = const Value.absent(),
+            Value<String?> deviceModel = const Value.absent(),
+            Value<String?> exifExposureTime = const Value.absent(),
+            Value<double?> exifFNumber = const Value.absent(),
+            Value<int?> exifIso = const Value.absent(),
+            Value<double?> exifFocalLength = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion.insert(
             name: name,
@@ -8274,6 +8719,15 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             originalPath: originalPath,
             trashPath: trashPath,
             livePhotoVideoId: livePhotoVideoId,
+            fileSize: fileSize,
+            latitude: latitude,
+            longitude: longitude,
+            deviceMake: deviceMake,
+            deviceModel: deviceModel,
+            exifExposureTime: exifExposureTime,
+            exifFNumber: exifFNumber,
+            exifIso: exifIso,
+            exifFocalLength: exifFocalLength,
           ),
         ));
 }
@@ -8372,6 +8826,51 @@ class $$LocalAssetEntityTableFilterComposer
 
   ColumnFilters<String> get livePhotoVideoId => $state.composableBuilder(
       column: $state.table.livePhotoVideoId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get fileSize => $state.composableBuilder(
+      column: $state.table.fileSize,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get latitude => $state.composableBuilder(
+      column: $state.table.latitude,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get longitude => $state.composableBuilder(
+      column: $state.table.longitude,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get deviceMake => $state.composableBuilder(
+      column: $state.table.deviceMake,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get deviceModel => $state.composableBuilder(
+      column: $state.table.deviceModel,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get exifExposureTime => $state.composableBuilder(
+      column: $state.table.exifExposureTime,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get exifFNumber => $state.composableBuilder(
+      column: $state.table.exifFNumber,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get exifIso => $state.composableBuilder(
+      column: $state.table.exifIso,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get exifFocalLength => $state.composableBuilder(
+      column: $state.table.exifFocalLength,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8484,6 +8983,51 @@ class $$LocalAssetEntityTableOrderingComposer
 
   ColumnOrderings<String> get livePhotoVideoId => $state.composableBuilder(
       column: $state.table.livePhotoVideoId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get fileSize => $state.composableBuilder(
+      column: $state.table.fileSize,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get latitude => $state.composableBuilder(
+      column: $state.table.latitude,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get longitude => $state.composableBuilder(
+      column: $state.table.longitude,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get deviceMake => $state.composableBuilder(
+      column: $state.table.deviceMake,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get deviceModel => $state.composableBuilder(
+      column: $state.table.deviceModel,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get exifExposureTime => $state.composableBuilder(
+      column: $state.table.exifExposureTime,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get exifFNumber => $state.composableBuilder(
+      column: $state.table.exifFNumber,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get exifIso => $state.composableBuilder(
+      column: $state.table.exifIso,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get exifFocalLength => $state.composableBuilder(
+      column: $state.table.exifFocalLength,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }

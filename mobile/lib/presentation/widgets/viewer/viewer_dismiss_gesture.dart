@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 /// 下滑退出手势处理组件
 ///
-/// 封装垂直拖动手势识别，处理退出动画（执行和重置），
-/// 隔离手势逻辑，避免影响主页面状态。
+/// 封装垂直拖动手势识别：下滑退出、上滑打开详情；
+/// 与内容区域统一，不互相抢占。
 class ViewerDismissGesture extends StatefulWidget {
   /// 子组件
   final Widget child;
@@ -11,14 +11,18 @@ class ViewerDismissGesture extends StatefulWidget {
   /// 是否已放大（放大时禁用手势）
   final bool isZoomed;
 
-  /// 退出回调
+  /// 退出回调（下滑超过阈值触发）
   final VoidCallback onDismiss;
+
+  /// 上滑回调（上滑超过阈值触发，可选）
+  final VoidCallback? onSwipeUp;
 
   const ViewerDismissGesture({
     super.key,
     required this.child,
     required this.isZoomed,
     required this.onDismiss,
+    this.onSwipeUp,
   });
 
   @override
@@ -32,6 +36,9 @@ class _ViewerDismissGestureState extends State<ViewerDismissGesture>
 
   /// 垂直拖动起始位置
   double _verticalDragStartY = 0.0;
+
+  /// 本次拖动的总位移（用于判断上滑）
+  double _verticalDragTotalDelta = 0.0;
 
   /// 退出动画控制器
   late AnimationController _dismissAnimationController;
@@ -142,30 +149,38 @@ class _ViewerDismissGestureState extends State<ViewerDismissGesture>
               setState(() {
                 _verticalDragStartY = details.globalPosition.dy;
                 _verticalDragOffset = 0.0;
+                _verticalDragTotalDelta = 0.0;
               });
             },
       onVerticalDragUpdate: widget.isZoomed
           ? null
           : (details) {
-              // 只响应向下滑动
               final delta = details.globalPosition.dy - _verticalDragStartY;
+              _verticalDragTotalDelta = delta;
+              // 下滑：更新偏移并做退出视觉反馈
               if (delta > 0) {
-                setState(() {
-                  _verticalDragOffset = delta;
-                });
+                setState(() => _verticalDragOffset = delta);
+              } else {
+                setState(() => _verticalDragOffset = 0.0);
               }
             },
       onVerticalDragEnd: widget.isZoomed
           ? null
           : (details) {
               final screenHeight = MediaQuery.of(context).size.height;
-              final threshold = screenHeight * 0.03; // 3% 的屏幕高度作为阈值
+              final downThreshold = screenHeight * 0.03;
+              const upThreshold = 40.0;
+              final velocity = details.primaryVelocity ?? 0;
 
-              // 如果向下滑动距离超过阈值，则执行退出动画
-              if (_verticalDragOffset > threshold) {
+              if (_verticalDragOffset > downThreshold) {
                 _dismissWithAnimation();
+              } else if (_verticalDragTotalDelta < -upThreshold || velocity < -200) {
+                widget.onSwipeUp?.call();
+                setState(() {
+                  _verticalDragOffset = 0.0;
+                  _verticalDragTotalDelta = 0.0;
+                });
               } else {
-                // 否则重置偏移量，添加回弹动画
                 _resetDismissAnimation();
               }
             },

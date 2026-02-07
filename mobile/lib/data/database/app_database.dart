@@ -80,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration {
@@ -321,6 +321,45 @@ class AppDatabase extends _$AppDatabase {
       case 15:
         // 媒体下载：新增下载任务表
         await m.createTable(downloadTaskEntity);
+        break;
+      case 16:
+        // 媒体详细信息：文件大小、拍摄位置、设备、EXIF 参数
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.fileSize,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.latitude,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.longitude,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.deviceMake,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.deviceModel,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.exifExposureTime,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.exifFNumber,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.exifIso,
+        );
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.exifFocalLength,
+        );
         break;
       default:
         throw ArgumentError('未知的数据库版本: $version');

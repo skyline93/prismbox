@@ -232,10 +232,18 @@ class LocalAssetDao extends DatabaseAccessor<AppDatabase>
         orientation: oldAsset.orientation,
         isInPrivateSpace: false, // 恢复后不在私有空间
         migrationStatus: MigrationStatus.none, // 恢复后无迁移状态
-        // 显式设置软删除字段为 null，确保恢复后字段被清空
         deletedAt: null,
         originalPath: null,
         trashPath: null,
+        fileSize: oldAsset.fileSize,
+        latitude: oldAsset.latitude,
+        longitude: oldAsset.longitude,
+        deviceMake: oldAsset.deviceMake,
+        deviceModel: oldAsset.deviceModel,
+        exifExposureTime: oldAsset.exifExposureTime,
+        exifFNumber: oldAsset.exifFNumber,
+        exifIso: oldAsset.exifIso,
+        exifFocalLength: oldAsset.exifFocalLength,
       );
 
       // 3. 插入新记录

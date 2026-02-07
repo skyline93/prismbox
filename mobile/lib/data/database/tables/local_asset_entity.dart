@@ -60,6 +60,35 @@ class LocalAssetEntity extends Table with DriftDefaultsMixin, AssetEntityMixin {
   /// Live Photo 关联视频 ID（仅图片类型，对应本地视频资产 ID）
   TextColumn get livePhotoVideoId => text().nullable()();
 
+  // ---------- 媒体详细信息（策略一：同步时写入） ----------
+
+  /// 文件大小（字节）
+  IntColumn get fileSize => integer().nullable()();
+
+  /// 拍摄纬度
+  RealColumn get latitude => real().nullable()();
+
+  /// 拍摄经度
+  RealColumn get longitude => real().nullable()();
+
+  /// 设备品牌（EXIF Make）
+  TextColumn get deviceMake => text().nullable()();
+
+  /// 设备型号（EXIF Model）
+  TextColumn get deviceModel => text().nullable()();
+
+  /// 快门（EXIF ExposureTime，如 "1/125"）
+  TextColumn get exifExposureTime => text().nullable()();
+
+  /// 光圈（EXIF FNumber）
+  RealColumn get exifFNumber => real().nullable()();
+
+  /// ISO（EXIF ISOSpeedRatings）
+  IntColumn get exifIso => integer().nullable()();
+
+  /// 焦距 mm（EXIF FocalLength）
+  RealColumn get exifFocalLength => real().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -26,6 +26,33 @@ class LocalAsset extends BaseAsset {
   /// 回收站路径（可选，用于已删除的资源）
   final String? trashPath;
 
+  /// 文件大小（字节）
+  final int? fileSize;
+
+  /// 拍摄纬度
+  final double? latitude;
+
+  /// 拍摄经度
+  final double? longitude;
+
+  /// 设备品牌（EXIF Make）
+  final String? deviceMake;
+
+  /// 设备型号（EXIF Model）
+  final String? deviceModel;
+
+  /// 快门（EXIF ExposureTime）
+  final String? exifExposureTime;
+
+  /// 光圈（EXIF FNumber）
+  final double? exifFNumber;
+
+  /// ISO（EXIF ISOSpeedRatings）
+  final int? exifIso;
+
+  /// 焦距 mm（EXIF FocalLength）
+  final double? exifFocalLength;
+
   const LocalAsset({
     required this.id,
     String? remoteId,
@@ -43,6 +70,15 @@ class LocalAsset extends BaseAsset {
     int orientation = 0,
     this.assetEntity,
     this.trashPath,
+    this.fileSize,
+    this.latitude,
+    this.longitude,
+    this.deviceMake,
+    this.deviceModel,
+    this.exifExposureTime,
+    this.exifFNumber,
+    this.exifIso,
+    this.exifFocalLength,
   }) : _orientation = orientation,
        remoteAssetId = remoteId;
 
@@ -80,6 +116,15 @@ class LocalAsset extends BaseAsset {
     String? remoteAssetId,
     AssetEntity? assetEntity,
     String? trashPath,
+    int? fileSize,
+    double? latitude,
+    double? longitude,
+    String? deviceMake,
+    String? deviceModel,
+    String? exifExposureTime,
+    double? exifFNumber,
+    int? exifIso,
+    double? exifFocalLength,
   }) {
     return LocalAsset(
       id: id,
@@ -98,6 +143,15 @@ class LocalAsset extends BaseAsset {
       orientation: orientation,
       assetEntity: assetEntity,
       trashPath: trashPath,
+      fileSize: fileSize,
+      latitude: latitude,
+      longitude: longitude,
+      deviceMake: deviceMake,
+      deviceModel: deviceModel,
+      exifExposureTime: exifExposureTime,
+      exifFNumber: exifFNumber,
+      exifIso: exifIso,
+      exifFocalLength: exifFocalLength,
     );
   }
 }

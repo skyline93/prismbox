@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/local_asset_dao.dart';
@@ -11,6 +12,7 @@ import 'package:prismbox/data/database/enums/migration_status.dart';
 import 'package:prismbox/features/local_sync/exceptions/sync_exception.dart';
 import 'package:prismbox/features/local_sync/models/sync_result.dart';
 import 'package:prismbox/platform/asset_native_api.g.dart';
+import 'package:prismbox/services/asset/media_exif_extractor.dart';
 import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 本地同步服务
@@ -538,11 +540,21 @@ class LocalSyncService {
       throw Exception('文件路径为空: assetId=${asset.id}');
     }
 
-    // 获取原始文件名 - 使用 asset.title（推荐方式）
-    // Android: asset.title 通常就是原始文件名
-    // iOS 14+: asset.title 基本可靠
-    // 注意：不要使用 originFile.path 来解析文件名，因为它在 iOS 上是临时文件，文件名是随机的
-    final originalFileName = asset.title ?? '';
+    // 获取原始文件名（参考 Immich：使用 titleAsync，iOS 上 entity.title 可能为随机 GUID）
+    // titleAsync: iOS 为 PHAssetResource.originalFilename，Android 为 MediaStore.MediaColumns.DISPLAY_NAME
+    String originalFileName = '';
+    try {
+      final fromTitle = await asset.titleAsync;
+      if (fromTitle.isNotEmpty) {
+        originalFileName = fromTitle;
+      }
+    } catch (e) {
+      _logger.fine('获取原文件名 titleAsync 失败: ${asset.id}');
+    }
+    // 兜底：若 titleAsync 为空则使用 path 的文件名（Android 上 path 常含真实文件名）
+    if (originalFileName.isEmpty && path.isNotEmpty) {
+      originalFileName = p.basename(path);
+    }
 
     // 转换资产类型
     // photo_manager 的 AssetType 是枚举，需要转换为我们的 AssetType
@@ -586,9 +598,39 @@ class LocalSyncService {
       }
     }
 
+    // 媒体详细信息（策略一：同步时写入）
+    int? fileSize;
+    try {
+      fileSize = await file.length();
+    } catch (e) {
+      _logger.fine('获取文件大小失败: ${asset.id}');
+    }
+
+    double? latitude;
+    double? longitude;
+    try {
+      final latLng = await asset.latlngAsync();
+      if (latLng != null) {
+        latitude = latLng.latitude;
+        longitude = latLng.longitude;
+      }
+    } catch (e) {
+      _logger.fine('获取拍摄位置失败: ${asset.id}');
+    }
+
+    MediaExifInfo? exifInfo;
+    if (assetType == AssetType.image) {
+      try {
+        final bytes = await file.readAsBytes();
+        exifInfo = await MediaExifExtractor().extractFromBytes(bytes);
+      } catch (e) {
+        _logger.fine('获取 EXIF 失败: ${asset.id}');
+      }
+    }
+
     return LocalAssetEntityData(
       id: asset.id,
-      name: originalFileName, // 使用 asset.title 获取的原始文件名
+      name: originalFileName, // titleAsync 或 path basename 兜底
       isUploaded: false, // 新同步的资产默认未上传
       type: assetType,
       createdAt: asset.createDateTime,
@@ -604,6 +646,15 @@ class LocalSyncService {
       isInPrivateSpace: false, // 新同步的资产默认不在私有空间
       migrationStatus: MigrationStatus.none, // 新同步的资产默认无迁移状态
       livePhotoVideoId: livePhotoVideoId,
+      fileSize: fileSize,
+      latitude: latitude,
+      longitude: longitude,
+      deviceMake: exifInfo?.deviceMake,
+      deviceModel: exifInfo?.deviceModel,
+      exifExposureTime: exifInfo?.exifExposureTime,
+      exifFNumber: exifInfo?.exifFNumber,
+      exifIso: exifInfo?.exifIso,
+      exifFocalLength: exifInfo?.exifFocalLength,
     );
   }
 

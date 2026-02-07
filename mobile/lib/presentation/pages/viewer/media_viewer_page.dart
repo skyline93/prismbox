@@ -24,6 +24,7 @@ import 'package:prismbox/presentation/widgets/viewer/viewer_dismiss_gesture.dart
 import 'package:prismbox/presentation/widgets/viewer/viewer_controls_bar.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_image_page.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_page.dart';
+import 'package:prismbox/presentation/widgets/viewer/media_detail_sheet.dart';
 
 /// 媒体查看器页面
 @RoutePage()
@@ -195,6 +196,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
           isZoomed: _isZoomed,
           onDismiss: () {
             context.router.pop();
+          },
+          onSwipeUp: () {
+            final currentAsset = _currentAssetId == null
+                ? null
+                : _assetMap?[_currentAssetId];
+            _showMediaDetailSheet(context, currentAsset);
           },
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
@@ -380,6 +387,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                               }
                             }
                           : null,
+                      onInfo: () => _showMediaDetailSheet(context, currentAsset),
                     );
                   },
                 ),
@@ -400,6 +408,52 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       // 忽略错误，返回 null（RemoteFullImageProvider 会自己处理）
       return null;
     }
+  }
+
+  /// 显示媒体详细信息底部 sheet（拍摄设备、原文件名、文件大小、尺寸、拍摄位置、拍摄参数）
+  void _showMediaDetailSheet(BuildContext context, BaseAsset? asset) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.25,
+        maxChildSize: 0.7,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '媒体信息',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Flexible(
+                child: MediaDetailSheet(
+                  asset: asset,
+                  scrollController: scrollController,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// 处理页面切换

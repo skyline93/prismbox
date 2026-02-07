@@ -81,7 +81,7 @@ Future<List<BaseAsset>> trashAssets(TrashAssetsRef ref) async {
       LocalAsset.fromData(
         id: entity.id,
         name: entity.name,
-        checksum: null, // 已删除的本地资产可能没有 checksum
+        checksum: null,
         type: entity.type,
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
@@ -90,7 +90,16 @@ Future<List<BaseAsset>> trashAssets(TrashAssetsRef ref) async {
         durationInSeconds: entity.durationInSeconds,
         isUploaded: entity.isUploaded,
         orientation: entity.orientation,
-        trashPath: entity.trashPath, // 传入回收站路径
+        trashPath: entity.trashPath,
+        fileSize: entity.fileSize,
+        latitude: entity.latitude,
+        longitude: entity.longitude,
+        deviceMake: entity.deviceMake,
+        deviceModel: entity.deviceModel,
+        exifExposureTime: entity.exifExposureTime,
+        exifFNumber: entity.exifFNumber,
+        exifIso: entity.exifIso,
+        exifFocalLength: entity.exifFocalLength,
       ),
     );
   }

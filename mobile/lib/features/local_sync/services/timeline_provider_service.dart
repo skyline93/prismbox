@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart' as pm;
 import 'package:prismbox/core/storage/store_key.dart';
 import 'package:prismbox/core/storage/store_service.dart';
@@ -295,7 +296,7 @@ class TimelineProviderService {
           LocalAsset.fromData(
             id: localData.id,
             name: localData.name,
-            checksum: null, // 本地资产不再存储 checksum
+            checksum: null,
             type: localData.type,
             createdAt: localData.createdAt,
             updatedAt: localData.updatedAt,
@@ -303,11 +304,20 @@ class TimelineProviderService {
             height: localData.height,
             durationInSeconds: localData.durationInSeconds,
             isFavorite: localData.isFavorite,
-            isUploaded: localData.isUploaded, // 从数据库实体读取上传状态
+            isUploaded: localData.isUploaded,
             orientation: localData.orientation,
-            remoteAssetId: null, // 完全解耦，不关联远程资产
+            remoteAssetId: null,
             assetEntity: null,
             livePhotoVideoId: localData.livePhotoVideoId,
+            fileSize: localData.fileSize,
+            latitude: localData.latitude,
+            longitude: localData.longitude,
+            deviceMake: localData.deviceMake,
+            deviceModel: localData.deviceModel,
+            exifExposureTime: localData.exifExposureTime,
+            exifFNumber: localData.exifFNumber,
+            exifIso: localData.exifIso,
+            exifFocalLength: localData.exifFocalLength,
           ),
         );
       }
@@ -339,7 +349,7 @@ class TimelineProviderService {
         LocalAsset.fromData(
           id: data.id,
           name: data.name,
-          checksum: null, // 本地资产不再存储 checksum
+          checksum: null,
           type: data.type,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
@@ -347,11 +357,20 @@ class TimelineProviderService {
           height: data.height,
           durationInSeconds: data.durationInSeconds,
           isFavorite: data.isFavorite,
-          isUploaded: data.isUploaded, // 从数据库实体读取上传状态
+          isUploaded: data.isUploaded,
           orientation: data.orientation,
-          remoteAssetId: null, // 完全解耦，不关联远程资产
+          remoteAssetId: null,
           assetEntity: null,
           livePhotoVideoId: data.livePhotoVideoId,
+          fileSize: data.fileSize,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          deviceMake: data.deviceMake,
+          deviceModel: data.deviceModel,
+          exifExposureTime: data.exifExposureTime,
+          exifFNumber: data.exifFNumber,
+          exifIso: data.exifIso,
+          exifFocalLength: data.exifFocalLength,
         ),
       );
     }
@@ -475,17 +494,28 @@ class TimelineProviderService {
       assetType = AssetType.other;
     }
 
-    // 验证文件对象可访问（但不使用其路径来获取文件名）
+    // 验证文件对象可访问
     final file = await asset.originFile;
     if (file == null) {
       throw Exception('无法获取文件对象: assetId=${asset.id}');
     }
 
-    // 获取原始文件名 - 使用 asset.title（推荐方式）
-    // Android: asset.title 通常就是原始文件名
-    // iOS 14+: asset.title 基本可靠
-    // 注意：不要使用 originFile.path 来解析文件名，因为它在 iOS 上是临时文件，文件名是随机的
-    final originalFileName = asset.title ?? '';
+    // 获取原始文件名（参考 Immich：使用 titleAsync，iOS 上 entity.title 可能为随机 GUID）
+    String originalFileName = '';
+    try {
+      final fromTitle = await asset.titleAsync;
+      if (fromTitle.isNotEmpty) {
+        originalFileName = fromTitle;
+      }
+    } catch (e) {
+      _logger.fine('获取原文件名 titleAsync 失败: ${asset.id}');
+    }
+    if (originalFileName.isEmpty) {
+      final path = file.path;
+      if (path.isNotEmpty) {
+        originalFileName = p.basename(path);
+      }
+    }
 
     // 获取收藏状态
     // 通过原生 API 从系统相册获取收藏状态
@@ -510,20 +540,21 @@ class TimelineProviderService {
 
     return LocalAsset.fromData(
       id: asset.id,
-      name: originalFileName, // 使用 asset.title 获取的原始文件名
-      checksum: null, // photo_manager 不提供 checksum，本地资产不再存储 checksum
+      name: originalFileName,
+      checksum: null,
       type: assetType,
       createdAt: asset.createDateTime,
       updatedAt: asset.modifiedDateTime,
       width: asset.width,
       height: asset.height,
       durationInSeconds: asset.duration,
-      isFavorite: isFavorite, // 从系统相册获取的收藏状态
-      isUploaded: false, // photo_manager 数据源无法获取上传状态，默认为未上传
+      isFavorite: isFavorite,
+      isUploaded: false,
       orientation: asset.orientation,
-      remoteAssetId: null, // 完全解耦，不关联远程资产
-      assetEntity: asset, // photo_manager 数据源包含 AssetEntity
+      remoteAssetId: null,
+      assetEntity: asset,
       livePhotoVideoId: livePhotoVideoId,
+      // photo_manager 数据源不读 DB，媒体详细信息为 null，详情页可后续按需从 AssetEntity 取
     );
   }
 }
