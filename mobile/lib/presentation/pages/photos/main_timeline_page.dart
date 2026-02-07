@@ -13,6 +13,9 @@ import 'package:prismbox/presentation/pages/photos/controllers/timeline_upload_h
 import 'package:prismbox/presentation/pages/photos/listeners/timeline_event_listeners.dart';
 import 'package:prismbox/presentation/pages/photos/mixins/timeline_pinch_gesture_handler.dart';
 import 'package:prismbox/presentation/routing/app_router.dart';
+import 'package:prismbox/presentation/widgets/timeline/scrubber.dart';
+import 'package:prismbox/presentation/widgets/timeline/scrubber_segment.dart';
+import 'package:prismbox/presentation/widgets/timeline/scrubber_segment_builder.dart';
 import 'package:prismbox/presentation/widgets/timeline/selectable_timeline_sliver_list.dart';
 import 'package:prismbox/presentation/widgets/selection/selection_bottom_sheet.dart';
 import 'package:prismbox/presentation/widgets/selection/drag_selection_region.dart'
@@ -127,7 +130,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
     );
 
     // 监听网格列数变化（用于触发重建，实际值在 _buildContentSlivers 中使用）
-    ref.watch(timelineGridColumnsProvider);
+    final gridColumns = ref.watch(timelineGridColumnsProvider);
 
     // 监听权限状态
     final permissionAsync = ref.watch(photoPermissionNotifierProvider);
@@ -154,6 +157,69 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
       selectedIds,
     );
 
+    // 为 Scrubber 准备段落数据（仅当有分组数据时）
+    final sectionsForScrubber = timelineSectionsAsync.valueOrNull ?? [];
+    final showScrubber = sectionsForScrubber.isNotEmpty;
+    final mediaQuery = MediaQuery.of(context);
+    final viewportSize = mediaQuery.size;
+    final scrubberSegments = showScrubber
+        ? buildScrubberSegmentsFromSections(
+            sections: sectionsForScrubber,
+            viewportWidth: viewportSize.width,
+            crossAxisCount: gridColumns,
+          )
+        : <ScrubberLayoutSegment>[];
+    // topPadding: 状态栏 + AppBar + 少量间距
+    const kToolbarHeight = 56.0;
+    final topPadding = mediaQuery.padding.top + kToolbarHeight + 10;
+    // bottomPadding: 安全区 + 底部导航栏高度 + Scrubber 拇指区域；选择模式时再加底部抽屉预留
+    // Material 3 NavigationBar 默认高度 80，避免滚动条拇指被导航栏遮挡
+    const kBottomNavigationBarHeight = 80.0;
+    final bottomPadding = mediaQuery.padding.bottom +
+        kBottomNavigationBarHeight +
+        100 +
+        (isSelectionActive ? viewportSize.height * 0.16 : 0);
+
+    final scrollView = CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
+        if (isSelectionActive)
+          const TimelineSelectionAppBar(pageId: 'main')
+        else
+          const TimelineNormalAppBar(),
+
+        // 时间线内容
+        ...contentSlivers,
+
+        // 选择模式下添加底部 padding，避免内容被底部抽屉栏遮挡
+        if (isSelectionActive)
+          SliverPadding(
+            padding: EdgeInsets.only(
+              bottom:
+                  MediaQuery.of(context).size.height * 0.16 +
+                  MediaQuery.of(context).padding.bottom,
+            ),
+          ),
+      ],
+    );
+
+    final scrollContent = showScrubber
+        ? PrimaryScrollController(
+            controller: _scrollController,
+            child: TimelineScrubber(
+              layoutSegments: scrubberSegments,
+              timelineHeight: viewportSize.height,
+              topPadding: topPadding,
+              bottomPadding: bottomPadding,
+              hasAppBar: true,
+              monthSegmentSnappingOffset: kToolbarHeight + 10,
+              locale: Localizations.localeOf(context),
+              child: scrollView,
+            ),
+          )
+        : scrollView;
+
     return Scaffold(
       body: GestureDetector(
         // 使用捏合手势来调整列数
@@ -179,29 +245,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage>
               onScroll: isSelectionActive
                   ? _dragSelectionController.handleDragScroll
                   : null,
-              child: CustomScrollView(
-                controller: _scrollController,
-                slivers: [
-                  // AppBar（多选模式下显示选择栏，否则显示正常 AppBar）
-                  if (isSelectionActive)
-                    const TimelineSelectionAppBar(pageId: 'main')
-                  else
-                    const TimelineNormalAppBar(),
-
-                  // 时间线内容
-                  ...contentSlivers,
-
-                  // 选择模式下添加底部 padding，避免内容被底部抽屉栏遮挡
-                  if (isSelectionActive)
-                    SliverPadding(
-                      padding: EdgeInsets.only(
-                        bottom:
-                            MediaQuery.of(context).size.height * 0.16 +
-                            MediaQuery.of(context).padding.bottom,
-                      ),
-                    ),
-                ],
-              ),
+              child: scrollContent,
             ),
 
             // 选择底部抽屉（多选模式下显示）

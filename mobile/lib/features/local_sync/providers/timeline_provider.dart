@@ -8,6 +8,7 @@ import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart
 import 'package:prismbox/features/local_sync/services/timeline_grouping_service.dart';
 import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
 import 'package:prismbox/providers/timeline/timeline_content_filter_provider.dart';
+import 'package:prismbox/providers/timeline/timeline_grouping_mode_provider.dart';
 import 'package:prismbox/providers/timeline/timeline_sort_provider.dart';
 
 part 'timeline_provider.g.dart';
@@ -65,11 +66,14 @@ Future<List<TimelineSection>> timelineSections(
     return [];
   }
 
-  // 6. 执行分组转换
-  final groupingService = TimelineGroupingService();
-  final sections = groupingService.groupByTime(assets);
+  // 6. 获取分组粒度（默认按日；后续可由设置或 UI 切换）
+  final groupingMode = ref.watch(timelineGroupingModeNotifierProvider);
 
-  // 7. 移除空分组（过滤后可能产生空分组）
+  // 7. 执行分组转换
+  final groupingService = TimelineGroupingService();
+  final sections = groupingService.groupByTime(assets, mode: groupingMode);
+
+  // 8. 移除空分组（过滤后可能产生空分组）
   return sections.where((section) => section.assets.isNotEmpty).toList();
 }
 

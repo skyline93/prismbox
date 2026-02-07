@@ -2,15 +2,27 @@
 
 import 'package:prismbox/domain/entities/base_asset.dart';
 
-/// 分组类型
-enum SectionType {
-  /// 按天分组（最近 3 个月）
+/// 时间线分组粒度（用户可选，预留设置入口）
+enum TimelineGroupingMode {
+  /// 按日分组
   day,
 
-  /// 按月分组（3 个月到 1 年）
+  /// 按月分组
   month,
 
-  /// 按年分组（1 年以上）
+  /// 按年分组
+  year,
+}
+
+/// 分组类型（由 sectionKey 格式推导，与 [TimelineGroupingMode] 对应）
+enum SectionType {
+  /// 按天分组
+  day,
+
+  /// 按月分组
+  month,
+
+  /// 按年分组
   year,
 }
 
