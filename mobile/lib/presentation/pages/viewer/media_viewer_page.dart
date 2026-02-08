@@ -4,13 +4,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:prismbox/widgets/photo_view.dart';
+import 'package:prismbox/widgets/photo_view_gallery.dart';
 
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
+import 'package:prismbox/features/media_loading/image_provider_factory.dart';
 import 'package:prismbox/presentation/pages/photos/controllers/timeline_upload_handler.dart';
 import 'package:prismbox/services/backup/providers/asset_upload_status_provider.dart';
 import 'package:prismbox/data/database/enums/media_download_source_type.dart';
@@ -24,9 +26,7 @@ import 'package:prismbox/providers/infrastructure/asset_providers.dart';
 import 'package:flutter/material.dart' show ScaffoldMessenger;
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_manager.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_state_provider.dart';
-import 'package:prismbox/presentation/widgets/viewer/viewer_dismiss_gesture.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_controls_bar.dart';
-import 'package:prismbox/presentation/widgets/viewer/viewer_image_page.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_page.dart';
 import 'package:prismbox/presentation/widgets/viewer/media_detail_sheet.dart';
 
@@ -51,6 +51,23 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   late int _initialIndex;
   bool _showControls = true;
   bool _isZoomed = false;
+
+  /// 背景不透明度 0–255，下滑时渐变（与 Immich 一致）
+  int _backgroundOpacity = 255;
+
+  // --- Immich 风格下滑关闭：由 PhotoView 内部 VerticalDrag 驱动 ---
+  PhotoViewControllerBase? _viewController;
+  PhotoViewControllerValue _initialPhotoViewState = const PhotoViewControllerValue(
+    position: Offset.zero,
+    scale: null,
+    rotation: 0,
+    rotationFocusPoint: null,
+  );
+  Offset _dragDownPosition = Offset.zero;
+  bool? _hasDraggedDown;
+  bool _blockGestures = false;
+  bool _shouldPopOnDrag = false;
+  bool _hasOpenedSheetThisGesture = false;
 
   // 用于抑制长按播放 Live 后松手产生的「伪点击」导致的下一次控制栏切换
   bool _suppressNextToggleControls = false;
@@ -187,6 +204,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   }
 
   Widget _buildGallery() {
+    final backgroundColor = Colors.black.withAlpha(_backgroundOpacity);
     return PopScope(
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) {
@@ -194,127 +212,37 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: backgroundColor,
         extendBodyBehindAppBar: true,
-        body: ViewerDismissGesture(
-          isZoomed: _isZoomed,
-          onDismiss: () {
-            context.router.pop();
-          },
-          onSwipeUp: () {
-            final currentAsset = _currentAssetId == null
-                ? null
-                : _assetMap?[_currentAssetId];
-            _showMediaDetailSheet(context, currentAsset);
-          },
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () {
-              // 点击屏幕任意位置切换控制栏显示/隐藏
-              if (!_isZoomed) {
-                _toggleControls();
-              }
-            },
-            child: Stack(
-              children: [
-                // 混合媒体查看器（支持图片和视频）
-                PageView.builder(
-                  controller: _pageController,
-                  itemCount: widget.assetIds.length,
-                  physics: _isZoomed
-                      ? const NeverScrollableScrollPhysics()
-                      : (Platform.isIOS
-                            ? const BouncingScrollPhysics()
-                            : const ClampingScrollPhysics()),
-                  onPageChanged: (index) {
-                    // 页面切换时的处理
-                    _handlePageChanged(index);
-                  },
-                  itemBuilder: (context, index) {
-                    final assetId = widget.assetIds[index];
-                    final asset = _assetMap?[assetId];
-                    final isPlayingMotionVideo =
-                        ref.watch(isPlayingMotionVideoProvider);
-
-                    if (asset == null) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      );
-                    }
-
-                    // Live Photo 且正在播放关联短视频：显示 ViewerVideoPage（视频源为 livePhotoVideoId）
-                    if (asset.isMotionPhoto &&
-                        isPlayingMotionVideo &&
-                        asset.livePhotoVideoId != null) {
-                      return ViewerVideoPage(
-                        asset: asset,
-                        assetId: assetId,
-                        videoManager: _videoManager,
-                        serverUrl: _serverUrl,
-                        assetEntityLoader: _assetEntityLoader,
-                        showControls: _showControls,
-                        onToggleControls: _toggleControls,
-                        onMuteChanged: (muted) {},
-                        currentIndex: index,
-                        visiblePageIndices: _visiblePageIndices,
-                        livePhotoVideoId: asset.livePhotoVideoId,
-                        isLivePhotoVideo: true,
-                      );
-                    }
-
-                    // 普通视频
-                    if (asset.isVideo) {
-                      return ViewerVideoPage(
-                        asset: asset,
-                        assetId: assetId,
-                        videoManager: _videoManager,
-                        serverUrl: _serverUrl,
-                        assetEntityLoader: _assetEntityLoader,
-                        showControls: _showControls,
-                        onToggleControls: _toggleControls,
-                        onMuteChanged: (muted) {},
-                        currentIndex: index,
-                        visiblePageIndices: _visiblePageIndices,
-                      );
-                    }
-
-                    // 图片或 Live Photo 静态主图
-                    return ViewerImagePage(
-                      asset: asset,
-                      assetId: assetId,
-                      serverUrl: _serverUrl,
-                      assetEntityLoader: _assetEntityLoader,
-                      onTap: _toggleControls,
-                      // Live Photo 支持长按播放：与控制栏的播放按钮复用同一状态
-                      onLongPress: asset.isMotionPhoto
-                          ? () {
-                              final next =
-                                  !ref.read(isPlayingMotionVideoProvider);
-                              ref
-                                  .read(isPlayingMotionVideoProvider.notifier)
-                                  .state = next;
-                              if (next) {
-                                // 本次交互是「长按开始播放」，抑制随后的那次 onTap 切换控制栏
-                                _suppressNextToggleControls = true;
-                                ref
-                                    .read(
-                                      currentVideoAssetIdProvider.notifier,
-                                    )
-                                    .state = assetId;
-                              }
-                            }
-                          : null,
-                      onScaleStateChanged: (PhotoViewScaleState state) {
-                        setState(() {
-                          _isZoomed = state != PhotoViewScaleState.initial;
-                        });
-                      },
-                    );
-                  },
-                ),
-
-                // 控制栏（使用 Consumer 包装，直接响应 timelineAssetsProvider 更新）
-                Consumer(
+        body: Stack(
+          children: [
+            PhotoViewGallery.builder(
+              gaplessPlayback: true,
+              pageController: _pageController,
+              itemCount: widget.assetIds.length,
+              scrollPhysics: _isZoomed
+                  ? const NeverScrollableScrollPhysics()
+                  : (Platform.isIOS
+                        ? const BouncingScrollPhysics()
+                        : const ClampingScrollPhysics()),
+              scrollDirection: Axis.horizontal,
+              onPageChanged: (index, _) => _handlePageChanged(index),
+              onPageBuild: _onPageBuild,
+              scaleStateChangedCallback: _onScaleStateChanged,
+              builder: _buildPageOptions,
+              backgroundDecoration: BoxDecoration(color: backgroundColor),
+              loadingBuilder: (context, event, index) => Center(
+                child: event == null
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : CircularProgressIndicator(
+                        value: event.cumulativeBytesLoaded /
+                            (event.expectedTotalBytes ?? 1),
+                        color: Colors.white,
+                      ),
+              ),
+              enablePanAlways: true,
+            ),
+            Consumer(
                   builder: (context, ref, child) {
                     final assetsAsync = ref.watch(timelineAssetsProvider());
                     final currentFavoriteStatus = assetsAsync.maybeWhen(
@@ -423,10 +351,207 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                 ),
               ],
             ),
+      ),
+    );
+  }
+
+  // --- Immich 风格下滑/上滑：与 asset_viewer.page 一致 ---
+  void _onPageBuild(PhotoViewControllerBase controller) {
+    _viewController = controller;
+  }
+
+  void _onDragStart(
+    _,
+    DragStartDetails details,
+    PhotoViewControllerBase controller,
+    PhotoViewScaleStateController scaleStateController,
+  ) {
+    _viewController = controller;
+    _dragDownPosition = details.localPosition;
+    _initialPhotoViewState = controller.value;
+    _hasOpenedSheetThisGesture = false;
+    final isZoomed = scaleStateController.scaleState == PhotoViewScaleState.zoomedIn ||
+        scaleStateController.scaleState == PhotoViewScaleState.covering;
+    if (isZoomed) {
+      _blockGestures = true;
+    }
+  }
+
+  void _onDragEnd(BuildContext ctx, _, __) {
+    if (_shouldPopOnDrag) {
+      ctx.router.pop();
+      return;
+    }
+    if (_blockGestures) {
+      _blockGestures = false;
+      return;
+    }
+    _shouldPopOnDrag = false;
+    _hasDraggedDown = null;
+    _viewController?.animateMultiple(
+      position: _initialPhotoViewState.position,
+      scale: _viewController?.initialScale ?? _initialPhotoViewState.scale,
+      rotation: _initialPhotoViewState.rotation,
+    );
+    setState(() => _backgroundOpacity = 255);
+  }
+
+  void _onDragUpdate(BuildContext ctx, DragUpdateDetails details, _) {
+    if (_blockGestures) return;
+    final delta = details.localPosition - _dragDownPosition;
+    _hasDraggedDown ??= delta.dy > 0;
+    if (_hasDraggedDown! == false) {
+      _handleDragUp(ctx, delta);
+      return;
+    }
+    _handleDragDown(ctx, delta);
+  }
+
+  static const double _kDragRatio = 0.2;
+  static const double _kPopThreshold = 75.0;
+  static const double _kOpenThreshold = 50.0;
+
+  void _handleDragUp(BuildContext ctx, Offset delta) {
+    final position = _initialPhotoViewState.position + Offset(0, delta.dy);
+    final distanceToOrigin = position.distance;
+    _viewController?.updateMultiple(position: position);
+    if (!_hasOpenedSheetThisGesture && distanceToOrigin > _kOpenThreshold) {
+      _hasOpenedSheetThisGesture = true;
+      final currentAsset =
+          _currentAssetId == null ? null : _assetMap?[_currentAssetId];
+      _showMediaDetailSheet(ctx, currentAsset);
+    }
+  }
+
+  void _handleDragDown(BuildContext ctx, Offset delta) {
+    final distance = delta.distance;
+    _shouldPopOnDrag = delta.dy > 0 && distance > _kPopThreshold;
+    final maxScaleDistance = MediaQuery.sizeOf(ctx).height * 0.5;
+    final scaleReduction = (distance / maxScaleDistance).clamp(0.0, _kDragRatio);
+    final initialScale = _viewController?.initialScale ?? _initialPhotoViewState.scale;
+    final updatedScale =
+        initialScale != null ? initialScale * (1.0 - scaleReduction) : null;
+    final backgroundOpacity =
+        (255 * (1.0 - (scaleReduction / _kDragRatio))).round();
+    _viewController?.updateMultiple(
+      position: _initialPhotoViewState.position + delta,
+      scale: updatedScale,
+    );
+    setState(() => _backgroundOpacity = backgroundOpacity);
+  }
+
+  void _onTapDown(_, __, ___) {
+    if (!_isZoomed) _toggleControls();
+  }
+
+  void _onScaleStateChanged(PhotoViewScaleState scaleState) {
+    setState(() {
+      _isZoomed = scaleState != PhotoViewScaleState.initial;
+    });
+  }
+
+  /// 构建当前页的 PhotoView 选项（图 / 视频）
+  PhotoViewGalleryPageOptions _buildPageOptions(BuildContext ctx, int index) {
+    final assetId = widget.assetIds[index];
+    final asset = _assetMap?[assetId];
+    final isPlayingMotionVideo = ref.watch(isPlayingMotionVideoProvider);
+    final mediaSize = MediaQuery.sizeOf(ctx);
+
+    if (asset == null) {
+      return PhotoViewGalleryPageOptions.customChild(
+        heroAttributes: PhotoViewHeroAttributes(tag: 'loading_$index'),
+        child: Container(
+          width: mediaSize.width,
+          height: mediaSize.height,
+          color: Colors.black.withAlpha(_backgroundOpacity),
+          child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+        ),
+      );
+    }
+
+    // 视频或 Live 正在播
+    if (asset.isVideo ||
+        (asset.isMotionPhoto &&
+            isPlayingMotionVideo &&
+            asset.livePhotoVideoId != null)) {
+      return PhotoViewGalleryPageOptions.customChild(
+        onDragStart: _onDragStart,
+        onDragUpdate: _onDragUpdate,
+        onDragEnd: _onDragEnd,
+        onTapDown: _onTapDown,
+        heroAttributes: PhotoViewHeroAttributes(
+          tag: 'asset_${asset.id}',
+          transitionOnUserGestures: true,
+        ),
+        initialScale: PhotoViewComputedScale.contained * 0.99,
+        minScale: PhotoViewComputedScale.contained * 0.99,
+        maxScale: 1.0,
+        basePosition: Alignment.center,
+        disableScaleGestures: true,
+        child: SizedBox(
+          width: mediaSize.width,
+          height: mediaSize.height,
+          child: ViewerVideoPage(
+            asset: asset,
+            assetId: assetId,
+            videoManager: _videoManager,
+            serverUrl: _serverUrl,
+            assetEntityLoader: _assetEntityLoader,
+            showControls: _showControls,
+            onToggleControls: _toggleControls,
+            onMuteChanged: (_) {},
+            currentIndex: index,
+            visiblePageIndices: _visiblePageIndices,
+            livePhotoVideoId: asset.livePhotoVideoId,
+            isLivePhotoVideo: asset.isMotionPhoto && isPlayingMotionVideo,
           ),
+        ),
+      );
+    }
+
+    // 图片或 Live 静态图
+    final imageProvider = getFullImageProvider(
+      asset,
+      size: mediaSize,
+      loadOriginal: true,
+      serverUrl: _serverUrl,
+      assetEntityLoader: _assetEntityLoader,
+    );
+    return PhotoViewGalleryPageOptions(
+      key: ValueKey(asset.id),
+      imageProvider: imageProvider,
+      heroAttributes: PhotoViewHeroAttributes(
+        tag: 'asset_${asset.id}',
+        transitionOnUserGestures: true,
+      ),
+      filterQuality: FilterQuality.high,
+      tightMode: true,
+      initialScale: PhotoViewComputedScale.contained * 0.99,
+      minScale: PhotoViewComputedScale.contained * 0.99,
+      maxScale: PhotoViewComputedScale.covered * 4.0,
+      onDragStart: _onDragStart,
+      onDragUpdate: _onDragUpdate,
+      onDragEnd: _onDragEnd,
+      onTapDown: _onTapDown,
+      onLongPressStart: asset.isMotionPhoto ? _onLongPressMotion : null,
+      errorBuilder: (_, __, ___) => Container(
+        width: mediaSize.width,
+        height: mediaSize.height,
+        color: Colors.black,
+        child: const Center(
+          child: Icon(Icons.error_outline, color: Colors.white, size: 48),
         ),
       ),
     );
+  }
+
+  void _onLongPressMotion(_, __, ___) {
+    final next = !ref.read(isPlayingMotionVideoProvider);
+    ref.read(isPlayingMotionVideoProvider.notifier).state = next;
+    if (next && _currentAssetId != null) {
+      _suppressNextToggleControls = true;
+      ref.read(currentVideoAssetIdProvider.notifier).state = _currentAssetId;
+    }
   }
 
   /// 获取服务器 URL

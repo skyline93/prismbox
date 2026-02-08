@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:prismbox/widgets/photo_view.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';
@@ -118,6 +118,7 @@ class _ViewerImagePageState extends State<ViewerImagePage> {
   @override
   Widget build(BuildContext context) {
     return PhotoView(
+      index: 0,
       imageProvider: _getImageProvider(context),
       heroAttributes: PhotoViewHeroAttributes(
         tag: 'asset_${widget.assetId}',
@@ -145,7 +146,7 @@ class _ViewerImagePageState extends State<ViewerImagePage> {
           ),
         );
       },
-      loadingBuilder: (context, event) {
+      loadingBuilder: (context, event, index) {
         if (event == null) {
           return const Center(
             child: CircularProgressIndicator(color: Colors.white),
