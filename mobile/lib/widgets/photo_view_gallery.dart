@@ -242,9 +242,11 @@ class _PhotoViewGalleryState extends State<PhotoViewGallery> {
 
   @override
   Widget build(BuildContext context) {
-    // Enable corner hit test
+    // Enable corner hit test.
+    // touchSlopFactor: 2 让 Scale 识别器延后认领，垂直下滑时 VerticalDrag 可胜出，从而触发 onDragUpdate 实现背景渐变。
     return PhotoViewGestureDetectorScope(
       axis: widget.scrollDirection,
+      touchSlopFactor: 2,
       child: PageView.builder(
         reverse: widget.reverse,
         controller: _controller,

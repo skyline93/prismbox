@@ -54,6 +54,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   /// 背景不透明度 0–255，下滑时渐变（与 Immich 一致）
   int _backgroundOpacity = 255;
+  /// 独立背景层用 Notifier 驱动，避免受 build 中 when 分支影响导致不重绘
+  final ValueNotifier<int> _backgroundOpacityNotifier = ValueNotifier<int>(255);
 
   // --- Immich 风格下滑关闭：由 PhotoView 内部 VerticalDrag 驱动 ---
   PhotoViewControllerBase? _viewController;
@@ -126,6 +128,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   @override
   void dispose() {
     _pageController.dispose();
+    _backgroundOpacityNotifier.dispose();
 
     // 注意：不再需要释放 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller
 
@@ -204,7 +207,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   }
 
   Widget _buildGallery() {
-    final backgroundColor = Colors.black.withAlpha(_backgroundOpacity);
     return PopScope(
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) {
@@ -212,10 +214,19 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
+            ValueListenableBuilder<int>(
+              valueListenable: _backgroundOpacityNotifier,
+              builder: (context, opacity, _) {
+                debugPrint('[MediaViewer] ValueListenableBuilder rebuild opacity=$opacity');
+                return Positioned.fill(
+                  child: Container(color: Colors.black.withAlpha(opacity)),
+                );
+              },
+            ),
             PhotoViewGallery.builder(
               gaplessPlayback: true,
               pageController: _pageController,
@@ -230,7 +241,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
               onPageBuild: _onPageBuild,
               scaleStateChangedCallback: _onScaleStateChanged,
               builder: _buildPageOptions,
-              backgroundDecoration: BoxDecoration(color: backgroundColor),
+              backgroundDecoration: const BoxDecoration(color: Colors.transparent),
               loadingBuilder: (context, event, index) => Center(
                 child: event == null
                     ? const CircularProgressIndicator(color: Colors.white)
@@ -366,6 +377,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     PhotoViewControllerBase controller,
     PhotoViewScaleStateController scaleStateController,
   ) {
+    debugPrint('[MediaViewer] _onDragStart: localPosition=${details.localPosition}');
     _viewController = controller;
     _dragDownPosition = details.localPosition;
     _initialPhotoViewState = controller.value;
@@ -374,10 +386,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         scaleStateController.scaleState == PhotoViewScaleState.covering;
     if (isZoomed) {
       _blockGestures = true;
+      debugPrint('[MediaViewer] _onDragStart: isZoomed=true, blocking gestures');
     }
   }
 
   void _onDragEnd(BuildContext ctx, _, __) {
+    debugPrint('[MediaViewer] _onDragEnd: shouldPop=$_shouldPopOnDrag blockGestures=$_blockGestures hasDraggedDown=$_hasDraggedDown');
     if (_shouldPopOnDrag) {
       ctx.router.pop();
       return;
@@ -393,17 +407,22 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       scale: _viewController?.initialScale ?? _initialPhotoViewState.scale,
       rotation: _initialPhotoViewState.rotation,
     );
-    setState(() => _backgroundOpacity = 255);
+    _backgroundOpacity = 255;
+    _backgroundOpacityNotifier.value = 255;
+    debugPrint('[MediaViewer] _onDragEnd: reset opacity to 255');
   }
 
   void _onDragUpdate(BuildContext ctx, DragUpdateDetails details, _) {
     if (_blockGestures) return;
     final delta = details.localPosition - _dragDownPosition;
+    final wasDown = _hasDraggedDown;
     _hasDraggedDown ??= delta.dy > 0;
     if (_hasDraggedDown! == false) {
+      if (wasDown == null) debugPrint('[MediaViewer] _onDragUpdate: delta=$delta -> drag UP path');
       _handleDragUp(ctx, delta);
       return;
     }
+    if (wasDown == null) debugPrint('[MediaViewer] _onDragUpdate: delta=$delta -> drag DOWN path');
     _handleDragDown(ctx, delta);
   }
 
@@ -433,11 +452,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         initialScale != null ? initialScale * (1.0 - scaleReduction) : null;
     final backgroundOpacity =
         (255 * (1.0 - (scaleReduction / _kDragRatio))).round();
+    debugPrint('[MediaViewer] _handleDragDown: distance=${distance.toStringAsFixed(1)} scaleReduction=${scaleReduction.toStringAsFixed(3)} opacity=$backgroundOpacity');
     _viewController?.updateMultiple(
       position: _initialPhotoViewState.position + delta,
       scale: updatedScale,
     );
-    setState(() => _backgroundOpacity = backgroundOpacity);
+    _backgroundOpacityNotifier.value = backgroundOpacity;
   }
 
   void _onTapDown(_, __, ___) {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -147,6 +148,7 @@ class PhotoViewGestureRecognizer extends ScaleGestureRecognizer {
 
   @override
   void didStopTrackingLastPointer(int pointer) {
+    _loggedAccept = false;
     ready = true;
     super.didStopTrackingLastPointer(pointer);
   }
@@ -201,6 +203,8 @@ class PhotoViewGestureRecognizer extends ScaleGestureRecognizer {
     _currentSpan = count > 0 ? totalDeviation / count : 0.0;
   }
 
+  bool _loggedAccept = false;
+
   void _decideIfWeAcceptEvent(PointerEvent event) {
     final move = _initialFocalPoint! - _currentFocalPoint!;
 
@@ -219,6 +223,10 @@ class PhotoViewGestureRecognizer extends ScaleGestureRecognizer {
       // setting `touchSlopFactor` to 2 restores default `ScaleGestureRecognizer` behaviour as `kPanSlop = kTouchSlop * 2.0`
       // setting `touchSlopFactor` in [0, 1] will allow this recognizer to accept the gesture before the one from `PageView`
       if (spanDelta > kScaleSlop || focalPointDelta > kTouchSlop * touchSlopFactor) {
+        if (!_loggedAccept) {
+          debugPrint('[PhotoView] Scale recognizer ACCEPTED: move=$move shouldMove=$shouldMove vertical=${!isHorizontalGesture} focalPointDelta=${focalPointDelta.toStringAsFixed(1)} touchSlopFactor=$touchSlopFactor');
+          _loggedAccept = true;
+        }
         acceptGesture(event.pointer);
       }
     }

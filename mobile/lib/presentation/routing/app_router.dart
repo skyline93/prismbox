@@ -100,11 +100,12 @@ class AppRouter extends _$AppRouter {
       transitionsBuilder: TransitionsBuilders.fadeIn,
     ),
 
-    // 媒体查看器（需要认证和权限）
-    AutoRoute(
+    // 媒体查看器（需要认证和权限）。opaque: false 使路由透明，下滑时背景渐变可透出下层时间线。
+    CustomRoute(
       page: MediaViewerRoute.page,
       path: '/media/:assetId',
       guards: [_authGuard, _permissionGuard],
+      opaque: false,
     ),
 
     // 备份设置页面（需要认证）
