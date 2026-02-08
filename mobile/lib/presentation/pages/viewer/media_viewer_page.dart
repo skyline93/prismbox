@@ -8,7 +8,11 @@ import 'package:photo_view/photo_view.dart';
 
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
+import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 import 'package:prismbox/features/local_sync/providers/local_sync_providers.dart';
+import 'package:prismbox/presentation/pages/photos/controllers/timeline_upload_handler.dart';
+import 'package:prismbox/services/backup/providers/asset_upload_status_provider.dart';
 import 'package:prismbox/data/database/enums/media_download_source_type.dart';
 import 'package:prismbox/providers/auth/auth_state_provider.dart';
 import 'package:prismbox/services/download/media_download_request.dart';
@@ -340,6 +344,21 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                         ? authState.user.id.toString()
                         : null;
 
+                    // 仅本地资源监听上传状态，用于顶栏云图标（与缩略图一致）及可点击状态
+                    final AssetUploadStatus? uploadStatus = currentAsset != null &&
+                            currentAsset is LocalAsset
+                        ? ref
+                            .watch(
+                              assetUploadStatusProvider(
+                                currentAsset.localId ?? currentAsset.id,
+                                currentAsset.hasRemote,
+                                currentAsset.checksum,
+                              ),
+                            )
+                            .valueOrNull
+                            ?.status
+                        : null;
+
                     return ViewerControlsBar(
                       showControls: _showControls,
                       onToggleControls: _toggleControls,
@@ -387,6 +406,17 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                               }
                             }
                           : null,
+                      onUpload: (currentAsset is LocalAsset && _currentAssetId != null)
+                          ? () async {
+                              final handler = TimelineUploadHandler(
+                                context: context,
+                                ref: ref,
+                                mounted: () => mounted,
+                              );
+                              await handler.handleUploadWithAssetIds([_currentAssetId!]);
+                            }
+                          : null,
+                      uploadStatus: uploadStatus,
                       onInfo: () => _showMediaDetailSheet(context, currentAsset),
                     );
                   },

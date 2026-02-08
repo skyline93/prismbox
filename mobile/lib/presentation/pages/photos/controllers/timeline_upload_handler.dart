@@ -21,43 +21,44 @@ class TimelineUploadHandler {
     required this.mounted,
   });
 
-  /// 处理上传
+  /// 处理上传（使用选择模式下的已选 ID）
   Future<void> handleUpload() async {
     final selectedIds = ref.read(
       assetSelectionProvider.select((s) => s.selectedIds),
     );
     if (selectedIds.isEmpty) return;
+    await handleUploadWithAssetIds(selectedIds.toList());
+    // 退出选择模式
+    ref.read(assetSelectionProvider.notifier).deactivate();
+  }
+
+  /// 上传指定资产 ID 列表（与选择模式共用同一上传逻辑，可用于预览页单张上传等）
+  Future<void> handleUploadWithAssetIds(List<String> assetIds) async {
+    if (assetIds.isEmpty) return;
 
     try {
-      // 获取用户ID
       final authService = await ref.read(authServiceProvider.future);
       final profile = await authService.getProfile();
       final userId = profile.id.toString();
 
-      // 获取备份服务
       final backupService = await ref.read(backupServiceProvider.future);
 
-      // 启动上传
       await backupService.startManualBackup(
         userId: userId,
-        assetIds: selectedIds.toList(),
+        assetIds: assetIds,
         skipDeduplication: false,
       );
 
-      // 显示成功提示
       if (mounted()) {
+        final count = assetIds.length;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('已开始上传 ${selectedIds.length} 张照片'),
+            content: Text(count == 1 ? '已开始上传' : '已开始上传 $count 张照片'),
             duration: const Duration(seconds: 2),
           ),
         );
-
-        // 退出选择模式
-        ref.read(assetSelectionProvider.notifier).deactivate();
       }
     } catch (e) {
-      // 显示错误提示
       if (mounted()) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

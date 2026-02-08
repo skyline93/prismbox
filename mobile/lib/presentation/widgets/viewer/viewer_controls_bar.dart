@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 
 /// 媒体查看器控制栏组件
 ///
 /// 包含顶部 AppBar 和底部控制栏。
-/// 顶部 AppBar：返回、分享、更多操作
+/// 顶部 AppBar：返回、上传（云图标与缩略图一致）、更多操作
 /// 底部控制栏：收藏、信息、编辑等功能按钮
 class ViewerControlsBar extends StatelessWidget {
   /// 是否显示控制栏
@@ -15,8 +16,12 @@ class ViewerControlsBar extends StatelessWidget {
   /// 返回回调
   final VoidCallback? onBack;
 
-  /// 分享回调
-  final VoidCallback? onShare;
+  /// 上传回调（仅本地资源显示，用于上传当前媒体到云端）
+  final VoidCallback? onUpload;
+
+  /// 当前资源上传状态（与缩略图云图标一致：未上传/上传中/已上传/失败）
+  /// null 视为未上传，仅未上传和失败时可点击
+  final AssetUploadStatus? uploadStatus;
 
   /// 更多操作回调
   final VoidCallback? onMore;
@@ -53,7 +58,8 @@ class ViewerControlsBar extends StatelessWidget {
     required this.showControls,
     required this.onToggleControls,
     this.onBack,
-    this.onShare,
+    this.onUpload,
+    this.uploadStatus,
     this.onMore,
     this.onFavorite,
     this.isFavorite,
@@ -65,6 +71,80 @@ class ViewerControlsBar extends StatelessWidget {
     this.showDownloadButton = false,
     this.onDownload,
   });
+
+  /// 与缩略图一致的云图标：未上传
+  static Widget _buildNotUploadedIcon() {
+    return const Icon(
+      Icons.cloud_off_outlined,
+      color: Colors.white,
+      size: 22,
+    );
+  }
+
+  /// 与缩略图一致：上传中（云图标 + 外围转圈）
+  static Widget _buildUploadingIcon() {
+    return const SizedBox(
+      width: 24,
+      height: 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            Icons.cloud_upload_outlined,
+            color: Colors.white,
+            size: 22,
+          ),
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              backgroundColor: Color.fromRGBO(255, 255, 255, 0.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 与缩略图一致：已上传
+  static Widget _buildUploadedIcon() {
+    return const Icon(
+      Icons.cloud_done_outlined,
+      color: Colors.white,
+      size: 22,
+    );
+  }
+
+  /// 与缩略图一致：上传失败（红色）
+  static Widget _buildFailedIcon() {
+    return const Icon(
+      Icons.cloud_off_outlined,
+      color: Colors.red,
+      size: 22,
+    );
+  }
+
+  Widget _uploadStatusIcon() {
+    switch (uploadStatus) {
+      case AssetUploadStatus.uploading:
+        return _buildUploadingIcon();
+      case AssetUploadStatus.uploaded:
+        return _buildUploadedIcon();
+      case AssetUploadStatus.failed:
+        return _buildFailedIcon();
+      case AssetUploadStatus.notUploaded:
+      case null:
+        return _buildNotUploadedIcon();
+    }
+  }
+
+  /// 仅未上传和上传失败时可点击
+  bool get _isUploadButtonEnabled =>
+      uploadStatus == null ||
+      uploadStatus == AssetUploadStatus.notUploaded ||
+      uploadStatus == AssetUploadStatus.failed;
 
   @override
   Widget build(BuildContext context) {
@@ -110,14 +190,20 @@ class ViewerControlsBar extends StatelessWidget {
                       onPressed: onDownload,
                     ),
                   ),
-                IconButton(
-                  icon: const Icon(Icons.share),
-                  onPressed:
-                      onShare ??
-                      () {
-                        // TODO: 分享媒体
-                      },
-                ),
+                if (onUpload != null)
+                  Semantics(
+                    label: uploadStatus == AssetUploadStatus.uploading
+                        ? '上传中'
+                        : uploadStatus == AssetUploadStatus.uploaded
+                            ? '已上传'
+                            : uploadStatus == AssetUploadStatus.failed
+                                ? '上传失败，点击重试'
+                                : '上传',
+                    child: IconButton(
+                      icon: _uploadStatusIcon(),
+                      onPressed: _isUploadButtonEnabled ? onUpload : null,
+                    ),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.more_vert),
                   onPressed:
