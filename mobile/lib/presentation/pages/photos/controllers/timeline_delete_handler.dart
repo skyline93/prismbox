@@ -12,6 +12,7 @@ import 'package:prismbox/domain/entities/remote_asset.dart';
 import 'package:prismbox/features/local_sync/providers/timeline_provider.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
 import 'package:prismbox/providers/photo_filter/photo_filter_provider.dart';
+import 'package:prismbox/providers/selection/asset_selection_provider.dart';
 import 'package:prismbox/services/trash/local_asset_delete_service.dart';
 import 'package:prismbox/services/trash/remote_asset_delete_service.dart';
 import 'package:prismbox/services/trash/trash_storage_service.dart';
@@ -93,8 +94,9 @@ class TimelineDeleteHandler {
       ref.invalidate(timelineAssetsProvider());
       ref.invalidate(timelineSectionsProvider);
 
-      // 显示成功提示
+      // 显示成功提示并退出选择模式
       if (mounted()) {
+        ref.read(assetSelectionProvider.notifier).deactivate();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('删除成功'),
