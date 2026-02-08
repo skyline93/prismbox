@@ -12,6 +12,8 @@ class MediaExifInfo {
   final double? exifFNumber;
   final int? exifIso;
   final double? exifFocalLength;
+  /// 是否 HDR（如 iOS HDR Image Type 等厂商标签）
+  final bool? isHdr;
 
   const MediaExifInfo({
     this.deviceMake,
@@ -20,6 +22,7 @@ class MediaExifInfo {
     this.exifFNumber,
     this.exifIso,
     this.exifFocalLength,
+    this.isHdr,
   });
 }
 
@@ -56,6 +59,7 @@ class MediaExifExtractor {
       double? exifFNumber = _getRationalAsDouble(data, 'FNumber') ?? _getRationalAsDouble(data, 'EXIF FNumber');
       int? exifIso = _getInt(data, 'ISOSpeedRatings') ?? _getInt(data, 'EXIF ISOSpeedRatings');
       double? exifFocalLength = _getRationalAsDouble(data, 'FocalLength') ?? _getRationalAsDouble(data, 'EXIF FocalLength');
+      bool? isHdr = _detectHdr(data);
 
       return MediaExifInfo(
         deviceMake: deviceMake,
@@ -64,11 +68,31 @@ class MediaExifExtractor {
         exifFNumber: exifFNumber,
         exifIso: exifIso,
         exifFocalLength: exifFocalLength,
+        isHdr: isHdr,
       );
     } catch (e) {
       _logger.fine('EXIF parse failed: $e');
       return const MediaExifInfo();
     }
+  }
+
+  /// 检测是否 HDR：iOS 使用 HDRImageType 等，无统一 EXIF 标签则返回 null
+  bool? _detectHdr(Map<String, IfdTag> data) {
+    final keys = [
+      'HDRImageType',
+      'HDR Image Type',
+      'Apple HDR',
+    ];
+    for (final key in keys) {
+      final s = _getString(data, key);
+      if (s != null && s.isNotEmpty) {
+        final lower = s.toLowerCase();
+        if (lower.contains('hdr') && !lower.contains('off') && !lower.contains('no')) {
+          return true;
+        }
+      }
+    }
+    return null;
   }
 
   String? _getString(Map<String, IfdTag> data, String key) {
@@ -100,6 +124,17 @@ class MediaExifExtractor {
     if (tag == null) return null;
     try {
       final list = tag.values.toList();
+      // exif 包中 RATIONAL 类型对应 IfdRatios，toList() 返回 List<Ratio>，length 为 1
+      if (list.isNotEmpty) {
+        final first = list[0];
+        if (first is Ratio) {
+          if (first.denominator != 0) {
+            return first.numerator / first.denominator;
+          }
+          return first.toDouble();
+        }
+      }
+      // 兼容：少数实现可能返回 [分子, 分母] 两个 int
       if (list.length >= 2) {
         final numVal = list[0];
         final denVal = list[1];
@@ -108,9 +143,20 @@ class MediaExifExtractor {
         }
       }
     } catch (_) {}
+    // fallback：解析 printable 如 "35/10" 或 "3.5"
     try {
-      final s = tag.printable;
-      if (s.isNotEmpty) return double.tryParse(s);
+      final s = tag.printable.trim();
+      if (s.isEmpty) return null;
+      final direct = double.tryParse(s);
+      if (direct != null) return direct;
+      final slash = s.indexOf('/');
+      if (slash > 0 && slash < s.length - 1) {
+        final numStr = s.substring(0, slash).trim();
+        final denStr = s.substring(slash + 1).trim();
+        final num = double.tryParse(numStr);
+        final den = double.tryParse(denStr);
+        if (num != null && den != null && den != 0) return num / den;
+      }
     } catch (_) {}
     return null;
   }

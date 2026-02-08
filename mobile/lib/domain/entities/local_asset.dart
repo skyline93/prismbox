@@ -53,6 +53,9 @@ class LocalAsset extends BaseAsset {
   /// 焦距 mm（EXIF FocalLength）
   final double? exifFocalLength;
 
+  /// 是否 HDR（EXIF/厂商标签，如 iOS HDR Image Type）
+  final bool? isHdr;
+
   const LocalAsset({
     required this.id,
     String? remoteId,
@@ -79,6 +82,7 @@ class LocalAsset extends BaseAsset {
     this.exifFNumber,
     this.exifIso,
     this.exifFocalLength,
+    this.isHdr,
   }) : _orientation = orientation,
        remoteAssetId = remoteId;
 
@@ -125,6 +129,7 @@ class LocalAsset extends BaseAsset {
     double? exifFNumber,
     int? exifIso,
     double? exifFocalLength,
+    bool? isHdr,
   }) {
     return LocalAsset(
       id: id,
@@ -152,6 +157,7 @@ class LocalAsset extends BaseAsset {
       exifFNumber: exifFNumber,
       exifIso: exifIso,
       exifFocalLength: exifFocalLength,
+      isHdr: isHdr,
     );
   }
 }

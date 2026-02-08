@@ -80,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration {
@@ -398,6 +398,13 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(
           remoteAssetEntity,
           remoteAssetEntity.exifFocalLength,
+        );
+        break;
+      case 18:
+        // 媒体详情：本地资产是否 HDR（EXIF/厂商标签）
+        await m.addColumn(
+          localAssetEntity,
+          localAssetEntity.isHdr,
         );
         break;
       default:

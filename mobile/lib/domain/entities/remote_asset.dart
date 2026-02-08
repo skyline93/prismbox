@@ -36,6 +36,9 @@ class RemoteAsset extends BaseAsset {
   final int? exifIso;
   final double? exifFocalLength;
 
+  /// 是否 HDR（同步自服务器或 EXIF）
+  final bool? isHdr;
+
   const RemoteAsset({
     required this.id,
     String? localId,
@@ -62,6 +65,7 @@ class RemoteAsset extends BaseAsset {
     this.exifFNumber,
     this.exifIso,
     this.exifFocalLength,
+    this.isHdr,
   }) : localAssetId = localId;
 
   @override
@@ -107,6 +111,7 @@ class RemoteAsset extends BaseAsset {
     double? exifFNumber,
     int? exifIso,
     double? exifFocalLength,
+    bool? isHdr,
   }) {
     return RemoteAsset(
       id: id,
@@ -134,6 +139,7 @@ class RemoteAsset extends BaseAsset {
       exifFNumber: exifFNumber,
       exifIso: exifIso,
       exifFocalLength: exifFocalLength,
+      isHdr: isHdr,
     );
   }
 }

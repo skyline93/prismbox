@@ -89,6 +89,9 @@ class LocalAssetEntity extends Table with DriftDefaultsMixin, AssetEntityMixin {
   /// 焦距 mm（EXIF FocalLength）
   RealColumn get exifFocalLength => real().nullable()();
 
+  /// 是否 HDR（EXIF/厂商标签，如 iOS HDR Image Type）
+  BoolColumn get isHdr => boolean().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

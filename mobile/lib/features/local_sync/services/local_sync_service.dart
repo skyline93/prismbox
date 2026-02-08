@@ -655,6 +655,7 @@ class LocalSyncService {
       exifFNumber: exifInfo?.exifFNumber,
       exifIso: exifInfo?.exifIso,
       exifFocalLength: exifInfo?.exifFocalLength,
+      isHdr: exifInfo?.isHdr,
     );
   }
 

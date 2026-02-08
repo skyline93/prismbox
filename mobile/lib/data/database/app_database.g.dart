@@ -534,6 +534,14 @@ class $LocalAssetEntityTable extends LocalAssetEntity
   late final GeneratedColumn<double> exifFocalLength = GeneratedColumn<double>(
       'exif_focal_length', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _isHdrMeta = const VerificationMeta('isHdr');
+  @override
+  late final GeneratedColumn<bool> isHdr = GeneratedColumn<bool>(
+      'is_hdr', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_hdr" IN (0, 1))'));
   @override
   List<GeneratedColumn> get $columns => [
         name,
@@ -562,7 +570,8 @@ class $LocalAssetEntityTable extends LocalAssetEntity
         exifExposureTime,
         exifFNumber,
         exifIso,
-        exifFocalLength
+        exifFocalLength,
+        isHdr
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -710,6 +719,10 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           exifFocalLength.isAcceptableOrUnknown(
               data['exif_focal_length']!, _exifFocalLengthMeta));
     }
+    if (data.containsKey('is_hdr')) {
+      context.handle(
+          _isHdrMeta, isHdr.isAcceptableOrUnknown(data['is_hdr']!, _isHdrMeta));
+    }
     return context;
   }
 
@@ -775,6 +788,8 @@ class $LocalAssetEntityTable extends LocalAssetEntity
           .read(DriftSqlType.int, data['${effectivePrefix}exif_iso']),
       exifFocalLength: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}exif_focal_length']),
+      isHdr: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_hdr']),
     );
   }
 
@@ -888,6 +903,9 @@ class LocalAssetEntityData extends DataClass
 
   /// 焦距 mm（EXIF FocalLength）
   final double? exifFocalLength;
+
+  /// 是否 HDR（EXIF/厂商标签，如 iOS HDR Image Type）
+  final bool? isHdr;
   const LocalAssetEntityData(
       {required this.name,
       required this.type,
@@ -915,7 +933,8 @@ class LocalAssetEntityData extends DataClass
       this.exifExposureTime,
       this.exifFNumber,
       this.exifIso,
-      this.exifFocalLength});
+      this.exifFocalLength,
+      this.isHdr});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -985,6 +1004,9 @@ class LocalAssetEntityData extends DataClass
     if (!nullToAbsent || exifFocalLength != null) {
       map['exif_focal_length'] = Variable<double>(exifFocalLength);
     }
+    if (!nullToAbsent || isHdr != null) {
+      map['is_hdr'] = Variable<bool>(isHdr);
+    }
     return map;
   }
 
@@ -1047,6 +1069,8 @@ class LocalAssetEntityData extends DataClass
       exifFocalLength: exifFocalLength == null && nullToAbsent
           ? const Value.absent()
           : Value(exifFocalLength),
+      isHdr:
+          isHdr == null && nullToAbsent ? const Value.absent() : Value(isHdr),
     );
   }
 
@@ -1083,6 +1107,7 @@ class LocalAssetEntityData extends DataClass
       exifFNumber: serializer.fromJson<double?>(json['exifFNumber']),
       exifIso: serializer.fromJson<int?>(json['exifIso']),
       exifFocalLength: serializer.fromJson<double?>(json['exifFocalLength']),
+      isHdr: serializer.fromJson<bool?>(json['isHdr']),
     );
   }
   @override
@@ -1119,6 +1144,7 @@ class LocalAssetEntityData extends DataClass
       'exifFNumber': serializer.toJson<double?>(exifFNumber),
       'exifIso': serializer.toJson<int?>(exifIso),
       'exifFocalLength': serializer.toJson<double?>(exifFocalLength),
+      'isHdr': serializer.toJson<bool?>(isHdr),
     };
   }
 
@@ -1149,7 +1175,8 @@ class LocalAssetEntityData extends DataClass
           Value<String?> exifExposureTime = const Value.absent(),
           Value<double?> exifFNumber = const Value.absent(),
           Value<int?> exifIso = const Value.absent(),
-          Value<double?> exifFocalLength = const Value.absent()}) =>
+          Value<double?> exifFocalLength = const Value.absent(),
+          Value<bool?> isHdr = const Value.absent()}) =>
       LocalAssetEntityData(
         name: name ?? this.name,
         type: type ?? this.type,
@@ -1187,6 +1214,7 @@ class LocalAssetEntityData extends DataClass
         exifFocalLength: exifFocalLength.present
             ? exifFocalLength.value
             : this.exifFocalLength,
+        isHdr: isHdr.present ? isHdr.value : this.isHdr,
       );
   LocalAssetEntityData copyWithCompanion(LocalAssetEntityCompanion data) {
     return LocalAssetEntityData(
@@ -1237,6 +1265,7 @@ class LocalAssetEntityData extends DataClass
       exifFocalLength: data.exifFocalLength.present
           ? data.exifFocalLength.value
           : this.exifFocalLength,
+      isHdr: data.isHdr.present ? data.isHdr.value : this.isHdr,
     );
   }
 
@@ -1269,7 +1298,8 @@ class LocalAssetEntityData extends DataClass
           ..write('exifExposureTime: $exifExposureTime, ')
           ..write('exifFNumber: $exifFNumber, ')
           ..write('exifIso: $exifIso, ')
-          ..write('exifFocalLength: $exifFocalLength')
+          ..write('exifFocalLength: $exifFocalLength, ')
+          ..write('isHdr: $isHdr')
           ..write(')'))
         .toString();
   }
@@ -1302,7 +1332,8 @@ class LocalAssetEntityData extends DataClass
         exifExposureTime,
         exifFNumber,
         exifIso,
-        exifFocalLength
+        exifFocalLength,
+        isHdr
       ]);
   @override
   bool operator ==(Object other) =>
@@ -1334,7 +1365,8 @@ class LocalAssetEntityData extends DataClass
           other.exifExposureTime == this.exifExposureTime &&
           other.exifFNumber == this.exifFNumber &&
           other.exifIso == this.exifIso &&
-          other.exifFocalLength == this.exifFocalLength);
+          other.exifFocalLength == this.exifFocalLength &&
+          other.isHdr == this.isHdr);
 }
 
 class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
@@ -1365,6 +1397,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
   final Value<double?> exifFNumber;
   final Value<int?> exifIso;
   final Value<double?> exifFocalLength;
+  final Value<bool?> isHdr;
   const LocalAssetEntityCompanion({
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -1393,6 +1426,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.exifFNumber = const Value.absent(),
     this.exifIso = const Value.absent(),
     this.exifFocalLength = const Value.absent(),
+    this.isHdr = const Value.absent(),
   });
   LocalAssetEntityCompanion.insert({
     required String name,
@@ -1422,6 +1456,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     this.exifFNumber = const Value.absent(),
     this.exifIso = const Value.absent(),
     this.exifFocalLength = const Value.absent(),
+    this.isHdr = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         createdAt = Value(createdAt),
@@ -1456,6 +1491,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     Expression<double>? exifFNumber,
     Expression<int>? exifIso,
     Expression<double>? exifFocalLength,
+    Expression<bool>? isHdr,
   }) {
     return RawValuesInsertable({
       if (name != null) 'name': name,
@@ -1485,6 +1521,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       if (exifFNumber != null) 'exif_f_number': exifFNumber,
       if (exifIso != null) 'exif_iso': exifIso,
       if (exifFocalLength != null) 'exif_focal_length': exifFocalLength,
+      if (isHdr != null) 'is_hdr': isHdr,
     });
   }
 
@@ -1515,7 +1552,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       Value<String?>? exifExposureTime,
       Value<double?>? exifFNumber,
       Value<int?>? exifIso,
-      Value<double?>? exifFocalLength}) {
+      Value<double?>? exifFocalLength,
+      Value<bool?>? isHdr}) {
     return LocalAssetEntityCompanion(
       name: name ?? this.name,
       type: type ?? this.type,
@@ -1544,6 +1582,7 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
       exifFNumber: exifFNumber ?? this.exifFNumber,
       exifIso: exifIso ?? this.exifIso,
       exifFocalLength: exifFocalLength ?? this.exifFocalLength,
+      isHdr: isHdr ?? this.isHdr,
     );
   }
 
@@ -1634,6 +1673,9 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
     if (exifFocalLength.present) {
       map['exif_focal_length'] = Variable<double>(exifFocalLength.value);
     }
+    if (isHdr.present) {
+      map['is_hdr'] = Variable<bool>(isHdr.value);
+    }
     return map;
   }
 
@@ -1666,7 +1708,8 @@ class LocalAssetEntityCompanion extends UpdateCompanion<LocalAssetEntityData> {
           ..write('exifExposureTime: $exifExposureTime, ')
           ..write('exifFNumber: $exifFNumber, ')
           ..write('exifIso: $exifIso, ')
-          ..write('exifFocalLength: $exifFocalLength')
+          ..write('exifFocalLength: $exifFocalLength, ')
+          ..write('isHdr: $isHdr')
           ..write(')'))
         .toString();
   }
@@ -8964,6 +9007,7 @@ typedef $$LocalAssetEntityTableCreateCompanionBuilder
   Value<double?> exifFNumber,
   Value<int?> exifIso,
   Value<double?> exifFocalLength,
+  Value<bool?> isHdr,
 });
 typedef $$LocalAssetEntityTableUpdateCompanionBuilder
     = LocalAssetEntityCompanion Function({
@@ -8994,6 +9038,7 @@ typedef $$LocalAssetEntityTableUpdateCompanionBuilder
   Value<double?> exifFNumber,
   Value<int?> exifIso,
   Value<double?> exifFocalLength,
+  Value<bool?> isHdr,
 });
 
 class $$LocalAssetEntityTableTableManager extends RootTableManager<
@@ -9041,6 +9086,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<double?> exifFNumber = const Value.absent(),
             Value<int?> exifIso = const Value.absent(),
             Value<double?> exifFocalLength = const Value.absent(),
+            Value<bool?> isHdr = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion(
             name: name,
@@ -9070,6 +9116,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             exifFNumber: exifFNumber,
             exifIso: exifIso,
             exifFocalLength: exifFocalLength,
+            isHdr: isHdr,
           ),
           createCompanionCallback: ({
             required String name,
@@ -9099,6 +9146,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             Value<double?> exifFNumber = const Value.absent(),
             Value<int?> exifIso = const Value.absent(),
             Value<double?> exifFocalLength = const Value.absent(),
+            Value<bool?> isHdr = const Value.absent(),
           }) =>
               LocalAssetEntityCompanion.insert(
             name: name,
@@ -9128,6 +9176,7 @@ class $$LocalAssetEntityTableTableManager extends RootTableManager<
             exifFNumber: exifFNumber,
             exifIso: exifIso,
             exifFocalLength: exifFocalLength,
+            isHdr: isHdr,
           ),
         ));
 }
@@ -9271,6 +9320,11 @@ class $$LocalAssetEntityTableFilterComposer
 
   ColumnFilters<double> get exifFocalLength => $state.composableBuilder(
       column: $state.table.exifFocalLength,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isHdr => $state.composableBuilder(
+      column: $state.table.isHdr,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -9428,6 +9482,11 @@ class $$LocalAssetEntityTableOrderingComposer
 
   ColumnOrderings<double> get exifFocalLength => $state.composableBuilder(
       column: $state.table.exifFocalLength,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isHdr => $state.composableBuilder(
+      column: $state.table.isHdr,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }

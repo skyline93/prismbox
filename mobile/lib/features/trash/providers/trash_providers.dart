@@ -100,6 +100,7 @@ Future<List<BaseAsset>> trashAssets(TrashAssetsRef ref) async {
         exifFNumber: entity.exifFNumber,
         exifIso: entity.exifIso,
         exifFocalLength: entity.exifFocalLength,
+        isHdr: entity.isHdr,
       ),
     );
   }
@@ -132,6 +133,7 @@ Future<List<BaseAsset>> trashAssets(TrashAssetsRef ref) async {
         exifFNumber: entity.exifFNumber,
         exifIso: entity.exifIso,
         exifFocalLength: entity.exifFocalLength,
+        isHdr: null,
       ),
     );
   }

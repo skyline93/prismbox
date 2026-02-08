@@ -1,6 +1,7 @@
 // lib/presentation/widgets/viewer/media_detail_sheet.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
@@ -85,6 +86,20 @@ class MediaDetailSheet extends StatelessWidget {
     return '—';
   }
 
+  /// 拍摄时间：yyyy年M月d日 HH:mm，光圈/焦段/ISO 不显示小数
+  static String _formatShootingTime(DateTime? dt) {
+    if (dt == null) return '—';
+    return DateFormat('yyyy年M月d日 HH:mm').format(dt);
+  }
+
+  static String _formatMegapixels(int? w, int? h) {
+    if (w != null && h != null && w > 0 && h > 0) {
+      final mp = (w * h) / 1e6;
+      return '${mp.toStringAsFixed(1)}MP';
+    }
+    return '—';
+  }
+
   static String _formatExifParams({
     String? exposureTime,
     double? fNumber,
@@ -96,16 +111,16 @@ class MediaDetailSheet extends StatelessWidget {
       parts.add('快门 $exposureTime');
     }
     if (fNumber != null && fNumber > 0) {
-      parts.add('光圈 f/${fNumber.toStringAsFixed(1)}');
+      parts.add('光圈 f${fNumber.toStringAsFixed(1)}');
     }
     if (iso != null && iso > 0) {
-      parts.add('ISO $iso');
+      parts.add('ISO$iso');
     }
     if (focalLength != null && focalLength > 0) {
-      parts.add('${focalLength.toStringAsFixed(0)} mm');
+      parts.add('${focalLength.round()}mm');
     }
     if (parts.isEmpty) return '—';
-    return parts.join('  ');
+    return parts.join(' • ');
   }
 
   @override
@@ -148,6 +163,9 @@ class MediaDetailSheet extends StatelessWidget {
       );
     }
 
+    final shootingTimeStr = _formatShootingTime(a.createdAt);
+    final megapixelsStr = _formatMegapixels(a.width, a.height);
+
     return ListView(
       controller: scrollController,
       shrinkWrap: true,
@@ -157,6 +175,9 @@ class MediaDetailSheet extends StatelessWidget {
         _DetailRow(label: '原文件名', value: originalFilename),
         _DetailRow(label: '文件大小', value: fileSizeStr),
         _DetailRow(label: '尺寸', value: dimensionsStr),
+        _DetailRow(label: '像素', value: megapixelsStr),
+        // 是否 HDR 暂不展示，后续完全实现后再显示
+        _DetailRow(label: '拍摄时间', value: shootingTimeStr),
         _DetailRow(label: '拍摄位置', value: locationStr),
         _DetailRow(label: '拍摄参数', value: exifParamsStr),
       ],

@@ -327,6 +327,7 @@ class TimelineProviderService {
             exifFNumber: localData.exifFNumber,
             exifIso: localData.exifIso,
             exifFocalLength: localData.exifFocalLength,
+            isHdr: localData.isHdr,
           ),
         );
       }
@@ -380,6 +381,7 @@ class TimelineProviderService {
           exifFNumber: data.exifFNumber,
           exifIso: data.exifIso,
           exifFocalLength: data.exifFocalLength,
+          isHdr: data.isHdr,
         ),
       );
     }
@@ -563,6 +565,7 @@ class TimelineProviderService {
       remoteAssetId: null,
       assetEntity: asset,
       livePhotoVideoId: livePhotoVideoId,
+      isHdr: null,
       // photo_manager 数据源不读 DB，媒体详细信息为 null，详情页可后续按需从 AssetEntity 取
     );
   }
