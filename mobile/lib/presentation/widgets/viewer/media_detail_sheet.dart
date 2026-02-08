@@ -118,7 +118,6 @@ class MediaDetailSheet extends StatelessWidget {
     }
 
     final a = asset!;
-    final theme = Theme.of(context);
 
     String device = '—';
     String originalFilename = (a.name.isNotEmpty) ? a.name : '—';
