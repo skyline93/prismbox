@@ -362,6 +362,17 @@ class RemoteSyncService {
       // 优先使用 snake_case：live_photo_video_id；兼容可能的 camelCase：livePhotoVideoId
       final livePhotoVideoId = (data['live_photo_video_id'] ??
               data['livePhotoVideoId']) as String?;
+      // 媒体详情（同步时写入，便于仅远程媒体在预览中展示）
+      final fileSize = (data['file_size'] as num?)?.toInt();
+      final latitude = (data['latitude'] as num?)?.toDouble();
+      final longitude = (data['longitude'] as num?)?.toDouble();
+      final deviceMake = data['device_make'] as String?;
+      final deviceModel = data['device_model'] as String?;
+      final exifExposureTime = data['exif_exposure_time'] as String?;
+      final exifFNumber = (data['exif_f_number'] as num?)?.toDouble();
+      final exifIso = (data['exif_iso'] as num?)?.toInt();
+      final exifFocalLength = (data['exif_focal_length'] as num?)?.toDouble();
+
       return RemoteAssetEntityData(
         id: data['uuid'] as String,
         checksum: data['hash'] as String? ?? '',
@@ -374,7 +385,7 @@ class RemoteSyncService {
         updatedAt: updatedAt ?? DateTime.now(),
         width: data['width'] as int?,
         height: data['height'] as int?,
-        durationInSeconds: data['duration_in_seconds'] as int?,
+        durationInSeconds: (data['duration_in_seconds'] as num?)?.toInt(),
         isFavorite: false, // 服务器数据中可能没有这个字段
         localDateTime: mediaTakenAt,
         thumbHash: null, // 服务器数据中可能没有这个字段
@@ -383,6 +394,15 @@ class RemoteSyncService {
         visibility: AssetVisibility.private,
         stackId: null,
         libraryId: null,
+        fileSize: fileSize,
+        latitude: latitude,
+        longitude: longitude,
+        deviceMake: deviceMake,
+        deviceModel: deviceModel,
+        exifExposureTime: exifExposureTime,
+        exifFNumber: exifFNumber,
+        exifIso: exifIso,
+        exifFocalLength: exifFocalLength,
       );
     } catch (e, stackTrace) {
       _logger.warning('解析远程资产数据失败', e, stackTrace);

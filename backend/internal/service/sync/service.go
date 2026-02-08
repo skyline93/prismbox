@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -320,6 +321,36 @@ func (s *service) sendAssetBatch(writer io.Writer, medias []*models.Media, ack s
 		if media.LivePhotoVideoUUID != nil && *media.LivePhotoVideoUUID != "" && strings.EqualFold(media.ItemType, "image") {
 			asset["live_photo_video_id"] = *media.LivePhotoVideoUUID
 		}
+		// 媒体详情（用于客户端仅远程媒体也能在预览中展示详情）
+		if media.Duration != nil && *media.Duration > 0 {
+			asset["duration_in_seconds"] = int(*media.Duration)
+		}
+		if media.CameraMake != nil && *media.CameraMake != "" {
+			asset["device_make"] = *media.CameraMake
+		}
+		if media.CameraModel != nil && *media.CameraModel != "" {
+			asset["device_model"] = *media.CameraModel
+		}
+		if media.ShutterSpeed != nil && *media.ShutterSpeed != "" {
+			asset["exif_exposure_time"] = *media.ShutterSpeed
+		}
+		if media.Aperture != nil && *media.Aperture != "" {
+			if f := parseApertureToFloat(*media.Aperture); f > 0 {
+				asset["exif_f_number"] = f
+			}
+		}
+		if media.ISO != nil && *media.ISO > 0 {
+			asset["exif_iso"] = *media.ISO
+		}
+		if media.FocalLength != nil && *media.FocalLength > 0 {
+			asset["exif_focal_length"] = *media.FocalLength
+		}
+		if media.Latitude != nil {
+			asset["latitude"] = *media.Latitude
+		}
+		if media.Longitude != nil {
+			asset["longitude"] = *media.Longitude
+		}
 
 		assetData = append(assetData, asset)
 	}
@@ -355,4 +386,15 @@ func (s *service) writeJSONLine(writer io.Writer, data interface{}) error {
 	}
 
 	return nil
+}
+
+// parseApertureToFloat 解析光圈字符串为浮点数（如 "2.8" 或 "f/2.8" -> 2.8）
+func parseApertureToFloat(s string) float64 {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "f/")
+	s = strings.TrimPrefix(s, "F/")
+	if v, err := strconv.ParseFloat(s, 64); err == nil && v > 0 {
+		return v
+	}
+	return 0
 }

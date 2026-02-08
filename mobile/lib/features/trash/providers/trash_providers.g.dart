@@ -6,7 +6,7 @@ part of 'trash_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$trashAssetsHash() => r'da12e5cf184af77561bf656973a91e3c64172961';
+String _$trashAssetsHash() => r'79c46b80e518a456fd77177a3d99730186a9b79a';
 
 /// 回收站数据 Provider
 /// 提供已删除的本地和远程资产数据

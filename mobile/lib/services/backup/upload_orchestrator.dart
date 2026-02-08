@@ -927,6 +927,39 @@ class UploadOrchestrator {
           lpMeta.part == LivePhotoTaskPart.video) {
         fields['is_live_photo_video'] = '1';
       }
+      // 媒体详情：仅在上传主图（含 Live Photo 主图）时携带，记录到后端便于同步后仅远程媒体也能在预览中展示
+      if (itemType == 'image') {
+        if (assetForUpload.deviceMake != null &&
+            assetForUpload.deviceMake!.isNotEmpty) {
+          fields['device_make'] = assetForUpload.deviceMake!;
+        }
+        if (assetForUpload.deviceModel != null &&
+            assetForUpload.deviceModel!.isNotEmpty) {
+          fields['device_model'] = assetForUpload.deviceModel!;
+        }
+        if (assetForUpload.exifExposureTime != null &&
+            assetForUpload.exifExposureTime!.isNotEmpty) {
+          fields['exif_exposure_time'] = assetForUpload.exifExposureTime!;
+        }
+        if (assetForUpload.exifFNumber != null &&
+            assetForUpload.exifFNumber! > 0) {
+          fields['exif_f_number'] = assetForUpload.exifFNumber!.toString();
+        }
+        if (assetForUpload.exifIso != null && assetForUpload.exifIso! > 0) {
+          fields['exif_iso'] = assetForUpload.exifIso.toString();
+        }
+        if (assetForUpload.exifFocalLength != null &&
+            assetForUpload.exifFocalLength! > 0) {
+          fields['exif_focal_length'] =
+              assetForUpload.exifFocalLength!.toString();
+        }
+        if (assetForUpload.latitude != null) {
+          fields['latitude'] = assetForUpload.latitude!.toString();
+        }
+        if (assetForUpload.longitude != null) {
+          fields['longitude'] = assetForUpload.longitude!.toString();
+        }
+      }
       _logger.info(
         '[LivePhoto] _executeUpload: request built: item_type=$itemType, '
         'has_live_photo_video_id=${fields.containsKey("live_photo_video_id")}, '

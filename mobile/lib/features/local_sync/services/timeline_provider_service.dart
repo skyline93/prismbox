@@ -286,6 +286,15 @@ class TimelineProviderService {
             livePhotoVideoId: remoteData.livePhotoVideoId,
             stackId: remoteData.stackId,
             localAssetId: null, // 完全解耦，不关联本地资产
+            fileSize: remoteData.fileSize,
+            latitude: remoteData.latitude,
+            longitude: remoteData.longitude,
+            deviceMake: remoteData.deviceMake,
+            deviceModel: remoteData.deviceModel,
+            exifExposureTime: remoteData.exifExposureTime,
+            exifFNumber: remoteData.exifFNumber,
+            exifIso: remoteData.exifIso,
+            exifFocalLength: remoteData.exifFocalLength,
           ),
         );
       }

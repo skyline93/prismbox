@@ -123,6 +123,15 @@ Future<List<BaseAsset>> trashAssets(TrashAssetsRef ref) async {
         visibility: entity.visibility,
         livePhotoVideoId: entity.livePhotoVideoId,
         stackId: entity.stackId,
+        fileSize: entity.fileSize,
+        latitude: entity.latitude,
+        longitude: entity.longitude,
+        deviceMake: entity.deviceMake,
+        deviceModel: entity.deviceModel,
+        exifExposureTime: entity.exifExposureTime,
+        exifFNumber: entity.exifFNumber,
+        exifIso: entity.exifIso,
+        exifFocalLength: entity.exifFocalLength,
       ),
     );
   }

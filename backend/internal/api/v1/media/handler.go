@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,6 +103,46 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		mediaTakenAt = &utcTime
 	}
 
+	// 4b. 解析媒体详情（可选，建议在上传主图/Live Photo 主图时携带）
+	deviceMake := strings.TrimSpace(c.PostForm("device_make"))
+	deviceModel := strings.TrimSpace(c.PostForm("device_model"))
+	exifExposureTime := strings.TrimSpace(c.PostForm("exif_exposure_time"))
+	exifFNumberStr := strings.TrimSpace(c.PostForm("exif_f_number"))
+	exifIsoStr := strings.TrimSpace(c.PostForm("exif_iso"))
+	exifFocalLengthStr := strings.TrimSpace(c.PostForm("exif_focal_length"))
+	latitudeStr := strings.TrimSpace(c.PostForm("latitude"))
+	longitudeStr := strings.TrimSpace(c.PostForm("longitude"))
+
+	var exifFNumber *float64
+	if exifFNumberStr != "" {
+		if v, err := strconv.ParseFloat(exifFNumberStr, 64); err == nil && v > 0 {
+			exifFNumber = &v
+		}
+	}
+	var exifIso *int
+	if exifIsoStr != "" {
+		if v, err := strconv.Atoi(exifIsoStr); err == nil && v > 0 {
+			exifIso = &v
+		}
+	}
+	var exifFocalLength *float64
+	if exifFocalLengthStr != "" {
+		if v, err := strconv.ParseFloat(exifFocalLengthStr, 64); err == nil && v > 0 {
+			exifFocalLength = &v
+		}
+	}
+	var latitude, longitude *float64
+	if latitudeStr != "" {
+		if v, err := strconv.ParseFloat(latitudeStr, 64); err == nil {
+			latitude = &v
+		}
+	}
+	if longitudeStr != "" {
+		if v, err := strconv.ParseFloat(longitudeStr, 64); err == nil {
+			longitude = &v
+		}
+	}
+
 	// 5. 获取设备信息（用于统计上传来源设备）
 	deviceID := middleware.MustGetDeviceID(c)
 	deviceType := middleware.MustGetDeviceType(c)
@@ -153,7 +194,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 
 	// 6. 调用Service层上传媒体（后端会计算 hash）
 	isLivePhotoVideo := isLivePhotoVideoStr == "1" || strings.EqualFold(isLivePhotoVideoStr, "true")
-	media, err := h.mediaService.UploadMedia(c.Request.Context(), &mediaservice.UploadMediaRequest{
+	req := &mediaservice.UploadMediaRequest{
 		UserID:             userID,
 		ItemType:           itemType,
 		OriginalFilename:   originalFilename,
@@ -170,7 +211,23 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 			return &v
 		}(),
 		IsLivePhotoVideo: isLivePhotoVideo,
-	})
+	}
+	if deviceMake != "" {
+		req.DeviceMake = &deviceMake
+	}
+	if deviceModel != "" {
+		req.DeviceModel = &deviceModel
+	}
+	if exifExposureTime != "" {
+		req.ExifExposureTime = &exifExposureTime
+	}
+	req.ExifFNumber = exifFNumber
+	req.ExifIso = exifIso
+	req.ExifFocalLength = exifFocalLength
+	req.Latitude = latitude
+	req.Longitude = longitude
+
+	media, err := h.mediaService.UploadMedia(c.Request.Context(), req)
 	if err != nil {
 		h.log.Error("failed to upload media",
 			logger.Error(err),

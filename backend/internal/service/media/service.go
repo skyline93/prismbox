@@ -40,6 +40,16 @@ type UploadMediaRequest struct {
 	LivePhotoVideoUUID *string
 	// IsLivePhotoVideo 当前上传的是否为 Live Photo 附属视频（仅当 item_type=video 时有效；在上传视频时由客户端携带，用于同步时排除）
 	IsLivePhotoVideo bool
+
+	// 媒体详情（可选，建议在上传主图/Live Photo 主图时携带）
+	DeviceMake        *string  `json:"-"`
+	DeviceModel       *string  `json:"-"`
+	ExifExposureTime  *string  `json:"-"`
+	ExifFNumber       *float64 `json:"-"`
+	ExifIso           *int     `json:"-"`
+	ExifFocalLength   *float64 `json:"-"`
+	Latitude          *float64 `json:"-"`
+	Longitude         *float64 `json:"-"`
 }
 
 // GetMediasRequest 获取媒体列表请求
@@ -409,7 +419,36 @@ func (s *service) newMediaModel(req *UploadMediaRequest, hash, storageKey, mimeT
 	if strings.ToLower(req.ItemType) == "video" && req.IsLivePhotoVideo {
 		m.IsLivePhotoVideo = true
 	}
+	// 媒体详情（上传主图/Live Photo 主图时由客户端携带）
+	if req.DeviceMake != nil {
+		m.CameraMake = req.DeviceMake
+	}
+	if req.DeviceModel != nil {
+		m.CameraModel = req.DeviceModel
+	}
+	if req.ExifExposureTime != nil {
+		m.ShutterSpeed = req.ExifExposureTime
+	}
+	if req.ExifFNumber != nil {
+		m.Aperture = ptrString(fmt.Sprintf("%.1f", *req.ExifFNumber))
+	}
+	if req.ExifIso != nil {
+		m.ISO = req.ExifIso
+	}
+	if req.ExifFocalLength != nil {
+		m.FocalLength = req.ExifFocalLength
+	}
+	if req.Latitude != nil {
+		m.Latitude = req.Latitude
+	}
+	if req.Longitude != nil {
+		m.Longitude = req.Longitude
+	}
 	return m
+}
+
+func ptrString(s string) *string {
+	return &s
 }
 
 func (s *service) enqueueMediaProcessingTask(ctx context.Context, req *UploadMediaRequest, storageKey string) {

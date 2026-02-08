@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
+import 'package:prismbox/domain/entities/remote_asset.dart';
 
 /// 单行信息：标签 + 值
 class _DetailRow extends StatelessWidget {
@@ -127,6 +128,16 @@ class MediaDetailSheet extends StatelessWidget {
     String exifParamsStr = '—';
 
     if (a is LocalAsset) {
+      device = _formatDevice(a.deviceMake, a.deviceModel);
+      fileSizeStr = _formatFileSize(a.fileSize);
+      locationStr = _formatLocation(a.latitude, a.longitude);
+      exifParamsStr = _formatExifParams(
+        exposureTime: a.exifExposureTime,
+        fNumber: a.exifFNumber,
+        iso: a.exifIso,
+        focalLength: a.exifFocalLength,
+      );
+    } else if (a is RemoteAsset) {
       device = _formatDevice(a.deviceMake, a.deviceModel);
       fileSizeStr = _formatFileSize(a.fileSize);
       locationStr = _formatLocation(a.latitude, a.longitude);

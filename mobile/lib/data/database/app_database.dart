@@ -80,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -359,6 +359,45 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(
           localAssetEntity,
           localAssetEntity.exifFocalLength,
+        );
+        break;
+      case 17:
+        // 远程资产媒体详情：与本地一致，便于仅远程媒体在预览中展示详情
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.fileSize,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.latitude,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.longitude,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.deviceMake,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.deviceModel,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.exifExposureTime,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.exifFNumber,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.exifIso,
+        );
+        await m.addColumn(
+          remoteAssetEntity,
+          remoteAssetEntity.exifFocalLength,
         );
         break;
       default:

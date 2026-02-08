@@ -34,6 +34,7 @@ type Media struct {
 	Aperture     *string
 	ShutterSpeed *string
 	ISO          *int
+	FocalLength  *float64 `gorm:"column:focal_length"` // 焦距 mm（EXIF FocalLength）
 	Latitude     *float64
 	Longitude    *float64
 

@@ -51,6 +51,26 @@ class RemoteAssetEntity extends Table
   /// 库 ID（支持多库）
   TextColumn get libraryId => text().nullable()();
 
+  // ---------- 媒体详情（与本地资产一致，同步时写入） ----------
+  /// 文件大小（字节）
+  IntColumn get fileSize => integer().nullable()();
+  /// 拍摄纬度
+  RealColumn get latitude => real().nullable()();
+  /// 拍摄经度
+  RealColumn get longitude => real().nullable()();
+  /// 设备品牌（EXIF Make）
+  TextColumn get deviceMake => text().nullable()();
+  /// 设备型号（EXIF Model）
+  TextColumn get deviceModel => text().nullable()();
+  /// 快门（EXIF ExposureTime）
+  TextColumn get exifExposureTime => text().nullable()();
+  /// 光圈（EXIF FNumber）
+  RealColumn get exifFNumber => real().nullable()();
+  /// ISO（EXIF ISOSpeedRatings）
+  IntColumn get exifIso => integer().nullable()();
+  /// 焦距 mm（EXIF FocalLength）
+  RealColumn get exifFocalLength => real().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -25,6 +25,17 @@ class RemoteAsset extends BaseAsset {
   /// 堆叠 ID
   final String? stackId;
 
+  /// 媒体详情（与 LocalAsset 一致，同步时写入，便于仅远程媒体在预览中展示）
+  final int? fileSize;
+  final double? latitude;
+  final double? longitude;
+  final String? deviceMake;
+  final String? deviceModel;
+  final String? exifExposureTime;
+  final double? exifFNumber;
+  final int? exifIso;
+  final double? exifFocalLength;
+
   const RemoteAsset({
     required this.id,
     String? localId,
@@ -42,6 +53,15 @@ class RemoteAsset extends BaseAsset {
     this.visibility = AssetVisibility.private,
     super.livePhotoVideoId,
     this.stackId,
+    this.fileSize,
+    this.latitude,
+    this.longitude,
+    this.deviceMake,
+    this.deviceModel,
+    this.exifExposureTime,
+    this.exifFNumber,
+    this.exifIso,
+    this.exifFocalLength,
   }) : localAssetId = localId;
 
   @override
@@ -78,6 +98,15 @@ class RemoteAsset extends BaseAsset {
     String? livePhotoVideoId,
     String? stackId,
     String? localAssetId,
+    int? fileSize,
+    double? latitude,
+    double? longitude,
+    String? deviceMake,
+    String? deviceModel,
+    String? exifExposureTime,
+    double? exifFNumber,
+    int? exifIso,
+    double? exifFocalLength,
   }) {
     return RemoteAsset(
       id: id,
@@ -96,6 +125,15 @@ class RemoteAsset extends BaseAsset {
       visibility: visibility,
       livePhotoVideoId: livePhotoVideoId,
       stackId: stackId,
+      fileSize: fileSize,
+      latitude: latitude,
+      longitude: longitude,
+      deviceMake: deviceMake,
+      deviceModel: deviceModel,
+      exifExposureTime: exifExposureTime,
+      exifFNumber: exifFNumber,
+      exifIso: exifIso,
+      exifFocalLength: exifFocalLength,
     );
   }
 }

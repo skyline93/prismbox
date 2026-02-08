@@ -1793,6 +1793,60 @@ class $RemoteAssetEntityTable extends RemoteAssetEntity
   late final GeneratedColumn<String> libraryId = GeneratedColumn<String>(
       'library_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fileSizeMeta =
+      const VerificationMeta('fileSize');
+  @override
+  late final GeneratedColumn<int> fileSize = GeneratedColumn<int>(
+      'file_size', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _latitudeMeta =
+      const VerificationMeta('latitude');
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+      'latitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _longitudeMeta =
+      const VerificationMeta('longitude');
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+      'longitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _deviceMakeMeta =
+      const VerificationMeta('deviceMake');
+  @override
+  late final GeneratedColumn<String> deviceMake = GeneratedColumn<String>(
+      'device_make', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deviceModelMeta =
+      const VerificationMeta('deviceModel');
+  @override
+  late final GeneratedColumn<String> deviceModel = GeneratedColumn<String>(
+      'device_model', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _exifExposureTimeMeta =
+      const VerificationMeta('exifExposureTime');
+  @override
+  late final GeneratedColumn<String> exifExposureTime = GeneratedColumn<String>(
+      'exif_exposure_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _exifFNumberMeta =
+      const VerificationMeta('exifFNumber');
+  @override
+  late final GeneratedColumn<double> exifFNumber = GeneratedColumn<double>(
+      'exif_f_number', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _exifIsoMeta =
+      const VerificationMeta('exifIso');
+  @override
+  late final GeneratedColumn<int> exifIso = GeneratedColumn<int>(
+      'exif_iso', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _exifFocalLengthMeta =
+      const VerificationMeta('exifFocalLength');
+  @override
+  late final GeneratedColumn<double> exifFocalLength = GeneratedColumn<double>(
+      'exif_focal_length', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         name,
@@ -1812,7 +1866,16 @@ class $RemoteAssetEntityTable extends RemoteAssetEntity
         livePhotoVideoId,
         visibility,
         stackId,
-        libraryId
+        libraryId,
+        fileSize,
+        latitude,
+        longitude,
+        deviceMake,
+        deviceModel,
+        exifExposureTime,
+        exifFNumber,
+        exifIso,
+        exifFocalLength
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1910,6 +1973,52 @@ class $RemoteAssetEntityTable extends RemoteAssetEntity
       context.handle(_libraryIdMeta,
           libraryId.isAcceptableOrUnknown(data['library_id']!, _libraryIdMeta));
     }
+    if (data.containsKey('file_size')) {
+      context.handle(_fileSizeMeta,
+          fileSize.isAcceptableOrUnknown(data['file_size']!, _fileSizeMeta));
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(_latitudeMeta,
+          latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta));
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(_longitudeMeta,
+          longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta));
+    }
+    if (data.containsKey('device_make')) {
+      context.handle(
+          _deviceMakeMeta,
+          deviceMake.isAcceptableOrUnknown(
+              data['device_make']!, _deviceMakeMeta));
+    }
+    if (data.containsKey('device_model')) {
+      context.handle(
+          _deviceModelMeta,
+          deviceModel.isAcceptableOrUnknown(
+              data['device_model']!, _deviceModelMeta));
+    }
+    if (data.containsKey('exif_exposure_time')) {
+      context.handle(
+          _exifExposureTimeMeta,
+          exifExposureTime.isAcceptableOrUnknown(
+              data['exif_exposure_time']!, _exifExposureTimeMeta));
+    }
+    if (data.containsKey('exif_f_number')) {
+      context.handle(
+          _exifFNumberMeta,
+          exifFNumber.isAcceptableOrUnknown(
+              data['exif_f_number']!, _exifFNumberMeta));
+    }
+    if (data.containsKey('exif_iso')) {
+      context.handle(_exifIsoMeta,
+          exifIso.isAcceptableOrUnknown(data['exif_iso']!, _exifIsoMeta));
+    }
+    if (data.containsKey('exif_focal_length')) {
+      context.handle(
+          _exifFocalLengthMeta,
+          exifFocalLength.isAcceptableOrUnknown(
+              data['exif_focal_length']!, _exifFocalLengthMeta));
+    }
     return context;
   }
 
@@ -1957,6 +2066,24 @@ class $RemoteAssetEntityTable extends RemoteAssetEntity
           .read(DriftSqlType.string, data['${effectivePrefix}stack_id']),
       libraryId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}library_id']),
+      fileSize: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}file_size']),
+      latitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}latitude']),
+      longitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}longitude']),
+      deviceMake: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_make']),
+      deviceModel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_model']),
+      exifExposureTime: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}exif_exposure_time']),
+      exifFNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}exif_f_number']),
+      exifIso: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}exif_iso']),
+      exifFocalLength: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}exif_focal_length']),
     );
   }
 
@@ -2028,6 +2155,33 @@ class RemoteAssetEntityData extends DataClass
 
   /// 库 ID（支持多库）
   final String? libraryId;
+
+  /// 文件大小（字节）
+  final int? fileSize;
+
+  /// 拍摄纬度
+  final double? latitude;
+
+  /// 拍摄经度
+  final double? longitude;
+
+  /// 设备品牌（EXIF Make）
+  final String? deviceMake;
+
+  /// 设备型号（EXIF Model）
+  final String? deviceModel;
+
+  /// 快门（EXIF ExposureTime）
+  final String? exifExposureTime;
+
+  /// 光圈（EXIF FNumber）
+  final double? exifFNumber;
+
+  /// ISO（EXIF ISOSpeedRatings）
+  final int? exifIso;
+
+  /// 焦距 mm（EXIF FocalLength）
+  final double? exifFocalLength;
   const RemoteAssetEntityData(
       {required this.name,
       required this.type,
@@ -2046,7 +2200,16 @@ class RemoteAssetEntityData extends DataClass
       this.livePhotoVideoId,
       required this.visibility,
       this.stackId,
-      this.libraryId});
+      this.libraryId,
+      this.fileSize,
+      this.latitude,
+      this.longitude,
+      this.deviceMake,
+      this.deviceModel,
+      this.exifExposureTime,
+      this.exifFNumber,
+      this.exifIso,
+      this.exifFocalLength});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2092,6 +2255,33 @@ class RemoteAssetEntityData extends DataClass
     if (!nullToAbsent || libraryId != null) {
       map['library_id'] = Variable<String>(libraryId);
     }
+    if (!nullToAbsent || fileSize != null) {
+      map['file_size'] = Variable<int>(fileSize);
+    }
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    if (!nullToAbsent || deviceMake != null) {
+      map['device_make'] = Variable<String>(deviceMake);
+    }
+    if (!nullToAbsent || deviceModel != null) {
+      map['device_model'] = Variable<String>(deviceModel);
+    }
+    if (!nullToAbsent || exifExposureTime != null) {
+      map['exif_exposure_time'] = Variable<String>(exifExposureTime);
+    }
+    if (!nullToAbsent || exifFNumber != null) {
+      map['exif_f_number'] = Variable<double>(exifFNumber);
+    }
+    if (!nullToAbsent || exifIso != null) {
+      map['exif_iso'] = Variable<int>(exifIso);
+    }
+    if (!nullToAbsent || exifFocalLength != null) {
+      map['exif_focal_length'] = Variable<double>(exifFocalLength);
+    }
     return map;
   }
 
@@ -2131,6 +2321,33 @@ class RemoteAssetEntityData extends DataClass
       libraryId: libraryId == null && nullToAbsent
           ? const Value.absent()
           : Value(libraryId),
+      fileSize: fileSize == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fileSize),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      deviceMake: deviceMake == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceMake),
+      deviceModel: deviceModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceModel),
+      exifExposureTime: exifExposureTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifExposureTime),
+      exifFNumber: exifFNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifFNumber),
+      exifIso: exifIso == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifIso),
+      exifFocalLength: exifFocalLength == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exifFocalLength),
     );
   }
 
@@ -2158,6 +2375,15 @@ class RemoteAssetEntityData extends DataClass
           .fromJson(serializer.fromJson<int>(json['visibility'])),
       stackId: serializer.fromJson<String?>(json['stackId']),
       libraryId: serializer.fromJson<String?>(json['libraryId']),
+      fileSize: serializer.fromJson<int?>(json['fileSize']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      deviceMake: serializer.fromJson<String?>(json['deviceMake']),
+      deviceModel: serializer.fromJson<String?>(json['deviceModel']),
+      exifExposureTime: serializer.fromJson<String?>(json['exifExposureTime']),
+      exifFNumber: serializer.fromJson<double?>(json['exifFNumber']),
+      exifIso: serializer.fromJson<int?>(json['exifIso']),
+      exifFocalLength: serializer.fromJson<double?>(json['exifFocalLength']),
     );
   }
   @override
@@ -2184,6 +2410,15 @@ class RemoteAssetEntityData extends DataClass
           $RemoteAssetEntityTable.$convertervisibility.toJson(visibility)),
       'stackId': serializer.toJson<String?>(stackId),
       'libraryId': serializer.toJson<String?>(libraryId),
+      'fileSize': serializer.toJson<int?>(fileSize),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'deviceMake': serializer.toJson<String?>(deviceMake),
+      'deviceModel': serializer.toJson<String?>(deviceModel),
+      'exifExposureTime': serializer.toJson<String?>(exifExposureTime),
+      'exifFNumber': serializer.toJson<double?>(exifFNumber),
+      'exifIso': serializer.toJson<int?>(exifIso),
+      'exifFocalLength': serializer.toJson<double?>(exifFocalLength),
     };
   }
 
@@ -2205,7 +2440,16 @@ class RemoteAssetEntityData extends DataClass
           Value<String?> livePhotoVideoId = const Value.absent(),
           AssetVisibility? visibility,
           Value<String?> stackId = const Value.absent(),
-          Value<String?> libraryId = const Value.absent()}) =>
+          Value<String?> libraryId = const Value.absent(),
+          Value<int?> fileSize = const Value.absent(),
+          Value<double?> latitude = const Value.absent(),
+          Value<double?> longitude = const Value.absent(),
+          Value<String?> deviceMake = const Value.absent(),
+          Value<String?> deviceModel = const Value.absent(),
+          Value<String?> exifExposureTime = const Value.absent(),
+          Value<double?> exifFNumber = const Value.absent(),
+          Value<int?> exifIso = const Value.absent(),
+          Value<double?> exifFocalLength = const Value.absent()}) =>
       RemoteAssetEntityData(
         name: name ?? this.name,
         type: type ?? this.type,
@@ -2230,6 +2474,19 @@ class RemoteAssetEntityData extends DataClass
         visibility: visibility ?? this.visibility,
         stackId: stackId.present ? stackId.value : this.stackId,
         libraryId: libraryId.present ? libraryId.value : this.libraryId,
+        fileSize: fileSize.present ? fileSize.value : this.fileSize,
+        latitude: latitude.present ? latitude.value : this.latitude,
+        longitude: longitude.present ? longitude.value : this.longitude,
+        deviceMake: deviceMake.present ? deviceMake.value : this.deviceMake,
+        deviceModel: deviceModel.present ? deviceModel.value : this.deviceModel,
+        exifExposureTime: exifExposureTime.present
+            ? exifExposureTime.value
+            : this.exifExposureTime,
+        exifFNumber: exifFNumber.present ? exifFNumber.value : this.exifFNumber,
+        exifIso: exifIso.present ? exifIso.value : this.exifIso,
+        exifFocalLength: exifFocalLength.present
+            ? exifFocalLength.value
+            : this.exifFocalLength,
       );
   RemoteAssetEntityData copyWithCompanion(RemoteAssetEntityCompanion data) {
     return RemoteAssetEntityData(
@@ -2259,6 +2516,22 @@ class RemoteAssetEntityData extends DataClass
           data.visibility.present ? data.visibility.value : this.visibility,
       stackId: data.stackId.present ? data.stackId.value : this.stackId,
       libraryId: data.libraryId.present ? data.libraryId.value : this.libraryId,
+      fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      deviceMake:
+          data.deviceMake.present ? data.deviceMake.value : this.deviceMake,
+      deviceModel:
+          data.deviceModel.present ? data.deviceModel.value : this.deviceModel,
+      exifExposureTime: data.exifExposureTime.present
+          ? data.exifExposureTime.value
+          : this.exifExposureTime,
+      exifFNumber:
+          data.exifFNumber.present ? data.exifFNumber.value : this.exifFNumber,
+      exifIso: data.exifIso.present ? data.exifIso.value : this.exifIso,
+      exifFocalLength: data.exifFocalLength.present
+          ? data.exifFocalLength.value
+          : this.exifFocalLength,
     );
   }
 
@@ -2282,31 +2555,50 @@ class RemoteAssetEntityData extends DataClass
           ..write('livePhotoVideoId: $livePhotoVideoId, ')
           ..write('visibility: $visibility, ')
           ..write('stackId: $stackId, ')
-          ..write('libraryId: $libraryId')
+          ..write('libraryId: $libraryId, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('deviceMake: $deviceMake, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('exifExposureTime: $exifExposureTime, ')
+          ..write('exifFNumber: $exifFNumber, ')
+          ..write('exifIso: $exifIso, ')
+          ..write('exifFocalLength: $exifFocalLength')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      name,
-      type,
-      createdAt,
-      updatedAt,
-      width,
-      height,
-      durationInSeconds,
-      id,
-      checksum,
-      isFavorite,
-      ownerId,
-      localDateTime,
-      thumbHash,
-      deletedAt,
-      livePhotoVideoId,
-      visibility,
-      stackId,
-      libraryId);
+  int get hashCode => Object.hashAll([
+        name,
+        type,
+        createdAt,
+        updatedAt,
+        width,
+        height,
+        durationInSeconds,
+        id,
+        checksum,
+        isFavorite,
+        ownerId,
+        localDateTime,
+        thumbHash,
+        deletedAt,
+        livePhotoVideoId,
+        visibility,
+        stackId,
+        libraryId,
+        fileSize,
+        latitude,
+        longitude,
+        deviceMake,
+        deviceModel,
+        exifExposureTime,
+        exifFNumber,
+        exifIso,
+        exifFocalLength
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2328,7 +2620,16 @@ class RemoteAssetEntityData extends DataClass
           other.livePhotoVideoId == this.livePhotoVideoId &&
           other.visibility == this.visibility &&
           other.stackId == this.stackId &&
-          other.libraryId == this.libraryId);
+          other.libraryId == this.libraryId &&
+          other.fileSize == this.fileSize &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.deviceMake == this.deviceMake &&
+          other.deviceModel == this.deviceModel &&
+          other.exifExposureTime == this.exifExposureTime &&
+          other.exifFNumber == this.exifFNumber &&
+          other.exifIso == this.exifIso &&
+          other.exifFocalLength == this.exifFocalLength);
 }
 
 class RemoteAssetEntityCompanion
@@ -2351,6 +2652,15 @@ class RemoteAssetEntityCompanion
   final Value<AssetVisibility> visibility;
   final Value<String?> stackId;
   final Value<String?> libraryId;
+  final Value<int?> fileSize;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<String?> deviceMake;
+  final Value<String?> deviceModel;
+  final Value<String?> exifExposureTime;
+  final Value<double?> exifFNumber;
+  final Value<int?> exifIso;
+  final Value<double?> exifFocalLength;
   const RemoteAssetEntityCompanion({
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -2370,6 +2680,15 @@ class RemoteAssetEntityCompanion
     this.visibility = const Value.absent(),
     this.stackId = const Value.absent(),
     this.libraryId = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.deviceMake = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.exifExposureTime = const Value.absent(),
+    this.exifFNumber = const Value.absent(),
+    this.exifIso = const Value.absent(),
+    this.exifFocalLength = const Value.absent(),
   });
   RemoteAssetEntityCompanion.insert({
     required String name,
@@ -2390,6 +2709,15 @@ class RemoteAssetEntityCompanion
     this.visibility = const Value.absent(),
     this.stackId = const Value.absent(),
     this.libraryId = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.deviceMake = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.exifExposureTime = const Value.absent(),
+    this.exifFNumber = const Value.absent(),
+    this.exifIso = const Value.absent(),
+    this.exifFocalLength = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         createdAt = Value(createdAt),
@@ -2416,6 +2744,15 @@ class RemoteAssetEntityCompanion
     Expression<int>? visibility,
     Expression<String>? stackId,
     Expression<String>? libraryId,
+    Expression<int>? fileSize,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<String>? deviceMake,
+    Expression<String>? deviceModel,
+    Expression<String>? exifExposureTime,
+    Expression<double>? exifFNumber,
+    Expression<int>? exifIso,
+    Expression<double>? exifFocalLength,
   }) {
     return RawValuesInsertable({
       if (name != null) 'name': name,
@@ -2436,6 +2773,15 @@ class RemoteAssetEntityCompanion
       if (visibility != null) 'visibility': visibility,
       if (stackId != null) 'stack_id': stackId,
       if (libraryId != null) 'library_id': libraryId,
+      if (fileSize != null) 'file_size': fileSize,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (deviceMake != null) 'device_make': deviceMake,
+      if (deviceModel != null) 'device_model': deviceModel,
+      if (exifExposureTime != null) 'exif_exposure_time': exifExposureTime,
+      if (exifFNumber != null) 'exif_f_number': exifFNumber,
+      if (exifIso != null) 'exif_iso': exifIso,
+      if (exifFocalLength != null) 'exif_focal_length': exifFocalLength,
     });
   }
 
@@ -2457,7 +2803,16 @@ class RemoteAssetEntityCompanion
       Value<String?>? livePhotoVideoId,
       Value<AssetVisibility>? visibility,
       Value<String?>? stackId,
-      Value<String?>? libraryId}) {
+      Value<String?>? libraryId,
+      Value<int?>? fileSize,
+      Value<double?>? latitude,
+      Value<double?>? longitude,
+      Value<String?>? deviceMake,
+      Value<String?>? deviceModel,
+      Value<String?>? exifExposureTime,
+      Value<double?>? exifFNumber,
+      Value<int?>? exifIso,
+      Value<double?>? exifFocalLength}) {
     return RemoteAssetEntityCompanion(
       name: name ?? this.name,
       type: type ?? this.type,
@@ -2477,6 +2832,15 @@ class RemoteAssetEntityCompanion
       visibility: visibility ?? this.visibility,
       stackId: stackId ?? this.stackId,
       libraryId: libraryId ?? this.libraryId,
+      fileSize: fileSize ?? this.fileSize,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      deviceMake: deviceMake ?? this.deviceMake,
+      deviceModel: deviceModel ?? this.deviceModel,
+      exifExposureTime: exifExposureTime ?? this.exifExposureTime,
+      exifFNumber: exifFNumber ?? this.exifFNumber,
+      exifIso: exifIso ?? this.exifIso,
+      exifFocalLength: exifFocalLength ?? this.exifFocalLength,
     );
   }
 
@@ -2539,6 +2903,33 @@ class RemoteAssetEntityCompanion
     if (libraryId.present) {
       map['library_id'] = Variable<String>(libraryId.value);
     }
+    if (fileSize.present) {
+      map['file_size'] = Variable<int>(fileSize.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (deviceMake.present) {
+      map['device_make'] = Variable<String>(deviceMake.value);
+    }
+    if (deviceModel.present) {
+      map['device_model'] = Variable<String>(deviceModel.value);
+    }
+    if (exifExposureTime.present) {
+      map['exif_exposure_time'] = Variable<String>(exifExposureTime.value);
+    }
+    if (exifFNumber.present) {
+      map['exif_f_number'] = Variable<double>(exifFNumber.value);
+    }
+    if (exifIso.present) {
+      map['exif_iso'] = Variable<int>(exifIso.value);
+    }
+    if (exifFocalLength.present) {
+      map['exif_focal_length'] = Variable<double>(exifFocalLength.value);
+    }
     return map;
   }
 
@@ -2562,7 +2953,16 @@ class RemoteAssetEntityCompanion
           ..write('livePhotoVideoId: $livePhotoVideoId, ')
           ..write('visibility: $visibility, ')
           ..write('stackId: $stackId, ')
-          ..write('libraryId: $libraryId')
+          ..write('libraryId: $libraryId, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('deviceMake: $deviceMake, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('exifExposureTime: $exifExposureTime, ')
+          ..write('exifFNumber: $exifFNumber, ')
+          ..write('exifIso: $exifIso, ')
+          ..write('exifFocalLength: $exifFocalLength')
           ..write(')'))
         .toString();
   }
@@ -9052,6 +9452,15 @@ typedef $$RemoteAssetEntityTableCreateCompanionBuilder
   Value<AssetVisibility> visibility,
   Value<String?> stackId,
   Value<String?> libraryId,
+  Value<int?> fileSize,
+  Value<double?> latitude,
+  Value<double?> longitude,
+  Value<String?> deviceMake,
+  Value<String?> deviceModel,
+  Value<String?> exifExposureTime,
+  Value<double?> exifFNumber,
+  Value<int?> exifIso,
+  Value<double?> exifFocalLength,
 });
 typedef $$RemoteAssetEntityTableUpdateCompanionBuilder
     = RemoteAssetEntityCompanion Function({
@@ -9073,6 +9482,15 @@ typedef $$RemoteAssetEntityTableUpdateCompanionBuilder
   Value<AssetVisibility> visibility,
   Value<String?> stackId,
   Value<String?> libraryId,
+  Value<int?> fileSize,
+  Value<double?> latitude,
+  Value<double?> longitude,
+  Value<String?> deviceMake,
+  Value<String?> deviceModel,
+  Value<String?> exifExposureTime,
+  Value<double?> exifFNumber,
+  Value<int?> exifIso,
+  Value<double?> exifFocalLength,
 });
 
 class $$RemoteAssetEntityTableTableManager extends RootTableManager<
@@ -9111,6 +9529,15 @@ class $$RemoteAssetEntityTableTableManager extends RootTableManager<
             Value<AssetVisibility> visibility = const Value.absent(),
             Value<String?> stackId = const Value.absent(),
             Value<String?> libraryId = const Value.absent(),
+            Value<int?> fileSize = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
+            Value<String?> deviceMake = const Value.absent(),
+            Value<String?> deviceModel = const Value.absent(),
+            Value<String?> exifExposureTime = const Value.absent(),
+            Value<double?> exifFNumber = const Value.absent(),
+            Value<int?> exifIso = const Value.absent(),
+            Value<double?> exifFocalLength = const Value.absent(),
           }) =>
               RemoteAssetEntityCompanion(
             name: name,
@@ -9131,6 +9558,15 @@ class $$RemoteAssetEntityTableTableManager extends RootTableManager<
             visibility: visibility,
             stackId: stackId,
             libraryId: libraryId,
+            fileSize: fileSize,
+            latitude: latitude,
+            longitude: longitude,
+            deviceMake: deviceMake,
+            deviceModel: deviceModel,
+            exifExposureTime: exifExposureTime,
+            exifFNumber: exifFNumber,
+            exifIso: exifIso,
+            exifFocalLength: exifFocalLength,
           ),
           createCompanionCallback: ({
             required String name,
@@ -9151,6 +9587,15 @@ class $$RemoteAssetEntityTableTableManager extends RootTableManager<
             Value<AssetVisibility> visibility = const Value.absent(),
             Value<String?> stackId = const Value.absent(),
             Value<String?> libraryId = const Value.absent(),
+            Value<int?> fileSize = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
+            Value<String?> deviceMake = const Value.absent(),
+            Value<String?> deviceModel = const Value.absent(),
+            Value<String?> exifExposureTime = const Value.absent(),
+            Value<double?> exifFNumber = const Value.absent(),
+            Value<int?> exifIso = const Value.absent(),
+            Value<double?> exifFocalLength = const Value.absent(),
           }) =>
               RemoteAssetEntityCompanion.insert(
             name: name,
@@ -9171,6 +9616,15 @@ class $$RemoteAssetEntityTableTableManager extends RootTableManager<
             visibility: visibility,
             stackId: stackId,
             libraryId: libraryId,
+            fileSize: fileSize,
+            latitude: latitude,
+            longitude: longitude,
+            deviceMake: deviceMake,
+            deviceModel: deviceModel,
+            exifExposureTime: exifExposureTime,
+            exifFNumber: exifFNumber,
+            exifIso: exifIso,
+            exifFocalLength: exifFocalLength,
           ),
         ));
 }
@@ -9264,6 +9718,51 @@ class $$RemoteAssetEntityTableFilterComposer
 
   ColumnFilters<String> get libraryId => $state.composableBuilder(
       column: $state.table.libraryId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get fileSize => $state.composableBuilder(
+      column: $state.table.fileSize,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get latitude => $state.composableBuilder(
+      column: $state.table.latitude,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get longitude => $state.composableBuilder(
+      column: $state.table.longitude,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get deviceMake => $state.composableBuilder(
+      column: $state.table.deviceMake,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get deviceModel => $state.composableBuilder(
+      column: $state.table.deviceModel,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get exifExposureTime => $state.composableBuilder(
+      column: $state.table.exifExposureTime,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get exifFNumber => $state.composableBuilder(
+      column: $state.table.exifFNumber,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get exifIso => $state.composableBuilder(
+      column: $state.table.exifIso,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get exifFocalLength => $state.composableBuilder(
+      column: $state.table.exifFocalLength,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -9396,6 +9895,51 @@ class $$RemoteAssetEntityTableOrderingComposer
 
   ColumnOrderings<String> get libraryId => $state.composableBuilder(
       column: $state.table.libraryId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get fileSize => $state.composableBuilder(
+      column: $state.table.fileSize,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get latitude => $state.composableBuilder(
+      column: $state.table.latitude,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get longitude => $state.composableBuilder(
+      column: $state.table.longitude,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get deviceMake => $state.composableBuilder(
+      column: $state.table.deviceMake,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get deviceModel => $state.composableBuilder(
+      column: $state.table.deviceModel,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get exifExposureTime => $state.composableBuilder(
+      column: $state.table.exifExposureTime,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get exifFNumber => $state.composableBuilder(
+      column: $state.table.exifFNumber,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get exifIso => $state.composableBuilder(
+      column: $state.table.exifIso,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get exifFocalLength => $state.composableBuilder(
+      column: $state.table.exifFocalLength,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
