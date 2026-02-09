@@ -276,6 +276,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
               ),
               enablePanAlways: true,
             ),
+            // RAW 照片角标（内容区域左上角，顶栏下方，仅静态 RAW 照片显示）
+            Positioned(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
+              left: 16,
+              child: _buildRawBadge(),
+            ),
             Consumer(
                   builder: (context, ref, child) {
                     // 优先使用本次会话内的收藏覆盖，避免依赖 invalidate 触发的 refetch（会引发 defunct element 断言）
@@ -662,6 +668,21 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     );
   }
 
+  /// 构建当前预览资产的 RAW 角标
+  ///
+  /// 仅当当前资产为静态图片且 isRaw 为 true 时显示。
+  Widget _buildRawBadge() {
+    final assetId = _currentAssetId;
+    if (assetId == null) {
+      return const SizedBox.shrink();
+    }
+    final asset = _assetMap?[assetId];
+    if (asset == null || !asset.isImage || !asset.isRaw) {
+      return const SizedBox.shrink();
+    }
+    return const _ViewerRawPhotoIndicator();
+  }
+
   /// 处理页面切换
   ///
   /// 更新当前资产 ID，确保收藏按钮显示正确的状态；离开当前页时重置 Live 播放状态。
@@ -780,5 +801,45 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       }
       // 失败时不刷新 provider，避免 defunct element 断言；返回时间线后数据会由其它逻辑刷新
     }
+  }
+}
+
+/// 预览页面使用的 RAW 照片角标（内容区域左上角）
+///
+/// 与时间线中的 RAW 标记在视觉上保持一致：透明背景、小号白色文字和阴影。
+class _ViewerRawPhotoIndicator extends StatelessWidget {
+  const _ViewerRawPhotoIndicator();
+
+  static const _iconSize = 14.0;
+  static const _textColor = Color.fromRGBO(255, 255, 255, 1.0);
+  static const _shadow = Shadow(
+    blurRadius: 2.0,
+    color: Color.fromRGBO(0, 0, 0, 0.8),
+    offset: Offset(0.0, 1.0),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'RAW 照片',
+      child: SizedBox(
+        height: _iconSize,
+        child: const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'RAW',
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              color: _textColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              height: 1.0,
+              shadows: [_shadow],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

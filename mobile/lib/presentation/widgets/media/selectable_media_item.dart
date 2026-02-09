@@ -118,6 +118,13 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
                 bottom: 4,
                 right: 4,
                 child: _LivePhotoIndicator(),
+              )
+            // RAW 照片角标（右下角，仅静态照片且为 RAW 时显示）
+            else if (widget.asset.isImage && widget.asset.isRaw)
+              const Positioned(
+                bottom: 4,
+                right: 4,
+                child: _RawPhotoIndicator(),
               ),
 
             // 收藏指示器（左下角，按媒体表收藏字段单独监听，返回时间线后图标即时更新）
@@ -471,6 +478,48 @@ class _LivePhotoIndicator extends StatelessWidget {
           color: _iconColor,
           size: _iconSize,
           shadows: [_shadow],
+        ),
+      ),
+    );
+  }
+}
+
+/// RAW 照片角标（右下角，与视频/Live Photo 互斥）
+///
+/// 语义：RAW 照片，便于无障碍和专业用户快速识别。
+class _RawPhotoIndicator extends StatelessWidget {
+  const _RawPhotoIndicator();
+
+  // 与其他角标保持一致的尺寸/样式
+  static const _iconSize = 12.0;
+  static const _textColor = Color.fromRGBO(255, 255, 255, 1.0);
+  static const _shadow = Shadow(
+    blurRadius: 2.0,
+    color: Color.fromRGBO(0, 0, 0, 0.8),
+    offset: Offset(0.0, 1.0),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'RAW 照片',
+      child: SizedBox(
+        height: _iconSize,
+        // 文本宽度略小于图标宽度即可，交给 Text 自适应
+        child: const Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            'RAW',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: _textColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              height: 1.0,
+              shadows: [_shadow],
+            ),
+          ),
         ),
       ),
     );

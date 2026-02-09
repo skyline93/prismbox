@@ -93,6 +93,12 @@ abstract class BaseAsset {
   /// 是否仅远程存在
   bool get isRemoteOnly => storage == AssetState.remote;
 
+  /// 是否为 RAW 照片
+  ///
+  /// 默认返回 false，由具体子类（如 LocalAsset、RemoteAsset）根据
+  /// 文件名或后端标记重写该属性。
+  bool get isRaw => false;
+
   /// 资产状态（由子类实现）
   AssetState get storage;
 

@@ -3,6 +3,7 @@
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:photo_manager/photo_manager.dart' hide AssetType;
+import 'package:prismbox/utils/raw_format_utils.dart';
 
 /// 本地资产实体
 class LocalAsset extends BaseAsset {
@@ -56,6 +57,13 @@ class LocalAsset extends BaseAsset {
   /// 是否 HDR（EXIF/厂商标签，如 iOS HDR Image Type）
   final bool? isHdr;
 
+  /// 是否为 RAW 照片
+  ///
+  /// 长期方案：优先从数据库字段传入；当前阶段通过文件名后缀检测，
+  /// 与本地图片加载逻辑中的 RAW 检测保持一致。
+  @override
+  final bool isRaw;
+
   const LocalAsset({
     required this.id,
     String? remoteId,
@@ -83,8 +91,9 @@ class LocalAsset extends BaseAsset {
     this.exifIso,
     this.exifFocalLength,
     this.isHdr,
-  }) : _orientation = orientation,
-       remoteAssetId = remoteId;
+    this.isRaw = false,
+  })  : _orientation = orientation,
+        remoteAssetId = remoteId;
 
   @override
   String? get localId => id;
@@ -130,6 +139,7 @@ class LocalAsset extends BaseAsset {
     int? exifIso,
     double? exifFocalLength,
     bool? isHdr,
+    bool? isRaw,
   }) {
     return LocalAsset(
       id: id,
@@ -158,6 +168,9 @@ class LocalAsset extends BaseAsset {
       exifIso: exifIso,
       exifFocalLength: exifFocalLength,
       isHdr: isHdr,
+      // 如果上层已经计算好了 isRaw（未来加入 DB 字段），优先使用；
+      // 否则根据文件名后缀进行一次同步检测。
+      isRaw: isRaw ?? RawFormatUtils.isRawByFileName(name),
     );
   }
 }

@@ -3,6 +3,7 @@
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/data/database/enums/asset_visibility.dart';
+import 'package:prismbox/utils/raw_format_utils.dart';
 
 /// 远程资产实体
 class RemoteAsset extends BaseAsset {
@@ -39,6 +40,13 @@ class RemoteAsset extends BaseAsset {
   /// 是否 HDR（同步自服务器或 EXIF）
   final bool? isHdr;
 
+  /// 是否为 RAW 照片
+  ///
+  /// 长期方案：优先从服务器/数据库字段传入；当前阶段通过 name 后缀
+  /// 进行一次同步检测。
+  @override
+  final bool isRaw;
+
   const RemoteAsset({
     required this.id,
     String? localId,
@@ -66,6 +74,7 @@ class RemoteAsset extends BaseAsset {
     this.exifIso,
     this.exifFocalLength,
     this.isHdr,
+    this.isRaw = false,
   }) : localAssetId = localId;
 
   @override
@@ -112,6 +121,7 @@ class RemoteAsset extends BaseAsset {
     int? exifIso,
     double? exifFocalLength,
     bool? isHdr,
+    bool? isRaw,
   }) {
     return RemoteAsset(
       id: id,
@@ -140,6 +150,8 @@ class RemoteAsset extends BaseAsset {
       exifIso: exifIso,
       exifFocalLength: exifFocalLength,
       isHdr: isHdr,
+      // 如果上层已有 RAW 标记（未来扩展），优先使用；否则根据 name 后缀判断
+      isRaw: isRaw ?? RawFormatUtils.isRawByFileName(name),
     );
   }
 }
