@@ -15,3 +15,9 @@ final currentVideoAssetIdProvider = StateProvider<String?>((ref) => null);
 /// 与 Immich isPlayingMotionVideoProvider 对齐；页面切换时应重置为 false。
 final isPlayingMotionVideoProvider = StateProvider<bool>((ref) => false);
 
+/// 媒体查看器内视频是否静音（会话级状态）
+///
+/// 同一预览会话内滑动到下一个视频时保持用户选择的静音状态；
+/// 退出预览时在 MediaViewerPage.dispose 中重置为 true，下次进入默认静音。
+final viewerMutedProvider = StateProvider<bool>((ref) => true);
+

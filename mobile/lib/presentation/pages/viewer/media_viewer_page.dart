@@ -90,6 +90,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   // 当前页面的资产 ID
   String? _currentAssetId;
 
+  /// 是否已设置过「初始页为视频」时的 currentVideo 状态（方案一：避免首帧 _assetMap 为 null 导致不播放）
+  bool _initialVideoStateSet = false;
+
   @override
   void initState() {
     super.initState();
@@ -113,22 +116,16 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       widget.assetIds.length,
     );
 
-    // 如果初始项是视频，标记为当前视频（会在 build 后自动播放）
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_assetMap != null && _initialIndex < widget.assetIds.length) {
-        final assetId = widget.assetIds[_initialIndex];
-        final asset = _assetMap?[assetId];
-        if (asset != null && asset.isVideo) {
-          _videoManager.setCurrentVideoAssetId(assetId);
-        }
-      }
-    });
+    // 初始视频状态改在 build 的 data 分支里设置（有 _assetMap 时），见下方 _initialVideoStateSet 逻辑
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     _backgroundOpacityNotifier.dispose();
+
+    // 退出预览时重置静音状态，下次进入时默认静音
+    ref.read(viewerMutedProvider.notifier).state = true;
 
     // 注意：不再需要释放 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller
 
@@ -147,6 +144,22 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       data: (allAssets) {
         // 构建 assetId 到 BaseAsset 的映射（每次更新时都重新构建，确保缓存最新）
         _assetMap = {for (final asset in allAssets) asset.id: asset};
+
+        // 方案一：有 _assetMap 且初始项是视频时，在下一帧设置 Provider + Manager，只执行一次
+        if (!_initialVideoStateSet &&
+            _initialIndex < widget.assetIds.length) {
+          final initialAsset =
+              _assetMap?[widget.assetIds[_initialIndex]];
+          if (initialAsset != null && initialAsset.isVideo) {
+            _initialVideoStateSet = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              final assetId = widget.assetIds[_initialIndex];
+              ref.read(currentVideoAssetIdProvider.notifier).state = assetId;
+              _videoManager.setCurrentVideoAssetId(assetId);
+            });
+          }
+        }
 
         // 获取服务器 URL（仅在第一次获取时）
         _serverUrl ??= _getServerUrl();
@@ -302,6 +315,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
                       showControls: _showControls,
                       onToggleControls: _toggleControls,
                       onBack: () {
+                        // 退出前清空当前视频，触发当前 ViewerVideoPage 立即 pause，避免退出后仍后台播放
+                        ref.read(currentVideoAssetIdProvider.notifier).state = null;
                         context.router.pop();
                       },
                       isFavorite: currentFavoriteStatus,
@@ -393,6 +408,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   void _onDragEnd(BuildContext ctx, _, __) {
     debugPrint('[MediaViewer] _onDragEnd: shouldPop=$_shouldPopOnDrag blockGestures=$_blockGestures hasDraggedDown=$_hasDraggedDown');
     if (_shouldPopOnDrag) {
+      // 退出前清空当前视频，触发当前 ViewerVideoPage 立即 pause，避免退出后仍后台播放
+      ref.read(currentVideoAssetIdProvider.notifier).state = null;
       ctx.router.pop();
       return;
     }

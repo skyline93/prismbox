@@ -83,7 +83,6 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
   double? _aspectRatio;
   bool _shouldPlayOnForeground = true; // 应用恢复时是否继续播放
   bool _isVisible = false; // 用于延迟显示，避免闪烁（参考 Immich）
-  bool _isMuted = true; // 静音状态，独立管理（对齐 Immich）
   String? _currentVideoId; // 本地状态跟踪当前视频（参考 Immich）
 
   @override
@@ -116,8 +115,7 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
     // 这样可以修正可能的计算错误（如 iOS 上数据库存储的 width/height 与 orientation 不匹配）
     _fetchAspectRatioAsync();
     
-    // 初始化静音状态（默认静音，对齐 Immich）
-    _isMuted = true;
+    // 静音状态由 viewerMutedProvider 统一管理，滑动切换视频时保持用户选择
     
     // 初始化本地状态跟踪当前视频（参考 Immich）
     _currentVideoId = ref.read(currentVideoAssetIdProvider);
@@ -210,7 +208,7 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
       // 始终异步获取宽高比进行验证
       _fetchAspectRatioAsync();
 
-      // 静音状态已由本地 _isMuted 管理
+      // 静音状态由 viewerMutedProvider 管理
 
       _initializeVideo();
     }
@@ -219,13 +217,24 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // 参考 Immich 的 useEffect cleanup：移除监听器并停止播放
+    // 参考 Immich 的 useEffect cleanup：先暂停（立即停止声音/画面）再 stop 释放，避免退出预览后仍后台播放
     final playerController = _controller;
     if (playerController != null) {
       _removeListeners(playerController);
-      playerController.stop().catchError((error) {
-        _log.fine('dispose: 停止视频时出错: $error');
-      });
+      if (_isControllerValid(playerController)) {
+        playerController.pause().then((_) {
+          playerController.stop().catchError((error) {
+            _log.fine('dispose: 停止视频时出错: $error');
+          });
+        }).catchError((error) {
+          _log.fine('dispose: 暂停视频时出错: $error');
+          playerController.stop().catchError((e) => _log.fine('dispose: stop 失败: $e'));
+        });
+      } else {
+        playerController.stop().catchError((error) {
+          _log.fine('dispose: 停止视频时出错: $error');
+        });
+      }
     }
     // 禁用唤醒锁
     WakelockPlus.disable();
@@ -411,7 +420,7 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         _log.fine(
           '_onPlaybackReady: 视频就绪，保持当前宽高比: $_aspectRatio',
         );
-        // 静音状态已由本地 _isMuted 管理
+        // 静音状态由 viewerMutedProvider 管理
         // 确保视频可见
         _isVisible = true;
       });
@@ -541,10 +550,10 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         _log.warning('_initController: 设置循环播放失败', error);
       }));
       
-      // 设置默认静音（参考 Immich: await videoController.setVolume(0.9)）
-      // 注意：在 controller 刚创建时设置，确保原生实现存在
-      unawaited(controller.setVolume(0.0).catchError((error) {
-        _log.warning('_initController: 设置静音失败', error);
+      // 使用会话级静音状态（viewerMutedProvider），滑动到下一视频时保持用户选择
+      final muted = ref.read(viewerMutedProvider);
+      unawaited(controller.setVolume(muted ? 0.0 : 1.0).catchError((error) {
+        _log.warning('_initController: 设置音量失败', error);
       }));
 
       // 参考 Immich: controller.value = nc; (设置本地状态)
@@ -576,15 +585,29 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
       'build: assetId=${widget.assetId}, isCurrent=$isCurrent, _isLoading=$_isLoading, _isVideoReady=$_isVideoReady, _hasError=$_hasError, _controller=${_controller != null}',
     );
     
+    // 监听会话级静音状态变化，同步到当前 controller（例如从其他入口更新时）
+    ref.listen<bool>(viewerMutedProvider, (previous, next) {
+      final controller = _controller;
+      if (controller != null && isCurrent && mounted && _isControllerValid(controller)) {
+        controller.setVolume(next ? 0.0 : 1.0).catchError((error) {
+          _log.warning('viewerMutedProvider 变化: 设置音量失败', error);
+        });
+      }
+    });
+
     // 监听当前视频状态变化，响应式地处理播放逻辑（参考 Immich 实现）
     ref.listen<String?>(currentVideoAssetIdProvider, (previous, next) {
       final controller = _controller;
       
-      // 参考 Immich: 如果该视频不再是当前视频，移除监听器
+      // 参考 Immich: 如果该视频不再是当前视频，立即暂停并移除监听器，避免后台继续播放
       if (controller != null && next != widget.assetId && next != previous) {
-        _log.info('build: 视频不再是当前视频，移除监听器');
+        _log.info('build: 视频不再是当前视频，暂停并移除监听器');
+        if (_isControllerValid(controller)) {
+          controller.pause().catchError((error) {
+            _log.fine('build: 暂停上一视频时出错: $error');
+          });
+        }
         _removeListeners(controller);
-        // 设置为不可见
         if (mounted) {
           setState(() {
             _isVisible = false;
@@ -726,18 +749,12 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
               child: VideoPlayerControls(
                 controller: controller,
                 showControls: widget.showControls,
-                isMuted: _isMuted,
+                isMuted: ref.watch(viewerMutedProvider),
                 onMuteChanged: (muted) async {
-                  // 直接操作本地 controller（对齐 Immich）
+                  ref.read(viewerMutedProvider.notifier).state = muted;
                   if (_isControllerValid(controller)) {
                     await controller.setVolume(muted ? 0.0 : 1.0).catchError((error) {
                       _log.warning('onMuteChanged: 设置音量失败', error);
-                    });
-                  }
-                  // 更新本地状态并触发重建，确保 UI 同步
-                  if (mounted) {
-                    setState(() {
-                      _isMuted = muted;
                     });
                   }
                   widget.onMuteChanged?.call(muted);
