@@ -1,6 +1,8 @@
 package app.prismbox.assets
 
 import android.content.ContentResolver
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
@@ -67,6 +69,48 @@ class AssetNativeApiImpl(context: Context) : AssetNativeApi {
                 Log.w(TAG, "Failed to get asset metadata", e)
                 // 发生错误时返回空列表（而不是错误，保持与设计一致）
                 callback(Result.success(emptyList()))
+            }
+        }
+    }
+
+    /**
+     * 设置系统相册中资产的收藏状态（写回系统）
+     *
+     * 需要存储/相册写入权限。仅支持 Android 11 (API 30) 及以上（IS_FAVORITE 可写）。
+     * Android 10 及以下调用会返回失败。
+     *
+     * @param assetId 资产 ID（MediaStore 的 _ID）
+     * @param isFavorite 是否收藏
+     * @param callback 完成回调，无权限或失败时返回 Result.failure
+     */
+    override fun setIsFavorite(assetId: String, isFavorite: Boolean, callback: (Result<Unit>) -> Unit) {
+        threadPool.execute {
+            try {
+                if (!isFavoriteSupported) {
+                    callback(Result.failure(UnsupportedOperationException("修改收藏需要 Android 11 及以上")))
+                    return@execute
+                }
+                val id = assetId.toLongOrNull()
+                if (id == null) {
+                    callback(Result.failure(IllegalArgumentException("无效的 assetId: $assetId")))
+                    return@execute
+                }
+                val uri = ContentUris.withAppendedId(
+                    MediaStore.Files.getContentUri("external"),
+                    id
+                )
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_FAVORITE, if (isFavorite) 1 else 0)
+                }
+                val rows = resolver.update(uri, values, null, null)
+                if (rows > 0) {
+                    callback(Result.success(Unit))
+                } else {
+                    callback(Result.failure(RuntimeException("更新收藏状态失败，可能无写入权限或资产不存在")))
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "setIsFavorite failed: assetId=$assetId, isFavorite=$isFavorite", e)
+                callback(Result.failure(e))
             }
         }
     }

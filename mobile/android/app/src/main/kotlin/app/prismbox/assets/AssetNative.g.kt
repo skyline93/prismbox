@@ -134,6 +134,20 @@ interface AssetNativeApi {
    * - 建议每批不超过 100 个资产
    */
   fun getAssetMetadata(assetIds: List<String>, callback: (Result<List<AssetMetadata>>) -> Unit)
+  /**
+   * 设置系统相册中资产的收藏状态（写回系统，与 DB 一致以便下次同步不被覆盖）
+   *
+   * **参数**：
+   * - [assetId] - 资产 ID（iOS 为 localIdentifier，Android 为 MediaStore _ID）
+   * - [isFavorite] - 是否收藏
+   *
+   * **权限**：
+   * - iOS：需要相册「读写」权限（PHAuthorizationStatus 且 requestAccess 为 readWrite）
+   * - Android：需要存储/相册写入权限（Android 11+ 使用 MediaStore 更新 IS_FAVORITE）
+   *
+   * **失败**：无权限或资产不存在时通过异常返回，调用方应捕获并降级（仅保留 DB 更新）。
+   */
+  fun setIsFavorite(assetId: String, isFavorite: Boolean, callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by AssetNativeApi. */
@@ -177,6 +191,26 @@ interface AssetNativeApi {
               } else {
                 val data = result.getOrNull()
                 reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.prismbox.AssetNativeApi.setIsFavorite$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val assetIdArg = args[0] as String
+            val isFavoriteArg = args[1] as Boolean
+            api.setIsFavorite(assetIdArg, isFavoriteArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
               }
             }
           }

@@ -165,4 +165,37 @@ class AssetNativeApi {
       return (pigeonVar_replyList[0] as List<Object?>?)!.cast<AssetMetadata>();
     }
   }
+
+  /// 设置系统相册中资产的收藏状态（写回系统，与 DB 一致以便下次同步不被覆盖）
+  ///
+  /// **参数**：
+  /// - [assetId] - 资产 ID（iOS 为 localIdentifier，Android 为 MediaStore _ID）
+  /// - [isFavorite] - 是否收藏
+  ///
+  /// **权限**：
+  /// - iOS：需要相册「读写」权限（PHAuthorizationStatus 且 requestAccess 为 readWrite）
+  /// - Android：需要存储/相册写入权限（Android 11+ 使用 MediaStore 更新 IS_FAVORITE）
+  ///
+  /// **失败**：无权限或资产不存在时通过异常返回，调用方应捕获并降级（仅保留 DB 更新）。
+  Future<void> setIsFavorite(String assetId, bool isFavorite) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.prismbox.AssetNativeApi.setIsFavorite$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_channel.send(<Object?>[assetId, isFavorite]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
 }

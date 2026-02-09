@@ -90,8 +90,15 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   // 当前页面的资产 ID
   String? _currentAssetId;
 
+  /// 本次查看会话内收藏状态覆盖（assetId -> isFavorite），用于收藏/取消收藏后立即更新 UI，
+  /// 避免在查看器内 invalidate timeline provider 导致异步 refetch 时通知到已 dispose 的 element 报错。
+  final Map<String, bool> _favoriteOverrides = {};
+
   /// 是否已设置过「初始页为视频」时的 currentVideo 状态（方案一：避免首帧 _assetMap 为 null 导致不播放）
   bool _initialVideoStateSet = false;
+
+  /// 缓存的静音状态 notifier，用于 dispose 时重置静音而不使用 ref（dispose 中禁止使用 ref）。
+  StateController<bool>? _cachedMutedNotifier;
 
   @override
   void initState() {
@@ -124,8 +131,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     _pageController.dispose();
     _backgroundOpacityNotifier.dispose();
 
-    // 退出预览时重置静音状态，下次进入时默认静音
-    ref.read(viewerMutedProvider.notifier).state = true;
+    // 退出预览时重置静音状态，下次进入时默认静音（使用缓存的 notifier，dispose 中禁止使用 ref）
+    _cachedMutedNotifier?.state = true;
 
     // 注意：不再需要释放 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller
 
@@ -135,6 +142,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 缓存静音 notifier，供 dispose 时重置静音（dispose 中不能使用 ref）
+    _cachedMutedNotifier ??= ref.read(viewerMutedProvider.notifier);
+
     // 获取所有 assets 并构建映射
     final assetsAsync = ref.watch(timelineAssetsProvider());
     // 获取 AssetEntityLoader（用于延迟加载 AssetEntity）
@@ -268,8 +278,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
             ),
             Consumer(
                   builder: (context, ref, child) {
+                    // 优先使用本次会话内的收藏覆盖，避免依赖 invalidate 触发的 refetch（会引发 defunct element 断言）
+                    final overridden = _currentAssetId != null
+                        ? _favoriteOverrides[_currentAssetId]
+                        : null;
                     final assetsAsync = ref.watch(timelineAssetsProvider());
-                    final currentFavoriteStatus = assetsAsync.maybeWhen(
+                    final currentFavoriteStatus = overridden ?? assetsAsync.maybeWhen(
                       data: (allAssets) {
                         if (_currentAssetId == null) return null;
                         try {
@@ -700,20 +714,20 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   /// 获取当前资产的收藏状态
   ///
-  /// 从缓存的 `_assetMap` 中获取当前资产的收藏状态
-  /// 注意：此方法主要用于回退场景，正常情况下应通过 Consumer 从 Provider 获取
+  /// 优先使用 _favoriteOverrides，否则从 _assetMap 取；用于 Consumer 的 orElse 回退。
   bool? _getCurrentAssetFavoriteStatus() {
-    if (_currentAssetId == null) {
-      return null;
-    }
+    if (_currentAssetId == null) return null;
+    final overridden = _favoriteOverrides[_currentAssetId];
+    if (overridden != null) return overridden;
     final asset = _assetMap?[_currentAssetId];
     return asset?.isFavorite;
   }
 
   /// 处理收藏切换
   ///
-  /// 调用 AssetFavoriteService 切换收藏状态（仅更新 Prismbox 数据库，不修改系统相册）
-  /// 操作成功后刷新 timelineAssetsProvider 以更新 UI 状态
+  /// 调用 AssetFavoriteService：先更新数据库，再写回系统相册（需相册写入权限）。
+  /// iOS 需「完全访问」相册才能写回；无权限时仅保留 App 内收藏状态。
+  /// 成功后通过 _favoriteOverrides + setState 更新 UI，不在查看器内 invalidate timeline 以免触发 defunct element 断言。
   Future<void> _handleFavoriteToggle() async {
     if (_currentAssetId == null) {
       return;
@@ -728,15 +742,15 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       // 获取当前状态用于提示
       final currentStatus = _getCurrentAssetFavoriteStatus() ?? false;
 
-      // 调用服务切换收藏状态（仅更新数据库）
+      // 调用服务：更新数据库并写回系统相册
       final assetId = _currentAssetId!;
       await favoriteService.toggleFavorite(assetId);
 
-      // 刷新 timelineAssetsProvider 以获取最新状态
-      ref.invalidate(timelineAssetsProvider());
-
-      // 显示成功提示
+      // 用本地覆盖更新 UI，不在查看器内 invalidate timeline（避免 refetch 通知到已 dispose 的 element）
+      final newFavoriteStatus = !currentStatus;
+      _favoriteOverrides[assetId] = newFavoriteStatus;
       if (mounted) {
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(currentStatus ? '已取消收藏' : '已添加收藏'),
@@ -762,9 +776,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
           ),
         );
       }
-
-      // 刷新 Provider 以确保状态一致
-      ref.invalidate(timelineAssetsProvider());
+      // 失败时不刷新 provider，避免 defunct element 断言；返回时间线后数据会由其它逻辑刷新
     }
   }
 }
