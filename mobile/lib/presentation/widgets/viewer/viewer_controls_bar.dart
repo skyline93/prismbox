@@ -76,7 +76,7 @@ class ViewerControlsBar extends StatelessWidget {
   static Widget _buildNotUploadedIcon() {
     return const Icon(
       Icons.cloud_off_outlined,
-      color: Colors.white,
+      color: Colors.black87,
       size: 22,
     );
   }
@@ -91,7 +91,7 @@ class ViewerControlsBar extends StatelessWidget {
         children: [
           Icon(
             Icons.cloud_upload_outlined,
-            color: Colors.white,
+            color: Colors.black87,
             size: 22,
           ),
           SizedBox(
@@ -99,8 +99,8 @@ class ViewerControlsBar extends StatelessWidget {
             height: 28,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              backgroundColor: Color.fromRGBO(255, 255, 255, 0.3),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+              backgroundColor: Color.fromRGBO(0, 0, 0, 0.1),
             ),
           ),
         ],
@@ -112,7 +112,7 @@ class ViewerControlsBar extends StatelessWidget {
   static Widget _buildUploadedIcon() {
     return const Icon(
       Icons.cloud_done_outlined,
-      color: Colors.white,
+      color: Colors.black87,
       size: 22,
     );
   }
@@ -162,8 +162,8 @@ class ViewerControlsBar extends StatelessWidget {
           child: IgnorePointer(
             ignoring: false, // AppBar 需要接收点击事件
             child: AppBar(
-              backgroundColor: Colors.black.withOpacity(0.5),
-              iconTheme: const IconThemeData(color: Colors.white),
+              backgroundColor: Colors.white.withOpacity(0.9),
+              iconTheme: const IconThemeData(color: Colors.black87),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: onBack ?? () => Navigator.of(context).pop(),
@@ -177,7 +177,7 @@ class ViewerControlsBar extends StatelessWidget {
                         isPlayingMotionVideo
                             ? Icons.motion_photos_pause_outlined
                             : Icons.play_circle_outline_rounded,
-                        color: Colors.white,
+                        color: Colors.black87,
                       ),
                       onPressed: onPlayMotionVideo,
                     ),
@@ -224,7 +224,7 @@ class ViewerControlsBar extends StatelessWidget {
           child: IgnorePointer(
             ignoring: false, // 按钮需要接收点击事件
             child: Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.white.withOpacity(0.9),
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -234,7 +234,7 @@ class ViewerControlsBar extends StatelessWidget {
                       isFavorite == true
                           ? Icons.favorite
                           : Icons.favorite_border,
-                      color: Colors.white,
+                      color: isFavorite == true ? Colors.red : Colors.black87,
                     ),
                     onPressed:
                         onFavorite ??
@@ -243,7 +243,8 @@ class ViewerControlsBar extends StatelessWidget {
                         },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.info_outline, color: Colors.white),
+                    icon:
+                        const Icon(Icons.info_outline, color: Colors.black87),
                     onPressed:
                         onInfo ??
                         () {
@@ -251,7 +252,7 @@ class ViewerControlsBar extends StatelessWidget {
                         },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.white),
+                    icon: const Icon(Icons.edit, color: Colors.black87),
                     onPressed:
                         onEdit ??
                         () {

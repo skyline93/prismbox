@@ -52,6 +52,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   bool _showControls = true;
   bool _isZoomed = false;
 
+  /// 根据当前是否显示控制栏，决定基础背景色：
+  /// - 显示顶栏 / 底栏时为白色，方便阅读信息
+  /// - 隐藏顶栏 / 底栏时为黑色，提供沉浸式预览
+  Color get _baseBackgroundColor =>
+      _showControls ? Colors.white : Colors.black;
+
   /// 背景不透明度 0–255，下滑时渐变（与 Immich 一致）
   int _backgroundOpacity = 255;
   /// 独立背景层用 Notifier 驱动，避免受 build 中 when 分支影响导致不重绘
@@ -246,7 +252,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
               builder: (context, opacity, _) {
                 debugPrint('[MediaViewer] ValueListenableBuilder rebuild opacity=$opacity');
                 return Positioned.fill(
-                  child: Container(color: Colors.black.withAlpha(opacity)),
+                  child: Container(
+                    color: _baseBackgroundColor.withAlpha(opacity),
+                  ),
                 );
               },
             ),
@@ -265,15 +273,25 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
               scaleStateChangedCallback: _onScaleStateChanged,
               builder: _buildPageOptions,
               backgroundDecoration: const BoxDecoration(color: Colors.transparent),
-              loadingBuilder: (context, event, index) => Center(
-                child: event == null
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : CircularProgressIndicator(
-                        value: event.cumulativeBytesLoaded /
-                            (event.expectedTotalBytes ?? 1),
-                        color: Colors.white,
-                      ),
-              ),
+              loadingBuilder: (context, event, index) {
+                // 根据当前背景模式选择加载指示器颜色：
+                // - 白色背景（显示控制栏）时使用深色指示器
+                // - 黑色背景（沉浸模式）时使用白色指示器
+                final isDarkBackground = !_showControls;
+                final indicatorColor =
+                    isDarkBackground ? Colors.white : Colors.black87;
+                final value = event == null
+                    ? null
+                    : event.cumulativeBytesLoaded /
+                        (event.expectedTotalBytes ?? 1);
+
+                return Center(
+                  child: CircularProgressIndicator(
+                    value: value,
+                    color: indicatorColor,
+                  ),
+                );
+              },
               enablePanAlways: true,
             ),
             // RAW 照片角标（内容区域左上角，顶栏下方，仅静态 RAW 照片显示）
@@ -515,13 +533,18 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     final mediaSize = MediaQuery.sizeOf(ctx);
 
     if (asset == null) {
+      final isDarkBackground = !_showControls;
+      final indicatorColor =
+          isDarkBackground ? Colors.white : Colors.black87;
       return PhotoViewGalleryPageOptions.customChild(
         heroAttributes: PhotoViewHeroAttributes(tag: 'loading_$index'),
         child: Container(
           width: mediaSize.width,
           height: mediaSize.height,
-          color: Colors.black.withAlpha(_backgroundOpacity),
-          child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+          color: _baseBackgroundColor.withAlpha(_backgroundOpacity),
+          child: Center(
+            child: CircularProgressIndicator(color: indicatorColor),
+          ),
         ),
       );
     }
@@ -680,7 +703,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     if (asset == null || !asset.isImage || !asset.isRaw) {
       return const SizedBox.shrink();
     }
-    return const _ViewerRawPhotoIndicator();
+    // 根据当前背景模式适配 RAW 文本颜色：
+    // - 显示控制栏（白色背景）时使用深色文字
+    // - 隐藏控制栏（黑色背景，沉浸模式）时使用白色文字
+    return _ViewerRawPhotoIndicator(
+      isDarkBackground: !_showControls,
+    );
   }
 
   /// 处理页面切换
@@ -728,6 +756,13 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     setState(() {
       _showControls = !_showControls;
     });
+    // 切换顶栏 / 底栏显示状态时，重置背景不透明度为 255，配合 _baseBackgroundColor
+    // 实现：
+    // - 显示控制栏：纯白背景
+    // - 隐藏控制栏：纯黑背景
+    _backgroundOpacity = 255;
+    _backgroundOpacityNotifier.value = 255;
+
     SystemChrome.setEnabledSystemUIMode(
       _showControls ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
     );
@@ -808,34 +843,35 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 ///
 /// 与时间线中的 RAW 标记在视觉上保持一致：透明背景、小号白色文字和阴影。
 class _ViewerRawPhotoIndicator extends StatelessWidget {
-  const _ViewerRawPhotoIndicator();
+  /// 当前是否为深色背景（如黑色沉浸背景）
+  final bool isDarkBackground;
+
+  const _ViewerRawPhotoIndicator({
+    required this.isDarkBackground,
+  });
 
   static const _iconSize = 14.0;
-  static const _textColor = Color.fromRGBO(255, 255, 255, 1.0);
-  static const _shadow = Shadow(
-    blurRadius: 2.0,
-    color: Color.fromRGBO(0, 0, 0, 0.8),
-    offset: Offset(0.0, 1.0),
-  );
 
   @override
   Widget build(BuildContext context) {
+    final textColor =
+        isDarkBackground ? const Color.fromRGBO(255, 255, 255, 1.0) : Colors.black87;
+
     return Semantics(
       label: 'RAW 照片',
       child: SizedBox(
         height: _iconSize,
-        child: const Align(
+        child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'RAW',
             textAlign: TextAlign.left,
             style: TextStyle(
-              color: _textColor,
+              color: textColor,
               fontSize: 10,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
               height: 1.0,
-              shadows: [_shadow],
             ),
           ),
         ),

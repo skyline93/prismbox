@@ -493,11 +493,6 @@ class _RawPhotoIndicator extends StatelessWidget {
   // 与其他角标保持一致的尺寸/样式
   static const _iconSize = 12.0;
   static const _textColor = Color.fromRGBO(255, 255, 255, 1.0);
-  static const _shadow = Shadow(
-    blurRadius: 2.0,
-    color: Color.fromRGBO(0, 0, 0, 0.8),
-    offset: Offset(0.0, 1.0),
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +512,6 @@ class _RawPhotoIndicator extends StatelessWidget {
               fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
               height: 1.0,
-              shadows: [_shadow],
             ),
           ),
         ),
