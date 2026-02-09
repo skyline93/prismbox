@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/presentation/pages/albums/albums_page.dart';
 import 'package:prismbox/presentation/pages/collections/favorite_timeline_page.dart';
-import 'package:prismbox/presentation/pages/collections/video_timeline_page.dart';
 import 'package:prismbox/presentation/pages/collections/recently_added_timeline_page.dart';
+import 'package:prismbox/presentation/pages/collections/video_timeline_page.dart';
+import 'package:prismbox/presentation/pages/collections/raw_timeline_page.dart';
+import 'package:prismbox/presentation/pages/collections/live_timeline_page.dart';
 import 'package:prismbox/presentation/pages/library/library_page.dart';
 import 'package:prismbox/presentation/pages/login/login_page.dart';
 import 'package:prismbox/presentation/pages/register/register_page.dart';
@@ -180,6 +182,20 @@ class AppRouter extends _$AppRouter {
     AutoRoute(
       page: RecentlyAddedTimelineRoute.page,
       path: '/collections/recently-added',
+      guards: [_authGuard],
+    ),
+
+    // RAW 时间线页面（需要认证）
+    AutoRoute(
+      page: RawTimelineRoute.page,
+      path: '/collections/raw',
+      guards: [_authGuard],
+    ),
+
+    // Live Photo 时间线页面（需要认证）
+    AutoRoute(
+      page: LiveTimelineRoute.page,
+      path: '/collections/live',
       guards: [_authGuard],
     ),
 

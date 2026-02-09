@@ -121,6 +121,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const LibraryPage(),
       );
     },
+    LiveTimelineRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const LiveTimelinePage(),
+      );
+    },
     LoginRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -170,6 +176,12 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const PreferencesPage(),
+      );
+    },
+    RawTimelineRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const RawTimelinePage(),
       );
     },
     RecentlyAddedTimelineRoute.name: (routeData) {
@@ -506,6 +518,20 @@ class LibraryRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [LiveTimelinePage]
+class LiveTimelineRoute extends PageRouteInfo<void> {
+  const LiveTimelineRoute({List<PageRouteInfo>? children})
+      : super(
+          LiveTimelineRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'LiveTimelineRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [LoginPage]
 class LoginRoute extends PageRouteInfo<void> {
   const LoginRoute({List<PageRouteInfo>? children})
@@ -647,6 +673,20 @@ class PreferencesRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'PreferencesRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [RawTimelinePage]
+class RawTimelineRoute extends PageRouteInfo<void> {
+  const RawTimelineRoute({List<PageRouteInfo>? children})
+      : super(
+          RawTimelineRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'RawTimelineRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

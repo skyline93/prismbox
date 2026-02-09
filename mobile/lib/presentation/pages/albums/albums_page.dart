@@ -23,6 +23,8 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: false,
+        titleSpacing: 16,
         title: const Text(
           '合集',
           style: TextStyle(
@@ -73,7 +75,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
               Expanded(
                 child: _buildActionButton(
                   context,
-                  icon: Icons.star_outline,
+                  icon: Icons.favorite_border,
                   label: '收藏',
                   onTap: () {
                     context.router.push(const FavoriteTimelineRoute());
@@ -99,10 +101,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
               Expanded(
                 child: _buildActionButton(
                   context,
-                  icon: Icons.crop_square_outlined,
-                  label: '屏幕截图',
+                  icon: Icons.motion_photos_auto,
+                  label: '实况',
                   onTap: () {
-                    // TODO: 跳转到截图页面
+                    context.router.push(const LiveTimelineRoute());
                   },
                 ),
               ),
@@ -110,10 +112,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
               Expanded(
                 child: _buildActionButton(
                   context,
-                  icon: Icons.archive_outlined,
-                  label: '归档',
+                  icon: Icons.photo_camera_back_outlined,
+                  label: 'RAW',
                   onTap: () {
-                    // TODO: 跳转到归档页面
+                    context.router.push(const RawTimelineRoute());
                   },
                 ),
               ),
@@ -168,6 +170,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
   }
 
   /// 构建卡片预览区
+  ///
+  /// 设计上保持一行两列的布局宽度，但当前只展示
+  /// 「在此设备上」一张卡片，右侧使用不可点击的
+  /// 占位卡片保持布局节奏。
   Widget _buildCardSection(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -183,13 +189,19 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
             ),
           ),
           const SizedBox(width: 12),
+          // 右侧使用透明且不可点击的占位卡片，
+          // 保持一行两列的宽度节奏，但不展示实际内容。
           Expanded(
-            child: _buildMediaCard(
-              context,
-              title: '相册',
-              onTap: () {
-                // TODO: 跳转到相册列表页面
-              },
+            child: IgnorePointer(
+              ignoring: true,
+              child: Opacity(
+                opacity: 0,
+                child: _buildMediaCard(
+                  context,
+                  title: '占位',
+                  onTap: () {},
+                ),
+              ),
             ),
           ),
         ],
@@ -284,10 +296,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
         },
       ),
       _CategoryItem(
-        icon: Icons.crop_square_outlined,
-        label: '屏幕截图',
+        icon: Icons.motion_photos_auto,
+        label: '实况',
         onTap: () {
-          // TODO: 跳转到截图页面
+          context.router.push(const LiveTimelineRoute());
         },
       ),
       _CategoryItem(
@@ -305,10 +317,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
         },
       ),
       _CategoryItem(
-        icon: Icons.archive_outlined,
-        label: '归档',
+        icon: Icons.photo_camera_back_outlined,
+        label: 'RAW',
         onTap: () {
-          // TODO: 跳转到归档页面
+          context.router.push(const RawTimelineRoute());
         },
       ),
     ];

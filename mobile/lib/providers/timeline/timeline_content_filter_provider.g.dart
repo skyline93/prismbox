@@ -7,7 +7,7 @@ part of 'timeline_content_filter_provider.dart';
 // **************************************************************************
 
 String _$timelineContentFilterConfigProviderHash() =>
-    r'9396594f7e7b352179528b5219ce2140d1ba5324';
+    r'947d012a3f77427190b1d00c6fab631f5df1a037';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -49,6 +49,8 @@ abstract class _$TimelineContentFilterConfigProvider
 /// - `'video'` - 视频时间线页面
 /// - `'recentlyAdded'` - 最近添加时间线页面
 /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+/// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+/// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
 ///
 /// Copied from [TimelineContentFilterConfigProvider].
 @ProviderFor(TimelineContentFilterConfigProvider)
@@ -65,6 +67,8 @@ const timelineContentFilterConfigProviderProvider =
 /// - `'video'` - 视频时间线页面
 /// - `'recentlyAdded'` - 最近添加时间线页面
 /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+/// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+/// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
 ///
 /// Copied from [TimelineContentFilterConfigProvider].
 class TimelineContentFilterConfigProviderFamily
@@ -79,6 +83,8 @@ class TimelineContentFilterConfigProviderFamily
   /// - `'video'` - 视频时间线页面
   /// - `'recentlyAdded'` - 最近添加时间线页面
   /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+  /// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+  /// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
   ///
   /// Copied from [TimelineContentFilterConfigProvider].
   const TimelineContentFilterConfigProviderFamily();
@@ -93,6 +99,8 @@ class TimelineContentFilterConfigProviderFamily
   /// - `'video'` - 视频时间线页面
   /// - `'recentlyAdded'` - 最近添加时间线页面
   /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+  /// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+  /// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
   ///
   /// Copied from [TimelineContentFilterConfigProvider].
   TimelineContentFilterConfigProviderProvider call(
@@ -137,6 +145,8 @@ class TimelineContentFilterConfigProviderFamily
 /// - `'video'` - 视频时间线页面
 /// - `'recentlyAdded'` - 最近添加时间线页面
 /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+/// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+/// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
 ///
 /// Copied from [TimelineContentFilterConfigProvider].
 class TimelineContentFilterConfigProviderProvider
@@ -152,6 +162,8 @@ class TimelineContentFilterConfigProviderProvider
   /// - `'video'` - 视频时间线页面
   /// - `'recentlyAdded'` - 最近添加时间线页面
   /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+  /// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+  /// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
   ///
   /// Copied from [TimelineContentFilterConfigProvider].
   TimelineContentFilterConfigProviderProvider(

@@ -15,6 +15,8 @@ part 'timeline_content_filter_provider.g.dart';
 /// - `'video'` - 视频时间线页面
 /// - `'recentlyAdded'` - 最近添加时间线页面
 /// - `'main'` - 主时间线页面（照片页面，默认无内容过滤）
+/// - `'raw'` - RAW 时间线页面（仅 RAW 照片）
+/// - `'live'` - Live Photo 时间线页面（仅 Live 资产）
 @riverpod
 class TimelineContentFilterConfigProvider
     extends _$TimelineContentFilterConfigProvider {
@@ -26,6 +28,12 @@ class TimelineContentFilterConfigProvider
         return const TimelineContentFilterConfig(favoriteOnly: true);
       case 'video':
         return const TimelineContentFilterConfig(videoOnly: true);
+      case 'raw':
+        // RAW 时间线：仅显示 RAW 照片
+        return const TimelineContentFilterConfig(rawOnly: true);
+      case 'live':
+        // Live 时间线：仅显示 Live Photo
+        return const TimelineContentFilterConfig(liveOnly: true);
       case 'recentlyAdded':
       case 'main':
       default:
@@ -41,6 +49,16 @@ class TimelineContentFilterConfigProvider
   /// 设置仅视频过滤
   void setVideoOnly() {
     state = const TimelineContentFilterConfig(videoOnly: true);
+  }
+
+  /// 设置仅 RAW 照片过滤
+  void setRawOnly() {
+    state = const TimelineContentFilterConfig(rawOnly: true);
+  }
+
+  /// 设置仅 Live Photo 过滤
+  void setLiveOnly() {
+    state = const TimelineContentFilterConfig(liveOnly: true);
   }
 
   /// 清除所有内容过滤

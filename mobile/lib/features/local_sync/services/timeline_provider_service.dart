@@ -183,6 +183,8 @@ class TimelineProviderService {
   /// **过滤逻辑**：
   /// - `favoriteOnly: true` - 仅显示收藏资产
   /// - `videoOnly: true` - 仅显示视频资产
+  /// - `rawOnly: true` - 仅显示 RAW 照片（且为图片类型）
+  /// - `liveOnly: true` - 仅显示 Live Photo（底层通过 isMotionPhoto 判断）
   /// - 可以同时应用多个过滤条件（组合过滤，预留接口）
   List<BaseAsset> _filterByContent(
     List<BaseAsset> assets,
@@ -204,6 +206,22 @@ class TimelineProviderService {
     } else if (contentFilter.videoOnly == false) {
       // 预留：仅非视频（当前未使用）
       result = result.where((a) => !a.isVideo).toList();
+    }
+
+    // RAW 照片过滤
+    if (contentFilter.rawOnly == true) {
+      result = result.where((a) => a.isImage && a.isRaw).toList();
+    } else if (contentFilter.rawOnly == false) {
+      // 预留：仅非 RAW 照片（当前未使用）
+      result = result.where((a) => !(a.isImage && a.isRaw)).toList();
+    }
+
+    // Live Photo 过滤
+    if (contentFilter.liveOnly == true) {
+      result = result.where((a) => a.isMotionPhoto).toList();
+    } else if (contentFilter.liveOnly == false) {
+      // 预留：仅非 Live（当前未使用）
+      result = result.where((a) => !a.isMotionPhoto).toList();
     }
 
     // 预留扩展接口：未来可以添加更多过滤条件
