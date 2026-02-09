@@ -101,11 +101,20 @@ class AppRouter extends _$AppRouter {
     ),
 
     // 媒体查看器（需要认证和权限）。opaque: false 使路由透明，下滑时背景渐变可透出下层时间线。
-    CustomRoute(
+    // 使用 fadeIn 退场，与 Immich 一致：松手后仅淡出，无整页滑动，避免卡顿。
+    AutoRoute(
       page: MediaViewerRoute.page,
       path: '/media/:assetId',
       guards: [_authGuard, _permissionGuard],
-      opaque: false,
+      type: RouteType.custom(
+        customRouteBuilder: <T>(context, child, page) => PageRouteBuilder<T>(
+          fullscreenDialog: page.fullscreenDialog,
+          settings: page,
+          pageBuilder: (_, __, ___) => child,
+          opaque: false,
+          transitionsBuilder: TransitionsBuilders.fadeIn,
+        ),
+      ),
     ),
 
     // 备份设置页面（需要认证）

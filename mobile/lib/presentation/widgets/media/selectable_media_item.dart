@@ -148,25 +148,37 @@ class _ImageContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = MediaImageWidget(
+      key: ValueKey('hero_thumb_${asset.id}'),
       asset: asset,
       isThumbnail: true,
       serverUrl: serverUrl,
       assetEntityLoader: assetEntityLoader,
     );
 
-    if (!isSelected) {
-      return image;
-    }
+    // Hero tag 与 MediaViewerPage 的 PhotoViewHeroAttributes 一致，实现淡出时预览收缩到缩略图（与 Immich 一致）
+    final heroTag = 'asset_${asset.id}';
 
-    // 选中时添加圆角和背景色，实现向内缩进的效果
-    // 性能优化：使用 Container 的 decoration 替代 ClipRRect，避免 saveLayer 开销
-    // 注意：如果图片需要溢出裁剪，可以考虑预处理图片或使用其他方案
-    return Container(
-      decoration: BoxDecoration(
-        color: assetContainerColor,
-        borderRadius: const BorderRadius.all(Radius.circular(15.0)),
-      ),
-      child: image,
+    final content = isSelected
+        ? Container(
+            decoration: BoxDecoration(
+              color: assetContainerColor,
+              borderRadius: const BorderRadius.all(Radius.circular(15.0)),
+            ),
+            child: image,
+          )
+        : image;
+
+    return Hero(
+      tag: heroTag,
+      // 飞行期间源位置显示空占位，避免缩略图先消失再出现导致闪烁（与 Immich 一致）
+      placeholderBuilder: (context, heroSize, child) =>
+          SizedBox.fromSize(size: heroSize),
+      // 飞行的 shuttle 使用预览页大图，收缩动画更连贯（pop 时 from=预览页 to=缩略图）
+      flightShuttleBuilder: (context, animation, direction, fromContext, toContext) {
+        final fromHero = fromContext.widget as Hero;
+        return fromHero.child;
+      },
+      child: RepaintBoundary(child: content),
     );
   }
 }

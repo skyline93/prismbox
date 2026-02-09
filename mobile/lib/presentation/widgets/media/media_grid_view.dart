@@ -144,6 +144,8 @@ class _MediaGridSliverState extends State<MediaGridSliver> {
   /// 构建子项 widget
   Widget _buildItem(BuildContext context, int index) {
     final asset = widget.assets[index];
+    // Hero tag 与 MediaViewerPage 一致，实现淡出时预览收缩到缩略图（与 Immich 一致）
+    final heroTag = 'asset_${asset.id}';
 
     return VisibilityDetector(
       key: Key('media_$index'),
@@ -154,11 +156,14 @@ class _MediaGridSliverState extends State<MediaGridSliver> {
           fit: StackFit.expand,
           clipBehavior: Clip.none, // 确保 Positioned 子元素不会被裁剪
           children: [
-            MediaImageWidget(
-              asset: asset,
-              isThumbnail: true,
-              serverUrl: widget.serverUrl,
-              assetEntityLoader: widget.assetEntityLoader,
+            Hero(
+              tag: heroTag,
+              child: MediaImageWidget(
+                asset: asset,
+                isThumbnail: true,
+                serverUrl: widget.serverUrl,
+                assetEntityLoader: widget.assetEntityLoader,
+              ),
             ),
             // 收藏指示器（左下角）
             FavoriteIndicator(isFavorite: asset.isFavorite),
@@ -321,6 +326,8 @@ class _MediaGridViewState extends State<MediaGridView> {
   /// 构建子项 widget
   Widget _buildItem(BuildContext context, int index) {
     final asset = widget.assets[index];
+    // Hero tag 与 MediaViewerPage 一致，实现淡出时预览收缩到缩略图（与 Immich 一致）
+    final heroTag = 'asset_${asset.id}';
 
     return VisibilityDetector(
       key: Key('media_$index'),
@@ -331,11 +338,14 @@ class _MediaGridViewState extends State<MediaGridView> {
           fit: StackFit.expand,
           clipBehavior: Clip.none, // 确保 Positioned 子元素不会被裁剪
           children: [
-            MediaImageWidget(
-              asset: asset,
-              isThumbnail: true,
-              serverUrl: widget.serverUrl,
-              assetEntityLoader: widget.assetEntityLoader,
+            Hero(
+              tag: heroTag,
+              child: MediaImageWidget(
+                asset: asset,
+                isThumbnail: true,
+                serverUrl: widget.serverUrl,
+                assetEntityLoader: widget.assetEntityLoader,
+              ),
             ),
             // 收藏指示器（左下角）
             FavoriteIndicator(isFavorite: asset.isFavorite),
