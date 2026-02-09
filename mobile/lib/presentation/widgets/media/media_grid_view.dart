@@ -165,8 +165,8 @@ class _MediaGridSliverState extends State<MediaGridSliver> {
                 assetEntityLoader: widget.assetEntityLoader,
               ),
             ),
-            // 收藏指示器（左下角）
-            FavoriteIndicator(isFavorite: asset.isFavorite),
+            // 收藏指示器（左下角，按媒体表收藏字段单独监听）
+            AssetFavoriteIndicator(asset: asset),
           ],
         ),
       ),
@@ -347,8 +347,8 @@ class _MediaGridViewState extends State<MediaGridView> {
                 assetEntityLoader: widget.assetEntityLoader,
               ),
             ),
-            // 收藏指示器（左下角）
-            FavoriteIndicator(isFavorite: asset.isFavorite),
+            // 收藏指示器（左下角，按媒体表收藏字段单独监听）
+            AssetFavoriteIndicator(asset: asset),
           ],
         ),
       ),

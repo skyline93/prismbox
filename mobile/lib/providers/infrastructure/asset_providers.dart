@@ -39,3 +39,13 @@ Future<AssetFavoriteService> assetFavoriteService(
     localAssetDao: localAssetDao,
   );
 }
+
+/// 按 assetId 从本地媒体表读取收藏状态，供缩略图等单独监听
+/// 收藏/取消收藏成功后 invalidate 本 provider(assetId)，即可驱动所有显示该资产的收藏图标更新
+@riverpod
+Future<bool> assetFavoriteStatus(AssetFavoriteStatusRef ref, String assetId) async {
+  final database = await ref.watch(databaseProvider.future);
+  final dao = LocalAssetDao(database);
+  final asset = await dao.getAssetById(assetId);
+  return asset?.isFavorite ?? false;
+}

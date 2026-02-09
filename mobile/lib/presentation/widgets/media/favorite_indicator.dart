@@ -1,6 +1,23 @@
 // lib/presentation/widgets/media/favorite_indicator.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prismbox/domain/entities/base_asset.dart';
+import 'package:prismbox/providers/infrastructure/asset_providers.dart';
+
+/// 按 assetId 从媒体表监听收藏状态并显示收藏指示器（用于时间线缩略图等，返回后图标即时更新）
+class AssetFavoriteIndicator extends ConsumerWidget {
+  final BaseAsset asset;
+
+  const AssetFavoriteIndicator({super.key, required this.asset});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavoriteAsync = ref.watch(assetFavoriteStatusProvider(asset.id));
+    final isFavorite = isFavoriteAsync.valueOrNull ?? asset.isFavorite;
+    return FavoriteIndicator(isFavorite: isFavorite);
+  }
+}
 
 /// 收藏指示器组件
 /// 在缩略图左下角显示心形图标，指示资产是否被收藏

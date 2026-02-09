@@ -751,6 +751,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       _favoriteOverrides[assetId] = newFavoriteStatus;
       if (mounted) {
         setState(() {});
+        // 缩略图收藏图标单独监听媒体表，invalidate 后时间线页会即时更新
+        ref.invalidate(assetFavoriteStatusProvider(assetId));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(currentStatus ? '已取消收藏' : '已添加收藏'),

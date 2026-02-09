@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/backup/models/asset_upload_status.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
-import 'package:prismbox/presentation/widgets/media/favorite_indicator.dart';
+import 'package:prismbox/presentation/widgets/media/favorite_indicator.dart'; // FavoriteIndicator, AssetFavoriteIndicator
 import 'package:prismbox/presentation/widgets/media/media_image_widget.dart';
 import 'package:prismbox/services/backup/providers/asset_upload_status_provider.dart';
 import 'package:prismbox/utils/color_extensions.dart';
@@ -120,8 +120,8 @@ class _SelectableMediaItemState extends State<SelectableMediaItem> {
                 child: _LivePhotoIndicator(),
               ),
 
-            // 收藏指示器（左下角）
-            FavoriteIndicator(isFavorite: widget.asset.isFavorite),
+            // 收藏指示器（左下角，按媒体表收藏字段单独监听，返回时间线后图标即时更新）
+            AssetFavoriteIndicator(asset: widget.asset),
           ],
         ),
       ),
