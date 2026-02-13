@@ -162,7 +162,7 @@ class ViewerControlsBar extends StatelessWidget {
           child: IgnorePointer(
             ignoring: false, // AppBar 需要接收点击事件
             child: AppBar(
-              backgroundColor: Colors.white.withOpacity(0.9),
+              backgroundColor: Colors.white,
               iconTheme: const IconThemeData(color: Colors.black87),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -224,7 +224,7 @@ class ViewerControlsBar extends StatelessWidget {
           child: IgnorePointer(
             ignoring: false, // 按钮需要接收点击事件
             child: Container(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

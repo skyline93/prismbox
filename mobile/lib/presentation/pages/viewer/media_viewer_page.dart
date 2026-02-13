@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +28,7 @@ import 'package:prismbox/presentation/widgets/viewer/viewer_video_state_provider
 import 'package:prismbox/presentation/widgets/viewer/viewer_controls_bar.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_page.dart';
 import 'package:prismbox/presentation/widgets/viewer/media_detail_sheet.dart';
+import 'package:prismbox/presentation/widgets/viewer/media_gallery_viewer.dart';
 
 /// 媒体查看器页面
 @RoutePage()
@@ -47,37 +47,9 @@ class MediaViewerPage extends ConsumerStatefulWidget {
 }
 
 class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
-  late PageController _pageController;
   late int _initialIndex;
-  bool _showControls = true;
-  bool _isZoomed = false;
 
-  /// 根据当前是否显示控制栏，决定基础背景色：
-  /// - 显示顶栏 / 底栏时为白色，方便阅读信息
-  /// - 隐藏顶栏 / 底栏时为黑色，提供沉浸式预览
-  Color get _baseBackgroundColor =>
-      _showControls ? Colors.white : Colors.black;
-
-  /// 背景不透明度 0–255，下滑时渐变（与 Immich 一致）
-  int _backgroundOpacity = 255;
-  /// 独立背景层用 Notifier 驱动，避免受 build 中 when 分支影响导致不重绘
-  final ValueNotifier<int> _backgroundOpacityNotifier = ValueNotifier<int>(255);
-
-  // --- Immich 风格下滑关闭：由 PhotoView 内部 VerticalDrag 驱动 ---
-  PhotoViewControllerBase? _viewController;
-  PhotoViewControllerValue _initialPhotoViewState = const PhotoViewControllerValue(
-    position: Offset.zero,
-    scale: null,
-    rotation: 0,
-    rotationFocusPoint: null,
-  );
-  Offset _dragDownPosition = Offset.zero;
-  bool? _hasDraggedDown;
-  bool _blockGestures = false;
-  bool _shouldPopOnDrag = false;
-  bool _hasOpenedSheetThisGesture = false;
-
-  // 用于抑制长按播放 Live 后松手产生的「伪点击」导致的下一次控制栏切换
+  /// 用于抑制长按播放 Live 后松手产生的「伪点击」导致的下一次控制栏切换
   bool _suppressNextToggleControls = false;
 
   // 视频管理器
@@ -113,7 +85,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     if (_initialIndex < 0) {
       _initialIndex = 0;
     }
-    _pageController = PageController(initialPage: _initialIndex);
 
     // 初始化当前资产 ID（不依赖 _assetMap，避免时序问题）
     if (_initialIndex < widget.assetIds.length) {
@@ -134,16 +105,16 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
 
   @override
   void dispose() {
-    _pageController.dispose();
-    _backgroundOpacityNotifier.dispose();
-
     // 退出预览时重置静音状态，下次进入时默认静音（使用缓存的 notifier，dispose 中禁止使用 ref）
     _cachedMutedNotifier?.state = true;
 
-    // 注意：不再需要释放 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller
-
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
+  }
+
+  void _onDismiss() {
+    ref.read(currentVideoAssetIdProvider.notifier).state = null;
+    context.router.pop();
   }
 
   @override
@@ -242,308 +213,184 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
           SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        extendBodyBehindAppBar: true,
-        body: Stack(
-          children: [
-            ValueListenableBuilder<int>(
-              valueListenable: _backgroundOpacityNotifier,
-              builder: (context, opacity, _) {
-                debugPrint('[MediaViewer] ValueListenableBuilder rebuild opacity=$opacity');
-                return Positioned.fill(
-                  child: Container(
-                    color: _baseBackgroundColor.withAlpha(opacity),
-                  ),
-                );
-              },
-            ),
-            PhotoViewGallery.builder(
-              gaplessPlayback: true,
-              pageController: _pageController,
-              itemCount: widget.assetIds.length,
-              scrollPhysics: _isZoomed
-                  ? const NeverScrollableScrollPhysics()
-                  : (Platform.isIOS
-                        ? const BouncingScrollPhysics()
-                        : const ClampingScrollPhysics()),
-              scrollDirection: Axis.horizontal,
-              onPageChanged: (index, _) => _handlePageChanged(index),
-              onPageBuild: _onPageBuild,
-              scaleStateChangedCallback: _onScaleStateChanged,
-              builder: _buildPageOptions,
-              backgroundDecoration: const BoxDecoration(color: Colors.transparent),
-              loadingBuilder: (context, event, index) {
-                // 根据当前背景模式选择加载指示器颜色：
-                // - 白色背景（显示控制栏）时使用深色指示器
-                // - 黑色背景（沉浸模式）时使用白色指示器
-                final isDarkBackground = !_showControls;
-                final indicatorColor =
-                    isDarkBackground ? Colors.white : Colors.black87;
-                final value = event == null
-                    ? null
-                    : event.cumulativeBytesLoaded /
-                        (event.expectedTotalBytes ?? 1);
-
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: value,
-                    color: indicatorColor,
-                  ),
-                );
-              },
-              enablePanAlways: true,
-            ),
-            // RAW 照片角标（内容区域左上角，顶栏下方，仅静态 RAW 照片显示）
-            Positioned(
-              top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-              left: 16,
-              child: _buildRawBadge(),
-            ),
-            Consumer(
-                  builder: (context, ref, child) {
-                    // 优先使用本次会话内的收藏覆盖，避免依赖 invalidate 触发的 refetch（会引发 defunct element 断言）
-                    final overridden = _currentAssetId != null
-                        ? _favoriteOverrides[_currentAssetId]
-                        : null;
-                    final assetsAsync = ref.watch(timelineAssetsProvider());
-                    final currentFavoriteStatus = overridden ?? assetsAsync.maybeWhen(
-                      data: (allAssets) {
-                        if (_currentAssetId == null) return null;
-                        try {
-                          final asset = allAssets.firstWhere(
-                            (a) => a.id == _currentAssetId,
-                          );
-                          return asset.isFavorite;
-                        } catch (e) {
-                          final asset = _assetMap?[_currentAssetId];
-                          return asset?.isFavorite;
-                        }
-                      },
-                      orElse: () => _getCurrentAssetFavoriteStatus(),
-                    );
-                    final currentAsset = _currentAssetId == null
-                        ? null
-                        : _assetMap?[_currentAssetId];
-                    final isMotionPhoto = currentAsset?.isMotionPhoto ?? false;
-                    final isPlayingMotionVideo =
-                        ref.watch(isPlayingMotionVideoProvider);
-                    final canDownload = currentAsset?.remoteId != null;
-                    final authState = ref.watch(authNotifierProvider).value;
-                    final userId = authState is AuthStateAuthenticated
-                        ? authState.user.id.toString()
-                        : null;
-
-                    // 仅本地资源监听上传状态，用于顶栏云图标（与缩略图一致）及可点击状态
-                    final AssetUploadStatus? uploadStatus = currentAsset != null &&
-                            currentAsset is LocalAsset
-                        ? ref
-                            .watch(
-                              assetUploadStatusProvider(
-                                currentAsset.localId ?? currentAsset.id,
-                                currentAsset.hasRemote,
-                                currentAsset.checksum,
-                              ),
-                            )
-                            .valueOrNull
-                            ?.status
-                        : null;
-
-                    return ViewerControlsBar(
-                      showControls: _showControls,
-                      onToggleControls: _toggleControls,
-                      onBack: () {
-                        // 退出前清空当前视频，触发当前 ViewerVideoPage 立即 pause，避免退出后仍后台播放
-                        ref.read(currentVideoAssetIdProvider.notifier).state = null;
-                        context.router.pop();
-                      },
-                      isFavorite: currentFavoriteStatus,
-                      onFavorite: _handleFavoriteToggle,
-                      isMotionPhoto: isMotionPhoto,
-                      isPlayingMotionVideo: isPlayingMotionVideo,
-                      onPlayMotionVideo: isMotionPhoto
-                          ? () {
-                              final next = !ref.read(isPlayingMotionVideoProvider);
-                              ref.read(isPlayingMotionVideoProvider.notifier).state =
-                                  next;
-                              if (next && _currentAssetId != null) {
-                                ref
-                                    .read(currentVideoAssetIdProvider.notifier)
-                                    .state = _currentAssetId;
-                              }
-                            }
-                          : null,
-                      showDownloadButton: canDownload && userId != null,
-                      onDownload: (canDownload && userId != null && currentAsset != null)
-                          ? () async {
-                              final downloadService = await ref.read(downloadServiceProvider.future);
-                              final request = MediaDownloadRequest(
-                                userId: userId,
-                                sourceType: MediaDownloadSourceType.timeline_asset,
-                                sourceId: currentAsset.id,
-                                mediaUuid: currentAsset.remoteId!,
-                                livePhotoVideoUuid: currentAsset.livePhotoVideoId,
-                                itemType: currentAsset.type == AssetType.image ? 'IMAGE' : 'VIDEO',
-                                filename: currentAsset.name,
-                              );
-                              final added = await downloadService.addDownload(request);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      added ? '已加入下载队列' : '已在下载队列中',
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                          : null,
-                      onUpload: (currentAsset is LocalAsset && _currentAssetId != null)
-                          ? () async {
-                              final handler = TimelineUploadHandler(
-                                context: context,
-                                ref: ref,
-                                mounted: () => mounted,
-                              );
-                              await handler.handleUploadWithAssetIds([_currentAssetId!]);
-                            }
-                          : null,
-                      uploadStatus: uploadStatus,
-                      onInfo: () => _showMediaDetailSheet(context, currentAsset),
-                    );
-                  },
-                ),
-              ],
-            ),
+      child: MediaGalleryViewer(
+        initialIndex: _initialIndex,
+        itemCount: widget.assetIds.length,
+        pageOptionsBuilder: (ctx, index, callbacks,
+                {showControls = true, onToggleControls}) =>
+            _buildPageOptions(ctx, index, callbacks,
+                showControls: showControls, onToggleControls: onToggleControls),
+        onPageChanged: _handlePageChanged,
+        onDismiss: _onDismiss,
+        controlsBuilder: _buildViewerOverlay,
+        onSwipeUp: (ctx) {
+          final currentAsset =
+              _currentAssetId == null ? null : _assetMap?[_currentAssetId];
+          _showMediaDetailSheet(ctx, currentAsset);
+        },
+        gaplessPlayback: true,
       ),
     );
   }
 
-  // --- Immich 风格下滑/上滑：与 asset_viewer.page 一致 ---
-  void _onPageBuild(PhotoViewControllerBase controller) {
-    _viewController = controller;
-  }
-
-  void _onDragStart(
-    _,
-    DragStartDetails details,
-    PhotoViewControllerBase controller,
-    PhotoViewScaleStateController scaleStateController,
+  Widget? _buildViewerOverlay(
+    BuildContext context,
+    int currentIndex,
+    bool showControls,
+    VoidCallback onToggleControls,
   ) {
-    debugPrint('[MediaViewer] _onDragStart: localPosition=${details.localPosition}');
-    _viewController = controller;
-    _dragDownPosition = details.localPosition;
-    _initialPhotoViewState = controller.value;
-    _hasOpenedSheetThisGesture = false;
-    final isZoomed = scaleStateController.scaleState == PhotoViewScaleState.zoomedIn ||
-        scaleStateController.scaleState == PhotoViewScaleState.covering;
-    if (isZoomed) {
-      _blockGestures = true;
-      debugPrint('[MediaViewer] _onDragStart: isZoomed=true, blocking gestures');
-    }
-  }
+    final wrappedToggle = () {
+      if (_suppressNextToggleControls) {
+        _suppressNextToggleControls = false;
+        return;
+      }
+      onToggleControls();
+    };
+    return Stack(
+      children: [
+        Positioned(
+          top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
+          left: 16,
+          child: _buildRawBadge(isDarkBackground: !showControls),
+        ),
+        Consumer(
+          builder: (context, ref, child) {
+            final overridden = _currentAssetId != null
+                ? _favoriteOverrides[_currentAssetId]
+                : null;
+            final assetsAsync = ref.watch(timelineAssetsProvider());
+            final currentFavoriteStatus = overridden ??
+                assetsAsync.maybeWhen(
+                  data: (allAssets) {
+                    if (_currentAssetId == null) return null;
+                    try {
+                      final asset = allAssets.firstWhere(
+                        (a) => a.id == _currentAssetId,
+                      );
+                      return asset.isFavorite;
+                    } catch (e) {
+                      final asset = _assetMap?[_currentAssetId];
+                      return asset?.isFavorite;
+                    }
+                  },
+                  orElse: () => _getCurrentAssetFavoriteStatus(),
+                );
+            final currentAsset = _currentAssetId == null
+                ? null
+                : _assetMap?[_currentAssetId];
+            final isMotionPhoto = currentAsset?.isMotionPhoto ?? false;
+            final isPlayingMotionVideo =
+                ref.watch(isPlayingMotionVideoProvider);
+            final canDownload = currentAsset?.remoteId != null;
+            final authState = ref.watch(authNotifierProvider).value;
+            final userId = authState is AuthStateAuthenticated
+                ? authState.user.id.toString()
+                : null;
+            final AssetUploadStatus? uploadStatus = currentAsset != null &&
+                    currentAsset is LocalAsset
+                ? ref
+                    .watch(
+                      assetUploadStatusProvider(
+                        currentAsset.localId ?? currentAsset.id,
+                        currentAsset.hasRemote,
+                        currentAsset.checksum,
+                      ),
+                    )
+                    .valueOrNull
+                    ?.status
+                : null;
 
-  void _onDragEnd(BuildContext ctx, _, __) {
-    debugPrint('[MediaViewer] _onDragEnd: shouldPop=$_shouldPopOnDrag blockGestures=$_blockGestures hasDraggedDown=$_hasDraggedDown');
-    if (_shouldPopOnDrag) {
-      // 退出前清空当前视频，触发当前 ViewerVideoPage 立即 pause，避免退出后仍后台播放
-      ref.read(currentVideoAssetIdProvider.notifier).state = null;
-      ctx.router.pop();
-      return;
-    }
-    if (_blockGestures) {
-      _blockGestures = false;
-      return;
-    }
-    _shouldPopOnDrag = false;
-    _hasDraggedDown = null;
-    _viewController?.animateMultiple(
-      position: _initialPhotoViewState.position,
-      scale: _viewController?.initialScale ?? _initialPhotoViewState.scale,
-      rotation: _initialPhotoViewState.rotation,
+            return ViewerControlsBar(
+              showControls: showControls,
+              onToggleControls: wrappedToggle,
+              onBack: _onDismiss,
+              isFavorite: currentFavoriteStatus,
+              onFavorite: _handleFavoriteToggle,
+              isMotionPhoto: isMotionPhoto,
+              isPlayingMotionVideo: isPlayingMotionVideo,
+              onPlayMotionVideo: isMotionPhoto
+                  ? () {
+                      final next =
+                          !ref.read(isPlayingMotionVideoProvider);
+                      ref.read(isPlayingMotionVideoProvider.notifier).state =
+                          next;
+                      if (next && _currentAssetId != null) {
+                        ref
+                            .read(currentVideoAssetIdProvider.notifier)
+                            .state = _currentAssetId;
+                      }
+                    }
+                  : null,
+              showDownloadButton: canDownload && userId != null,
+              onDownload: (canDownload && userId != null && currentAsset != null)
+                  ? () async {
+                      final downloadService =
+                          await ref.read(downloadServiceProvider.future);
+                      final request = MediaDownloadRequest(
+                        userId: userId,
+                        sourceType: MediaDownloadSourceType.timeline_asset,
+                        sourceId: currentAsset.id,
+                        mediaUuid: currentAsset.remoteId ?? '',
+                        livePhotoVideoUuid: currentAsset.livePhotoVideoId,
+                        itemType: currentAsset.type == AssetType.image
+                            ? 'IMAGE'
+                            : 'VIDEO',
+                        filename: currentAsset.name,
+                      );
+                      final added =
+                          await downloadService.addDownload(request);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              added ? '已加入下载队列' : '已在下载队列中',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  : null,
+              onUpload: (currentAsset is LocalAsset && _currentAssetId != null)
+                  ? () async {
+                      final handler = TimelineUploadHandler(
+                        context: context,
+                        ref: ref,
+                        mounted: () => mounted,
+                      );
+                      await handler.handleUploadWithAssetIds([_currentAssetId!]);
+                    }
+                  : null,
+              uploadStatus: uploadStatus,
+              onInfo: () => _showMediaDetailSheet(context, currentAsset),
+            );
+          },
+        ),
+      ],
     );
-    _backgroundOpacity = 255;
-    _backgroundOpacityNotifier.value = 255;
-    debugPrint('[MediaViewer] _onDragEnd: reset opacity to 255');
-  }
-
-  void _onDragUpdate(BuildContext ctx, DragUpdateDetails details, _) {
-    if (_blockGestures) return;
-    final delta = details.localPosition - _dragDownPosition;
-    final wasDown = _hasDraggedDown;
-    _hasDraggedDown ??= delta.dy > 0;
-    if (_hasDraggedDown! == false) {
-      if (wasDown == null) debugPrint('[MediaViewer] _onDragUpdate: delta=$delta -> drag UP path');
-      _handleDragUp(ctx, delta);
-      return;
-    }
-    if (wasDown == null) debugPrint('[MediaViewer] _onDragUpdate: delta=$delta -> drag DOWN path');
-    _handleDragDown(ctx, delta);
-  }
-
-  static const double _kDragRatio = 0.2;
-  static const double _kPopThreshold = 75.0;
-  static const double _kOpenThreshold = 50.0;
-
-  void _handleDragUp(BuildContext ctx, Offset delta) {
-    final position = _initialPhotoViewState.position + Offset(0, delta.dy);
-    final distanceToOrigin = position.distance;
-    _viewController?.updateMultiple(position: position);
-    if (!_hasOpenedSheetThisGesture && distanceToOrigin > _kOpenThreshold) {
-      _hasOpenedSheetThisGesture = true;
-      final currentAsset =
-          _currentAssetId == null ? null : _assetMap?[_currentAssetId];
-      _showMediaDetailSheet(ctx, currentAsset);
-    }
-  }
-
-  void _handleDragDown(BuildContext ctx, Offset delta) {
-    final distance = delta.distance;
-    _shouldPopOnDrag = delta.dy > 0 && distance > _kPopThreshold;
-    final maxScaleDistance = MediaQuery.sizeOf(ctx).height * 0.5;
-    final scaleReduction = (distance / maxScaleDistance).clamp(0.0, _kDragRatio);
-    final initialScale = _viewController?.initialScale ?? _initialPhotoViewState.scale;
-    final updatedScale =
-        initialScale != null ? initialScale * (1.0 - scaleReduction) : null;
-    final backgroundOpacity =
-        (255 * (1.0 - (scaleReduction / _kDragRatio))).round();
-    debugPrint('[MediaViewer] _handleDragDown: distance=${distance.toStringAsFixed(1)} scaleReduction=${scaleReduction.toStringAsFixed(3)} opacity=$backgroundOpacity');
-    _viewController?.updateMultiple(
-      position: _initialPhotoViewState.position + delta,
-      scale: updatedScale,
-    );
-    _backgroundOpacityNotifier.value = backgroundOpacity;
-  }
-
-  void _onTapDown(_, __, ___) {
-    if (!_isZoomed) _toggleControls();
-  }
-
-  void _onScaleStateChanged(PhotoViewScaleState scaleState) {
-    setState(() {
-      _isZoomed = scaleState != PhotoViewScaleState.initial;
-    });
   }
 
   /// 构建当前页的 PhotoView 选项（图 / 视频）
-  PhotoViewGalleryPageOptions _buildPageOptions(BuildContext ctx, int index) {
+  PhotoViewGalleryPageOptions _buildPageOptions(
+    BuildContext ctx,
+    int index,
+    MediaGalleryGestureCallbacks callbacks, {
+    bool showControls = true,
+    VoidCallback? onToggleControls,
+  }) {
     final assetId = widget.assetIds[index];
     final asset = _assetMap?[assetId];
     final isPlayingMotionVideo = ref.watch(isPlayingMotionVideoProvider);
     final mediaSize = MediaQuery.sizeOf(ctx);
 
     if (asset == null) {
-      final isDarkBackground = !_showControls;
-      final indicatorColor =
-          isDarkBackground ? Colors.white : Colors.black87;
       return PhotoViewGalleryPageOptions.customChild(
         heroAttributes: PhotoViewHeroAttributes(tag: 'loading_$index'),
         child: Container(
           width: mediaSize.width,
           height: mediaSize.height,
-          color: _baseBackgroundColor.withAlpha(_backgroundOpacity),
-          child: Center(
-            child: CircularProgressIndicator(color: indicatorColor),
+          color: Colors.grey,
+          child: const Center(
+            child: CircularProgressIndicator(),
           ),
         ),
       );
@@ -555,10 +402,10 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
             isPlayingMotionVideo &&
             asset.livePhotoVideoId != null)) {
       return PhotoViewGalleryPageOptions.customChild(
-        onDragStart: _onDragStart,
-        onDragUpdate: _onDragUpdate,
-        onDragEnd: _onDragEnd,
-        onTapDown: _onTapDown,
+        onDragStart: callbacks.onDragStart,
+        onDragUpdate: callbacks.onDragUpdate,
+        onDragEnd: callbacks.onDragEnd,
+        onTapDown: callbacks.onTapDown,
         heroAttributes: PhotoViewHeroAttributes(
           tag: 'asset_${asset.id}',
           transitionOnUserGestures: true,
@@ -577,8 +424,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
             videoManager: _videoManager,
             serverUrl: _serverUrl,
             assetEntityLoader: _assetEntityLoader,
-            showControls: _showControls,
-            onToggleControls: _toggleControls,
+            showControls: showControls,
+            onToggleControls: onToggleControls ?? () {},
             onMuteChanged: (_) {},
             currentIndex: index,
             visiblePageIndices: _visiblePageIndices,
@@ -607,10 +454,10 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       filterQuality: FilterQuality.high,
       tightMode: true,
       maxScale: PhotoViewComputedScale.covered * 4.0,
-      onDragStart: _onDragStart,
-      onDragUpdate: _onDragUpdate,
-      onDragEnd: _onDragEnd,
-      onTapDown: _onTapDown,
+      onDragStart: callbacks.onDragStart,
+      onDragUpdate: callbacks.onDragUpdate,
+      onDragEnd: callbacks.onDragEnd,
+      onTapDown: callbacks.onTapDown,
       onLongPressStart: asset.isMotionPhoto ? _onLongPressMotion : null,
       errorBuilder: (_, __, ___) => Container(
         width: mediaSize.width,
@@ -692,7 +539,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
   /// 构建当前预览资产的 RAW 角标
   ///
   /// 仅当当前资产为静态图片且 isRaw 为 true 时显示。
-  Widget _buildRawBadge() {
+  /// [isDarkBackground] 由 [MediaGalleryViewer] 的 controlsBuilder 传入（对应沉浸模式）。
+  Widget _buildRawBadge({required bool isDarkBackground}) {
     final assetId = _currentAssetId;
     if (assetId == null) {
       return const SizedBox.shrink();
@@ -701,11 +549,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
     if (asset == null || !asset.isImage || !asset.isRaw) {
       return const SizedBox.shrink();
     }
-    // 根据当前背景模式适配 RAW 文本颜色：
-    // - 显示控制栏（白色背景）时使用深色文字
-    // - 隐藏控制栏（黑色背景，沉浸模式）时使用白色文字
     return _ViewerRawPhotoIndicator(
-      isDarkBackground: !_showControls,
+      isDarkBackground: isDarkBackground,
     );
   }
 
@@ -738,32 +583,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
         ref.read(currentVideoAssetIdProvider.notifier).state = null;
       }
     }
-
-    setState(() {
-      _isZoomed = false;
-    });
-  }
-
-  void _toggleControls() {
-    // 若刚刚通过长按触发了 Live 播放，忽略紧接着的一次切换请求，保持当前控制栏状态不变
-    if (_suppressNextToggleControls) {
-      _suppressNextToggleControls = false;
-      return;
-    }
-
-    setState(() {
-      _showControls = !_showControls;
-    });
-    // 切换顶栏 / 底栏显示状态时，重置背景不透明度为 255，配合 _baseBackgroundColor
-    // 实现：
-    // - 显示控制栏：纯白背景
-    // - 隐藏控制栏：纯黑背景
-    _backgroundOpacity = 255;
-    _backgroundOpacityNotifier.value = 255;
-
-    SystemChrome.setEnabledSystemUIMode(
-      _showControls ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
-    );
   }
 
   /// 获取当前资产的收藏状态

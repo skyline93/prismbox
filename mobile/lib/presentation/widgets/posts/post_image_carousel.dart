@@ -54,14 +54,19 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
   }
 
   void _onImageTap(int index) {
-    Navigator.push(
+    Navigator.push<void>(
       context,
-      MaterialPageRoute(
-        builder: (context) => PhotoViewerPage(
+      PageRouteBuilder<void>(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            PhotoViewerPage(
           media: widget.media,
           initialIndex: index,
           onDownload: _onDownload,
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
       ),
     );
   }
@@ -110,6 +115,7 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
               ? media.width! / media.height!
               : 1.0;
 
+          final heroTag = 'post_media_${media.uuid}_$index';
           return AspectRatio(
             aspectRatio: aspectRatio,
             child: Padding(
@@ -118,9 +124,13 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
               ),
               child: GestureDetector(
                 onTap: () => _onImageTap(index),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(imageBorderRadius),
-                  child: _buildImage(media),
+                child: Hero(
+                  tag: heroTag,
+                  placeholderBuilder: (context, heroSize, child) => child,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(imageBorderRadius),
+                    child: _buildImage(media),
+                  ),
                 ),
               ),
             ),
@@ -147,14 +157,19 @@ class _PostImageCarouselState extends ConsumerState<PostImageCarousel> {
             itemCount: widget.media.length,
             itemBuilder: (context, index) {
               final media = widget.media[index];
+              final heroTag = 'post_media_${media.uuid}_$index';
               // 使用 Stack 来添加序号
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 图片本身
-                  GestureDetector(
-                    onTap: () => _onImageTap(index),
-                    child: _buildImage(media),
+                  // 图片本身，Hero 与 PhotoViewerPage 的 tag 一致，实现退出时收缩到缩略图
+                  Hero(
+                    tag: heroTag,
+                    placeholderBuilder: (context, heroSize, child) => child,
+                    child: GestureDetector(
+                      onTap: () => _onImageTap(index),
+                      child: _buildImage(media),
+                    ),
                   ),
                   // 序号指示器，仅在多张图片时显示
                   if (widget.media.length > 1)
