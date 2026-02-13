@@ -606,8 +606,6 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage> {
       ),
       filterQuality: FilterQuality.high,
       tightMode: true,
-      initialScale: PhotoViewComputedScale.contained * 0.99,
-      minScale: PhotoViewComputedScale.contained * 0.99,
       maxScale: PhotoViewComputedScale.covered * 4.0,
       onDragStart: _onDragStart,
       onDragUpdate: _onDragUpdate,
