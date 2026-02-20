@@ -1,12 +1,16 @@
 package media
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/thumbhash"
@@ -15,15 +19,20 @@ import (
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
 )
 
+// ThumbnailKeyBuilder 根据媒体构建缩略图存储 key，用于 worker 预生成视频缩略图。可为 nil 表示不预生成。
+type ThumbnailKeyBuilder func(media *models.Media) (string, error)
+
 // RegisterMediaProcessors 注册媒体处理任务。
+// buildThumbnailKey 可选；非 nil 时视频处理成功后会预生成默认缩略图并写入该 key。
 func RegisterMediaProcessors(
 	mux *gq.ServeMux,
 	repo repository.MediaRepository,
 	storageManager *storage.StorageManager,
 	processor mediaprocessor.MediaProcessor,
+	buildThumbnailKey ThumbnailKeyBuilder,
 ) {
 	mux.HandleFunc("media:process:image", processImageHandler(repo, storageManager, processor))
-	mux.HandleFunc("media:process:video", processVideoHandler(repo, storageManager, processor))
+	mux.HandleFunc("media:process:video", processVideoHandler(repo, storageManager, processor, buildThumbnailKey))
 }
 
 type processPayload struct {
@@ -173,6 +182,7 @@ func processVideoHandler(
 	repo repository.MediaRepository,
 	storageManager *storage.StorageManager,
 	processor mediaprocessor.MediaProcessor,
+	buildThumbnailKey ThumbnailKeyBuilder,
 ) gq.HandlerFunc {
 	log := logger.New("worker.media.video")
 
@@ -260,6 +270,49 @@ func processVideoHandler(
 
 		if err := repo.Update(ctx, payload.MediaUUID, updates); err != nil {
 			return fmt.Errorf("update media metadata: %w", err)
+		}
+
+		// 可选：预生成视频缩略图并写入存储，便于首次请求即命中
+		if buildThumbnailKey != nil {
+			thumbnailKey, keyErr := buildThumbnailKey(media)
+			if keyErr == nil && thumbnailKey != "" {
+				spec := mediaprocessor.ImageSpec{
+					Name:      "thumbnail",
+					MaxWidth:  400,
+					MaxHeight: 400,
+					Format:    "jpg",
+					Quality:   75,
+					Crop:      true,
+				}
+				localPath, genErr := processor.GenerateThumbnailFromVideo(ctx, originalPath, -1, spec)
+				if genErr == nil && localPath != "" {
+					defer func() { _ = os.Remove(localPath) }()
+					f, openErr := os.Open(localPath)
+					if openErr == nil {
+						defer f.Close()
+						data, readErr := io.ReadAll(f)
+						if readErr == nil && len(data) > 0 {
+							if putErr := storageManager.Put(ctx, thumbnailKey, bytes.NewReader(data), int64(len(data)), nil); putErr != nil {
+								log.Warn("failed to upload video thumbnail to storage",
+									logger.String("media_uuid", payload.MediaUUID),
+									logger.String("thumbnail_key", thumbnailKey),
+									logger.Error(putErr),
+								)
+							} else {
+								log.Info("video thumbnail pre-generated and uploaded",
+									logger.String("media_uuid", payload.MediaUUID),
+									logger.String("thumbnail_key", thumbnailKey),
+								)
+							}
+						}
+					}
+				} else if genErr != nil {
+					log.Warn("failed to generate video thumbnail (non-fatal)",
+						logger.String("media_uuid", payload.MediaUUID),
+						logger.Error(genErr),
+					)
+				}
+			}
 		}
 
 		log.Info("video processed successfully",

@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -111,12 +113,26 @@ func (p *FFmpegProcessor) GenerateThumbnail(ctx context.Context, videoPath strin
 		timeOffset = 1.0
 	}
 
-	outputPath, err := utils.BuildDerivedPath(videoPath, spec.Name, spec.Format)
-	if err != nil {
-		return "", err
-	}
-	if err := utils.EnsureDir(outputPath); err != nil {
-		return "", err
+	var outputPath string
+	if strings.Contains(videoPath, "://") {
+		// 输入为 URL 时写入临时目录，避免 BuildDerivedPath 产生非法路径
+		ext := strings.TrimPrefix(strings.ToLower(spec.Format), ".")
+		if ext == "" {
+			ext = "jpg"
+		}
+		outputPath = filepath.Join(os.TempDir(), fmt.Sprintf("video_thumb_%d_%s.%s", time.Now().UnixNano(), spec.Name, ext))
+		if err := utils.EnsureDir(outputPath); err != nil {
+			return "", err
+		}
+	} else {
+		var err error
+		outputPath, err = utils.BuildDerivedPath(videoPath, spec.Name, spec.Format)
+		if err != nil {
+			return "", err
+		}
+		if err := utils.EnsureDir(outputPath); err != nil {
+			return "", err
+		}
 	}
 
 	args := []string{

@@ -13,6 +13,8 @@ type MediaProcessor interface {
 	ProcessImage(ctx context.Context, originalPath string, specs []ImageSpec) (*ProcessResult, error)
 	ProcessVideo(ctx context.Context, originalPath string, specs []VideoSpec) (*ProcessResult, error)
 	GenerateThumbnail(ctx context.Context, originalPath string, spec ImageSpec) (string, error)
+	// GenerateThumbnailFromVideo 从视频文件或 URL 抽帧生成缩略图。timeOffset 为抽帧时间（秒），小于 0 时使用处理器默认值。
+	GenerateThumbnailFromVideo(ctx context.Context, videoPath string, timeOffset float64, spec ImageSpec) (string, error)
 	GeneratePreview(ctx context.Context, originalPath string, spec ImageSpec) (string, error)
 	ExtractImageMetadata(ctx context.Context, filePath string) (*MediaMetadata, error)
 	ExtractVideoMetadata(ctx context.Context, filePath string) (*MediaMetadata, error)
@@ -90,6 +92,10 @@ func (p *processor) ProcessVideo(ctx context.Context, originalPath string, specs
 
 func (p *processor) GenerateThumbnail(ctx context.Context, originalPath string, spec ImageSpec) (string, error) {
 	return p.imageProcessor.GenerateThumbnail(ctx, originalPath, spec)
+}
+
+func (p *processor) GenerateThumbnailFromVideo(ctx context.Context, videoPath string, timeOffset float64, spec ImageSpec) (string, error) {
+	return p.videoProcessor.GenerateThumbnail(ctx, videoPath, timeOffset, spec)
 }
 
 func (p *processor) GeneratePreview(ctx context.Context, originalPath string, spec ImageSpec) (string, error) {

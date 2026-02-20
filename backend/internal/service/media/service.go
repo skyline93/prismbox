@@ -976,54 +976,45 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}
 	}
 
-	// 获得了生成权限，异步生成
-	s.log.Info("acquired thumbnail generation permission, starting async generation",
-		logger.String("storage_key", dynamicKey),
-		logger.String("media_uuid", media.UUID),
-		logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
-	)
-	go s.generateThumbnailAsync(ctx, media, size, dynamicKey, task)
+	// 获得了生成权限
+	hasFallback := media.ThumbHash != ""
+	if !hasFallback {
+		fallbackKey, _ := s.BuildThumbnailKey(media)
+		hasFallback, _ = s.storageManager.Exists(ctx, fallbackKey)
+	}
 
-	// 立即返回降级方案（ThumbHash 或预生成缩略图）
-	if media.ThumbHash != "" {
-		s.log.Debug("returning thumbhash placeholder while generation starts",
+	if hasFallback {
+		// 有降级方案：异步生成，使用与请求无关的 context 避免请求结束后 cancel 导致 FFmpeg 被终止
+		s.log.Info("acquired thumbnail generation permission, starting async generation",
 			logger.String("storage_key", dynamicKey),
 			logger.String("media_uuid", media.UUID),
 			logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
 		)
-		monitoring.RecordThumbnailPlaceholder(time.Since(startTime))
-		reader, err := s.getThumbHashFallback(media.ThumbHash, size.Width, size.Height)
-		return &ThumbnailResult{
-			Reader:        reader,
-			IsPlaceholder: true,
-		}, err
-	}
+		detachedCtx := context.WithoutCancel(ctx)
+		go s.generateThumbnailAsync(detachedCtx, media, size, dynamicKey, task)
 
-	// 如果没有 ThumbHash，尝试返回预生成的缩略图作为降级方案
-	fallbackKey, _ := s.BuildThumbnailKey(media)
-	if exists, _ := s.storageManager.Exists(ctx, fallbackKey); exists {
-		s.log.Debug("using fallback thumbnail (pre-generated) while generation in progress",
-			logger.String("storage_key", dynamicKey),
-			logger.String("fallback_key", fallbackKey),
-			logger.String("media_uuid", media.UUID),
-		)
+		if media.ThumbHash != "" {
+			s.log.Debug("returning thumbhash placeholder while generation starts",
+				logger.String("storage_key", dynamicKey),
+				logger.String("media_uuid", media.UUID),
+				logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
+			)
+			monitoring.RecordThumbnailPlaceholder(time.Since(startTime))
+			reader, err := s.getThumbHashFallback(media.ThumbHash, size.Width, size.Height)
+			return &ThumbnailResult{
+				Reader:        reader,
+				IsPlaceholder: true,
+			}, err
+		}
+		fallbackKey, _ := s.BuildThumbnailKey(media)
 		reader, err := s.storageManager.Get(ctx, fallbackKey)
 		if err == nil && s.cacheManager != nil {
-			// 需要先读取数据用于缓存，然后创建新的reader返回
 			data, readErr := io.ReadAll(reader)
 			reader.Close()
 			if readErr == nil {
-				// 异步写入缓存
 				go func() {
-					if err := s.cacheManager.Put(fallbackKey, data); err != nil {
-						s.log.Debug("failed to cache fallback thumbnail",
-							logger.String("cache_key", fallbackKey),
-							logger.String("media_uuid", media.UUID),
-							logger.Error(err),
-						)
-					}
+					_ = s.cacheManager.Put(fallbackKey, data)
 				}()
-				// 返回新的reader
 				reader = io.NopCloser(bytes.NewReader(data))
 			}
 		}
@@ -1034,14 +1025,34 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}, err
 	}
 
-	// 没有降级方案，返回错误
-	s.log.Warn("no thumbnail available and no fallback options, generation in progress",
+	// 无降级方案（如视频无 ThumbHash 且无预生成缩略图）：同步生成，请求等待完成后返回
+	s.log.Info("acquired thumbnail generation permission, generating synchronously (no fallback)",
 		logger.String("storage_key", dynamicKey),
 		logger.String("media_uuid", media.UUID),
 		logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
-		logger.Bool("has_thumbhash", media.ThumbHash != ""),
 	)
-	return nil, fmt.Errorf("thumbnail not available and generation in progress")
+	s.generateThumbnailAsync(ctx, media, size, dynamicKey, task)
+	// 生成完成后从存储读取并返回（若生成失败则 key 不存在，Get 会报错）
+	s.cleanupService.RecordAccess(dynamicKey)
+	reader, err := s.storageManager.Get(ctx, dynamicKey)
+	if err != nil {
+		return nil, err
+	}
+	if s.cacheManager != nil {
+		data, readErr := io.ReadAll(reader)
+		reader.Close()
+		if readErr == nil {
+			go func() {
+				_ = s.cacheManager.Put(dynamicKey, data)
+			}()
+			reader = io.NopCloser(bytes.NewReader(data))
+		}
+	}
+	monitoring.RecordThumbnailStorageHit(time.Since(startTime))
+	return &ThumbnailResult{
+		Reader:        reader,
+		IsPlaceholder: false,
+	}, nil
 }
 
 // cacheThumbnail 将缩略图写入缓存（辅助方法）
@@ -1129,27 +1140,13 @@ func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Medi
 		)
 		thumbnailPath, err = s.processor.GenerateThumbnail(ctx, originalPath, spec)
 	} else if strings.EqualFold(media.ItemType, "video") {
-		// 对于视频，使用预生成的缩略图作为源来生成动态尺寸
-		thumbnailKey, _ := s.BuildThumbnailKey(media)
-		sourcePath := originalPath
-
-		// 尝试使用预生成的缩略图作为源
-		if exists, _ := s.storageManager.Exists(ctx, thumbnailKey); exists {
-			sourcePath, _ = s.storageManager.GetSignedURL(ctx, thumbnailKey, 10*time.Minute)
-			s.log.Debug("using pre-generated thumbnail as source for video",
-				logger.String("storage_key", dynamicKey),
-				logger.String("media_uuid", media.UUID),
-				logger.String("source_key", thumbnailKey),
-			)
-		}
-
-		// 从源图片生成动态尺寸缩略图
-		s.log.Debug("generating thumbnail from video source",
+		// 对于视频，使用视频处理器从视频文件/URL 抽帧生成缩略图（不使用图片处理器）
+		s.log.Debug("generating thumbnail from video via video processor",
 			logger.String("storage_key", dynamicKey),
 			logger.String("media_uuid", media.UUID),
-			logger.String("source_path", sourcePath),
+			logger.String("video_path", originalPath),
 		)
-		thumbnailPath, err = s.processor.GenerateThumbnail(ctx, sourcePath, spec)
+		thumbnailPath, err = s.processor.GenerateThumbnailFromVideo(ctx, originalPath, -1, spec)
 	} else {
 		s.log.Error("unsupported item type for thumbnail generation",
 			logger.String("storage_key", dynamicKey),
