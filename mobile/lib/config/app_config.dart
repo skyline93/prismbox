@@ -22,7 +22,7 @@ class ApiConfig {
   /// - http://localhost:8080
   /// - https://47.107.63.140
   static const String serverBaseUrl = 'http://47.107.63.140';
-  // static const String serverBaseUrl = 'http://172.20.10.6';
+  // static const String serverBaseUrl = 'http://127.0.0.1';
   // static const String serverBaseUrl = 'http://10.0.2.2';
   // static const String serverBaseUrl = 'http://10.0.2.2:8080';
 

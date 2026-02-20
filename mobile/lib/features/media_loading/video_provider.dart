@@ -288,4 +288,116 @@ class VideoProvider {
       return null;
     }
   }
+
+  /// 解析本地可播放文件路径（供 PlaybackBackendFactory 使用）
+  ///
+  /// 返回本地文件路径；若无本地文件则返回 null（工厂将尝试远程）。
+  static Future<String?> getLocalFilePath(
+    BaseAsset asset, {
+    AssetEntityLoader? assetEntityLoader,
+    String? videoIdOverride,
+  }) async {
+    try {
+      if (videoIdOverride != null && asset is LocalAsset) {
+        final path = await _getLocalMotionFilePath(asset, assetEntityLoader);
+        if (path != null) return path;
+      }
+      if (asset is LocalAsset) {
+        return await _getLocalVideoFilePath(asset, assetEntityLoader);
+      }
+      if (asset.storage == AssetState.merged && asset is LocalAsset) {
+        final path = await _getLocalVideoFilePath(asset, assetEntityLoader);
+        if (path != null) return path;
+      }
+      return null;
+    } catch (e, stackTrace) {
+      _log.warning(
+        'Failed to get local file path for asset: ${asset.id}',
+        e,
+        stackTrace,
+      );
+      return null;
+    }
+  }
+
+  static Future<String?> _getLocalMotionFilePath(
+    LocalAsset asset,
+    AssetEntityLoader? assetEntityLoader,
+  ) async {
+    AssetEntity? entity = asset.assetEntity;
+    if (entity == null && assetEntityLoader != null) {
+      entity = await assetEntityLoader.loadAsync(asset);
+    }
+    if (entity == null) return null;
+    File? file = await entity.originFileWithSubtype;
+    file ??= await entity.loadFile(withSubtype: true);
+    if (file == null) return null;
+    final path = file.path;
+    if (path.isEmpty) return null;
+    if (!await File(path).exists()) return null;
+    return path;
+  }
+
+  static Future<String?> _getLocalVideoFilePath(
+    LocalAsset asset,
+    AssetEntityLoader? assetEntityLoader,
+  ) async {
+    String? filePath;
+    if (asset.assetEntity != null) {
+      final file = await asset.assetEntity!.file;
+      if (file != null) filePath = file.path;
+    }
+    if (filePath == null && assetEntityLoader != null) {
+      final entity = await assetEntityLoader.loadAsync(asset);
+      if (entity != null) {
+        final file = await entity.file;
+        if (file != null) filePath = file.path;
+      }
+    }
+    if (filePath == null) return null;
+    if (!await File(filePath).exists()) return null;
+    return filePath;
+  }
+
+  /// 解析远程视频 URL 与请求头（供 PlaybackBackendFactory 使用）
+  ///
+  /// 若无远程源或 serverUrl 不可用则返回 null。
+  static Future<({String url, Map<String, String> headers})?> getRemoteUrlAndHeaders(
+    BaseAsset asset, {
+    String? serverUrl,
+    String? videoIdOverride,
+  }) async {
+    try {
+      if (asset.storage == AssetState.local && videoIdOverride == null) return null;
+      final baseUrl = await _resolveBaseUrl(serverUrl);
+      if (baseUrl.isEmpty) return null;
+      final headers = await ApiService.getRequestHeaders();
+      final mediaId = videoIdOverride ?? asset.remoteId ?? asset.id;
+
+      if (videoIdOverride != null) {
+        final previewUrl = '$baseUrl/api/v1/media/$mediaId/download/preview';
+        final originalUrl = '$baseUrl/api/v1/media/$mediaId/download/original';
+        try {
+          final response = await http.head(
+            Uri.parse(previewUrl),
+            headers: Map<String, String>.from(headers),
+          ).timeout(const Duration(seconds: 10));
+          final url = response.statusCode == 200 ? previewUrl : originalUrl;
+          return (url: url, headers: headers);
+        } catch (_) {
+          return (url: originalUrl, headers: headers);
+        }
+      }
+
+      final url = '$baseUrl/api/v1/media/$mediaId/download/original';
+      return (url: url, headers: headers);
+    } catch (e, stackTrace) {
+      _log.warning(
+        'Failed to get remote url for asset: ${asset.id}',
+        e,
+        stackTrace,
+      );
+      return null;
+    }
+  }
 }

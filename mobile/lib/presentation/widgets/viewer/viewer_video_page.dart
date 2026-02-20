@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
-import 'package:native_video_player/native_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
+import 'package:prismbox/features/video_playback/viewer_playback_controller.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_manager.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_state_provider.dart';
 import 'package:prismbox/presentation/widgets/viewer/viewer_video_controller.dart';
@@ -76,14 +76,18 @@ class ViewerVideoPage extends ConsumerStatefulWidget {
 
 class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
     with WidgetsBindingObserver {
-  NativeVideoPlayerController? _controller;
+  ViewerPlaybackController? _controller;
+  VoidCallback? _statusListener;
+  VoidCallback? _livePhotoPositionListener;
   bool _isLoading = true;
   bool _hasError = false;
   bool _isVideoReady = false;
   double? _aspectRatio;
-  bool _shouldPlayOnForeground = true; // 应用恢复时是否继续播放
-  bool _isVisible = false; // 用于延迟显示，避免闪烁（参考 Immich）
-  String? _currentVideoId; // 本地状态跟踪当前视频（参考 Immich）
+  bool _shouldPlayOnForeground = true;
+  bool _isVisible = false;
+  String? _currentVideoId;
+  /// Live Photo 播完一次后已重置 provider 的标记，下次开始播放时清空
+  bool _livePhotoEndHandled = false;
 
   @override
   void initState() {
@@ -217,29 +221,56 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // 参考 Immich 的 useEffect cleanup：先暂停（立即停止声音/画面）再 stop 释放，避免退出预览后仍后台播放
-    final playerController = _controller;
-    if (playerController != null) {
-      _removeListeners(playerController);
-      if (_isControllerValid(playerController)) {
-        playerController.pause().then((_) {
-          playerController.stop().catchError((error) {
-            _log.fine('dispose: 停止视频时出错: $error');
-          });
-        }).catchError((error) {
-          _log.fine('dispose: 暂停视频时出错: $error');
-          playerController.stop().catchError((e) => _log.fine('dispose: stop 失败: $e'));
-        });
-      } else {
-        playerController.stop().catchError((error) {
-          _log.fine('dispose: 停止视频时出错: $error');
-        });
-      }
+    final controller = _controller;
+    final listener = _statusListener;
+    final positionListener = _livePhotoPositionListener;
+    if (controller != null) {
+      if (listener != null) controller.removeStatusListener(listener);
+      if (positionListener != null) controller.removePositionListener(positionListener);
+      controller.pause().catchError((e) => _log.fine('dispose: pause 失败: $e'));
+      controller.dispose().catchError((e) => _log.fine('dispose: dispose 失败: $e'));
     }
-    // 禁用唤醒锁
     WakelockPlus.disable();
-    // 注意：controller 的底层原生实现由 NativeVideoPlayerView 自动管理
     super.dispose();
+  }
+
+  static bool _isAtEnd(ViewerPlaybackController c) {
+    return c.duration > Duration.zero &&
+        c.position >= c.duration - const Duration(milliseconds: 100);
+  }
+
+  /// Live Photo 播完：下一帧重置 provider 以切回照片显示，暂停并 seek 到 0；并清除 manager 缓存，以便再次长按时创建新 controller
+  void _applyLivePhotoEndReturnToPhoto(ViewerPlaybackController controller) {
+    if (!_livePhotoEndHandled && mounted) {
+      _livePhotoEndHandled = true;
+      widget.videoManager.removeCachedController(
+        videoIdOverride: widget.livePhotoVideoId,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(isPlayingMotionVideoProvider.notifier).state = false;
+      });
+      unawaited(controller.pause().catchError((e) {
+        _log.fine('Live Photo 播完 pause 失败', e);
+      }));
+      unawaited(controller.seekTo(Duration.zero).catchError((e) {
+        _log.warning('Live Photo 播完 seekTo(0) 失败', e);
+      }));
+    }
+  }
+
+  /// 由 position 监听调用，用于可靠检测 Live Photo 播完并切回照片
+  /// 片尾时即视为结束（不要求 isPlaying 已为 false），避免时序导致漏检
+  void _checkLivePhotoEndAndReturnToPhoto() {
+    if (!mounted || !widget.isLivePhotoVideo) return;
+    final controller = _controller;
+    if (controller == null || !controller.isReady) return;
+    final isCurrent = ref.read(currentVideoAssetIdProvider) == widget.assetId ||
+        widget.videoManager.getCurrentVideoAssetId() == widget.assetId;
+    if (!isCurrent) return;
+    if (_isAtEnd(controller)) {
+      _applyLivePhotoEndReturnToPhoto(controller);
+    }
   }
 
   @override
@@ -249,26 +280,22 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
     if (controller == null) return;
 
     if (state == AppLifecycleState.resumed && _shouldPlayOnForeground) {
-      // 应用恢复时继续播放（直接操作本地 controller）
       if (_isControllerValid(controller)) {
         controller.play().catchError((_) {});
       }
     } else if (state == AppLifecycleState.paused) {
-      // 应用进入后台时暂停播放（直接操作本地 controller）
       if (_isControllerValid(controller)) {
-        controller.isPlaying().then((isPlaying) {
-          if (isPlaying) {
-            _shouldPlayOnForeground = true;
-            controller.pause().catchError((_) {});
-          } else {
-            _shouldPlayOnForeground = false;
-          }
-        }).catchError((_) {});
+        if (controller.isPlaying) {
+          _shouldPlayOnForeground = true;
+          controller.pause().catchError((_) {});
+        } else {
+          _shouldPlayOnForeground = false;
+        }
       }
     }
   }
 
-  /// 初始化视频
+  /// 初始化视频：通过工厂获取 ViewerPlaybackController，设置 loop/volume 与状态监听
   Future<void> _initializeVideo() async {
     _log.info('_initializeVideo: 开始初始化, assetId=${widget.assetId}');
     setState(() {
@@ -277,26 +304,17 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
       _isVideoReady = false;
     });
 
-    // 检查是否在可见范围内
     if (!widget.visiblePageIndices.contains(widget.currentIndex)) {
       _log.warning(
         '_initializeVideo: 不在可见范围内, currentIndex=${widget.currentIndex}, visibleIndices=${widget.visiblePageIndices}',
       );
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
-    // 参考 Immich: 不重用已存在的 controller，每次都让 NativeVideoPlayerView 创建新的 controller
-    _log.info('_initializeVideo: 等待 NativeVideoPlayerView 创建控制器');
-    // 不设置 _isLoading = false，等待 _onPlaybackReady 来更新状态
-    // 但也不阻塞 UI，让 NativeVideoPlayerView 可以显示
-    // 注意：这里只预加载视频源，不阻塞 UI 显示
-    // NativeVideoPlayerView 会在 onViewReady 回调中加载视频
     try {
-      _log.info('_initializeVideo: 开始获取视频源');
-      final videoSource = await widget.videoManager.getVideoSource(
+      _log.info('_initializeVideo: 获取播放控制器');
+      final controller = await widget.videoManager.getPlaybackController(
         widget.asset,
         widget.assetId,
         serverUrl: widget.serverUrl,
@@ -304,24 +322,36 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         videoIdOverride: widget.livePhotoVideoId,
       );
 
-      if (mounted) {
-        if (videoSource == null) {
-          _log.severe('_initializeVideo: 视频源获取失败，videoSource 为 null');
-          setState(() {
-            _hasError = true;
-            _isLoading = false;
-          });
-        } else {
-          _log.info('_initializeVideo: 视频源获取成功，等待 NativeVideoPlayerView 创建控制器');
-          // 视频源获取成功，允许显示 NativeVideoPlayerView
-          // 不设置 _isLoading = false，等待 _onPlaybackReady 来更新状态
-          // 但也不阻塞 UI，让 NativeVideoPlayerView 可以显示
-        }
-      } else {
-        _log.warning('_initializeVideo: widget 已卸载，跳过状态更新');
+      if (!mounted) return;
+      if (controller == null) {
+        _log.severe('_initializeVideo: 获取播放控制器失败');
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+        return;
       }
+
+      _statusListener = () => _onPlaybackStatusMaybeReady();
+      controller.addStatusListener(_statusListener!);
+      if (widget.isLivePhotoVideo) {
+        _livePhotoPositionListener = () => _checkLivePhotoEndAndReturnToPhoto();
+        controller.addPositionListener(_livePhotoPositionListener!);
+      }
+      // Live Photo 必须在起播前完成 setLoop(false)，避免平台未应用导致继续循环
+      await controller.setLoop(!widget.isLivePhotoVideo).catchError((e) {
+        _log.warning('_initializeVideo: setLoop 失败', e);
+      });
+      final muted = ref.read(viewerMutedProvider);
+      unawaited(controller.setVolume(muted ? 0.0 : 1.0).catchError((e) {
+        _log.warning('_initializeVideo: setVolume 失败', e);
+      }));
+
+      if (!mounted) return;
+      setState(() => _controller = controller);
+      _onPlaybackStatusMaybeReady();
     } catch (e, stackTrace) {
-      _log.severe('_initializeVideo: 获取视频源时发生错误', e, stackTrace);
+      _log.severe('_initializeVideo: 发生错误', e, stackTrace);
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -331,246 +361,72 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
     }
   }
 
-  /// 检查 controller 是否有效（原生实现是否还存在）
-  bool _isControllerValid(NativeVideoPlayerController? controller) {
-    if (controller == null) return false;
-    try {
-      final info = controller.playbackInfo;
-      return info != null;
-    } catch (e) {
-      _log.warning('_isControllerValid: controller 无效，原生实现可能已被销毁: $e');
-      return false;
-    }
-  }
-
-  /// 移除监听器（参考 Immich 的 removeListeners）
-  void _removeListeners(NativeVideoPlayerController controller) {
-    controller.onPlaybackPositionChanged.removeListener(_onPlaybackPositionChanged);
-    controller.onPlaybackStatusChanged.removeListener(_onPlaybackStatusChanged);
-    controller.onPlaybackReady.removeListener(_onPlaybackReady);
-    controller.onPlaybackEnded.removeListener(_onPlaybackEnded);
-  }
-
-  /// 设置监听器
-  void _setupListeners(NativeVideoPlayerController controller) {
-    _log.info('_setupListeners: 添加监听器, assetId=${widget.assetId}');
-    // 先移除可能存在的旧监听器，避免重复添加（当重用控制器时）
-    _removeListeners(controller);
-    // 添加新的监听器
-    controller.onPlaybackReady.addListener(_onPlaybackReady);
-    controller.onPlaybackStatusChanged.addListener(_onPlaybackStatusChanged);
-    controller.onPlaybackPositionChanged.addListener(
-      _onPlaybackPositionChanged,
-    );
-    controller.onPlaybackEnded.addListener(_onPlaybackEnded);
-    _log.info('_setupListeners: 监听器添加完成');
-  }
-
-  /// 播放就绪回调
-  /// 
-  /// 参考 Immich 的实现：开头检查 isCurrent，只有当前视频才执行播放逻辑
-  void _onPlaybackReady() {
-    _log.info('_onPlaybackReady: 播放就绪回调触发, assetId=${widget.assetId}');
-    
-    // 参考 Immich: 开头检查 isCurrent，如果不是当前视频直接返回
-    final currentVideoIdFromProvider = ref.read(currentVideoAssetIdProvider);
-    final currentVideoId = currentVideoIdFromProvider ?? 
-        widget.videoManager.getCurrentVideoAssetId();
-    final isCurrent = widget.assetId == currentVideoId;
-    
-    if (!isCurrent) {
-      _log.info('_onPlaybackReady: 不是当前视频，直接返回');
-      return;
-    }
-    
-    if (!mounted) {
-      _log.warning('_onPlaybackReady: widget 已卸载，忽略回调');
-      return;
-    }
-    final controller = _controller;
-    if (controller == null) {
-      _log.warning('_onPlaybackReady: controller 为 null，忽略回调');
-      return;
-    }
-
-    final playbackInfo = controller.playbackInfo;
-    final videoInfo = controller.videoInfo;
-
-    _log.info(
-      '_onPlaybackReady: playbackInfo=${playbackInfo != null}, videoInfo=${videoInfo != null}',
-    );
-
-    if (playbackInfo != null && videoInfo != null) {
-      _log.info(
-        '_onPlaybackReady: 视频信息完整, width=${videoInfo.width}, height=${videoInfo.height}, duration=${videoInfo.duration}',
-      );
-      
-      // 重要：videoInfo 返回的是视频文件的原始宽高（未考虑 rotation/orientation）
-      // 但 NativeVideoPlayer 会自动应用 rotation，实际显示的尺寸可能不同
-      // 因此不应该直接使用 videoInfo 的宽高比，而应该使用 AssetService 返回的宽高比
-      // （AssetService 已考虑 orientation，返回的是实际显示尺寸）
-      // 
-      // 我们仍然需要更新视频就绪状态，但不更新宽高比
-      setState(() {
-        _isVideoReady = true;
-        _isLoading = false;
-        // 不更新 _aspectRatio，保持使用 AssetService 返回的宽高比
-        // 如果在 _fetchAspectRatioAsync 中已经设置了正确的宽高比，就不需要修改
-        // 如果还没有设置（可能 AssetService 还在加载），使用当前值（可能是临时值）
-        _log.fine(
-          '_onPlaybackReady: 视频就绪，保持当前宽高比: $_aspectRatio',
-        );
-        // 静音状态由 viewerMutedProvider 管理
-        // 确保视频可见
-        _isVisible = true;
-      });
-
-      // 是当前视频，自动播放（直接操作本地 controller，对齐 Immich）
-      // 再次检查 controller 是否有效（防止底层实现已被销毁）
-      if (!_isControllerValid(controller)) {
-        _log.warning('_onPlaybackReady: controller 无效，原生实现可能已被销毁，跳过播放');
-        return;
-      }
-      
-      _log.info('_onPlaybackReady: 是当前视频，开始播放');
-      controller.play().catchError((error) {
-        _log.warning('_onPlaybackReady: 播放失败', error);
-      });
-    } else {
-      _log.warning(
-        '_onPlaybackReady: 视频信息不完整, playbackInfo=${playbackInfo != null}, videoInfo=${videoInfo != null}',
-      );
-    }
-  }
-
-  /// 播放状态变化回调
-  void _onPlaybackStatusChanged() {
+  void _onPlaybackStatusMaybeReady() {
     if (!mounted) return;
     final controller = _controller;
     if (controller == null) return;
-
-    final playbackInfo = controller.playbackInfo;
-    if (playbackInfo != null) {
-      _log.fine(
-        '_onPlaybackStatusChanged: status=${playbackInfo.status}, position=${playbackInfo.position}',
-      );
-      // 根据播放状态管理唤醒锁
-      if (playbackInfo.status == PlaybackStatus.playing) {
-        WakelockPlus.enable();
-      } else {
-        WakelockPlus.disable();
-      }
+    if (controller.isPlaying) {
+      WakelockPlus.enable();
+      _livePhotoEndHandled = false;
+    } else {
+      WakelockPlus.disable();
     }
-    // 移除空的 setState，避免频繁重建
-    // 如果需要更新 UI，应该只在必要时调用 setState
+    if (!controller.isReady) return;
+    final currentVideoId = ref.read(currentVideoAssetIdProvider) ??
+        widget.videoManager.getCurrentVideoAssetId();
+    final isCurrent = widget.assetId == currentVideoId;
+    setState(() {
+      _isVideoReady = true;
+      _isLoading = false;
+      _isVisible = true;
+    });
+    // Live Photo 播完：回到静态图并 seek 到 0，便于下次再播；不再自动播放
+    final atEnd = _isAtEnd(controller);
+    if (widget.isLivePhotoVideo &&
+        isCurrent &&
+        !controller.isPlaying &&
+        atEnd &&
+        !_livePhotoEndHandled) {
+      _applyLivePhotoEndReturnToPhoto(controller);
+    } else if (isCurrent &&
+        !(widget.isLivePhotoVideo && atEnd)) {
+      // Live Photo 已到片尾时一律不再调用起播，避免时序导致误触发 seek(0)+play() 形成循环
+      _log.info('_onPlaybackStatusMaybeReady: 是当前视频，开始播放');
+      _playFromStartIfNeeded(controller);
+    }
   }
 
-  /// 播放进度变化回调
-  void _onPlaybackPositionChanged() {
+  bool _isControllerValid(ViewerPlaybackController? controller) {
+    return controller != null && controller.isReady;
+  }
+
+  void _onPlaybackReady() {
     if (!mounted) return;
-    // 移除空的 setState，避免频繁重建
-    // 如果需要更新进度条，应该使用 ValueListenableBuilder 或其他方式
+    final controller = _controller;
+    if (controller == null || !controller.isReady) return;
+    final currentVideoId = ref.read(currentVideoAssetIdProvider) ??
+        widget.videoManager.getCurrentVideoAssetId();
+    if (widget.assetId != currentVideoId) return;
+    // Live Photo 已到片尾时不自动起播，避免循环
+    if (widget.isLivePhotoVideo && _isAtEnd(controller)) return;
+    _playFromStartIfNeeded(controller);
   }
 
-  /// 播放结束回调
-  void _onPlaybackEnded() {
-    if (!mounted) return;
-    if (widget.isLivePhotoVideo) {
-      ref.read(isPlayingMotionVideoProvider.notifier).state = false;
-    }
-  }
-
-  /// 初始化控制器（由 NativeVideoPlayerView 的 onViewReady 调用）
-  /// 
-  /// 参考 Immich 的实现：
-  /// - 只检查本地 _controller 状态，不检查从 ViewerVideoManager 获取的 controller
-  /// - 直接调用 nc.loadVideoSource(source)，然后设置本地状态
-  Future<void> _initController(NativeVideoPlayerController controller) async {
-    _log.info('_initController: 开始初始化控制器, assetId=${widget.assetId}');
-    
-    // 参考 Immich: if (controller.value != null || !context.mounted) return;
-    // 只检查本地 _controller 状态，不检查从 ViewerVideoManager 获取的 controller
-    if (_controller != null || !mounted) {
-      _log.warning('_initController: controller 已存在或 widget 已卸载，跳过初始化');
-      return;
-    }
-
-    try {
-      // 获取视频源
-      _log.info('_initController: 开始获取视频源');
-      final videoSource = await widget.videoManager.getVideoSource(
-        widget.asset,
-        widget.assetId,
-        serverUrl: widget.serverUrl,
-        assetEntityLoader: widget.assetEntityLoader,
-        videoIdOverride: widget.livePhotoVideoId,
-      );
-
-      if (!mounted) {
-        _log.warning('_initController: widget 已卸载，跳过后续操作');
-        return;
-      }
-
-      if (videoSource == null) {
-        _log.severe('_initController: 视频源为空，设置错误状态');
-        if (widget.isLivePhotoVideo) {
-          ref.read(isPlayingMotionVideoProvider.notifier).state = false;
+  /// 若为 Live Photo 且当前在片尾，先 seek 到 0 再播放，避免复用控制器时无法再次播放
+  void _playFromStartIfNeeded(ViewerPlaybackController controller) {
+    final duration = controller.duration;
+    final position = controller.position;
+    if (widget.isLivePhotoVideo &&
+        duration > Duration.zero &&
+        position >= duration - const Duration(milliseconds: 100)) {
+      unawaited(controller.seekTo(Duration.zero).then((_) {
+        if (mounted) {
+          controller.play().catchError((e) => _log.warning('播放失败', e));
         }
-        setState(() {
-          _hasError = true;
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 设置监听器（使用 _setupListeners 确保先移除旧的监听器，避免重复添加）
-      _setupListeners(controller);
-
-      // 参考 Immich: 直接调用 nc.loadVideoSource(source)
-      _log.info('_initController: 开始加载视频源');
-      unawaited(
-        controller.loadVideoSource(videoSource).catchError((error) {
-          _log.severe('_initController: 加载视频源失败', error);
-          if (mounted) {
-            if (widget.isLivePhotoVideo) {
-              ref.read(isPlayingMotionVideoProvider.notifier).state = false;
-            }
-            setState(() {
-              _hasError = true;
-              _isLoading = false;
-            });
-          }
-        }),
-      );
-
-      // 参考 Immich: 在 controller 刚创建时设置状态（此时原生实现肯定存在）
-      // Live Photo 不循环，播完回图；普通视频默认循环
-      final loop = !widget.isLivePhotoVideo;
-      unawaited(controller.setLoop(loop).catchError((error) {
-        _log.warning('_initController: 设置循环播放失败', error);
-      }));
-      
-      // 使用会话级静音状态（viewerMutedProvider），滑动到下一视频时保持用户选择
-      final muted = ref.read(viewerMutedProvider);
-      unawaited(controller.setVolume(muted ? 0.0 : 1.0).catchError((error) {
-        _log.warning('_initController: 设置音量失败', error);
-      }));
-
-      // 参考 Immich: controller.value = nc; (设置本地状态)
-      _log.info('_initController: 设置本地 controller 状态');
-      setState(() {
-        _controller = controller;
-      });
-
-      // 注意：不再注册 controller 到 ViewerVideoManager，每个 Widget 独立管理（对齐 Immich）
-    } catch (e, stackTrace) {
-      _log.severe('_initController: 发生异常', e, stackTrace);
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-          _isLoading = false;
-        });
-      }
+      // ignore: invalid_return_type_for_catch_error
+      }).catchError((e) => _log.warning('seekTo(0) 失败', e)));
+    } else {
+      controller.play().catchError((e) => _log.warning('播放失败', e));
     }
   }
 
@@ -588,31 +444,19 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
     // 监听会话级静音状态变化，同步到当前 controller（例如从其他入口更新时）
     ref.listen<bool>(viewerMutedProvider, (previous, next) {
       final controller = _controller;
-      if (controller != null && isCurrent && mounted && _isControllerValid(controller)) {
-        controller.setVolume(next ? 0.0 : 1.0).catchError((error) {
-          _log.warning('viewerMutedProvider 变化: 设置音量失败', error);
+      if (controller != null && isCurrent && mounted) {
+        controller.setVolume(next ? 0.0 : 1.0).catchError((e) {
+          _log.warning('viewerMutedProvider: setVolume 失败', e);
         });
       }
     });
 
-    // 监听当前视频状态变化，响应式地处理播放逻辑（参考 Immich 实现）
     ref.listen<String?>(currentVideoAssetIdProvider, (previous, next) {
       final controller = _controller;
-      
-      // 参考 Immich: 如果该视频不再是当前视频，立即暂停并移除监听器，避免后台继续播放
       if (controller != null && next != widget.assetId && next != previous) {
-        _log.info('build: 视频不再是当前视频，暂停并移除监听器');
-        if (_isControllerValid(controller)) {
-          controller.pause().catchError((error) {
-            _log.fine('build: 暂停上一视频时出错: $error');
-          });
-        }
-        _removeListeners(controller);
-        if (mounted) {
-          setState(() {
-            _isVisible = false;
-          });
-        }
+        _log.info('build: 视频不再是当前视频，暂停');
+        controller.pause().catchError((e) => _log.fine('build: 暂停出错: $e'));
+        if (mounted) setState(() => _isVisible = false);
       }
 
       // 参考 Immich: 使用本地状态跟踪当前视频
@@ -670,10 +514,7 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
       );
     }
 
-    // 如果视频未就绪且没有控制器，显示加载中
-    // 但如果 isCurrent=true，即使没有 controller 也要显示 NativeVideoPlayerView（它会创建 controller）
     if (_isLoading && !_isVideoReady && _controller == null && !isCurrent) {
-      _log.fine('build: 加载中且无控制器且不是当前视频，显示加载指示器');
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
@@ -704,19 +545,11 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
         // 视频播放区域
         // 使用 aspectRatio（如果为 null 则使用临时值 16/9）
         // 这样 NativeVideoPlayerView 就能被创建，onViewReady 会被调用
-        if (isCurrent && _isVisible)
+        if (isCurrent && _isVisible && controller != null)
           Center(
             child: AspectRatio(
               aspectRatio: _aspectRatio ?? 16 / 9,
-              child: NativeVideoPlayerView(
-                key: ValueKey(widget.assetId),
-                onViewReady: (controller) {
-                  _log.info(
-                    '_buildVideoPlayerWidget: onViewReady 回调触发, assetId=${widget.assetId}',
-                  );
-                  _initController(controller);
-                },
-              ),
+              child: controller.buildVideoView(),
             ),
           ),
 
@@ -743,20 +576,18 @@ class _ViewerVideoPageState extends ConsumerState<ViewerVideoPage>
           Positioned(
             left: 0,
             right: 0,
-            bottom: MediaQuery.of(context).padding.bottom + 80, // 底部控制栏高度约 80px
+            bottom: MediaQuery.of(context).padding.bottom + 80,
             child: IgnorePointer(
-              ignoring: false, // 控制栏按钮需要接收点击事件
+              ignoring: false,
               child: VideoPlayerControls(
-                controller: controller,
+                playbackController: controller,
                 showControls: widget.showControls,
                 isMuted: ref.watch(viewerMutedProvider),
                 onMuteChanged: (muted) async {
                   ref.read(viewerMutedProvider.notifier).state = muted;
-                  if (_isControllerValid(controller)) {
-                    await controller.setVolume(muted ? 0.0 : 1.0).catchError((error) {
-                      _log.warning('onMuteChanged: 设置音量失败', error);
-                    });
-                  }
+                  await controller.setVolume(muted ? 0.0 : 1.0).catchError((e) {
+                    _log.warning('onMuteChanged: setVolume 失败', e);
+                  });
                   widget.onMuteChanged?.call(muted);
                 },
                 onTap: widget.onToggleControls,

@@ -857,8 +857,17 @@ func (h *Handler) DownloadOriginal(c *gin.Context) {
 		return
 	}
 
-	// 5. 提供文件
-	h.downloadFile(c, media.LocalPath, mimeType)
+	// 5. 提供文件（传入 reader、大小与文件名以支持 Range 与 Content-Length）
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), media.LocalPath)
+	if err != nil {
+		h.log.Error("failed to get file reader for download",
+			logger.Error(err),
+			logger.String("storage_key", media.LocalPath),
+		)
+		apiresponse.Error(c, "File not available on server")
+		return
+	}
+	h.downloadFile(c, reader, mimeType, media.FileSize, getFilename(media.LocalPath))
 }
 
 // DownloadPreview 下载预览文件
@@ -935,8 +944,27 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 		return
 	}
 
-	// 6. 提供文件
-	h.downloadFile(c, storageKey, mimeType)
+	// 6. 提供文件（传入 reader、大小与文件名以支持 Content-Length）
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+	if err != nil {
+		h.log.Error("failed to get file reader for preview download",
+			logger.Error(err),
+			logger.String("storage_key", storageKey),
+		)
+		apiresponse.Error(c, "Preview not available on server")
+		return
+	}
+	size, err := h.mediaService.GetFileSize(c.Request.Context(), storageKey)
+	if err != nil {
+		_ = reader.Close()
+		h.log.Error("failed to get file size for preview",
+			logger.Error(err),
+			logger.String("storage_key", storageKey),
+		)
+		apiresponse.Error(c, "Preview not available on server")
+		return
+	}
+	h.downloadFile(c, reader, mimeType, size, getFilename(storageKey))
 }
 
 // DownloadThumbnail 下载缩略图
@@ -1057,48 +1085,109 @@ func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	c.DataFromReader(200, -1, mimeType, thumbnailResult.Reader, nil)
 }
 
-// downloadFile 从存储提供文件下载
-func (h *Handler) downloadFile(c *gin.Context, storageKey string, mimeType string) {
-	// 获取文件读取器
-	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
-	if err != nil {
-		h.log.Error("failed to get file reader",
-			logger.Error(err),
-			logger.String("storage_key", storageKey),
-		)
-		apiresponse.Error(c, "File not available on server")
-		return
-	}
+// downloadFile 从已打开的 reader 提供文件下载，支持 Range 请求与 Content-Length
+func (h *Handler) downloadFile(c *gin.Context, reader io.ReadCloser, mimeType string, totalSize int64, filename string) {
 	defer reader.Close()
 
-	// 使用传入的MimeType，如果为空则使用默认值
 	contentType := mimeType
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 	c.Header("Content-Type", contentType)
 
-	// 对于图片和视频，使用inline；对于其他文件，使用attachment
 	disposition := "inline"
 	if !strings.HasPrefix(contentType, "image/") && !strings.HasPrefix(contentType, "video/") {
 		disposition = "attachment"
 	}
-	c.Header("Content-Disposition", fmt.Sprintf("%s; filename=\"%s\"", disposition, getFilename(storageKey)))
+	c.Header("Content-Disposition", fmt.Sprintf("%s; filename=\"%s\"", disposition, filename))
 
-	// 将文件内容写入响应
+	// 解析 Range（仅支持单段 bytes=start-end）
+	rangeHeader := c.GetHeader("Range")
+	start, end, ok := parseRange(rangeHeader, totalSize)
+	if ok {
+		seeker, canSeek := reader.(io.Seeker)
+		if canSeek {
+			if _, err := seeker.Seek(start, io.SeekStart); err != nil {
+				h.log.Warn("range seek failed, falling back to full response", logger.Error(err))
+			} else {
+				partLen := end - start + 1
+				c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, totalSize))
+				c.Header("Content-Length", strconv.FormatInt(partLen, 10))
+				c.Status(http.StatusPartialContent)
+				if _, err := io.CopyN(c.Writer, reader, partLen); err != nil {
+					if !c.Writer.Written() {
+						apiresponse.Error(c, "Failed to serve file")
+					}
+					return
+				}
+				return
+			}
+		}
+	}
+
+	// 无 Range 或无法 Seek：整文件，必须设置 Content-Length 以满足 iOS 等客户端
+	c.Header("Content-Length", strconv.FormatInt(totalSize, 10))
+	c.Status(http.StatusOK)
 	if _, err := io.Copy(c.Writer, reader); err != nil {
-		h.log.Error("failed to write file to response",
-			logger.Error(err),
-			logger.String("storage_key", storageKey),
-		)
-		// 如果响应已经开始写入，无法返回错误响应
+		h.log.Error("failed to write file to response", logger.Error(err))
 		if !c.Writer.Written() {
 			apiresponse.Error(c, "Failed to serve file")
 		}
-		return
 	}
+}
 
-	c.Status(http.StatusOK)
+// parseRange 解析 "Range: bytes=start-end"，返回 [start,end] 闭区间；不支持多段。
+// 支持格式：bytes=0-499、bytes=500-、bytes=-500。totalSize<=0 时返回 false。
+func parseRange(s string, totalSize int64) (start, end int64, ok bool) {
+	if totalSize <= 0 {
+		return 0, 0, false
+	}
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(strings.ToLower(s), "bytes=") {
+		return 0, 0, false
+	}
+	s = s[6:]
+	parts := strings.SplitN(s, "-", 2)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	var startVal, endVal int64
+	if parts[0] == "" {
+		// bytes=-suffix → 最后 suffix 字节
+		endVal = totalSize - 1
+		if endVal < 0 {
+			endVal = 0
+		}
+		if parts[1] == "" {
+			return 0, 0, false
+		}
+		suffix, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
+		if err != nil || suffix <= 0 {
+			return 0, 0, false
+		}
+		startVal = endVal - suffix + 1
+		if startVal < 0 {
+			startVal = 0
+		}
+		return startVal, endVal, true
+	}
+	startVal, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
+	if err != nil || startVal < 0 || startVal >= totalSize {
+		return 0, 0, false
+	}
+	if parts[1] == "" {
+		// bytes=start-
+		endVal = totalSize - 1
+		return startVal, endVal, true
+	}
+	endVal, err = strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
+	if err != nil || endVal < startVal {
+		return 0, 0, false
+	}
+	if endVal >= totalSize {
+		endVal = totalSize - 1
+	}
+	return startVal, endVal, true
 }
 
 // getFilename 从storageKey提取文件名

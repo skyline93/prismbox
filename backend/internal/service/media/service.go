@@ -109,6 +109,8 @@ type Service interface {
 	GetAuthorizedMedia(ctx context.Context, mediaUUID string, userID *uint) (*models.Media, error)
 	// GetFileReader 获取文件读取器
 	GetFileReader(ctx context.Context, storageKey string) (io.ReadCloser, error)
+	// GetFileSize 获取存储文件大小（用于 Content-Length 等）
+	GetFileSize(ctx context.Context, storageKey string) (int64, error)
 	// BuildThumbnailKey 构建缩略图存储key
 	BuildThumbnailKey(media *models.Media) (string, error)
 	// BuildDynamicThumbnailKey 构建动态尺寸缩略图存储key
@@ -607,6 +609,18 @@ func (s *service) GetFileReader(ctx context.Context, storageKey string) (io.Read
 		return nil, fmt.Errorf("storage key is empty")
 	}
 	return s.storageManager.Get(ctx, storageKey)
+}
+
+// GetFileSize 获取存储文件大小
+func (s *service) GetFileSize(ctx context.Context, storageKey string) (int64, error) {
+	if storageKey == "" {
+		return 0, fmt.Errorf("storage key is empty")
+	}
+	info, err := s.storageManager.Stat(ctx, storageKey)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size, nil
 }
 
 // BuildThumbnailKey 构建缩略图存储key

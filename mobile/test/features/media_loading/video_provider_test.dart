@@ -1,14 +1,31 @@
 // test/features/media_loading/video_provider_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:prismbox/data/database/enums/asset_type.dart';
 import 'package:prismbox/domain/entities/local_asset.dart';
 import 'package:prismbox/domain/entities/remote_asset.dart';
-import 'package:prismbox/data/database/enums/asset_type.dart';
+import 'package:prismbox/features/media_loading/video_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('VideoProvider', () {
+    group('getLocalFilePath', () {
+      test('仅远程资产应返回 null', () async {
+        final remote = RemoteAsset(
+          id: 'remote-uuid',
+          name: 'v.mp4',
+          ownerId: 'owner',
+          checksum: 'c',
+          type: AssetType.video,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        final path = await VideoProvider.getLocalFilePath(remote);
+        expect(path, isNull);
+      });
+    });
+
     group('getVideoSource', () {
       test('本地视频资产类型验证', () {
         // 测试资产类型判断

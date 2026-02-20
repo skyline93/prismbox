@@ -1,8 +1,5 @@
-# media-viewer Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change refactor-media-viewer-page. Update Purpose after archive.
-## Requirements
 ### Requirement: 媒体查看器页面 UI 组件结构
 
 媒体查看器页面（MediaViewerPage）的 UI 组件 SHALL 遵循原子组件拆分原则，将大型 UI 逻辑拆分为独立的、可复用的组件和业务逻辑类。
@@ -124,106 +121,7 @@ TBD - created by archiving change refactor-media-viewer-page. Update Purpose aft
 - **AND** 页面切换功能 SHALL 正常工作（左右滑动切换媒体）
 - **AND** 收藏功能 SHALL 正常工作（状态显示、切换操作、数据库更新）
 
-### Requirement: Live Photo 检测与播放入口
-
-媒体查看器 SHALL 在当前资产为 Live Photo（`asset.isMotionPhoto == true`）时提供「播放 Live 视频」入口，并在用户未触发播放时仅显示静态主图；SHALL 根据「当前是否在播 Live 视频」的单一状态在静态主图视图与 Live 短视频视图之间切换。
-
-#### Scenario: 当前为 Live Photo 时显示播放按钮
-
-- **WHEN** 媒体查看器当前页对应的资产满足 `asset.isMotionPhoto == true` 且认为有可播放的 Live 视频（如 `livePhotoVideoId != null`，或后续可加可用性检查）
-- **THEN** 顶部或控制栏 SHALL 显示「播放 Live 视频」按钮（或等价入口）
-- **AND** 默认展示 SHALL 为静态主图（ViewerImagePage），不在此阶段加载 Live 视频
-
-#### Scenario: 当前非 Live Photo 或无视频时不显示播放按钮
-
-- **WHEN** 当前资产满足 `asset.isMotionPhoto == false` 或已知 Live 视频不可用（如 404、未下载且离线）
-- **THEN** 不显示播放 Live 按钮或 SHALL 显示为不可用（灰显并可提示）
-- **AND** 仅展示主图，无播放入口
-
-#### Scenario: 点击播放后切换为 Live 视频视图
-
-- **WHEN** 用户点击「播放 Live 视频」按钮或通过长按主图触发同一动作
-- **THEN** 系统 SHALL 将「当前是否在播 Live 视频」状态置为 true
-- **AND** 当前页 SHALL 切换为使用 ViewerVideoPage（或同等能力），视频源由 `livePhotoVideoId` 解析（本地文件路径或远程 URL）
-- **AND** Live 视频 SHALL 不循环，播完后自动切回静态主图并将播放状态置为 false
-
-#### Scenario: 页面切换时释放 Live 播放状态
-
-- **WHEN** 用户左右滑动离开当前页（或进入相邻页）
-- **THEN** 若当前页为 Live Photo 且正在播放 Live 视频，SHALL 停止播放并释放播放器
-- **AND** 「当前是否在播 Live 视频」状态 SHALL 重置为 false（或按页作用域重置）
-- **AND** 滑回该页时 SHALL 默认显示静态主图，不自动续播
-
-#### Scenario: 播放状态由单一 Provider 驱动
-
-- **WHEN** 实现播放入口与图/视频切换
-- **THEN** 系统 SHALL 使用单一状态源（如 `isPlayingMotionVideoProvider`）驱动播放按钮的显示/隐藏与图标切换、以及当前页是展示 ViewerImagePage 还是 ViewerVideoPage（Live 视频源）
-- **AND** 视频播放器 SHALL 复用现有 ViewerVideoPage/ViewerVideoManager，仅传入 Live 视频源与不循环、播完回图等参数差异
-
-#### Scenario: Live 视频源解析
-
-- **WHEN** 需要播放 Live 视频
-- **THEN** 视频源 SHALL 优先使用本地已下载的 Live 视频文件路径（若存在）
-- **AND** 否则 SHALL 使用与普通视频一致的远程 URL 规则（如 `$serverUrl/assets/{livePhotoVideoId}/video/playback` 或 original），与现有播放与鉴权逻辑兼容
-
-#### Scenario: 播放失败降级
-
-- **WHEN** 用户点击播放后视频加载或解码失败
-- **THEN** 系统 SHALL 提示失败原因并保持或切回静态主图视图
-- **AND** 播放状态 SHALL 置为 false，不阻塞主图浏览
-
-### Requirement: 本地 Live Photo 视频源解析
-
-当媒体查看器播放「本地 Live Photo」关联的 motion 视频时，系统 SHALL 从本地 AssetEntity 获取 motion 视频文件并作为视频源，而非使用远程 URL。仅当 asset 为 LocalAsset 且存在 videoIdOverride（livePhotoVideoId）时走此分支。
-
-#### Scenario: 本地 Live Photo 使用本地 motion 文件
-
-- **WHEN** VideoProvider.getVideoSource 被调用且 `videoIdOverride != null` 且 `asset is LocalAsset`
-- **THEN** 系统 SHALL 不调用远程视频源逻辑（_getRemoteVideoSource）
-- **AND** 系统 SHALL 通过 AssetEntity 获取 motion 视频文件（优先使用 asset.assetEntity，若为空则通过 assetEntityLoader.loadAsync(asset) 获取）
-- **AND** 系统 SHALL 使用平台约定 API（iOS：如 originFileWithSubtype；Android：如 loadFile(withSubtype: true)）取得 motion 文件路径
-- **AND** 系统 SHALL 使用该路径构造并返回 VideoSource.init(path: path, type: VideoSourceType.file)
-
-#### Scenario: 无 AssetEntity 或 motion 文件不可用时降级
-
-- **WHEN** asset 为 LocalAsset 且 videoIdOverride != null，但无法获取 AssetEntity 或 motion 文件获取失败/超时
-- **THEN** 系统 SHALL 返回 null（表示视频源不可用）
-- **AND** 查看器侧已有逻辑将播放失败时切回静态主图并重置 isPlayingMotionVideoProvider，不阻塞用户浏览
-
-### Requirement: 远程 Live Photo 视频预览与下载
-
-当媒体查看器播放或下载「仅云端 Live Photo」关联的 Live 视频时，系统 SHALL 使用 `live_photo_video_id` 构造请求：预览播放时优先使用预览视频 URL，不可用时回退到原片 URL；下载时使用原片 URL。
-
-#### Scenario: 远程 Live 预览优先预览回退原片
-
-- **WHEN** 需要播放远程 Live Photo 的 Live 视频（即 asset 为远程且 `livePhotoVideoId` 非空）
-- **THEN** 系统 SHALL 优先使用该 ID 请求预览 URL（例如 `.../media/{id}/download/preview`）
-- **AND** 若预览返回 4xx 或加载/解码失败，系统 SHALL 回退到原片 URL（例如 `.../media/{id}/download/original`）
-- **AND** 系统 SHALL 不在预览不可用时阻塞播放，仅切换为原片继续播放
-
-#### Scenario: 下载 Live Photo 时使用原片
-
-- **WHEN** 用户对远程 Live Photo 执行下载或导出原片
-- **THEN** 系统 SHALL 使用 `live_photo_video_id` 请求原片 URL（例如 `.../media/{id}/download/original`）获取 Live 视频文件
-- **AND** 系统 SHALL 不在此场景使用预览 URL
-
-### Requirement: 媒体查看器下载按钮
-
-媒体查看器（MediaViewerPage）SHALL 在控制栏（ViewerControlsBar）的 AppBar actions 中提供下载按钮；仅当当前资产为远程资源（asset.remoteId 非空）时该按钮 SHALL 可用或显示。用户点击后系统 SHALL 从当前 BaseAsset 构造 MediaDownloadRequest 并调用 DownloadService.addDownload，并 SHALL 提示已加入下载队列。
-
-#### Scenario: 远程资产显示下载并加入队列
-
-- **WHEN** 当前页对应资产满足 asset.remoteId != null
-- **THEN** 系统 SHALL 显示下载按钮（如 Icons.download）
-- **AND** 用户点击后系统 SHALL 使用 mediaUuid=asset.remoteId、livePhotoVideoUuid=asset.livePhotoVideoId、itemType、filename 构造 MediaDownloadRequest（sourceType=timeline_asset, sourceId=assetId）
-- **AND** 系统 SHALL 调用 DownloadService.addDownload(request)
-- **AND** 系统 SHALL 向用户提示「已加入下载队列」或等价文案
-
-#### Scenario: 仅本地资产不提供下载
-
-- **WHEN** 当前页对应资产无远程 ID（asset.remoteId 为空，仅本地存在）
-- **THEN** 系统 SHALL 不显示下载按钮或 SHALL 将下载按钮置为不可用
-- **AND** 不调用 DownloadService.addDownload（原图已在本地，无需从服务器下载）
+## ADDED Requirements
 
 ### Requirement: 媒体查看器中远程视频可播放
 
@@ -234,4 +132,3 @@ TBD - created by archiving change refactor-media-viewer-page. Update Purpose aft
 - **THEN** 系统 SHALL 使用带认证头的请求加载视频
 - **AND** 用户 SHALL 能够看到视频画面并执行播放、暂停、进度与音量控制
 - **AND** 行为 SHALL 与 video-playback 规格中的「远程视频可播放」一致
-

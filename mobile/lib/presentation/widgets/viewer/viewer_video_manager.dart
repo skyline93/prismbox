@@ -1,15 +1,15 @@
-import 'package:native_video_player/native_video_player.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
-import 'package:prismbox/features/media_loading/video_provider.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
+import 'package:prismbox/features/video_playback/playback_backend_factory.dart';
+import 'package:prismbox/features/video_playback/viewer_playback_controller.dart';
 
 /// 视频播放器管理器
 ///
-/// 负责视频源缓存和可见页面范围管理。
-/// 注意：不再缓存 controller，每个 ViewerVideoPage Widget 独立管理自己的 controller（对齐 Immich 架构）。
+/// 负责播放控制器缓存和可见页面范围管理。
+/// 通过 PlaybackBackendFactory 按源类型（本地/远程）选择引擎并返回 ViewerPlaybackController。
 class ViewerVideoManager {
-  /// 视频源缓存（按 assetId）
-  final Map<String, Future<VideoSource?>> _videoSources = {};
+  /// 播放控制器缓存（按 assetId）
+  final Map<String, Future<ViewerPlaybackController?>> _controllers = {};
 
   /// 当前播放的视频 assetId（用于兜底，主要使用 Provider）
   String? _currentVideoAssetId;
@@ -17,7 +17,7 @@ class ViewerVideoManager {
   /// 可见页面范围（当前页 ± 1，即最多保留 3 页）
   static const int _visiblePageRange = 1;
 
-  /// 获取视频源（用于创建控制器）
+  /// 获取播放控制器
   ///
   /// [asset] 资产对象
   /// [assetId] 资产 ID
@@ -25,8 +25,8 @@ class ViewerVideoManager {
   /// [assetEntityLoader] AssetEntity 加载器（可选）
   /// [videoIdOverride] 视频 ID 覆盖（可选；Live Photo 时传 livePhotoVideoId）
   ///
-  /// 返回 Future&lt;VideoSource?&gt;，如果无法获取则返回 null
-  Future<VideoSource?> getVideoSource(
+  /// 返回 Future&lt;ViewerPlaybackController?&gt;，如果无法获取则返回 null
+  Future<ViewerPlaybackController?> getPlaybackController(
     BaseAsset asset,
     String assetId, {
     String? serverUrl,
@@ -35,37 +35,38 @@ class ViewerVideoManager {
   }) async {
     final cacheKey =
         videoIdOverride != null ? 'live_$videoIdOverride' : assetId;
-    if (_videoSources.containsKey(cacheKey)) {
-      return await _videoSources[cacheKey];
+    if (_controllers.containsKey(cacheKey)) {
+      return await _controllers[cacheKey];
     }
 
-    final videoSourceFuture = VideoProvider.getVideoSource(
-      asset,
+    final future = PlaybackBackendFactory.create(
+      asset: asset,
+      assetId: assetId,
       serverUrl: serverUrl,
       assetEntityLoader: assetEntityLoader,
       videoIdOverride: videoIdOverride,
     );
-    _videoSources[cacheKey] = videoSourceFuture;
+    _controllers[cacheKey] = future;
 
-    return await videoSourceFuture;
+    return await future;
   }
 
+  /// 移除已缓存的播放控制器（如 Live Photo 播完切回照片后，controller 会被 dispose，需清缓存以便再次长按时创建新 controller）
+  ///
+  /// [assetId] 资产 ID（与 getPlaybackController 的 assetId 对应）
+  /// [videoIdOverride] 视频 ID 覆盖（Live Photo 时传 livePhotoVideoId）
+  void removeCachedController({String? assetId, String? videoIdOverride}) {
+    final cacheKey =
+        videoIdOverride != null ? 'live_$videoIdOverride' : assetId;
+    if (cacheKey != null) {
+      _controllers.remove(cacheKey);
+    }
+  }
 
   /// 更新可见页面索引
-  ///
-  /// 注意：不再释放 controller，因为每个 Widget 独立管理自己的 controller
-  ///
-  /// [visibleIndices] 可见页面索引集合
-  void updateVisibleIndices(Set<int> visibleIndices) {
-    // 更新可见页面集合（目前仅用于记录，将来可用于优化）
-  }
+  void updateVisibleIndices(Set<int> visibleIndices) {}
 
   /// 计算可见页面索引范围
-  ///
-  /// [currentIndex] 当前页面索引
-  /// [totalCount] 总页面数
-  ///
-  /// 返回可见页面索引集合
   Set<int> calculateVisibleIndices(int currentIndex, int totalCount) {
     final indices = <int>{};
     for (int i = -_visiblePageRange; i <= _visiblePageRange; i++) {
@@ -78,17 +79,10 @@ class ViewerVideoManager {
   }
 
   /// 设置当前视频 assetId
-  ///
-  /// [assetId] 资产 ID
   void setCurrentVideoAssetId(String? assetId) {
     _currentVideoAssetId = assetId;
   }
 
   /// 获取当前视频 assetId
-  ///
-  /// 返回 String?，如果没有当前视频则返回 null
-  String? getCurrentVideoAssetId() {
-    return _currentVideoAssetId;
-  }
-
+  String? getCurrentVideoAssetId() => _currentVideoAssetId;
 }
