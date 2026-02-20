@@ -61,8 +61,14 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
     );
   }
 
+  /// 占位符与失败重试共享的总时长上限（2 分钟）
+  static const int _retryMaxDurationSeconds = 120;
+
+  /// 渐进式重试间隔（秒）：先短后长，避免频繁请求
+  static const List<int> _retryDelays = [2, 2, 5, 5, 10, 10, 15, 15, 20, 20, 30];
+
   /// 加载缩略图流
-  /// 使用 Stream<ui.Codec> 支持自动更新：当缓存过期时，getFileStream 会自动重新下载
+  /// 占位符与加载失败分开计数重试，共享 2 分钟总预算，渐进式间隔，直至成功或超时
   Stream<ui.Codec> _loadThumbnailStream(
     RemoteThumbProvider key,
     ImageDecoderCallback decode,
@@ -80,79 +86,148 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
       // 获取认证头
       final headers = await ApiService.getRequestHeaders();
 
-      // 循环处理，支持占位符自动刷新
+      // 重试预算：首次进入重试（占位符或失败）时记录，两者共享总时长
+      DateTime? retryStartTime;
+      // 占位符重试：单独计数与渐进间隔
+      int placeholderRetryIndex = 0;
+      // 失败重试：单独计数与渐进间隔
+      int failureRetryIndex = 0;
+
+      // 循环处理，支持占位符刷新与失败自动重试
       while (!isCancelled) {
-        // 直接使用 getFileStream，让它自动处理缓存过期
-        // 当缓存过期时（占位符30秒后），会自动重新下载
-        final stream = cacheManager.getFileStream(
-          url,
-          withProgress: true,
-          headers: headers,
-        );
+        try {
+          // 直接使用 getFileStream，让它自动处理缓存过期
+          final stream = cacheManager.getFileStream(
+            url,
+            withProgress: true,
+            headers: headers,
+          );
 
-        bool isPlaceholder = false;
-        int? cacheAgeSeconds;
+          bool isPlaceholder = false;
 
-        await for (final response in stream) {
-          checkCancelled();
+          await for (final response in stream) {
+            checkCancelled();
 
-          if (response is DownloadProgress) {
-            chunkEvents.add(
-              ImageChunkEvent(
-                cumulativeBytesLoaded: response.downloaded,
-                expectedTotalBytes: response.totalSize,
-              ),
-            );
-          } else if (response is FileInfo) {
-            try {
-              final buffer = await ui.ImmutableBuffer.fromFilePath(response.file.path);
-              checkCancelled();
-              final codec = await decode(buffer);
-              yield codec; // 每次新的 FileInfo 到达时，yield 新的 Codec
+            if (response is DownloadProgress) {
+              chunkEvents.add(
+                ImageChunkEvent(
+                  cumulativeBytesLoaded: response.downloaded,
+                  expectedTotalBytes: response.totalSize,
+                ),
+              );
+            } else if (response is FileInfo) {
+              try {
+                final buffer =
+                    await ui.ImmutableBuffer.fromFilePath(response.file.path);
+                checkCancelled();
+                final codec = await decode(buffer);
+                yield codec; // 每次新的 FileInfo 到达时，yield 新的 Codec
 
-              // 检查缓存时间，判断是否是占位符
-              final now = DateTime.now();
-              final validTill = response.validTill;
-              final ageSeconds = validTill.difference(now).inSeconds;
-              cacheAgeSeconds = ageSeconds;
+                // 检查缓存时间，判断是否是占位符
+                final now = DateTime.now();
+                final validTill = response.validTill;
+                final ageSeconds = validTill.difference(now).inSeconds;
 
-              // 如果缓存时间很短（< 60秒），可能是占位符
-              if (ageSeconds > 0 && ageSeconds < 60) {
-                isPlaceholder = true;
-                _log.fine(
-                  'Detected placeholder (short cache: ${ageSeconds}s), will retry after cache expires: $url',
-                );
-              } else {
-                _log.fine('Detected actual thumbnail (long cache: ${ageSeconds}s): $url');
+                // 如果缓存时间很短（< 60秒），可能是占位符
+                if (ageSeconds > 0 && ageSeconds < 60) {
+                  isPlaceholder = true;
+                  retryStartTime ??= now;
+                  _log.fine(
+                    'Detected placeholder (short cache: ${ageSeconds}s), will retry with progressive delay: $url',
+                  );
+                } else {
+                  _log.fine(
+                    'Detected actual thumbnail (long cache: ${ageSeconds}s): $url',
+                  );
+                }
+              } catch (e) {
+                _log.warning('Failed to decode image: $url', e);
+                // 解码失败抛出，由外层 catch 按失败重试
+                rethrow;
               }
-            } catch (e) {
-              _log.warning('Failed to decode image: $url', e);
-              // 继续处理下一个响应
             }
           }
-        }
 
-        // 如果检测到占位符，等待缓存过期后重新请求
-        final ageSeconds = cacheAgeSeconds;
-        if (isPlaceholder && ageSeconds != null && ageSeconds > 0) {
-          _log.fine('Waiting for placeholder cache to expire (${ageSeconds}s): $url');
-          await Future.delayed(Duration(seconds: ageSeconds + 1));
-          
+          // 占位符路径：按渐进式间隔等待后清除缓存并重新请求
+          if (isPlaceholder && retryStartTime != null) {
+            final elapsedSeconds =
+                DateTime.now().difference(retryStartTime).inSeconds;
+            final remainingBudget =
+                _retryMaxDurationSeconds - elapsedSeconds;
+
+            if (remainingBudget <= 0) {
+              _log.fine(
+                'Placeholder retry budget exhausted (${elapsedSeconds}s), stopping: $url',
+              );
+              break;
+            }
+
+            final nextDelayIndex = placeholderRetryIndex.clamp(
+              0,
+              _retryDelays.length - 1,
+            );
+            final nextDelaySeconds = _retryDelays[nextDelayIndex];
+            final delaySeconds = nextDelaySeconds.clamp(1, remainingBudget);
+
+            _log.fine(
+              'Placeholder: waiting ${delaySeconds}s before next retry (#$placeholderRetryIndex, ${remainingBudget}s budget left): $url',
+            );
+            await Future.delayed(Duration(seconds: delaySeconds));
+            placeholderRetryIndex += 1;
+
+            if (!isCancelled) {
+              _log.fine(
+                'Removing placeholder cache to trigger re-download: $url',
+              );
+              try {
+                await cacheManager.removeFile(url);
+              } catch (e) {
+                _log.warning('Failed to remove cache: $url', e);
+              }
+              continue;
+            }
+          }
+
+          // 本轮成功拿到非占位符，或未检测到占位符，退出循环
+          break;
+        } on CancelledException {
+          rethrow;
+        } catch (e, stackTrace) {
+          // 失败重试：网络/解码等异常，单独计数与渐进间隔，共享总时长
+          retryStartTime ??= DateTime.now();
+          final elapsedSeconds =
+              DateTime.now().difference(retryStartTime).inSeconds;
+          final remainingBudget = _retryMaxDurationSeconds - elapsedSeconds;
+
+          if (remainingBudget <= 0) {
+            _log.severe(
+              'Failure retry budget exhausted (${elapsedSeconds}s), giving up: $url',
+              e,
+              stackTrace,
+            );
+            rethrow;
+          }
+
+          final nextDelayIndex =
+              failureRetryIndex.clamp(0, _retryDelays.length - 1);
+          final nextDelaySeconds = _retryDelays[nextDelayIndex];
+          final delaySeconds = nextDelaySeconds.clamp(1, remainingBudget);
+
+          _log.warning(
+            'Thumbnail load failed (retry #$failureRetryIndex in ${delaySeconds}s, ${remainingBudget}s budget left): $url',
+            e,
+          );
+          await Future.delayed(Duration(seconds: delaySeconds));
+          failureRetryIndex += 1;
+
           if (!isCancelled) {
-            _log.fine('Placeholder cache expired, removing to trigger re-download: $url');
-            // 清除缓存，触发重新下载
             try {
               await cacheManager.removeFile(url);
-            } catch (e) {
-              _log.warning('Failed to remove expired cache: $url', e);
-            }
-            // 继续循环，重新获取流
+            } catch (_) {}
             continue;
           }
+          rethrow;
         }
-
-        // 如果不是占位符，或者没有成功加载，退出循环
-        break;
       }
     } on CancelledException {
       _log.fine('Thumbnail loading cancelled: ${_buildUrl(key)}');
