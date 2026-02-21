@@ -59,3 +59,17 @@ TBD - created by archiving change fix-public-base-url-config-precedence. Update 
 - **WHEN** 用户在命令行显式传入 `--server.public_base_url=""`
 - **THEN** 最终配置中 `PublicBaseURL` 为空字符串（命令行显式覆盖）
 
+### Requirement: 存储工作根单一语义（data_dir 或重命名 base_path）
+
+存储模块的临时文件、staging 及磁盘缓存的工作根 SHALL 通过单一语义的配置提供，以降低与「池根」混淆的心智负担。可选实现方式：（A）引入单一 `data_dir`（或 `working_dir`），约定 temp、staging、cache 默认为其下固定子目录（如 `data_dir/temp`、`data_dir/staging`、`data_dir/cache`），仍允许 `temp.base_path`、`performance.cache_path` 等覆盖；（B）将原易混淆的 `base_path` 重命名为 `temp_staging_root` 或等价键，并在文档与配置注释中明确「仅用于临时/staging/缓存，媒体文件由存储池 location 决定」。默认配置与 env 映射 SHALL 仅使用新键或 data_dir；不保留对旧 base_path 键的兼容，文档化新键与升级步骤即可。
+
+#### Scenario: 用户仅配置一个工作根时 temp/staging/cache 可推导
+- **WHEN** 配置中存在 data_dir（或 working_dir）且未单独设置 temp.base_path 或 cache_path
+- **THEN** 系统 SHALL 使用 data_dir 下的固定子目录（如 temp、staging、cache）作为对应根目录
+- **AND** 文档 SHALL 明确说明媒体文件不在此根下，由存储池 location 决定
+
+#### Scenario: 重命名后配置键语义明确
+- **WHEN** 采用重命名方案（如 base_path 改为 temp_staging_root）
+- **THEN** 配置键与文档 SHALL 明确标注该路径仅用于临时文件与 staging
+- **AND** 磁盘缓存根目录 SHALL 仍由 performance.cache_path 单独配置或自 data_dir 派生
+

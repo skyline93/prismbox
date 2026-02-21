@@ -13,6 +13,7 @@ import (
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
 	"github.com/album/backend/internal/storage/interfaces"
+	"github.com/album/backend/internal/storage/pooluri"
 	"github.com/album/backend/pkg/logger"
 )
 
@@ -42,11 +43,10 @@ type RefreshInfo struct {
 	TaskID  string `json:"task_id,omitempty"`
 }
 
-// CreateInput 创建存储池参数
+// CreateInput 创建存储池参数；仅使用 Location（URI）表示位置，存储类型由 location 的 scheme 派生。
 type CreateInput struct {
 	Name                 string
-	StorageType          string
-	LocalPath            string
+	Location             string // 存储池位置 URI，必填，如 local:///absolute/path；scheme 即存储类型
 	CloudConfig          map[string]interface{}
 	MaxSize              int64
 	Priority             int
@@ -58,7 +58,7 @@ type CreateInput struct {
 // UpdateInput 更新存储池参数
 type UpdateInput struct {
 	Name                 *string
-	LocalPath            *string
+	Location             *string // 存储池位置 URI
 	CloudConfig          map[string]interface{}
 	MaxSize              *int64
 	Priority             *int
@@ -97,18 +97,30 @@ func (s *service) Create(ctx context.Context, input *CreateInput) (*CreateResult
 	if strings.TrimSpace(input.Name) == "" {
 		return nil, fmt.Errorf("name is required")
 	}
-	storageType := strings.ToLower(strings.TrimSpace(input.StorageType))
-	if storageType == "" {
-		return nil, fmt.Errorf("storage_type is required")
-	}
-	if !isSupportedStorageType(storageType) {
-		return nil, fmt.Errorf("unsupported storage type: %s", storageType)
-	}
-	if storageType == "local" && strings.TrimSpace(input.LocalPath) == "" {
-		return nil, fmt.Errorf("local_path is required for local storage type")
+	location := strings.TrimSpace(input.Location)
+	if location == "" {
+		return nil, fmt.Errorf("location is required (e.g. local:///absolute/path)")
 	}
 	if input.MaxSize <= 0 {
 		return nil, fmt.Errorf("max_size must be greater than 0")
+	}
+
+	scheme, path, err := pooluri.Parse(location)
+	if err != nil {
+		return nil, fmt.Errorf("invalid location: %w", err)
+	}
+	storageType := strings.ToLower(scheme)
+	if !isSupportedStorageType(storageType) {
+		return nil, fmt.Errorf("unsupported storage type in location scheme: %s", storageType)
+	}
+	if storageType == "local" {
+		if err := pooluri.ValidateLocalPath(path); err != nil {
+			return nil, fmt.Errorf("location path invalid: %w", err)
+		}
+	}
+	location, err = normalizeLocationByScheme(storageType, location, path)
+	if err != nil {
+		return nil, fmt.Errorf("location: %w", err)
 	}
 
 	autoThreshold := input.AutoDisableThreshold
@@ -126,7 +138,7 @@ func (s *service) Create(ctx context.Context, input *CreateInput) (*CreateResult
 		Name:                 input.Name,
 		Description:          input.Description,
 		StorageType:          storageType,
-		LocalPath:            input.LocalPath,
+		Location:             location,
 		CloudConfig:          cloudJSON,
 		MaxSize:              input.MaxSize,
 		CurrentSize:          0,
@@ -177,8 +189,29 @@ func (s *service) Update(ctx context.Context, id string, input *UpdateInput) (*m
 	if input.Name != nil {
 		updates["name"] = strings.TrimSpace(*input.Name)
 	}
-	if input.LocalPath != nil {
-		updates["local_path"] = strings.TrimSpace(*input.LocalPath)
+	if input.Location != nil {
+		loc := strings.TrimSpace(*input.Location)
+		if loc != "" {
+			scheme, path, err := pooluri.Parse(loc)
+			if err != nil {
+				return nil, fmt.Errorf("invalid location: %w", err)
+			}
+			storageType := strings.ToLower(scheme)
+			if !isSupportedStorageType(storageType) {
+				return nil, fmt.Errorf("unsupported storage type in location scheme: %s", storageType)
+			}
+			if storageType == "local" {
+				if err := pooluri.ValidateLocalPath(path); err != nil {
+					return nil, fmt.Errorf("location path invalid: %w", err)
+				}
+			}
+			loc, err = normalizeLocationByScheme(storageType, loc, path)
+			if err != nil {
+				return nil, err
+			}
+			updates["location"] = loc
+			updates["storage_type"] = storageType
+		}
 	}
 	if input.Description != nil {
 		updates["description"] = strings.TrimSpace(*input.Description)
@@ -213,11 +246,30 @@ func (s *service) Update(ctx context.Context, id string, input *UpdateInput) (*m
 	if err := s.repo.UpdateByUUID(ctx, id, updates); err != nil {
 		return nil, err
 	}
-	return s.repo.FindByUUID(ctx, id)
+	pool, err := s.repo.FindByUUID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// 与创建存储池一致：写库成功后立即刷新存储池缓存
+	if result, err := s.Refresh(ctx); err != nil {
+		s.logger.Warn("auto refresh after pool update failed", logger.String("pool_uuid", id), logger.Error(err))
+	} else {
+		s.logger.Info("auto refresh after pool update succeeded", logger.String("pool_uuid", id), logger.String("message", result.Message))
+	}
+	return pool, nil
 }
 
 func (s *service) SetEnabled(ctx context.Context, uuid string, enabled bool) error {
-	return s.repo.SetEnabled(ctx, uuid, enabled)
+	if err := s.repo.SetEnabled(ctx, uuid, enabled); err != nil {
+		return err
+	}
+	// 与创建存储池一致：写库成功后立即刷新存储池缓存（启用/禁用会影响缓存中的池列表）
+	if result, err := s.Refresh(ctx); err != nil {
+		s.logger.Warn("auto refresh after pool set-enabled failed", logger.String("pool_uuid", uuid), logger.Bool("enabled", enabled), logger.Error(err))
+	} else {
+		s.logger.Info("auto refresh after pool set-enabled succeeded", logger.String("pool_uuid", uuid), logger.Bool("enabled", enabled), logger.String("message", result.Message))
+	}
+	return nil
 }
 
 func (s *service) Refresh(ctx context.Context) (*interfaces.PoolOperationResult, error) {
@@ -257,5 +309,15 @@ func isSupportedStorageType(t string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// normalizeLocationByScheme 按 scheme 规范化 location 后返回（如 local 转为绝对路径 URI）；非 local 返回原 location。
+func normalizeLocationByScheme(scheme, location, path string) (string, error) {
+	switch strings.ToLower(scheme) {
+	case "local":
+		return pooluri.BuildLocal(path)
+	default:
+		return location, nil
 	}
 }

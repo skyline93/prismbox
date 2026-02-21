@@ -3332,9 +3332,9 @@ const docTemplate = `{
         "storage.createPoolRequest": {
             "type": "object",
             "required": [
+                "location",
                 "max_size",
-                "name",
-                "storage_type"
+                "name"
             ],
             "properties": {
                 "auto_disable_threshold": {
@@ -3350,7 +3350,8 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean"
                 },
-                "local_path": {
+                "location": {
+                    "description": "存储池位置 URI，必填，如 local:///absolute/path；类型由 scheme 派生",
                     "type": "string"
                 },
                 "max_size": {
@@ -3361,9 +3362,6 @@ const docTemplate = `{
                 },
                 "priority": {
                     "type": "integer"
-                },
-                "storage_type": {
-                    "type": "string"
                 }
             }
         },
@@ -3397,7 +3395,7 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean"
                 },
-                "local_path": {
+                "location": {
                     "type": "string"
                 },
                 "max_size": {

@@ -63,8 +63,13 @@ type App struct {
 	ShareService           interface{} // 使用interface{}避免循环依赖，实际类型为 share.Service
 }
 
-// Close 释放应用资源
+// Close 释放应用资源（含主存储的 delta worker、cache refresher、reconciler 等后台 goroutine）。
 func (a *App) Close() error {
+	if a.StorageManager != nil {
+		if err := a.StorageManager.Close(); err != nil {
+			return err
+		}
+	}
 	if a.MediaProcessor != nil {
 		if err := a.MediaProcessor.Close(); err != nil {
 			return err

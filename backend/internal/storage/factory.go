@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
@@ -17,13 +18,24 @@ func NewPrimaryStorage(cfg *PrimaryStorageConfig, db *gorm.DB) (interfaces.Prima
 			return nil, fmt.Errorf("local config is required")
 		}
 		poolRepo := repository.NewStoragePoolRepository(db)
-		// 转换配置类型
+		dataDir := cfg.Local.DataDir
+		if dataDir == "" {
+			dataDir = "./data"
+		}
+		tempCfg := convertTempFileConfig(cfg.Local.Temp)
+		if tempCfg != nil && tempCfg.BasePath == "" {
+			tempCfg.BasePath = filepath.Join(dataDir, "temp")
+		}
+		perfCfg := convertPerformanceConfig(cfg.Local.Performance)
+		if perfCfg != nil && perfCfg.CachePath == "" && perfCfg.CacheEnabled {
+			perfCfg.CachePath = filepath.Join(dataDir, "cache")
+		}
 		localCfg := &local.LocalStorageConfig{
-			BasePath:    cfg.Local.BasePath,
+			BasePath:    dataDir, // PathResolver 用此作为 temp/staging 根
 			PoolManager: convertPoolManagerConfig(cfg.Local.PoolManager),
-			Temp:        convertTempFileConfig(cfg.Local.Temp),
+			Temp:        tempCfg,
 			Processing:  convertProcessingConfig(cfg.Local.Processing),
-			Performance: convertPerformanceConfig(cfg.Local.Performance),
+			Performance: perfCfg,
 		}
 		return local.NewLocalStorage(localCfg, poolRepo)
 	default:
@@ -102,6 +114,7 @@ func convertPerformanceConfig(cfg *PerformanceConfig) *local.PerformanceConfig {
 	}
 	return &local.PerformanceConfig{
 		CacheEnabled:    cfg.CacheEnabled,
+		CachePath:       cfg.CachePath,
 		CacheSize:       cfg.CacheSize,
 		CacheTTL:        cfg.CacheTTL,
 		ReadBufferSize:  cfg.ReadBufferSize,

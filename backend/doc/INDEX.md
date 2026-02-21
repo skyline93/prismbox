@@ -44,6 +44,7 @@
 
 - **[部署文档](./DEPLOYMENT/README.md)** - 完整的容器化部署指南
   - [环境变量列表](./DEPLOYMENT/ENV_VARS.md) - 环境变量完整列表
+  - [存储配置与使用指南](./STORAGE_CONFIGURATION.md) - 存储池与路径配置（用户向）
 - [容器部署](./ARCHITECTURE/06-container-deployment.md)
 - [部署流程](./ARCHITECTURE/16-deployment.md)
 - [监控和运维](./ARCHITECTURE/15-monitoring.md)

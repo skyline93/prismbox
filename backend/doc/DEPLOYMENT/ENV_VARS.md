@@ -19,9 +19,13 @@
 
 ## 存储配置
 
+媒体文件实际存放在**存储池**根目录下（池的 **location** URI 在数据库中配置，如 `local:///app/data/pool1`）。以下变量仅用于**临时文件、staging、缓存**等工作目录，详见 [存储配置与使用指南](../STORAGE_CONFIGURATION.md)。
+
 | 变量名 | 说明 | 类型 | 默认值 | 示例 |
 |--------|------|------|--------|------|
-| `ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH` | 主存储路径 | string | `/app/data` | `/app/data` |
+| `ALBUM_STORAGE_PRIMARY_LOCAL_DATA_DIR` | 工作根目录（temp/staging/cache 默认在其下） | string | `/app/data` | `/app/data` |
+| `ALBUM_STORAGE_PRIMARY_LOCAL_TEMP_BASE_PATH` | 临时文件目录（可选，空时为 data_dir/temp） | string | - | `/app/data/temp` |
+| `ALBUM_STORAGE_PRIMARY_LOCAL_PERFORMANCE_CACHE_PATH` | 磁盘缓存目录（可选，空时为 data_dir/cache） | string | - | `/app/data/cache` |
 
 ## 认证配置
 

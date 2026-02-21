@@ -12,6 +12,7 @@ import (
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage/interfaces"
+	"github.com/album/backend/internal/storage/pooluri"
 	"github.com/album/backend/pkg/logger"
 )
 
@@ -520,22 +521,36 @@ func (sp *StoragePool) refreshActualUsage() error {
 	return nil
 }
 
-// convertModelToPool 将数据库模型转换为缓存对象
+// convertModelToPool 将数据库模型转换为缓存对象；仅从 location URI 解析路径与类型，不按 storage_type 分支。
 func convertModelToPool(model *models.StoragePool) (*StoragePool, error) {
-	if model.StorageType == "local" && model.LocalPath == "" {
-		return nil, fmt.Errorf("local storage pool %s missing local_path", model.UUID)
+	if model.Location == "" {
+		return nil, fmt.Errorf("storage pool %s missing location", model.UUID)
 	}
-
-	if model.StorageType == "local" {
-		if err := os.MkdirAll(model.LocalPath, 0755); err != nil {
-			return nil, fmt.Errorf("create pool directory %s: %w", model.LocalPath, err)
+	scheme, path, err := pooluri.Parse(model.Location)
+	if err != nil {
+		return nil, fmt.Errorf("parse pool %s location: %w", model.UUID, err)
+	}
+	if scheme == "local" {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, fmt.Errorf("create pool directory %s: %w", path, err)
 		}
+		return &StoragePool{
+			UUID:                 model.UUID,
+			Name:                 model.Name,
+			Path:                 path,
+			MaxSize:              model.MaxSize,
+			CurrentSize:          model.CurrentSize,
+			Priority:             model.Priority,
+			Enabled:              model.Enabled,
+			AutoDisableThreshold: model.AutoDisableThreshold,
+			Status:               model.Status,
+			LastCheckedAt:        model.LastCheckedAt,
+		}, nil
 	}
-
 	return &StoragePool{
 		UUID:                 model.UUID,
 		Name:                 model.Name,
-		Path:                 model.LocalPath,
+		Path:                 "", // 非 local 时由具体后端解析
 		MaxSize:              model.MaxSize,
 		CurrentSize:          model.CurrentSize,
 		Priority:             model.Priority,

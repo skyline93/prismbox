@@ -368,7 +368,8 @@ definitions:
         type: string
       enabled:
         type: boolean
-      local_path:
+      location:
+        description: 存储池位置 URI，必填，如 local:///absolute/path；类型由 scheme 派生
         type: string
       max_size:
         type: integer
@@ -376,12 +377,10 @@ definitions:
         type: string
       priority:
         type: integer
-      storage_type:
-        type: string
     required:
+    - location
     - max_size
     - name
-    - storage_type
     type: object
   storage.reconcileRequest:
     properties:
@@ -403,7 +402,7 @@ definitions:
         type: string
       enabled:
         type: boolean
-      local_path:
+      location:
         type: string
       max_size:
         type: integer

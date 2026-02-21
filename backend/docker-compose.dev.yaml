@@ -59,7 +59,7 @@ services:
       ALBUM_SERVER_PUBLIC_BASE_URL: ${ALBUM_SERVER_PUBLIC_BASE_URL:-http://localhost}
       ALBUM_DATABASE_TYPE: postgres
       ALBUM_DATABASE_DSN: host=postgresql user=${ALBUM_POSTGRES_USER:-album} password=${ALBUM_POSTGRES_PASSWORD:-album} dbname=${ALBUM_POSTGRES_DB:-album} port=5432 sslmode=disable TimeZone=Asia/Shanghai
-      ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH: /app/deploy/data-dev
+      ALBUM_STORAGE_PRIMARY_LOCAL_DATA_DIR: /app/deploy/data-dev
       ALBUM_STORAGE_PRIMARY_LOCAL_TEMP_BASE_PATH: /app/deploy/data-dev/temp
       ALBUM_AUTH_JWT_SECRET: ${ALBUM_AUTH_JWT_SECRET:-album-dev-jwt-secret-key-change-in-production}
       ALBUM_AUTH_URL_SIGNER_SECRET: ${ALBUM_AUTH_URL_SIGNER_SECRET:-album-dev-signer-secret-change-in-production}

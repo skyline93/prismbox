@@ -280,8 +280,7 @@ func writeError(c *gin.Context, status int, msg string) {
 
 type createPoolRequest struct {
 	Name                 string                 `json:"name" binding:"required"`
-	StorageType          string                 `json:"storage_type" binding:"required"`
-	LocalPath            string                 `json:"local_path"`
+	Location             string                 `json:"location" binding:"required"` // 存储池位置 URI，必填，如 local:///absolute/path；类型由 scheme 派生
 	CloudConfig          map[string]interface{} `json:"cloud_config"`
 	MaxSize              int64                  `json:"max_size" binding:"required"`
 	Priority             int                    `json:"priority"`
@@ -297,8 +296,7 @@ func (r createPoolRequest) toCreateInput() *storagepoolservice.CreateInput {
 	}
 	return &storagepoolservice.CreateInput{
 		Name:                 r.Name,
-		StorageType:          r.StorageType,
-		LocalPath:            r.LocalPath,
+		Location:             r.Location,
 		CloudConfig:          r.CloudConfig,
 		MaxSize:              r.MaxSize,
 		Priority:             r.Priority,
@@ -310,7 +308,7 @@ func (r createPoolRequest) toCreateInput() *storagepoolservice.CreateInput {
 
 type updatePoolRequest struct {
 	Name                 *string                `json:"name"`
-	LocalPath            *string                `json:"local_path"`
+	Location             *string                `json:"location"`
 	CloudConfig          map[string]interface{} `json:"cloud_config"`
 	MaxSize              *int64                 `json:"max_size"`
 	Priority             *int                   `json:"priority"`
@@ -322,7 +320,7 @@ type updatePoolRequest struct {
 func (r updatePoolRequest) toUpdateInput() (*storagepoolservice.UpdateInput, error) {
 	return &storagepoolservice.UpdateInput{
 		Name:                 r.Name,
-		LocalPath:            r.LocalPath,
+		Location:             r.Location,
 		CloudConfig:          r.CloudConfig,
 		MaxSize:              r.MaxSize,
 		Priority:             r.Priority,
@@ -343,7 +341,7 @@ type storagePoolResponse struct {
 	Name                 string                 `json:"name"`
 	Description          string                 `json:"description"`
 	StorageType          string                 `json:"storage_type"`
-	LocalPath            string                 `json:"local_path"`
+	Location             string                 `json:"location"` // 存储池位置 URI，如 local:///absolute/path
 	CloudConfig          map[string]interface{} `json:"cloud_config"`
 	MaxSize              int64                  `json:"max_size"`
 	CurrentSize          int64                  `json:"current_size"`
@@ -388,7 +386,7 @@ func serializePool(pool *models.StoragePool) storagePoolResponse {
 		Name:                 pool.Name,
 		Description:          pool.Description,
 		StorageType:          pool.StorageType,
-		LocalPath:            pool.LocalPath,
+		Location:             pool.Location,
 		CloudConfig:          decodeCloudConfig(pool.CloudConfig),
 		MaxSize:              pool.MaxSize,
 		CurrentSize:          pool.CurrentSize,

@@ -79,8 +79,7 @@ func newStoragePoolAddCommand() *cli.Command {
 		Usage: "新增存储池（写入 storage_pools 表）",
 		Flags: append(storageCommonFlags(),
 			&cli.StringFlag{Name: "name", Usage: "存储池名称", Required: true},
-			&cli.StringFlag{Name: "type", Usage: "存储类型：local/openlist/s3/oss/cos", Required: true},
-			&cli.StringFlag{Name: "local-path", Usage: "本地存储路径（type=local 必填）"},
+			&cli.StringFlag{Name: "location", Usage: "存储池位置 URI，必填（如 local:///app/data/pool1）；类型由 URI scheme 决定", Required: true},
 			&cli.StringFlag{Name: "cloud-config", Usage: "云存储配置（JSON 字符串或 @path/to/file.json）"},
 			&cli.StringFlag{Name: "max-size", Usage: "最大容量（如 1TB、500GB）", Required: true},
 			&cli.IntFlag{Name: "priority", Usage: "优先级（数值越小优先级越高）", Value: 0},
@@ -100,7 +99,7 @@ func newStoragePoolUpdateCommand() *cli.Command {
 		ArgsUsage: "<pool-uuid>",
 		Flags: append(storageCommonFlags(),
 			&cli.StringFlag{Name: "name", Usage: "存储池名称"},
-			&cli.StringFlag{Name: "local-path", Usage: "本地存储路径"},
+			&cli.StringFlag{Name: "location", Usage: "存储池位置 URI（如 local:///app/data/pool1）"},
 			&cli.StringFlag{Name: "cloud-config", Usage: "云存储配置（JSON 字符串或 @path/to/file.json）"},
 			&cli.StringFlag{Name: "max-size", Usage: "最大容量（如 1TB、500GB）"},
 			&cli.IntFlag{Name: "priority", Usage: "优先级"},
@@ -497,23 +496,13 @@ func buildStoragePoolPayload(c *cli.Context, requireAll bool) (map[string]interf
 		}
 	}
 
-	if requireAll {
-		storageType := strings.TrimSpace(c.String("type"))
-		if storageType == "" {
-			return nil, fmt.Errorf("--type 为必填项")
+	if requireAll || c.IsSet("location") {
+		location := strings.TrimSpace(c.String("location"))
+		if requireAll && location == "" {
+			return nil, fmt.Errorf("--location 为必填项（如 local:///app/data/pool1）")
 		}
-		payload["storage_type"] = storageType
-	} else if c.IsSet("type") {
-		payload["storage_type"] = c.String("type")
-	}
-
-	if requireAll || c.IsSet("local-path") {
-		localPath := strings.TrimSpace(c.String("local-path"))
-		if requireAll && payload["storage_type"] == "local" && localPath == "" {
-			return nil, fmt.Errorf("local 类型需要指定 --local-path")
-		}
-		if localPath != "" {
-			payload["local_path"] = localPath
+		if location != "" {
+			payload["location"] = location
 		}
 	}
 
@@ -659,8 +648,8 @@ func printStoragePoolDetails(pool *remote.StoragePool) {
 	if pool.MaxSize > 0 {
 		fmt.Printf("使用率: %.1f%%\n", 100*float64(pool.CurrentSize)/float64(pool.MaxSize))
 	}
-	if pool.LocalPath != "" {
-		fmt.Printf("本地路径: %s\n", pool.LocalPath)
+	if pool.Location != "" {
+		fmt.Printf("位置: %s\n", pool.Location)
 	}
 	if pool.Description != "" {
 		fmt.Printf("描述: %s\n", pool.Description)

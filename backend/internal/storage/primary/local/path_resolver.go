@@ -2,12 +2,17 @@ package local
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
-	"strings"
+
+	"github.com/album/backend/internal/storage/keys"
 )
 
-// PathResolver 路径解析器（Hash-based，与用户解耦）
+// KeyPathPrefix 重新导出，供本包内或同层使用；池内文件路径为 pool.Path + key。
+const KeyPathPrefix = keys.KeyPathPrefix
+
+// PathResolver 路径解析器（Hash-based，与用户解耦）。
+// BasePath 仅用于 ResolveTempPath、ResolveStagingPath 及可配置的缓存根目录，不参与池内文件路径。
+// 池内文件路径 = pool.Path + 相对路径 key（ResolveFilePath 返回相对路径）。
 type PathResolver struct {
 	basePath string
 }
@@ -19,25 +24,9 @@ func NewPathResolver(basePath string) *PathResolver {
 	}
 }
 
-// ResolveFilePath 解析文件路径（基于 Hash + 扩展名 + 变体）
+// ResolveFilePath 解析文件相对路径（基于 Hash + 扩展名 + 变体），不包含 BasePath；与 keys.BuildKey 一致。
 func (pr *PathResolver) ResolveFilePath(hash string, extension string, variant string) (string, error) {
-	if len(hash) < 4 {
-		return "", fmt.Errorf("hash must be at least 4 characters")
-	}
-
-	if extension == "" {
-		return "", fmt.Errorf("extension is required")
-	}
-
-	// 使用Hash前缀分区（2级目录）
-	hashPrefix := hash[:2] // 前2位（00-ff）
-	hashNext := hash[2:4]  // 3-4位（00-ff）
-
-	basePath := filepath.Join(pr.basePath, "files", hashPrefix, hashNext)
-
-	filename := buildFilename(hash, extension, variant)
-
-	return filepath.Join(basePath, filename), nil
+	return keys.BuildKey(hash, extension, variant)
 }
 
 // ResolveTempPath 解析临时文件路径（基于上传ID）
@@ -60,80 +49,22 @@ func (pr *PathResolver) ResolveStagingPath(hash string, extension string) (strin
 	return filepath.Join(pr.basePath, "staging", hashPrefix, filename), nil
 }
 
-// ResolveKey 从key解析出hash、扩展名和变体
-// key格式：{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
-// 例如：ab/cd/abcd1234.jpg, ab/cd/abcd1234_thumb.jpg, ab/cd/abcd1234_prev.jpg
+// ResolveKey 从 key 解析出 hash、扩展名和变体，委托 keys.ResolveKey。
 func (pr *PathResolver) ResolveKey(key string) (hash string, extension string, variant string, err error) {
-	parts := strings.Split(key, "/")
-	if len(parts) < 3 {
-		return "", "", "", fmt.Errorf("invalid key format: %s", key)
-	}
-
-	hashPrefix := parts[0]
-	hashNext := parts[1]
-	filename := parts[len(parts)-1]
-
-	// 解析文件扩展名
-	ext := filepath.Ext(filename)
-	if ext == "" {
-		return "", "", "", fmt.Errorf("file extension required: %s", filename)
-	}
-	extension = strings.TrimPrefix(ext, ".")
-
-	// 解析hash和变体标识
-	base := strings.TrimSuffix(filename, ext)
-
-	// 检查是否有变体标识（以下划线分隔）
-	// 变体标识通常出现在hash之后，如：hash_thumb, hash_prev
-	if idx := strings.LastIndex(base, "_"); idx > 0 {
-		hash = base[:idx]
-		variant = base[idx+1:]
-	} else {
-		hash = base
-		variant = "" // 默认变体（通常是 original）
-	}
-
-	if len(hash) < 4 {
-		return "", "", "", fmt.Errorf("hash must be at least 4 characters")
-	}
-
-	// 基本校验：确保 hash 前缀与路径一致
-	if !strings.HasPrefix(hash, hashPrefix+hashNext) {
-		return "", "", "", fmt.Errorf("hash prefix mismatch with key: %s", key)
-	}
-
-	return hash, extension, variant, nil
+	return keys.ResolveKey(key)
 }
 
-// BuildKey 根据 hash、扩展名和变体构建 key（相对于 basePath）
+// BuildKey 根据 hash、扩展名和变体构建 key（相对于池根），委托 keys.BuildKey。
 func (pr *PathResolver) BuildKey(hash string, extension string, variant string) (string, error) {
-	if len(hash) < 4 {
-		return "", fmt.Errorf("hash must be at least 4 characters")
-	}
-
-	if extension == "" {
-		return "", fmt.Errorf("extension is required")
-	}
-
-	filename := buildFilename(hash, extension, variant)
-	return path.Join(hash[:2], hash[2:4], filename), nil
+	return keys.BuildKey(hash, extension, variant)
 }
 
-// GetKeyFromPath 从文件路径获取key（相对于basePath）
-func (pr *PathResolver) GetKeyFromPath(filePath string) (string, error) {
-	relPath, err := filepath.Rel(pr.basePath, filePath)
+// GetKeyFromPath 从池根下的完整路径获取 key（相对路径）。poolRoot 为池根目录，fullPath 为文件完整路径。
+func (pr *PathResolver) GetKeyFromPath(poolRoot, fullPath string) (string, error) {
+	relPath, err := filepath.Rel(poolRoot, fullPath)
 	if err != nil {
 		return "", fmt.Errorf("get relative path: %w", err)
 	}
-	return relPath, nil
+	return filepath.ToSlash(relPath), nil
 }
 
-// buildFilename 构建文件名
-// 格式：{hash}[_variant].{extension}
-// 例如：abcd1234.jpg, abcd1234_thumb.jpg, abcd1234_prev.jpg
-func buildFilename(hash string, extension string, variant string) string {
-	if variant == "" {
-		return fmt.Sprintf("%s.%s", hash, extension)
-	}
-	return fmt.Sprintf("%s_%s.%s", hash, variant, extension)
-}

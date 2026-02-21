@@ -17,7 +17,10 @@ type StoragePool struct {
 
 	StorageType string `gorm:"type:varchar(50);not null;index"` // "local", "openlist", "s3", "oss", "cos"
 
-	// 本地存储配置
+	// Location 存储池位置 URI，如 local:///absolute/path；为唯一位置来源，解析后 scheme 对应 StorageType，path 为池根（本地须为绝对路径）
+	Location string `gorm:"type:varchar(512)"`
+
+	// LocalPath 已废弃，仅用于一次性迁移脚本将旧数据转为 Location 后即不再使用；应用仅读 Location。
 	LocalPath string `gorm:"type:varchar(512)"`
 
 	// 云存储配置（JSON）

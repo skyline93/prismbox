@@ -33,18 +33,23 @@ type CacheEntry struct {
 	Timestamp time.Time
 }
 
-// NewCacheManager 创建缓存管理器
+// NewCacheManager 创建缓存管理器。磁盘缓存路径来自配置 performance.cache_path，未配置时使用默认 "./data/cache"。
 func NewCacheManager(cfg *PerformanceConfig) (*CacheManager, error) {
 	if cfg == nil || !cfg.CacheEnabled {
 		return nil, nil // 缓存未启用
 	}
 
+	diskPath := cfg.CachePath
+	if diskPath == "" {
+		diskPath = "./data/cache"
+	}
+
 	cm := &CacheManager{
 		memoryCache: &MemoryCache{
 			cache:   make(map[string]*CacheEntry),
-			maxSize: 100, // 默认最多100个条目
+			maxSize: 100,
 		},
-		diskCachePath: filepath.Join("./cache"),
+		diskCachePath: diskPath,
 		maxDiskSize:   cfg.CacheSize.Int64(),
 		ttl:           cfg.CacheTTL.Duration(),
 	}

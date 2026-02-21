@@ -104,12 +104,17 @@ func (l *Loader) Load(flags *pflag.FlagSet) (*Config, error) {
 
 	// 5. 显式用环境变量覆盖 storage 路径（Viper Unmarshal 对嵌套 key 不会应用 AutomaticEnv，故在此补全）
 	if cfg.Storage != nil && cfg.Storage.Primary != nil && cfg.Storage.Primary.Local != nil {
-		if v := l.getFromConfigOrEnv("storage.primary.local.base_path"); v != "" {
-			cfg.Storage.Primary.Local.BasePath = v
+		if v := l.getFromConfigOrEnv("storage.primary.local.data_dir"); v != "" {
+			cfg.Storage.Primary.Local.DataDir = v
 		}
 		if cfg.Storage.Primary.Local.Temp != nil {
 			if v := l.getFromConfigOrEnv("storage.primary.local.temp.base_path"); v != "" {
 				cfg.Storage.Primary.Local.Temp.BasePath = v
+			}
+		}
+		if cfg.Storage.Primary.Local.Performance != nil {
+			if v := l.getFromConfigOrEnv("storage.primary.local.performance.cache_path"); v != "" {
+				cfg.Storage.Primary.Local.Performance.CachePath = v
 			}
 		}
 	}
@@ -228,11 +233,12 @@ func (l *Loader) defaultConfig() *Config {
 			Type: "postgres",
 			DSN:  "host=127.0.0.1 user=album password=album@2025 dbname=album port=15432 sslmode=disable TimeZone=Asia/Shanghai",
 		},
+		// Storage: 池根由 DB（storage_pools 表）location 管理；DataDir 仅用于 temp、staging、cache 工作根，不参与池内文件路径。
 		Storage: &storage.Config{
 			Primary: &storage.PrimaryStorageConfig{
 				Type: "local",
 				Local: &storage.LocalStorageConfig{
-					BasePath: "./base",
+					DataDir: "./data",
 					PoolManager: &storage.PoolManagerConfig{
 						DeltaChannelSize:     1024,
 						DeltaBatchSize:       128,
@@ -241,7 +247,7 @@ func (l *Loader) defaultConfig() *Config {
 						ReconcileInterval:    types.Duration(0),
 					},
 					Temp: &storage.TempFileConfig{
-						BasePath:        "./data/temp",
+						BasePath:        "", // 空时由 factory 设为 data_dir/temp
 						MaxAge:          types.Duration(24 * time.Hour),
 						MaxSize:         types.Size(10 * 1024 * 1024 * 1024), // 10GB
 						CleanupInterval: types.Duration(1 * time.Hour),
@@ -254,10 +260,11 @@ func (l *Loader) defaultConfig() *Config {
 					},
 					Performance: &storage.PerformanceConfig{
 						CacheEnabled:    false,
+						CachePath:       "", // 空时由 factory 设为 data_dir/cache
 						CacheSize:       types.Size(100 * 1024 * 1024), // 100MB
 						CacheTTL:        types.Duration(24 * time.Hour),
-						ReadBufferSize:  types.Size(64 * 1024), // 64KB
-						WriteBufferSize: types.Size(64 * 1024), // 64KB
+						ReadBufferSize:  types.Size(64 * 1024),         // 64KB
+						WriteBufferSize: types.Size(64 * 1024),         // 64KB
 					},
 				},
 			},

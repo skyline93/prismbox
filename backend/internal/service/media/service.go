@@ -107,8 +107,8 @@ type Service interface {
 	RegeneratePreview(ctx context.Context, mediaUUID string, specName string) error
 	// GetAuthorizedMedia 获取授权的媒体（支持私有访问和公开分享）
 	GetAuthorizedMedia(ctx context.Context, mediaUUID string, userID *uint) (*models.Media, error)
-	// GetFileReader 获取文件读取器
-	GetFileReader(ctx context.Context, storageKey string) (io.ReadCloser, error)
+	// GetFileReader 获取文件读取器；poolID 非空时读时定向到该池
+	GetFileReader(ctx context.Context, storageKey string, poolID string) (io.ReadCloser, error)
 	// GetFileSize 获取存储文件大小（用于 Content-Length 等）
 	GetFileSize(ctx context.Context, storageKey string) (int64, error)
 	// BuildThumbnailKey 构建缩略图存储key
@@ -603,12 +603,23 @@ func (s *service) GetAuthorizedMedia(ctx context.Context, mediaUUID string, user
 	return media, nil
 }
 
-// GetFileReader 获取文件读取器
-func (s *service) GetFileReader(ctx context.Context, storageKey string) (io.ReadCloser, error) {
+// GetFileReader 获取文件读取器。当 poolID 非空时使用读时定向（仅在该池中查找），否则多池查找。
+func (s *service) GetFileReader(ctx context.Context, storageKey string, poolID string) (io.ReadCloser, error) {
 	if storageKey == "" {
 		return nil, fmt.Errorf("storage key is empty")
 	}
+	if poolID != "" {
+		return s.storageManager.GetWithPool(ctx, storageKey, poolID)
+	}
 	return s.storageManager.Get(ctx, storageKey)
+}
+
+// getStorageReader 内部：有 poolID 时读时定向，否则多池查找。
+func (s *service) getStorageReader(ctx context.Context, key string, poolID string) (io.ReadCloser, error) {
+	if poolID != "" {
+		return s.storageManager.GetWithPool(ctx, key, poolID)
+	}
+	return s.storageManager.Get(ctx, key)
 }
 
 // GetFileSize 获取存储文件大小
@@ -732,7 +743,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}
 		if exists {
 			storageStartTime := time.Now()
-			reader, err := s.storageManager.Get(ctx, key)
+			reader, err := s.getStorageReader(ctx, key, media.LocalPoolUUID)
 			storageLatency := time.Since(storageStartTime)
 			if err == nil {
 				s.log.Info("thumbnail served from storage",
@@ -780,7 +791,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}
 		if exists {
 			storageStartTime := time.Now()
-			reader, err := s.storageManager.Get(ctx, key)
+			reader, err := s.getStorageReader(ctx, key, media.LocalPoolUUID)
 			storageLatency := time.Since(storageStartTime)
 			if err == nil {
 				s.log.Info("pre-generated preview served from storage",
@@ -832,7 +843,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		s.cleanupService.RecordAccess(dynamicKey)
 		// 从主存储读取
 		storageStartTime := time.Now()
-		reader, err := s.storageManager.Get(ctx, dynamicKey)
+		reader, err := s.getStorageReader(ctx, dynamicKey, media.LocalPoolUUID)
 		storageLatency := time.Since(storageStartTime)
 		if err == nil {
 			s.log.Info("dynamic thumbnail served from storage",
@@ -926,7 +937,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 				logger.Duration("wait_time_ms", time.Since(startTime)),
 			)
 			s.cleanupService.RecordAccess(dynamicKey)
-			reader, err := s.storageManager.Get(ctx, dynamicKey)
+			reader, err := s.getStorageReader(ctx, dynamicKey, media.LocalPoolUUID)
 			if err == nil && s.cacheManager != nil {
 				// 需要先读取数据用于缓存，然后创建新的reader返回
 				data, readErr := io.ReadAll(reader)
@@ -1007,7 +1018,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 			}, err
 		}
 		fallbackKey, _ := s.BuildThumbnailKey(media)
-		reader, err := s.storageManager.Get(ctx, fallbackKey)
+		reader, err := s.getStorageReader(ctx, fallbackKey, media.LocalPoolUUID)
 		if err == nil && s.cacheManager != nil {
 			data, readErr := io.ReadAll(reader)
 			reader.Close()
@@ -1034,7 +1045,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 	s.generateThumbnailAsync(ctx, media, size, dynamicKey, task)
 	// 生成完成后从存储读取并返回（若生成失败则 key 不存在，Get 会报错）
 	s.cleanupService.RecordAccess(dynamicKey)
-	reader, err := s.storageManager.Get(ctx, dynamicKey)
+			reader, err := s.getStorageReader(ctx, dynamicKey, media.LocalPoolUUID)
 	if err != nil {
 		return nil, err
 	}

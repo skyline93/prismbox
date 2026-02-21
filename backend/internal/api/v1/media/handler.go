@@ -846,7 +846,7 @@ func (h *Handler) DownloadOriginal(c *gin.Context) {
 
 	// 4. HEAD 请求：仅检查原文件是否存在，不返回 body
 	if c.Request.Method == http.MethodHead {
-		reader, err := h.mediaService.GetFileReader(c.Request.Context(), media.LocalPath)
+		reader, err := h.mediaService.GetFileReader(c.Request.Context(), media.LocalPath, media.LocalPoolUUID)
 		if err != nil {
 			apiresponse.Error(c, "File not found or permission denied")
 			return
@@ -858,7 +858,7 @@ func (h *Handler) DownloadOriginal(c *gin.Context) {
 	}
 
 	// 5. 提供文件（传入 reader、大小与文件名以支持 Range 与 Content-Length）
-	reader, err := h.mediaService.GetFileReader(c.Request.Context(), media.LocalPath)
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), media.LocalPath, media.LocalPoolUUID)
 	if err != nil {
 		h.log.Error("failed to get file reader for download",
 			logger.Error(err),
@@ -933,7 +933,7 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 
 	// 5. HEAD 请求：仅检查预览是否存在，不返回 body
 	if c.Request.Method == http.MethodHead {
-		reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+		reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey, media.LocalPoolUUID)
 		if err != nil {
 			apiresponse.Error(c, "Preview not found or permission denied")
 			return
@@ -945,7 +945,7 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 	}
 
 	// 6. 提供文件（传入 reader、大小与文件名以支持 Content-Length）
-	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey, media.LocalPoolUUID)
 	if err != nil {
 		h.log.Error("failed to get file reader for preview download",
 			logger.Error(err),

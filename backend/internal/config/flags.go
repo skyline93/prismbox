@@ -20,7 +20,7 @@ func AddFlags(flags *pflag.FlagSet) {
 
 	// 存储配置（只添加最常用的）
 	flags.String("storage.primary.type", "", "主存储类型")
-	flags.String("storage.primary.local.base_path", "", "本地存储基础路径")
+	flags.String("storage.primary.local.data_dir", "", "本地存储工作根目录（temp/staging/cache 默认在其下）")
 
 	// 认证配置
 	flags.String("auth.jwt_secret", "", "JWT 密钥")

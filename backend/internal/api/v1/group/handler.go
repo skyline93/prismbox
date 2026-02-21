@@ -677,7 +677,7 @@ func (h *Handler) GetGroupMediaThumbnail(c *gin.Context) {
 	}
 
 	mimeType := h.mediaService.GetThumbnailMimeType(media)
-	h.serveMediaFile(c, storageKey, mimeType)
+	h.serveMediaFile(c, storageKey, mimeType, media.LocalPoolUUID)
 }
 
 // GetGroupMediaPreview 获取圈子媒体预览图
@@ -722,7 +722,7 @@ func (h *Handler) GetGroupMediaPreview(c *gin.Context) {
 	}
 
 	mimeType := h.mediaService.GetPreviewMimeType(media)
-	h.serveMediaFile(c, storageKey, mimeType)
+	h.serveMediaFile(c, storageKey, mimeType, media.LocalPoolUUID)
 }
 
 func (h *Handler) authorizeGroupMedia(c *gin.Context, groupUUID, mediaUUID string, userID uint) (*models.Media, bool) {
@@ -747,8 +747,8 @@ func (h *Handler) authorizeGroupMedia(c *gin.Context, groupUUID, mediaUUID strin
 	return media, true
 }
 
-func (h *Handler) serveMediaFile(c *gin.Context, storageKey, mimeType string) {
-	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey)
+func (h *Handler) serveMediaFile(c *gin.Context, storageKey, mimeType string, poolID string) {
+	reader, err := h.mediaService.GetFileReader(c.Request.Context(), storageKey, poolID)
 	if err != nil {
 		response.Error(c, "File not available on server")
 		return

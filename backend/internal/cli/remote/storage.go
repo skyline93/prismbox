@@ -18,7 +18,7 @@ type StoragePool struct {
 	Name                 string                 `json:"name"`
 	Description          string                 `json:"description"`
 	StorageType          string                 `json:"storage_type"`
-	LocalPath            string                 `json:"local_path"`
+	Location             string                 `json:"location"`
 	CloudConfig          map[string]interface{} `json:"cloud_config"`
 	MaxSize              int64                  `json:"max_size"`
 	CurrentSize          int64                  `json:"current_size"`

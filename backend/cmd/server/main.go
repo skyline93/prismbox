@@ -156,5 +156,12 @@ func main() {
 		)
 	}
 
+	// 关闭存储等资源（停止 PoolManager 后台 goroutine）
+	if err := app.Close(); err != nil {
+		logger.New("server").Error("failed to close app",
+			logger.Error(err),
+		)
+	}
+
 	logger.New("server").Info("server exited")
 }

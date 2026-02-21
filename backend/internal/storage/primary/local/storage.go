@@ -55,6 +55,7 @@ type ProcessingConfig struct {
 // PerformanceConfig 性能配置（类型别名）
 type PerformanceConfig struct {
 	CacheEnabled    bool
+	CachePath       string // 磁盘缓存根目录
 	CacheSize       types.Size
 	CacheTTL        types.Duration
 	ReadBufferSize  types.Size
@@ -217,8 +218,8 @@ func (ls *LocalStorage) Put(ctx context.Context, key string, data io.Reader, siz
 		data = processedData
 	}
 
-	// 5. 确保目录存在
-	fullPath := filepath.Join(pool.Path, filePath)
+	// 5. 确保目录存在（filePath 为相对路径 key，与池根拼接）
+	fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
@@ -272,10 +273,10 @@ func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, err
 		return nil, fmt.Errorf("resolve file path: %w", err)
 	}
 
-	// 4. 查找文件（在所有存储池中）
+	// 4. 查找文件（在所有存储池中；filePath 为相对路径 key）
 	var file *os.File
 	for _, pool := range ls.poolManager.snapshotPools() {
-		fullPath := filepath.Join(pool.Path, filePath)
+		fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
 		if _, err := os.Stat(fullPath); err == nil {
 			file, err = os.Open(fullPath)
 			if err != nil {
@@ -316,6 +317,48 @@ func (ls *LocalStorage) Get(ctx context.Context, key string) (io.ReadCloser, err
 	return file, nil
 }
 
+// GetWithPool 在指定池中按 key 获取文件（读时定向），池不存在或文件不存在时返回错误。
+func (ls *LocalStorage) GetWithPool(ctx context.Context, key string, poolID string) (io.ReadCloser, error) {
+	if poolID == "" {
+		return ls.Get(ctx, key)
+	}
+	if ls.cacheManager != nil {
+		cached, err := ls.cacheManager.Get(key)
+		if err == nil && cached != nil {
+			return cached, nil
+		}
+	}
+	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("resolve key: %w", err)
+	}
+	filePath, err := ls.pathResolver.ResolveFilePath(hash, extension, variant)
+	if err != nil {
+		return nil, fmt.Errorf("resolve file path: %w", err)
+	}
+	pool, err := ls.poolManager.GetPoolInfo(poolID)
+	if err != nil {
+		return nil, fmt.Errorf("pool not found: %w", err)
+	}
+	fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("file not found in pool: %w", err)
+	}
+	if ls.cacheManager != nil {
+		data, err := io.ReadAll(file)
+		file.Close()
+		if err != nil {
+			return nil, fmt.Errorf("read file: %w", err)
+		}
+		go func() {
+			_ = ls.cacheManager.Put(key, data)
+		}()
+		return io.NopCloser(bytes.NewReader(data)), nil
+	}
+	return file, nil
+}
+
 // Delete 删除文件
 func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 	// 1. 解析key
@@ -333,7 +376,7 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 	// 3. 查找并删除文件（在所有存储池中）
 	var deleted bool
 	for _, pool := range ls.poolManager.snapshotPools() {
-		fullPath := filepath.Join(pool.Path, filePath)
+		fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
 		info, err := os.Stat(fullPath)
 		if err != nil {
 			continue
@@ -376,7 +419,7 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 
 	// 3. 查找文件（在所有存储池中）
 	for _, pool := range ls.poolManager.snapshotPools() {
-		fullPath := filepath.Join(pool.Path, filePath)
+		fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
 		if _, err := os.Stat(fullPath); err == nil {
 			return true, nil
 		}
@@ -385,7 +428,7 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	return false, nil
 }
 
-// GetSignedURL 获取签名URL（本地存储不支持，返回文件路径）
+// GetSignedURL 返回本地文件路径，仅服务端内部使用；对外签名 URL 由 API 层基于 PublicBaseURL 与路由实现。
 func (ls *LocalStorage) GetSignedURL(ctx context.Context, key string, duration time.Duration) (string, error) {
 	// 本地存储不支持签名URL，返回文件路径
 	hash, extension, variant, err := ls.pathResolver.ResolveKey(key)
@@ -400,7 +443,7 @@ func (ls *LocalStorage) GetSignedURL(ctx context.Context, key string, duration t
 
 	// 返回第一个找到的文件路径
 	for _, pool := range ls.poolManager.snapshotPools() {
-		fullPath := filepath.Join(pool.Path, filePath)
+		fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
 		if _, err := os.Stat(fullPath); err == nil {
 			return fullPath, nil
 		}
@@ -473,7 +516,7 @@ func (ls *LocalStorage) Stat(ctx context.Context, key string) (*interfaces.FileI
 
 	// 3. 查找文件（在所有存储池中）
 	for _, pool := range ls.poolManager.snapshotPools() {
-		fullPath := filepath.Join(pool.Path, filePath)
+		fullPath := filepath.Join(pool.Path, filepath.FromSlash(filePath))
 		info, err := os.Stat(fullPath)
 		if err != nil {
 			continue
@@ -506,6 +549,12 @@ func (ls *LocalStorage) SelectPool(size int64) (string, error) {
 // GetPoolInfo 获取存储池信息
 func (ls *LocalStorage) GetPoolInfo(poolID string) (*interfaces.PoolInfo, error) {
 	return ls.poolManager.GetPoolInfo(poolID)
+}
+
+// Close 释放资源并停止 PoolManager 后台 goroutine（delta worker、cache refresher、reconciler）。
+func (ls *LocalStorage) Close() error {
+	ls.poolManager.Close()
+	return nil
 }
 
 // RefreshPools 触发存储池缓存刷新

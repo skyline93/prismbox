@@ -65,7 +65,7 @@ func newInitConfigCommand() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "storage-path",
-				Usage: "主存储路径（local.base_path）",
+				Usage: "存储工作根目录（storage.primary.local.data_dir）",
 			},
 			&cli.StringFlag{
 				Name:  "temp-path",
@@ -133,14 +133,9 @@ func newInitStorageCommand() *cli.Command {
 			Value: "default-local",
 		},
 		&cli.StringFlag{
-			Name:  "type",
-			Usage: "存储类型（默认 local）",
-			Value: "local",
-		},
-		&cli.StringFlag{
-			Name:  "local-path",
-			Usage: "本地路径（type=local 时必填）",
-			Value: "./uploads",
+			Name:  "location",
+			Usage: "存储池位置 URI（必填，类型由 scheme 决定，如 local:///app/data/pool1）",
+			Value: "local:///./data/pool1",
 		},
 		&cli.StringFlag{
 			Name:  "max-size",
@@ -201,8 +196,7 @@ func newInitStorageCommand() *cli.Command {
 
 			input := &storagepool.CreateInput{
 				Name:                 c.String("name"),
-				StorageType:          c.String("type"),
-				LocalPath:            c.String("local-path"),
+				Location:             c.String("location"),
 				MaxSize:              size,
 				Priority:             c.Int("priority"),
 				Enabled:              true,
@@ -421,7 +415,7 @@ func applyInitConfigOverrides(cfg *config.Config, c *cli.Context) error {
 
 	if cfg.Storage != nil && cfg.Storage.Primary != nil && cfg.Storage.Primary.Local != nil {
 		if path := strings.TrimSpace(c.String("storage-path")); path != "" {
-			cfg.Storage.Primary.Local.BasePath = path
+			cfg.Storage.Primary.Local.DataDir = path
 		}
 		if cfg.Storage.Primary.Local.Temp != nil {
 			if temp := strings.TrimSpace(c.String("temp-path")); temp != "" {

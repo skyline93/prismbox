@@ -309,8 +309,11 @@ export ALBUM_CERTBOT_EMAIL=admin@example.com
 
 ### 完整环境变量列表
 
-更多环境变量请参考 [环境变量完整列表](./ENV_VARS.md)
+更多环境变量请参考 [环境变量完整列表](./ENV_VARS.md)。
 
+### 存储配置
+
+媒体文件存放在**存储池**中，池的根路径在数据库中配置。环境变量中的 `ALBUM_STORAGE_PRIMARY_LOCAL_*` 仅用于临时文件与缓存目录。部署时需至少创建一个存储池，详见 [存储配置与使用指南](../STORAGE_CONFIGURATION.md)。
 
 ## 配置说明
 
@@ -510,5 +513,6 @@ curl -I http://your-domain.com
 
 - [HTTPS 部署指南](./HTTPS.md) - 详细的 HTTPS 配置和故障排查
 - [环境变量完整列表](./ENV_VARS.md) - 所有环境变量说明
+- [存储配置与使用指南](../STORAGE_CONFIGURATION.md) - 存储池与路径配置
 - [架构文档](../ARCHITECTURE/README.md) - 系统架构设计
 

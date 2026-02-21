@@ -59,6 +59,8 @@ type PrimaryStorage interface {
 	// 基础操作
 	Put(ctx context.Context, key string, data io.Reader, size int64, opts *PutOptions) error
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
+	// GetWithPool 在指定池中按 key 获取文件，用于读时定向（调用方已知 pool_id 时避免多池遍历）
+	GetWithPool(ctx context.Context, key string, poolID string) (io.ReadCloser, error)
 	Delete(ctx context.Context, key string) error
 	Exists(ctx context.Context, key string) (bool, error)
 	GetSignedURL(ctx context.Context, key string, duration time.Duration) (string, error)
@@ -71,6 +73,9 @@ type PrimaryStorage interface {
 	// 存储池管理
 	SelectPool(size int64) (string, error) // 返回池ID
 	GetPoolInfo(poolID string) (*PoolInfo, error)
+
+	// Close 释放资源并停止后台 goroutine（如 delta worker、cache refresher、reconciler），应在应用退出时调用。
+	Close() error
 }
 
 // SecondaryStorage 次存储接口（异步操作，用于备份）

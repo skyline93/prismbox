@@ -32,6 +32,11 @@ func (sm *StorageManager) Get(ctx context.Context, key string) (io.ReadCloser, e
 	return sm.primary.Get(ctx, key)
 }
 
+// GetWithPool 在指定池中获取文件（读时定向）；poolID 为空时行为与 Get 一致。
+func (sm *StorageManager) GetWithPool(ctx context.Context, key string, poolID string) (io.ReadCloser, error) {
+	return sm.primary.GetWithPool(ctx, key, poolID)
+}
+
 // Delete 删除文件
 func (sm *StorageManager) Delete(ctx context.Context, key string) error {
 	return sm.primary.Delete(ctx, key)
@@ -79,4 +84,9 @@ func (sm *StorageManager) GetCacheManager() *local.CacheManager {
 		return ls.GetCacheManager()
 	}
 	return nil
+}
+
+// Close 释放主存储资源，应在应用优雅退出时调用。
+func (sm *StorageManager) Close() error {
+	return sm.primary.Close()
 }

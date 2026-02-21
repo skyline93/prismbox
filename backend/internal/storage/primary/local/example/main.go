@@ -25,7 +25,7 @@ func main() {
 
 	// 创建配置
 	cfg := &local.LocalStorageConfig{
-		BasePath: "./uploads",
+		BasePath: "./data", // 工作根，temp/staging 在其下
 		PoolManager: &local.PoolManagerConfig{
 			DeltaChannelSize:     16,
 			DeltaBatchSize:       4,
@@ -34,7 +34,7 @@ func main() {
 			ReconcileInterval:    types.Duration(0),
 		},
 		Temp: &local.TempFileConfig{
-			BasePath:        "./temp",
+			BasePath:        "./data/temp",
 			MaxAge:          types.Duration(24 * time.Hour),
 			MaxSize:         types.Size(10 * 1024 * 1024), // 10MB
 			CleanupInterval: types.Duration(1 * time.Hour),
@@ -90,7 +90,7 @@ func newMockPoolRepo() *mockPoolRepo {
 				UUID:                 "pool-1",
 				Name:                 "pool-1",
 				StorageType:          "local",
-				LocalPath:            "./pool-1-path",
+				Location:             "local:///./pool-1-path",
 				MaxSize:              1024 * 1024 * 1024,
 				CurrentSize:          0,
 				Priority:             1,
@@ -148,8 +148,8 @@ func (m *mockPoolRepo) UpdateByUUID(ctx context.Context, uuid string, updates ma
 		switch k {
 		case "name":
 			pool.Name = v.(string)
-		case "local_path":
-			pool.LocalPath = v.(string)
+		case "location":
+			pool.Location = v.(string)
 		case "description":
 			pool.Description = v.(string)
 		case "max_size":

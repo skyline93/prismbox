@@ -2,11 +2,11 @@ package media
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/album/backend/internal/storage/interfaces"
+	"github.com/album/backend/internal/storage/keys"
 )
 
 // MediaFileType 业务层的文件类型
@@ -83,75 +83,18 @@ func (a *StorageAdapter) ToStorageOptions(itemType string, mediaType MediaFileTy
 	return opts, nil
 }
 
-// BuildStorageKey 构建存储key
-// hash: 文件hash
-// itemType: "image" 或 "video"
-// mediaType: "original", "thumbnail", "preview"
-// originalExtension: 原始文件的扩展名
+// BuildStorageKey 构建存储 key，委托存储层 keys.BuildKey（业务层仅做类型到 extension+variant 映射）。
 func (a *StorageAdapter) BuildStorageKey(hash string, itemType string, mediaType MediaFileType, originalExtension string) (string, error) {
-	if len(hash) < 4 {
-		return "", fmt.Errorf("hash must be at least 4 characters")
-	}
-
 	opts, err := a.ToStorageOptions(itemType, mediaType, originalExtension)
 	if err != nil {
 		return "", err
 	}
-
-	// 构建key格式：{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
-	hashPrefix := hash[:2]
-	hashNext := hash[2:4]
-
-	var filename string
-	if opts.Variant == "" {
-		filename = fmt.Sprintf("%s.%s", hash, opts.Extension)
-	} else {
-		filename = fmt.Sprintf("%s_%s.%s", hash, opts.Variant, opts.Extension)
-	}
-
-	return fmt.Sprintf("%s/%s/%s", hashPrefix, hashNext, filename), nil
+	return keys.BuildKey(hash, opts.Extension, opts.Variant)
 }
 
-// ParseStorageKey 解析存储key，返回hash、扩展名和变体
+// ParseStorageKey 解析存储 key，委托存储层 keys.ResolveKey。
 func (a *StorageAdapter) ParseStorageKey(key string) (hash string, extension string, variant string, err error) {
-	parts := strings.Split(key, "/")
-	if len(parts) < 3 {
-		return "", "", "", fmt.Errorf("invalid key format: %s", key)
-	}
-
-	hashPrefix := parts[0]
-	hashNext := parts[1]
-	filename := parts[len(parts)-1]
-
-	// 解析文件扩展名
-	ext := filepath.Ext(filename)
-	if ext == "" {
-		return "", "", "", fmt.Errorf("file extension required: %s", filename)
-	}
-	extension = strings.TrimPrefix(ext, ".")
-
-	// 解析hash和变体标识
-	base := strings.TrimSuffix(filename, ext)
-
-	// 检查是否有变体标识（以下划线分隔）
-	if idx := strings.LastIndex(base, "_"); idx > 0 {
-		hash = base[:idx]
-		variant = base[idx+1:]
-	} else {
-		hash = base
-		variant = ""
-	}
-
-	if len(hash) < 4 {
-		return "", "", "", fmt.Errorf("hash must be at least 4 characters")
-	}
-
-	// 基本校验：确保 hash 前缀与路径一致
-	if !strings.HasPrefix(hash, hashPrefix+hashNext) {
-		return "", "", "", fmt.Errorf("hash prefix mismatch with key: %s", key)
-	}
-
-	return hash, extension, variant, nil
+	return keys.ResolveKey(key)
 }
 
 // GetThumbnailKey 获取缩略图的存储key
@@ -270,42 +213,18 @@ func ParseThumbnailSize(sizeParam string) (*ThumbnailSize, error) {
 	return &ThumbnailSize{Width: width, Height: 0}, nil // 高度0表示保持比例
 }
 
-// BuildDynamicThumbnailKey 构建动态尺寸缩略图的存储key
-// hash: 文件hash
-// itemType: "image" 或 "video"
-// originalExtension: 原始文件的扩展名
-// width, height: 目标尺寸（height=0 表示保持比例）
+// BuildDynamicThumbnailKey 构建动态尺寸缩略图的存储 key，委托存储层 keys.BuildKey，variant 为 thumbnail_{width}x{height}。
 func (a *StorageAdapter) BuildDynamicThumbnailKey(hash string, itemType string, originalExtension string, width, height int) (string, error) {
-	if len(hash) < 4 {
-		return "", fmt.Errorf("hash must be at least 4 characters")
-	}
-
-	// 构建动态 variant: thumbnail_{width}x{height}
-	variant := fmt.Sprintf("thumbnail_%dx%d", width, height)
-
-	// 确定扩展名（缩略图统一使用 jpg）
-	extension := "jpg"
-
-	// 构建key格式：{hash[0:2]}/{hash[2:4]}/{hash}_{variant}.{ext}
-	hashPrefix := hash[:2]
-	hashNext := hash[2:4]
-	filename := fmt.Sprintf("%s_%s.%s", hash, variant, extension)
-
-	return fmt.Sprintf("%s/%s/%s", hashPrefix, hashNext, filename), nil
+	variant := fmt.Sprintf("%s%dx%d", keys.DynamicThumbnailVariantPrefix, width, height)
+	return keys.BuildKey(hash, "jpg", variant)
 }
 
-// ParseDynamicVariant 从 variant 字符串中解析尺寸
-// 例如：thumbnail_200x200 -> width=200, height=200
-//
-//	thumbnail_1280x0 -> width=1280, height=0
+// ParseDynamicVariant 从 variant 字符串中解析尺寸，例如 thumbnail_200x200 -> width=200, height=200。
 func (a *StorageAdapter) ParseDynamicVariant(variant string) (width, height int, err error) {
-	// 检查是否是动态 variant 格式
-	if !strings.HasPrefix(variant, "thumbnail_") {
+	if !strings.HasPrefix(variant, keys.DynamicThumbnailVariantPrefix) {
 		return 0, 0, fmt.Errorf("not a dynamic thumbnail variant: %s", variant)
 	}
-
-	// 提取尺寸部分：thumbnail_200x200 -> 200x200
-	sizePart := strings.TrimPrefix(variant, "thumbnail_")
+	sizePart := strings.TrimPrefix(variant, keys.DynamicThumbnailVariantPrefix)
 	if sizePart == "" {
 		return 0, 0, fmt.Errorf("invalid variant format: %s", variant)
 	}

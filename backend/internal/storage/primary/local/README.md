@@ -215,10 +215,11 @@ temp:
 ```yaml
 performance:
   cache_enabled: true
-  cache_size: "1GB"        # 缓存最大大小
-  cache_ttl: "24h"         # 缓存过期时间
-  read_buffer_size: "64KB"  # 读取缓冲区大小
-  write_buffer_size: "64KB" # 写入缓冲区大小
+  cache_path: "./data/cache"  # 磁盘缓存根目录，可配置；未配置时使用默认
+  cache_size: "1GB"          # 缓存最大大小
+  cache_ttl: "24h"           # 缓存过期时间
+  read_buffer_size: "64KB"
+  write_buffer_size: "64KB"
 ```
 
 ### 处理配置
@@ -233,20 +234,28 @@ processing:
 
 ## 文件路径规则
 
+### Key 与相对路径语义（重构后）
+
+- **Key 即相对路径**：存储层 key 唯一表示「相对于池根」的路径，格式为 `files/{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}`，不包含 BasePath。
+- **实际文件路径**：`fullPath = pool.Path + key`，池根（pool.Path）来自数据库 `storage_pools` 表，不由配置文件中的 base_path 表示。
+- **BasePath 仅用于**：临时文件目录（ResolveTempPath）、staging 目录（ResolveStagingPath）及可配置的磁盘缓存根目录（`performance.cache_path`）；不参与池内文件路径计算。
+- **读时定向**：当媒体元数据中记录有 `LocalPoolUUID` 时，可通过 `GetWithPool(ctx, key, poolID)` 仅在该池中查找，避免多池顺序 Stat；未提供 poolID 时回退到多池查找。
+
 ### Hash-based 路径结构
 
-文件路径完全基于文件的 Hash 值生成，格式如下：
+池内文件完整路径 = `pool.Path` + key（相对路径），key 格式如下：
 
 ```
-{base_path}/files/{hash[0:2]}/{hash[2:4]}/{hash}.{ext}
+files/{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
 ```
 
 **示例**：
 - Hash: `abcd1234...`
 - 文件类型: `original`
-- 路径: `uploads/files/ab/cd/abcd1234....jpg`
+- Key: `files/ab/cd/abcd1234....jpg`
+- 若 pool.Path = `/data/pool1`，则完整路径: `/data/pool1/files/ab/cd/abcd1234....jpg`
 
-> **设计意图**：物理文件名只依据内容 Hash，业务层的 UUID、分享 ID 等元数据全部保存在数据库并指向该路径。这样既能保证去重，又避免业务标识泄漏到存储层。
+> **设计意图**：物理文件名只依据内容 Hash，业务层的 UUID、分享 ID 等元数据全部保存在数据库并指向该 key。池根由 DB 管理，BasePath 仅用于 temp/cache，职责清晰。
 
 ### 文件命名规则
 
@@ -266,19 +275,20 @@ processing:
 
 ### Key 格式
 
-Key 格式与路径格式相同：
+Key 为相对路径（含 `files/` 前缀），与 ResolveFilePath 输出一致：
 
 ```
-{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
+files/{hash[0:2]}/{hash[2:4]}/{hash}[_variant].{ext}
 ```
 
 **示例**：
-- `ab/cd/abcd1234....jpg` - JPG原始文件
-- `ab/cd/abcd1234...._thumb.jpg` - JPG缩略图
-- `ab/cd/abcd1234....arw` - RAW原始文件
-- `ab/cd/abcd1234...._thumb.jpg` - RAW的缩略图（JPG格式）
-- `ab/cd/abcd1234....mp4` - MP4视频文件
-- `ab/cd/abcd1234...._thumb.jpg` - 视频缩略图（JPG格式）
+- `files/ab/cd/abcd1234....jpg` - JPG 原始文件
+- `files/ab/cd/abcd1234...._thumbnail.jpg` - 缩略图
+- `files/ab/cd/abcd1234...._preview.jpg` - 预览图
+- `files/ab/cd/abcd1234....arw` - RAW 原始文件
+- `files/ab/cd/abcd1234....mp4` - MP4 视频文件
+
+解析与构建统一由 `internal/storage/keys` 包提供，业务层通过 StorageAdapter 做类型到 extension+variant 映射后调用 keys.BuildKey。
 
 ## 存储池管理
 
