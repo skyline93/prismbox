@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart' show VoidCallback;
-import 'package:prismbox/widgets/src/photo_view_scale_state.dart';
-import 'package:prismbox/widgets/src/utils/ignorable_change_notifier.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_scale_state.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_ignorable_change_notifier.dart';
 
 typedef ScaleStateListener = void Function(double prevScale, double nextScale);
 

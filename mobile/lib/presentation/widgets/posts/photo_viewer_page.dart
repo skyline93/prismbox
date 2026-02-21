@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:prismbox/data/models/post/post_media.dart';
 import 'package:prismbox/presentation/widgets/posts/post_media_image_provider.dart';
 import 'package:prismbox/presentation/widgets/viewer/media_gallery_viewer.dart';
-import 'package:prismbox/widgets/photo_view.dart';
-import 'package:prismbox/widgets/photo_view_gallery.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_gallery.dart';
 
 /// 帖子媒体预览页面（与照片预览页效果一致）
 ///

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:prismbox/widgets/photo_view.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';

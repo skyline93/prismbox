@@ -1,4 +1,4 @@
-// lib/presentation/widgets/media/favorite_indicator.dart
+// lib/presentation/widgets/timeline/favorite_indicator.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

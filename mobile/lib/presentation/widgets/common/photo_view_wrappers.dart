@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 
-import '../photo_view.dart';
-import 'core/photo_view_core.dart';
-import 'photo_view_default_widgets.dart';
-import 'utils/photo_view_utils.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_core.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_default_widgets.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_utils.dart';
 
 class ImageWrapper extends StatefulWidget {
   const ImageWrapper({

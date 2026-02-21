@@ -5,7 +5,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'package:prismbox/domain/entities/base_asset.dart';
 import 'package:prismbox/features/local_sync/services/asset_entity_loader.dart';
 import 'package:prismbox/features/media_loading/image_provider_factory.dart';
-import 'package:prismbox/presentation/widgets/media/favorite_indicator.dart';
+import 'package:prismbox/presentation/widgets/timeline/favorite_indicator.dart';
 import 'package:prismbox/presentation/widgets/media/media_image_widget.dart';
 
 /// 媒体网格 Sliver（用于 CustomScrollView）

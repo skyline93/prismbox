@@ -138,27 +138,65 @@ PrismBox 是一个高性能相册应用，提供完整的照片和视频管理�
   - 列表滚动时必须利用 `cacheExtent` 和缩略图优化。
 
 ##### 4. 目录结构规范（Strict）
-重构后的代码必须严格遵循以下目录结构：
+重构后的代码必须严格遵循以下目录结构。**禁止**在 `lib/` 下出现顶层 `widgets/` 目录；所有可复用 UI 组件须位于 `presentation/widgets/<feature>/` 或 `presentation/widgets/common/`。
 
 ```
 lib/
-├── presentation/
+├── presentation/                # UI 层
 │   ├── pages/                   # 页面级 Widget (Scaffold 所在)
 │   │   ├── <feature>/           # 例如: backup, photos, albums, settings
 │   │   │   └── backup_page.dart
-│   ├── widgets/                 # 拆分出来的组件
+│   ├── widgets/                 # 拆分出来的组件（禁止顶层 lib/widgets/）
 │   │   ├── <feature>/           # 功能模块特定的组件，例如: backup, media, timeline, selection
 │   │   │   ├── backup_status_widget.dart
 │   │   │   └── backup_action_sheet.dart
-│   │   └── common/              # 全局公用组件（跨 feature 使用）
-│   │       └── common_button.dart
+│   │   └── common/              # 全局公用组件（跨 feature 使用，如 photo_view）；禁止使用 src/ 子目录，与 feature 一致采用扁平结构，文件名使用功能前缀 + snake_case
 │   └── routing/                 # 路由配置
 │       ├── app_router.dart
 │       └── guards/
-├── providers/                    # Riverpod Providers
+├── providers/                   # Riverpod Providers（对外/页面级推荐放此处）
 │   ├── <feature>/               # 按功能模块组织
 │   │   └── backup_provider.dart
+├── data/                        # 数据层：数据库与本地模型
+│   ├── database/                # Drift 表、DAO、枚举
+│   │   ├── tables/
+│   │   ├── daos/
+│   │   └── enums/
+│   └── models/                  # 与 API/业务相关的 DTO 或本地模型（如 post、group）
+├── domain/                      # 领域层：实体与仓储接口
+│   ├── entities/
+│   └── repositories/           # 接口定义，实现在 infrastructure
+├── services/                    # 服务层：业务服务，按 feature 分子目录
+│   ├── backup/
+│   ├── download/
+│   ├── auth/
+│   └── ...
+├── features/                    # 功能模块聚合（可含该模块的 services、providers、models）
+│   ├── local_sync/
+│   ├── remote_sync/
+│   ├── video_playback/
+│   └── ...
+├── core/                        # 应用核心基础设施
+│   ├── config/                  # 运行时系统配置（NetworkConfig、TaskConfig、SyncConfig 等）
+│   ├── settings/                # 用户设置（AppSetting，持久化在 StoreService）
+│   ├── storage/                 # 存储抽象（StoreService、StoreKey、SecureStorage）
+│   └── cache/                   # 缓存管理（缩略图、远程图等）
+├── infrastructure/             # 网络层与平台实现
+│   ├── api/                     # API 客户端、请求/响应模型
+│   └── repositories/            # 仓储接口的实现
+├── config/                      # 编译时/应用入口级配置（仅此类配置）
+│   └── app_config.dart          # 与 configuration-management 约定一致
+├── utils/                       # 纯工具函数（无状态）；与某 feature 强相关的宜放入对应 feature
+└── platform/                    # 平台通道、Pigeon 生成或手写原生接口
 ```
+
+**config/ 与 core/config/ 边界**（与 capability configuration-management 对齐）：
+- **lib/config/**：仅放置编译时确定或应用入口级配置（如 `app_config.dart`）。
+- **lib/core/config/**：放置运行时系统配置及 ConfigRegistry 相关类型（如 NetworkConfig、TaskConfig、SyncConfig、CacheConfig）；通过 ConfigRegistry 统一访问。
+
+**Provider 放置策略**：
+- **对外或页面级使用的 Provider 定义**：推荐置于 `lib/providers/<feature>/`，便于发现与复用。
+- **仅 feature 内部使用、与 feature 强绑定的 Provider**：可保留在 `lib/features/<name>/providers/`；跨 feature 使用时，须将定义置于 `lib/providers/` 或从该处导出，不得仅依赖 feature 内 providers 且无文档化例外。
 
 ### Testing Strategy
 

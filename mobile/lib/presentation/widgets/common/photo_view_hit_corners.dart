@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:prismbox/widgets/src/controller/photo_view_controller_delegate.dart'
+import 'package:prismbox/presentation/widgets/common/photo_view_controller_delegate.dart'
     show PhotoViewControllerDelegate;
 
 mixin HitCornersDetector on PhotoViewControllerDelegate {

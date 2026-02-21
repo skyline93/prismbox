@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:prismbox/widgets/photo_view.dart'
+import 'package:prismbox/presentation/widgets/common/photo_view.dart'
     show
         LoadingBuilder,
         PhotoView,
@@ -13,11 +13,11 @@ import 'package:prismbox/widgets/photo_view.dart'
         PhotoViewImageTapDownCallback,
         PhotoViewImageTapUpCallback,
         ScaleStateCycle;
-import 'package:prismbox/widgets/src/controller/photo_view_controller.dart';
-import 'package:prismbox/widgets/src/controller/photo_view_scalestate_controller.dart';
-import 'package:prismbox/widgets/src/core/photo_view_gesture_detector.dart';
-import 'package:prismbox/widgets/src/photo_view_scale_state.dart';
-import 'package:prismbox/widgets/src/utils/photo_view_hero_attributes.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_controller.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_scalestate_controller.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_gesture_detector.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_scale_state.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_hero_attributes.dart';
 
 /// A type definition for a [Function] that receives a index after a page change in [PhotoViewGallery]
 typedef PhotoViewGalleryPageChangedCallback = void Function(int index, PhotoViewControllerBase? controller);

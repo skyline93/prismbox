@@ -1,4 +1,4 @@
-// lib/utils/color_extensions.dart
+// lib/presentation/widgets/common/color_extensions.dart
 
 import 'package:flutter/material.dart';
 
@@ -15,4 +15,3 @@ extension ColorExtensions on Color {
     return Color.alphaBlend(Colors.black.withValues(alpha: amount), this);
   }
 }
-

@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:prismbox/widgets/src/utils/ignorable_change_notifier.dart';
-import 'package:prismbox/widgets/src/utils/photo_view_utils.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_ignorable_change_notifier.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_utils.dart';
 
 /// The interface in which controllers will be implemented.
 ///

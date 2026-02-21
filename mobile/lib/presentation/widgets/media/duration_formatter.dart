@@ -1,4 +1,4 @@
-// lib/utils/duration_formatter.dart
+// lib/presentation/widgets/media/duration_formatter.dart
 
 /// 时长格式化工具
 ///

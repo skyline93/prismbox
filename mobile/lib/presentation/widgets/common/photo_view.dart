@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:prismbox/widgets/src/controller/photo_view_controller.dart';
-import 'package:prismbox/widgets/src/controller/photo_view_scalestate_controller.dart';
-import 'package:prismbox/widgets/src/core/photo_view_core.dart';
-import 'package:prismbox/widgets/src/photo_view_computed_scale.dart';
-import 'package:prismbox/widgets/src/photo_view_scale_state.dart';
-import 'package:prismbox/widgets/src/photo_view_wrappers.dart';
-import 'package:prismbox/widgets/src/utils/photo_view_hero_attributes.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_controller.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_scalestate_controller.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_core.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_computed_scale.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_scale_state.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_wrappers.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_hero_attributes.dart';
 
-export 'src/controller/photo_view_controller.dart';
-export 'src/controller/photo_view_scalestate_controller.dart';
-export 'src/core/photo_view_gesture_detector.dart' show PhotoViewGestureDetectorScope, PhotoViewPageViewScrollPhysics;
-export 'src/photo_view_computed_scale.dart';
-export 'src/photo_view_scale_state.dart';
-export 'src/utils/photo_view_hero_attributes.dart';
+export 'photo_view_controller.dart';
+export 'photo_view_scalestate_controller.dart';
+export 'photo_view_gesture_detector.dart' show PhotoViewGestureDetectorScope, PhotoViewPageViewScrollPhysics;
+export 'photo_view_computed_scale.dart';
+export 'photo_view_scale_state.dart';
+export 'photo_view_hero_attributes.dart';
 
 typedef PhotoViewControllerCallback = PhotoViewControllerBase Function();
 typedef PhotoViewControllerCallbackBuilder = void Function(PhotoViewControllerCallback photoViewMethod);

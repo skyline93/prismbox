@@ -4,8 +4,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:prismbox/widgets/photo_view.dart';
-import 'package:prismbox/widgets/photo_view_gallery.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view.dart';
+import 'package:prismbox/presentation/widgets/common/photo_view_gallery.dart';
 
 /// 手势回调集合，由 [MediaGalleryViewer] 提供，供 [pageOptionsBuilder] 挂到每页的 [PhotoViewGalleryPageOptions] 上。
 /// 实现下滑渐变退出、单击沉浸式等统一行为。

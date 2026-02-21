@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui' show Size;
 
-import "package:prismbox/widgets/src/photo_view_computed_scale.dart";
-import 'package:prismbox/widgets/src/photo_view_scale_state.dart';
+import "package:prismbox/presentation/widgets/common/photo_view_computed_scale.dart";
+import 'package:prismbox/presentation/widgets/common/photo_view_scale_state.dart';
 
 /// Given a [PhotoViewScaleState], returns a scale value considering [scaleBoundaries].
 double getScaleForScaleState(PhotoViewScaleState scaleState, ScaleBoundaries scaleBoundaries) {
