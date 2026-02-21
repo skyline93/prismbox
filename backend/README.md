@@ -52,6 +52,34 @@ docker-compose -f deployments/docker/docker-compose.yml up -d postgres
 go run cmd/server/main.go
 ```
 
+#### 开发环境（Docker Compose，与生产隔离）
+
+使用开发专用 compose，在容器内挂载源码，进入 shell 后可直接 `go run`，无需构建镜像。开发镜像（`deploy/Dockerfile.dev`）基于 base 并带 **Oh My Zsh** 与 gosu，命令行更友好；**Go 模块缓存**通过命名卷 `go-mod-dev` 持久化，容器销毁后重建不会重新下载依赖。依赖服务（PostgreSQL、Nginx、Certbot）与生产配置一致，数据存放在独立目录 `deploy/data-dev`，与生产 `deploy/data` 隔离。
+
+1. **（可选）构建开发镜像**（首次或 base 更新后，否则 dev-up 时会自动 build）  
+   `make docker-build-base` 再 `make docker-build-dev`
+
+2. **初始化开发数据目录**（首次或清理后）  
+   `make dev-init`
+
+3. **启动开发环境**（PostgreSQL、album-backend 开发容器、Nginx、可选 Certbot）  
+   `make dev-up`
+
+4. **进入容器并在项目根目录使用 zsh（Oh My Zsh）**  
+   `make terminal`  
+   进入后当前目录为项目根，可执行：
+   - `go mod download` 或 `go mod tidy`
+   - `go run ./cmd/server` 或 `make build && ./bin/album-server`
+   - 首次可生成配置：`./bin/album-cli --config /app/deploy/data-dev/configs/config.yaml init config ...`（需先 `make build`）
+
+5. **挂载目录权限**  
+   若容器内对 `/app` 无写权限，在宿主机设置环境变量后重启开发 compose：  
+   `export UID GID`（Linux/macOS 通常已设置）  
+   开发 compose 会传入 `DEV_UID`/`DEV_GID`，容器启动时会据此 chown `/app` 与 `/home/app`（Go 缓存），保证可写。Windows 下可使用默认 1000:1000。
+
+6. **停止与查看**  
+   `make dev-down` 停止；`make dev-logs`、`make dev-ps` 查看日志与状态。
+
 ## 📚 文档
 
 完整的文档索引请查看 [文档中心](./doc/INDEX.md)。

@@ -1,0 +1,126 @@
+# 开发环境 Docker Compose（与生产隔离，项目名 album-dev，数据目录 deploy/data-dev）
+# 在 backend 根目录执行: make dev-up && make terminal
+# 进入容器后可在 /app 下执行 go run ./cmd/server
+
+name: album-dev
+version: '3.8'
+
+services:
+  postgresql:
+    image: postgres:14
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${ALBUM_POSTGRES_USER:-album}
+      POSTGRES_PASSWORD: ${ALBUM_POSTGRES_PASSWORD:-album}
+      POSTGRES_DB: ${ALBUM_POSTGRES_DB:-album}
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "./deploy/data-dev/postgresql:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ALBUM_POSTGRES_USER:-album} -d ${ALBUM_POSTGRES_DB:-album}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - album-network
+
+  album-backend:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.dev
+      args:
+        ARCH: ${ALBUM_ARCH:-amd64}
+    image: album-backend-dev:local-${ALBUM_ARCH:-amd64}
+    user: "0:0"
+    working_dir: /app
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ".:/app"
+      - "go-mod-dev:/home/app/go/pkg/mod"
+      - "./deploy/data-dev:/app/deploy/data-dev"
+    environment:
+      DEV_UID: "${DEV_UID:-1000}"
+      DEV_GID: "${DEV_GID:-1000}"
+      ALBUM_CONFIG_PATH: /app/deploy/data-dev/configs/config.yaml
+      ALBUM_INIT_ADMIN_EMAIL: ${ALBUM_INIT_ADMIN_EMAIL:-}
+      ALBUM_INIT_ADMIN_PASSWORD: ${ALBUM_INIT_ADMIN_PASSWORD:-}
+      ALBUM_INIT_ADMIN_USERNAME: ${ALBUM_INIT_ADMIN_USERNAME:-admin}
+      ALBUM_INIT_STORAGE_MAX_SIZE: ${ALBUM_INIT_STORAGE_MAX_SIZE:-1TB}
+      ALBUM_INIT_FORCE: ${ALBUM_INIT_FORCE:-true}
+      ALBUM_SERVER_HOST: 0.0.0.0
+      ALBUM_SERVER_PORT: "8080"
+      ALBUM_SERVER_PUBLIC_BASE_URL: ${ALBUM_SERVER_PUBLIC_BASE_URL:-http://localhost}
+      ALBUM_DATABASE_TYPE: postgres
+      ALBUM_DATABASE_DSN: host=postgresql user=${ALBUM_POSTGRES_USER:-album} password=${ALBUM_POSTGRES_PASSWORD:-album} dbname=${ALBUM_POSTGRES_DB:-album} port=5432 sslmode=disable TimeZone=Asia/Shanghai
+      ALBUM_STORAGE_PRIMARY_LOCAL_BASE_PATH: /app/deploy/data-dev
+      ALBUM_AUTH_JWT_SECRET: ${ALBUM_AUTH_JWT_SECRET:-album-dev-jwt-secret-key-change-in-production}
+      ALBUM_AUTH_URL_SIGNER_SECRET: ${ALBUM_AUTH_URL_SIGNER_SECRET:-album-dev-signer-secret-change-in-production}
+      ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN: ${ALBUM_AUTH_ACCESS_TOKEN_EXPIRES_IN:-30m}
+      ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN: ${ALBUM_AUTH_REFRESH_TOKEN_EXPIRES_IN:-720h}
+      ALBUM_AUTH_AVATAR_SAVE_PATH: /app/deploy/data-dev/public/avatars
+      ALBUM_MEDIA_MAX_FILE_SIZE: ${ALBUM_MEDIA_MAX_FILE_SIZE:-2GB}
+      ALBUM_MEDIA_PROCESSOR_CONCURRENCY: ${ALBUM_MEDIA_PROCESSOR_CONCURRENCY:-4}
+      ALBUM_MEDIA_PROCESSOR_IMAGICK_POOL_SIZE: ${ALBUM_MEDIA_PROCESSOR_IMAGICK_POOL_SIZE:-10}
+      ALBUM_MEDIA_PROCESSOR_IMAGICK_MEMORY_LIMIT: ${ALBUM_MEDIA_PROCESSOR_IMAGICK_MEMORY_LIMIT:-2GB}
+      ALBUM_MEDIA_PROCESSOR_FFMPEG_BINARY_PATH: /usr/bin/ffmpeg
+      ALBUM_MEDIA_PROCESSOR_FFMPEG_PROBE_PATH: /usr/bin/ffprobe
+      ALBUM_LOGGER_LEVEL: ${ALBUM_LOGGER_LEVEL:-debug}
+      ALBUM_LOGGER_FORMAT: ${ALBUM_LOGGER_FORMAT:-console}
+      ALBUM_LOGGER_OUTPUT: stdout
+      ALBUM_CHANGELOG_ENABLED: ${ALBUM_CHANGELOG_ENABLED:-true}
+      ALBUM_ENABLE_APP_CORS: "false"
+    entrypoint: ["/app/deploy/docker-entrypoint-dev.sh"]
+    command: ["tail", "-f", "/dev/null"]
+    networks:
+      - album-network
+
+  nginx:
+    image: registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-${ALBUM_ARCH:-amd64}
+    restart: unless-stopped
+    depends_on:
+      - album-backend
+    ports:
+      - "${ALBUM_DEV_HTTP_PORT:-18080}:80"
+      - "${ALBUM_DEV_HTTPS_PORT:-18443}:443"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "./deploy/data-dev/cert:/etc/nginx/ssl:ro"
+      - "./deploy/data-dev/certbot-www:/var/www/certbot:ro"
+      - "./deploy/data-dev/logs/nginx:/var/log/nginx"
+    environment:
+      ENABLE_HTTPS: ${ALBUM_ENABLE_HTTPS:-false}
+      SSL_CERT_PATH: ${ALBUM_SSL_CERT_PATH:-/etc/nginx/ssl/cert.pem}
+      SSL_KEY_PATH: ${ALBUM_SSL_KEY_PATH:-/etc/nginx/ssl/key.pem}
+      NGINX_ACCESS_LOG_LEVEL: ${ALBUM_NGINX_ACCESS_LOG_LEVEL:-combined}
+      NGINX_ERROR_LOG_LEVEL: ${ALBUM_NGINX_ERROR_LOG_LEVEL:-warn}
+      CLIENT_MAX_BODY_SIZE: ${ALBUM_NGINX_CLIENT_MAX_BODY_SIZE:-2G}
+    networks:
+      - album-network
+
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - "./deploy/data-dev/cert:/etc/letsencrypt"
+      - "./deploy/data-dev/certbot-www:/var/www/certbot"
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
+    networks:
+      - album-network
+    profiles:
+      - https
+
+networks:
+  album-network:
+    driver: bridge
+
+volumes:
+  go-mod-dev:
+    driver: local

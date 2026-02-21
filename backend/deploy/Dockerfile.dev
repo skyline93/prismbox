@@ -1,0 +1,29 @@
+# 开发环境镜像：基于 base，强化 Oh My Zsh 与 gosu，供 docker-compose.dev 使用
+# 构建：make docker-build-dev 或 docker compose -f docker-compose.dev.yaml build album-backend
+
+ARG ARCH=amd64
+FROM registry.cn-shenzhen.aliyuncs.com/greene/album-base:linux-${ARCH}-latest AS dev
+
+USER root
+
+# 安装 gosu，便于 entrypoint 切换用户（避免在 entrypoint 中临时 apt-get）
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends gosu \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 确保 app 用户默认 shell 为 zsh（base 已装 Oh My Zsh）
+RUN chsh -s "$(which zsh)" app
+
+# 统一 Oh My Zsh 目录名并写入 .zshrc（base 中 clone 为 ohmyzsh）
+RUN if [ -d /home/app/ohmyzsh ] && [ ! -d /home/app/.oh-my-zsh ]; then mv /home/app/ohmyzsh /home/app/.oh-my-zsh; fi \
+    && echo 'export ZSH="${HOME}/.oh-my-zsh"' > /home/app/.zshrc \
+    && echo 'ZSH_THEME="robbyrussell"' >> /home/app/.zshrc \
+    && echo 'plugins=(git golang)' >> /home/app/.zshrc \
+    && echo '[ -f "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"' >> /home/app/.zshrc \
+    && chown -R app:app /home/app/.zshrc /home/app/.oh-my-zsh 2>/dev/null || true
+
+USER app
+WORKDIR /home/app
+
+CMD ["tail", "-f", "/dev/null"]

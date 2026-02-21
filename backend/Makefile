@@ -29,12 +29,19 @@ NGINX_IMAGE_LATEST_TAG := $(REGISTRY)/$(NGINX_IMAGE_NAME):latest-$(ARCH)
 
 # Docker Compose 命令检测
 DOCKER_COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
+DEV_COMPOSE_FILE := docker-compose.dev.yaml
+# 运行 make 的用户的 uid/gid，供 exec -u 与 dev-up 传参（与 entrypoint 一致以便 Oh My Zsh 生效）
+TERMINAL_UID := $(shell id -u)
+TERMINAL_GID := $(shell id -g)
+# 开发容器内统一使用 /home/app（entrypoint 会 chown 给 DEV_UID，故任意 UID 均可读 .zshrc）
+TERMINAL_HOME := /home/app
+TERMINAL_USER := app
 
 # Docker Compose Profile 配置（如果启用 HTTPS，则使用 https profile）
 # 使用 shell 命令检查环境变量，确保能正确读取
 DOCKER_COMPOSE_PROFILE := $(shell if [ "$${ALBUM_ENABLE_HTTPS:-false}" = "true" ]; then echo "--profile https"; fi)
 
-.PHONY: help all build build-server build-cli clean print-version docker-build docker-build-backend docker-build-nginx docker-push docker-push-backend docker-push-nginx docker-build-base deploy deploy-up deploy-down deploy-logs deploy-ps deploy-init
+.PHONY: help all build build-server build-cli clean print-version docker-build docker-build-backend docker-build-nginx docker-build-dev docker-push docker-push-backend docker-push-nginx docker-build-base deploy deploy-up deploy-down deploy-logs deploy-ps deploy-init dev-init dev-up dev-down terminal dev-terminal dev-logs dev-ps
 
 # 默认目标：显示帮助信息
 .DEFAULT_GOAL := help
@@ -60,6 +67,13 @@ help: ## 显示此帮助信息
 	@echo "  make deploy-down        # 停止服务"
 	@echo "  make deploy-logs        # 查看服务日志"
 	@echo "  make print-version      # 显示版本信息"
+	@echo "  make docker-build-dev   # 构建开发环境镜像（Oh My Zsh）"
+	@echo "  make dev-init           # 初始化开发数据目录 (data-dev)"
+	@echo "  make dev-up             # 启动开发环境 (compose dev)"
+	@echo "  make dev-down           # 停止开发环境"
+	@echo "  make terminal           # 进入开发容器 zsh (项目根 /app)"
+	@echo "  make dev-logs           # 查看开发环境日志"
+	@echo "  make dev-ps             # 查看开发环境服务状态"
 	@echo ""
 
 all: build ## 构建所有目标（server 和 cli）
@@ -150,6 +164,15 @@ docker-build-base: ## 构建基础镜像（用于构建应用镜像）
 		.
 	@echo ">> base image built: $(REGISTRY)/album-base:$(PLATFORM)-latest"
 
+# 开发环境镜像构建（Oh My Zsh、gosu，供 docker-compose.dev 使用）
+docker-build-dev: ## 构建开发环境镜像（需先 make docker-build-base）
+	@echo ">> building dev image (arch: $(ARCH))"
+	docker build -f deploy/Dockerfile.dev \
+		--build-arg ARCH=$(ARCH) \
+		-t album-backend-dev:local-$(ARCH) \
+		.
+	@echo ">> dev image built: album-backend-dev:local-$(ARCH)"
+
 # 部署相关命令
 deploy-init: ## 初始化部署环境（创建必要目录）
 	@echo ">> initializing deployment environment"
@@ -198,3 +221,34 @@ deploy: docker-build deploy-up ## 部署服务（构建镜像并启动服务）
 	@echo "=========================================="
 	@echo "Deployment completed!"
 	@echo "=========================================="
+
+# 开发环境（与生产隔离，使用 docker-compose.dev.yaml 与 deploy/data-dev）
+dev-init: ## 初始化开发数据目录 (deploy/data-dev)
+	@echo ">> initializing dev data directories"
+	@bash deploy/init-dev.sh
+	@chmod +x deploy/docker-entrypoint-dev.sh 2>/dev/null || true
+
+dev-up: dev-init ## 启动开发环境 (postgresql + album-backend + nginx)，传入 DEV_UID/DEV_GID 以便 entrypoint chown /home/app
+	@echo ">> starting dev environment with $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE)"
+	DEV_UID=$(TERMINAL_UID) DEV_GID=$(TERMINAL_GID) ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE) up -d
+	@echo ">> dev services started; run 'make terminal' to enter container"
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE) ps
+
+dev-down: ## 停止开发环境
+	@echo ">> stopping dev environment"
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE) down
+	@echo ">> dev services stopped"
+
+terminal: ## 进入开发容器 zsh，工作目录为项目根 /app（以当前用户进入以便加载 Oh My Zsh）
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE) exec \
+		-u "$(TERMINAL_UID):$(TERMINAL_GID)" \
+		-e HOME="$(TERMINAL_HOME)" -e USER="$(TERMINAL_USER)" \
+		-w /app album-backend zsh
+
+dev-terminal: terminal ## 同 terminal
+
+dev-logs: ## 查看开发环境日志（实时）
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE) logs -f
+
+dev-ps: ## 查看开发环境服务状态
+	@ALBUM_ARCH=$(ARCH) $(DOCKER_COMPOSE) -f $(DEV_COMPOSE_FILE) ps
