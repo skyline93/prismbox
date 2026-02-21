@@ -11,6 +11,7 @@ import (
 
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
+	"github.com/album/backend/internal/storage/config"
 	"github.com/album/backend/internal/storage/interfaces"
 	"github.com/album/backend/internal/storage/pooluri"
 	"github.com/album/backend/pkg/logger"
@@ -69,7 +70,7 @@ type PoolDelta struct {
 }
 
 // NewPoolManager 创建存储池管理器
-func NewPoolManager(cfg *PoolManagerConfig, storageType string, repo repository.StoragePoolRepository) (*PoolManager, error) {
+func NewPoolManager(cfg *config.PoolManagerConfig, storageType string, repo repository.StoragePoolRepository) (*PoolManager, error) {
 	settings := normalizePoolManagerConfig(cfg)
 
 	pm := &PoolManager{
@@ -569,7 +570,7 @@ type poolManagerSettings struct {
 	reconcileInterval    time.Duration
 }
 
-func normalizePoolManagerConfig(cfg *PoolManagerConfig) poolManagerSettings {
+func normalizePoolManagerConfig(cfg *config.PoolManagerConfig) poolManagerSettings {
 	if cfg == nil {
 		return poolManagerSettings{
 			deltaChannelSize:     defaultDeltaChannelSize,

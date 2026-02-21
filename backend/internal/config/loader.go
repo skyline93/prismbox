@@ -14,6 +14,7 @@ import (
 	"github.com/album/backend/internal/server"
 	"github.com/album/backend/internal/service/auth"
 	"github.com/album/backend/internal/storage"
+	strgcfg "github.com/album/backend/internal/storage/config"
 	"github.com/album/backend/pkg/gq"
 	"github.com/album/backend/pkg/logger"
 	mediaprocessor "github.com/album/backend/pkg/media-processor"
@@ -235,36 +236,34 @@ func (l *Loader) defaultConfig() *Config {
 		},
 		// Storage: 池根由 DB（storage_pools 表）location 管理；DataDir 仅用于 temp、staging、cache 工作根，不参与池内文件路径。
 		Storage: &storage.Config{
-			Primary: &storage.PrimaryStorageConfig{
+			Primary: &strgcfg.PrimaryStorageConfig{
 				Type: "local",
-				Local: &storage.LocalStorageConfig{
+				Local: &strgcfg.LocalStorageConfig{
 					DataDir: "./data",
-					PoolManager: &storage.PoolManagerConfig{
+					PoolManager: &strgcfg.PoolManagerConfig{
 						DeltaChannelSize:     1024,
 						DeltaBatchSize:       128,
 						FlushInterval:        types.Duration(2 * time.Second),
 						CacheRefreshInterval: types.Duration(5 * time.Minute),
 						ReconcileInterval:    types.Duration(0),
 					},
-					Temp: &storage.TempFileConfig{
+					Temp: &strgcfg.TempFileConfig{
 						BasePath:        "", // 空时由 factory 设为 data_dir/temp
 						MaxAge:          types.Duration(24 * time.Hour),
 						MaxSize:         types.Size(10 * 1024 * 1024 * 1024), // 10GB
 						CleanupInterval: types.Duration(1 * time.Hour),
 					},
-					Processing: &storage.ProcessingConfig{
+					Processing: &strgcfg.ProcessingConfig{
 						EnableCompression: false,
 						CompressionLevel:  6,
 						EnableEncryption:  false,
 						EncryptionKeyPath: "",
 					},
-					Performance: &storage.PerformanceConfig{
-						CacheEnabled:    false,
-						CachePath:       "", // 空时由 factory 设为 data_dir/cache
-						CacheSize:       types.Size(100 * 1024 * 1024), // 100MB
-						CacheTTL:        types.Duration(24 * time.Hour),
-						ReadBufferSize:  types.Size(64 * 1024),         // 64KB
-						WriteBufferSize: types.Size(64 * 1024),         // 64KB
+					Performance: &strgcfg.PerformanceConfig{
+						CacheEnabled: false,
+						CachePath:    "", // 空时由 factory 设为 data_dir/cache
+						CacheSize:    types.Size(100 * 1024 * 1024), // 100MB
+						CacheTTL:     types.Duration(24 * time.Hour),
 					},
 				},
 			},

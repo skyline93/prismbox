@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/album/backend/internal/database/models"
 	"github.com/album/backend/internal/repository"
 	"github.com/album/backend/internal/storage"
+	"github.com/album/backend/internal/storage/config"
 	"github.com/album/backend/internal/storage/primary/local"
 	"github.com/album/backend/pkg/logger"
 )
@@ -23,28 +25,27 @@ func main() {
 		Output: "stdout",
 	})
 
-	// 创建配置
-	cfg := &local.LocalStorageConfig{
-		BasePath: "./data", // 工作根，temp/staging 在其下
-		PoolManager: &local.PoolManagerConfig{
+	// 创建配置（使用 storage/config 唯一定义；DataDir 须为绝对路径）
+	dataDir, _ := filepath.Abs("./data")
+	cfg := &config.LocalStorageConfig{
+		DataDir: dataDir,
+		PoolManager: &config.PoolManagerConfig{
 			DeltaChannelSize:     16,
 			DeltaBatchSize:       4,
 			FlushInterval:        types.Duration(1 * time.Second),
 			CacheRefreshInterval: types.Duration(10 * time.Second),
 			ReconcileInterval:    types.Duration(0),
 		},
-		Temp: &local.TempFileConfig{
+		Temp: &config.TempFileConfig{
 			BasePath:        "./data/temp",
 			MaxAge:          types.Duration(24 * time.Hour),
 			MaxSize:         types.Size(10 * 1024 * 1024), // 10MB
 			CleanupInterval: types.Duration(1 * time.Hour),
 		},
-		Performance: &local.PerformanceConfig{
-			CacheEnabled:    true,
-			CacheSize:       types.Size(100 * 1024 * 1024), // 100MB
-			CacheTTL:        types.Duration(24 * time.Hour),
-			ReadBufferSize:  types.Size(64 * 1024), // 64KB
-			WriteBufferSize: types.Size(64 * 1024), // 64KB
+		Performance: &config.PerformanceConfig{
+			CacheEnabled: true,
+			CacheSize:    types.Size(100 * 1024 * 1024), // 100MB
+			CacheTTL:     types.Duration(24 * time.Hour),
 		},
 	}
 

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/album/backend/internal/storage/config"
 )
 
 // CacheManager 缓存管理器
@@ -34,7 +36,7 @@ type CacheEntry struct {
 }
 
 // NewCacheManager 创建缓存管理器。磁盘缓存路径来自配置 performance.cache_path，未配置时使用默认 "./data/cache"。
-func NewCacheManager(cfg *PerformanceConfig) (*CacheManager, error) {
+func NewCacheManager(cfg *config.PerformanceConfig) (*CacheManager, error) {
 	if cfg == nil || !cfg.CacheEnabled {
 		return nil, nil // 缓存未启用
 	}
