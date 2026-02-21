@@ -641,6 +641,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/groups/feed": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取当前用户作为成员的所有圈子中的帖子，按发布时间倒序分页（需要认证）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "获取全部圈子 Feed",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码（默认1）",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "每页数量（默认20）",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/groups/join": {
             "post": {
                 "security": [
@@ -1434,7 +1483,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "上传图片或视频文件，支持秒传（通过 hash 检查）。如果文件已存在，直接返回已存在的媒体信息",
+                "description": "上传图片或视频文件。后端会自动计算文件 hash。",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1450,13 +1499,6 @@ const docTemplate = `{
                         "type": "file",
                         "description": "媒体文件",
                         "name": "file",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "文件 MD5 哈希值（32位十六进制字符串）",
-                        "name": "hash",
                         "in": "formData",
                         "required": true
                     },
@@ -1492,24 +1534,6 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "文件已存在（秒传）",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.MediaResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
                     "201": {
                         "description": "上传成功",
                         "schema": {
@@ -2588,7 +2612,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "流式同步远程媒体资源到本地，支持全量和增量同步",
+                "description": "流式同步远程媒体资源到本地，支持全量和增量同步。在增量同步时，服务器会发送已删除资产的删除事件（asset_delete_v1），客户端收到后应更新本地数据库的 deletedAt 字段。删除事件格式：{\"type\": \"asset_delete_v1\", \"ids\": [uuid1, uuid2, ...], \"data\": {}}。删除事件在资产数据之后发送。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2612,7 +2636,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "流式数据（JSON Lines 格式）"
+                        "description": "流式数据（JSON Lines 格式）。事件类型包括：asset_v1（资产数据）、asset_delete_v1（删除事件）、sync_complete_v1（同步完成）"
                     },
                     "400": {
                         "description": "请求参数错误",
@@ -3157,6 +3181,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "item_type": {
+                    "type": "string"
+                },
+                "live_photo_video_id": {
+                    "description": "Live Photo：图片资产上保存的关联视频 UUID",
                     "type": "string"
                 },
                 "local_path": {
