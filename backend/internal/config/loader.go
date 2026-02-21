@@ -102,6 +102,18 @@ func (l *Loader) Load(flags *pflag.FlagSet) (*Config, error) {
 		}
 	}
 
+	// 5. 显式用环境变量覆盖 storage 路径（Viper Unmarshal 对嵌套 key 不会应用 AutomaticEnv，故在此补全）
+	if cfg.Storage != nil && cfg.Storage.Primary != nil && cfg.Storage.Primary.Local != nil {
+		if v := l.getFromConfigOrEnv("storage.primary.local.base_path"); v != "" {
+			cfg.Storage.Primary.Local.BasePath = v
+		}
+		if cfg.Storage.Primary.Local.Temp != nil {
+			if v := l.getFromConfigOrEnv("storage.primary.local.temp.base_path"); v != "" {
+				cfg.Storage.Primary.Local.Temp.BasePath = v
+			}
+		}
+	}
+
 	return cfg, nil
 }
 

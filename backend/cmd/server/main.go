@@ -49,13 +49,15 @@ func main() {
 	flags.Parse(os.Args[1:])
 
 	// 2. 加载配置
-	// 优先级：命令行参数 > 环境变量 > 默认值
+	// 优先级：显式 -c/--config > 环境变量 ALBUM_CONFIG_PATH > 默认 configs/config.yaml
 	configPath, _ := flags.GetString("config")
-	if configPath == "" {
-		// 如果命令行未指定，尝试从环境变量读取
+	if !flags.Changed("config") {
 		if envPath := os.Getenv("ALBUM_CONFIG_PATH"); envPath != "" {
 			configPath = envPath
 		}
+	}
+	if configPath == "" {
+		configPath = "configs/config.yaml"
 	}
 	loader := config.NewLoader(configPath)
 	loader.BindPFlags(flags) // 绑定命令行参数
