@@ -70,6 +70,13 @@ class NetworkConfig {
   /// **说明**：Token刷新应快速完成，使用较短超时
   static const Duration tokenRefreshReceiveTimeout = Duration(seconds: 10);
 
+  /// 流式同步接收超时（1小时）
+  ///
+  /// **用途**：远程资产流式同步（/api/v1/sync/assets/stream）的接收超时
+  /// **默认值**：1小时
+  /// **说明**：全量同步可能持续较长时间，使用较长超时
+  static const Duration syncStreamReceiveTimeout = Duration(hours: 1);
+
   /// 最大重试次数（3次）
   ///
   /// **用途**：网络错误时的最大重试次数

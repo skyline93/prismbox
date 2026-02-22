@@ -1,9 +1,10 @@
 // lib/features/remote_sync/services/remote_sync_service.dart
 
-import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
+import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
+import 'package:prismbox/core/config/network_config.dart';
 import 'package:prismbox/data/database/app_database.dart';
 import 'package:prismbox/data/database/daos/remote_asset_dao.dart';
 import 'package:prismbox/data/database/enums/asset_type.dart';
@@ -12,22 +13,20 @@ import 'package:prismbox/features/remote_sync/models/remote_sync_result.dart';
 import 'package:prismbox/features/remote_sync/services/checkpoint_store.dart';
 import 'package:prismbox/features/remote_sync/services/sync_stream_handler.dart';
 import 'package:prismbox/infrastructure/api/api_service.dart';
-import 'package:prismbox/utils/cancellation_token.dart';
 
 /// 远程同步服务
-/// 负责从服务器同步远程媒体资源到本地数据库
+/// 负责从服务器同步远程媒体资源到本地数据库；流式同步与 checkpoint 通过 Dio 发起，与其它 API 共用认证与 401 自动刷新重试。
 class RemoteSyncService {
   final ApiService _apiService;
   final AppDatabase _database;
   final CheckpointStore _checkpointStore;
   final Logger _logger = Logger('RemoteSyncService');
-  
+
   /// 批量处理大小
   static const int _batchSize = 100;
-  
-  /// 取消令牌
-  CancellationToken? _cancellationToken;
-  StreamSubscription? _subscription;
+
+  /// 当前流式同步的取消令牌（Dio CancelToken），用于 cancel() 中止请求
+  CancelToken? _cancelToken;
 
   RemoteSyncService({
     required ApiService apiService,
@@ -37,15 +36,15 @@ class RemoteSyncService {
         _database = database,
         _checkpointStore = checkpointStore;
 
-  /// 流式同步远程资产
-  /// 
+  /// 流式同步远程资产（通过 Dio 请求，与其它 API 共用认证与 401 自动刷新重试；取消使用 [cancel] 触发的 CancelToken）
+  ///
   /// [userId] 用户 ID
   /// [reset] 是否重置同步
   /// [updatedAfter] 增量同步时间戳（可选）
   /// [onProgress] 进度回调
   /// [resyncDepth] 重新同步的递归深度（防止无限循环）
-  /// 
-  /// 返回同步结果
+  ///
+  /// 返回同步结果。用户取消时返回已处理统计，不将取消记入 errors。
   Future<RemoteSyncResult> syncRemoteStream({
     required String userId,
     bool reset = false,
@@ -53,7 +52,6 @@ class RemoteSyncService {
     void Function(int current, int total)? onProgress,
     int resyncDepth = 0,
   }) async {
-    // 防止无限递归
     if (resyncDepth > 1) {
       _logger.warning('重新同步深度超过限制，停止递归');
       return RemoteSyncResult(
@@ -61,7 +59,8 @@ class RemoteSyncService {
         duration: Duration.zero,
       );
     }
-    _cancellationToken = CancellationToken();
+
+    _cancelToken = CancelToken();
     final stopwatch = Stopwatch()..start();
     var addedCount = 0;
     var updatedCount = 0;
@@ -72,59 +71,60 @@ class RemoteSyncService {
     final batch = <RemoteAssetEntityData>[];
 
     try {
-      final endpoint = _apiService.endpoint ?? '';
-      if (endpoint.isEmpty) {
+      if (_apiService.endpoint == null || _apiService.endpoint!.isEmpty) {
         throw Exception('API endpoint not configured');
       }
 
-      final url = Uri.parse('$endpoint/api/v1/sync/assets/stream');
-      final headers = await ApiService.getRequestHeaders();
-      headers['Content-Type'] = 'application/json';
-      headers['Accept'] = 'application/jsonlines+json';
-
-      // 构建请求体
       final requestBody = <String, dynamic>{
         'types': ['assets_v1'],
         'reset': reset,
       };
       if (updatedAfter != null) {
-        // 转换为 UTC 时间，确保包含时区信息（RFC3339 格式）
-        requestBody['updated_after'] = updatedAfter.toUtc().toIso8601String();
+        requestBody['updated_after'] =
+            updatedAfter.toUtc().toIso8601String();
       }
 
-      _logger.info('开始流式同步: reset=$reset, updatedAfter=$updatedAfter, resyncDepth=$resyncDepth');
+      _logger.info(
+          '开始流式同步: reset=$reset, updatedAfter=$updatedAfter, resyncDepth=$resyncDepth');
 
-      // 发送请求
-      final request = http.Request('POST', url);
-      request.headers.addAll(headers);
-      request.body = jsonEncode(requestBody);
-
-      final client = http.Client();
-      final response = await client.send(request);
+      final response = await _apiService.dio.post<ResponseBody>(
+        '/api/v1/sync/assets/stream',
+        data: requestBody,
+        options: Options(
+          responseType: ResponseType.stream,
+          receiveTimeout: NetworkConfig.syncStreamReceiveTimeout,
+          headers: <String, dynamic>{
+            'Content-Type': 'application/json',
+            'Accept': 'application/jsonlines+json',
+          },
+        ),
+        cancelToken: _cancelToken,
+      );
 
       if (response.statusCode != 200) {
         throw Exception('同步失败: ${response.statusCode}');
       }
 
-      // 标记是否收到重置事件
+      final responseBody = response.data;
+      if (responseBody == null) {
+        throw Exception('流式响应体为空');
+      }
+
       bool shouldResync = false;
 
-      // 流式读取响应
-      await for (final chunk in response.stream.transform(utf8.decoder)) {
-        if (_cancellationToken?.isCancelled ?? false) {
+      await for (final chunk in responseBody.stream
+          .cast<List<int>>()
+          .transform(utf8.decoder)) {
+        if (_cancelToken?.isCancelled ?? false) {
           _logger.info('同步已取消');
           break;
         }
 
-        // 解析 JSON Lines
         final events = handler.processChunk(chunk);
 
         for (final event in events) {
-          if (_cancellationToken?.isCancelled ?? false) {
-            break;
-          }
+          if (_cancelToken?.isCancelled ?? false) break;
 
-          // 检查是否是重置事件
           if (event.type == SyncEntityType.syncResetV1) {
             shouldResync = true;
           }
@@ -141,7 +141,6 @@ class RemoteSyncService {
           updatedCount += result['updated'] as int;
           deletedCount += result['deleted'] as int;
 
-          // 批量处理
           if (batch.length >= _batchSize) {
             final batchResult = await _flushBatch(remoteDao, batch);
             addedCount += batchResult['added'] as int;
@@ -151,37 +150,32 @@ class RemoteSyncService {
         }
       }
 
-      // 处理剩余的批量数据
       if (batch.isNotEmpty) {
         final batchResult = await _flushBatch(remoteDao, batch);
         addedCount += batchResult['added'] as int;
         updatedCount += batchResult['updated'] as int;
       }
 
-      client.close();
       handler.clear();
-      _cancellationToken = null;
+      _cancelToken = null;
 
-      // 如果收到重置事件，重新发起同步请求以获取所有数据
       if (shouldResync) {
         _logger.info('收到重置事件，重新发起全量同步以获取所有数据');
-        // 递归调用，设置 reset=true 让服务端清除服务端 checkpoint 并发送所有数据
         final resyncResult = await syncRemoteStream(
           userId: userId,
-          reset: true, // 设置为 true，让服务端清除 checkpoint 并发送数据
-          updatedAfter: null, // 全量同步
+          reset: true,
+          updatedAfter: null,
           onProgress: onProgress,
-          resyncDepth: resyncDepth + 1, // 增加递归深度
+          resyncDepth: resyncDepth + 1,
         );
-        // 合并结果
         addedCount += resyncResult.addedCount;
         updatedCount += resyncResult.updatedCount;
         deletedCount += resyncResult.deletedCount;
         errors.addAll(resyncResult.errors);
       }
 
-      _logger.info('流式同步完成: $addedCount 新增, $updatedCount 更新, '
-          '$deletedCount 删除, ${errors.length} 错误');
+      _logger.info(
+          '流式同步完成: $addedCount 新增, $updatedCount 更新, $deletedCount 删除, ${errors.length} 错误');
 
       return RemoteSyncResult(
         addedCount: addedCount,
@@ -190,9 +184,30 @@ class RemoteSyncService {
         errors: errors,
         duration: stopwatch.elapsed,
       );
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        _logger.info('同步已取消');
+        _cancelToken = null;
+        return RemoteSyncResult(
+          addedCount: addedCount,
+          updatedCount: updatedCount,
+          deletedCount: deletedCount,
+          errors: errors,
+          duration: stopwatch.elapsed,
+        );
+      }
+      _logger.severe('远程同步失败', e, e.stackTrace);
+      _cancelToken = null;
+      return RemoteSyncResult(
+        addedCount: addedCount,
+        updatedCount: updatedCount,
+        deletedCount: deletedCount,
+        errors: [...errors, e.toString()],
+        duration: stopwatch.elapsed,
+      );
     } catch (e, stackTrace) {
       _logger.severe('远程同步失败', e, stackTrace);
-      _cancellationToken = null;
+      _cancelToken = null;
       return RemoteSyncResult(
         addedCount: addedCount,
         updatedCount: updatedCount,
@@ -437,8 +452,8 @@ class RemoteSyncService {
     }
   }
 
-  /// 保存服务端 checkpoint
-  /// 
+  /// 保存服务端 checkpoint（通过 Dio 发送，与其它 API 共用认证与 401 重试）
+  ///
   /// [userId] 用户 ID
   /// [syncType] 同步类型
   /// [ack] checkpoint ID
@@ -448,16 +463,6 @@ class RemoteSyncService {
     String ack,
   ) async {
     try {
-      final endpoint = _apiService.endpoint ?? '';
-      if (endpoint.isEmpty) {
-        _logger.warning('API endpoint not configured, cannot save server checkpoint');
-        return;
-      }
-
-      final url = Uri.parse('$endpoint/api/v1/sync/checkpoint');
-      final headers = await ApiService.getRequestHeaders();
-      headers['Content-Type'] = 'application/json';
-
       final requestBody = {
         'checkpoints': [
           {
@@ -467,18 +472,16 @@ class RemoteSyncService {
         ]
       };
 
-      final request = http.Request('POST', url);
-      request.headers.addAll(headers);
-      request.body = jsonEncode(requestBody);
-
-      final client = http.Client();
-      final response = await client.send(request);
-      client.close();
+      final response = await _apiService.dio.post<dynamic>(
+        '/api/v1/sync/checkpoint',
+        data: requestBody,
+      );
 
       if (response.statusCode == 204) {
         _logger.fine('服务端 checkpoint 保存成功: $syncType = $ack');
       } else {
-        _logger.warning('服务端 checkpoint 保存失败: status=${response.statusCode}');
+        _logger.warning(
+            '服务端 checkpoint 保存失败: status=${response.statusCode}');
       }
     } catch (e, stackTrace) {
       _logger.warning('保存服务端 checkpoint 失败', e, stackTrace);
@@ -486,11 +489,10 @@ class RemoteSyncService {
     }
   }
 
-  /// 取消同步
+  /// 取消同步（中止当前流式请求，由 Dio CancelToken 触发）
   void cancel() {
-    _cancellationToken?.cancel();
-    _subscription?.cancel();
-    _cancellationToken = null;
+    _cancelToken?.cancel();
+    _cancelToken = null;
     _logger.info('同步已取消');
   }
 }

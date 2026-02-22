@@ -412,6 +412,11 @@ class _CustomHeaderInterceptor extends Interceptor {
 class _ResponseInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
+    // 流式响应（如 sync/assets/stream）返回 JSON Lines，非 ApiResponse，跳过解析
+    if (response.requestOptions.responseType == ResponseType.stream) {
+      handler.next(response);
+      return;
+    }
     // 解析后端统一响应格式 ApiResponse{code, message, data}
     if (response.data is Map) {
       final data = response.data as Map<String, dynamic>;
@@ -564,12 +569,17 @@ class _LoggingInterceptor extends Interceptor {
         _log.fine('  Headers: $safeHeaders');
       }
 
-      // 打印响应体
+      // 打印响应体（流式响应不格式化）
       if (response.data != null) {
-        final responseBody = ApiLoggingUtils.formatResponseBody(response.data);
-        _log.fine(
-          '  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}',
-        );
+        if (response.requestOptions.responseType == ResponseType.stream) {
+          _log.fine('  Body: [Stream body]');
+        } else {
+          final responseBody =
+              ApiLoggingUtils.formatResponseBody(response.data);
+          _log.fine(
+            '  Body: ${ApiLoggingUtils.truncateResponseBody(responseBody)}',
+          );
+        }
       } else {
         _log.fine('  Body: [空]');
       }
