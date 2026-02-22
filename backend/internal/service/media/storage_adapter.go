@@ -2,7 +2,6 @@ package media
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/album/backend/internal/storage/interfaces"
@@ -149,91 +148,27 @@ func InferMediaCategory(ext string) MediaCategory {
 	return "" // 未知类型
 }
 
-// ThumbnailSize 缩略图尺寸
-type ThumbnailSize struct {
-	Width  int
-	Height int
+// ThumbnailTier 缩略图档位，与 Immich 对齐：仅 thumbnail / preview / fullsize。
+type ThumbnailTier string
+
+const (
+	TierThumbnail ThumbnailTier = "thumbnail"
+	TierPreview   ThumbnailTier = "preview"
+	TierFullsize  ThumbnailTier = "fullsize"
+)
+
+// ParseThumbnailSize 解析缩略图档位参数。仅接受 "thumbnail"、"preview"、"fullsize"。
+// 空字符串视为 "thumbnail"。不再支持 WxH 或单数字动态尺寸。
+func ParseThumbnailSize(sizeParam string) (ThumbnailTier, error) {
+	s := strings.ToLower(strings.TrimSpace(sizeParam))
+	if s == "" {
+		return TierThumbnail, nil
+	}
+	switch s {
+	case "thumbnail", "preview", "fullsize":
+		return ThumbnailTier(s), nil
+	default:
+		return "", fmt.Errorf("invalid size: %s (allowed: thumbnail, preview, fullsize)", sizeParam)
+	}
 }
 
-// ParseThumbnailSize 解析缩略图尺寸参数
-// 支持格式：
-// - "200x200"：具体尺寸
-// - "thumbnail"：默认缩略图（400x400）
-// - "preview"：预览图（1280px 宽度，高度按比例）
-// - "200"：单边限制（宽度 200px，高度按比例）
-func ParseThumbnailSize(sizeParam string) (*ThumbnailSize, error) {
-	if sizeParam == "" {
-		// 默认返回 thumbnail
-		return &ThumbnailSize{Width: 400, Height: 400}, nil
-	}
-
-	// 转换为小写
-	sizeParam = strings.ToLower(strings.TrimSpace(sizeParam))
-
-	// 预设值
-	switch sizeParam {
-	case "thumbnail":
-		return &ThumbnailSize{Width: 400, Height: 400}, nil
-	case "preview":
-		return &ThumbnailSize{Width: 1280, Height: 0}, nil // 高度0表示保持比例
-	}
-
-	// 解析 "WxH" 格式
-	if strings.Contains(sizeParam, "x") {
-		parts := strings.Split(sizeParam, "x")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid size format: %s (expected WxH)", sizeParam)
-		}
-
-		width, err := strconv.Atoi(strings.TrimSpace(parts[0]))
-		if err != nil || width <= 0 {
-			return nil, fmt.Errorf("invalid width: %s", parts[0])
-		}
-
-		heightStr := strings.TrimSpace(parts[1])
-		var height int
-		if heightStr == "" || heightStr == "0" {
-			height = 0 // 高度0表示保持比例
-		} else {
-			height, err = strconv.Atoi(heightStr)
-			if err != nil || height < 0 {
-				return nil, fmt.Errorf("invalid height: %s", parts[1])
-			}
-		}
-
-		return &ThumbnailSize{Width: width, Height: height}, nil
-	}
-
-	// 单边限制（仅宽度）
-	width, err := strconv.Atoi(sizeParam)
-	if err != nil || width <= 0 {
-		return nil, fmt.Errorf("invalid size: %s", sizeParam)
-	}
-
-	return &ThumbnailSize{Width: width, Height: 0}, nil // 高度0表示保持比例
-}
-
-// BuildDynamicThumbnailKey 构建动态尺寸缩略图的存储 key，委托存储层 keys.BuildKey，variant 为 thumbnail_{width}x{height}。
-func (a *StorageAdapter) BuildDynamicThumbnailKey(hash string, itemType string, originalExtension string, width, height int) (string, error) {
-	variant := fmt.Sprintf("%s%dx%d", keys.DynamicThumbnailVariantPrefix, width, height)
-	return keys.BuildKey(hash, "jpg", variant)
-}
-
-// ParseDynamicVariant 从 variant 字符串中解析尺寸，例如 thumbnail_200x200 -> width=200, height=200。
-func (a *StorageAdapter) ParseDynamicVariant(variant string) (width, height int, err error) {
-	if !strings.HasPrefix(variant, keys.DynamicThumbnailVariantPrefix) {
-		return 0, 0, fmt.Errorf("not a dynamic thumbnail variant: %s", variant)
-	}
-	sizePart := strings.TrimPrefix(variant, keys.DynamicThumbnailVariantPrefix)
-	if sizePart == "" {
-		return 0, 0, fmt.Errorf("invalid variant format: %s", variant)
-	}
-
-	// 解析尺寸
-	size, err := ParseThumbnailSize(sizePart)
-	if err != nil {
-		return 0, 0, fmt.Errorf("parse size from variant: %w", err)
-	}
-
-	return size.Width, size.Height, nil
-}

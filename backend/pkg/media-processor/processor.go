@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	core "github.com/album/backend/pkg/media-processor/core"
 	imageprocessor "github.com/album/backend/pkg/media-processor/image"
 	videoprocessor "github.com/album/backend/pkg/media-processor/video"
 )
@@ -36,6 +37,7 @@ func NewProcessor(cfg *Config) (MediaProcessor, error) {
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
+	core.EnsureTierSpecs(cfg)
 
 	imgProc, err := imageprocessor.NewImagickProcessor(cfg)
 	if err != nil {

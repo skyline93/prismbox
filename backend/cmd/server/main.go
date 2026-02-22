@@ -78,7 +78,7 @@ func main() {
 
 	// 3. 注册任务处理器
 	mux := gq.NewServeMux()
-	media.RegisterMediaProcessors(mux, app.MediaRepo, app.StorageManager, app.MediaProcessor,
+	media.RegisterMediaProcessors(mux, app.MediaRepo, app.StorageManager, app.MediaProcessor, app.MediaProcessorConfig,
 		func(m *models.Media) (string, error) { return app.MediaService.BuildThumbnailKey(m) })
 
 	// 4. 启动任务队列服务器（后台运行）

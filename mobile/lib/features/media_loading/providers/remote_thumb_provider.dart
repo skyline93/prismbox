@@ -260,9 +260,9 @@ class RemoteThumbProvider extends ImageProvider<RemoteThumbProvider>
       );
     }
 
-    final size = '${key.size.width.toInt()}x${key.size.height.toInt()}';
-    // 使用后端路由：/api/v1/assets/:uuid/thumbnail
-    return '$baseUrl/api/v1/assets/${key.assetId}/thumbnail?size=$size';
+    // 仅使用档位参数，与 Immich 对齐；key.size 保留用于布局/解码，不参与 URL
+    const sizeTier = 'thumbnail';
+    return '$baseUrl/api/v1/assets/${key.assetId}/thumbnail?size=$sizeTier';
   }
 
   @override

@@ -1,8 +1,5 @@
-# media-thumbnail Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change fix-remote-video-thumbnail. Update Purpose after archive.
-## Requirements
 ### Requirement: 资产缩略图接口对视频可返回图片
 
 系统 SHALL 使 `GET /api/v1/assets/:uuid/thumbnail` 对视频资产（ItemType 为 video）能够返回一张图片（JPEG）响应，与图片资产行为一致，以便客户端在时间线等场景显示远程视频缩略图。缩略图与预览图 SHALL 使用配置中的单边 size（长边上限），等比缩放、不裁剪，输出横纵比与原图/原视频一致。
@@ -47,6 +44,8 @@ TBD - created by archiving change fix-remote-video-thumbnail. Update Purpose aft
 - **AND** 输出 SHALL 在配置的 size 约束内等比缩放，不裁剪，横纵比与原视频一致
 - **AND** 媒体服务 SHALL 将该图片文件写入存储并返回给请求方
 
+## ADDED Requirements
+
 ### Requirement: 缩略图与预览图保持原图横纵比
 
 系统 SHALL 生成缩略图与预览图时仅使用「长边 ≤ size」的等比缩放，不进行裁剪。输出图像的宽高比 SHALL 与原始媒体（图片或视频）的宽高比一致。size 为配置中的单一边长（像素），表示输出长边的上限。
@@ -86,4 +85,3 @@ TBD - created by archiving change fix-remote-video-thumbnail. Update Purpose aft
 - **WHEN** 客户端请求 `?size=200x200` 或 `?size=1280`
 - **THEN** 系统 SHALL 返回 400 Bad Request 或等价错误
 - **AND** 系统 SHALL NOT 按该参数生成或返回图片
-

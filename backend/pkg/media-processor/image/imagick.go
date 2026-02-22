@@ -109,9 +109,6 @@ func (p *ImagickProcessor) Process(ctx context.Context, originalPath string, spe
 }
 
 func (p *ImagickProcessor) GenerateThumbnail(ctx context.Context, originalPath string, spec core.ImageSpec) (string, error) {
-	if !spec.Crop {
-		spec.Crop = true
-	}
 	return p.generate(ctx, originalPath, spec)
 }
 
@@ -191,8 +188,19 @@ func (p *ImagickProcessor) applySpec(wand *imagick.MagickWand, spec core.ImageSp
 			return fmt.Errorf("crop image: %w", err)
 		}
 	} else {
-		if err := resizeToFit(wand, targetWidth, targetHeight); err != nil {
-			return err
+		// 长边限制、保持比例：仅当一边有值且另一边为 0 时使用 long-edge
+		if (targetWidth > 0 && targetHeight == 0) || (targetWidth == 0 && targetHeight > 0) {
+			maxEdge := targetWidth
+			if targetHeight > 0 {
+				maxEdge = targetHeight
+			}
+			if err := resizeToLongEdge(wand, maxEdge); err != nil {
+				return err
+			}
+		} else {
+			if err := resizeToFit(wand, targetWidth, targetHeight); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -247,6 +255,23 @@ func resizeToFit(wand *imagick.MagickWand, maxWidth, maxHeight uint) error {
 	newWidth := uint(math.Max(1, math.Round(currentWidth*scale)))
 	newHeight := uint(math.Max(1, math.Round(currentHeight*scale)))
 
+	if err := wand.ResizeImage(newWidth, newHeight, imagick.FILTER_LANCZOS); err != nil {
+		return fmt.Errorf("resize image: %w", err)
+	}
+	return nil
+}
+
+// resizeToLongEdge 将图片长边限制为 maxEdge，保持比例（Immich 行为）。
+func resizeToLongEdge(wand *imagick.MagickWand, maxEdge uint) error {
+	w := float64(wand.GetImageWidth())
+	h := float64(wand.GetImageHeight())
+	long := math.Max(w, h)
+	if long <= 0 || float64(maxEdge) >= long {
+		return nil
+	}
+	scale := float64(maxEdge) / long
+	newWidth := uint(math.Max(1, math.Round(w*scale)))
+	newHeight := uint(math.Max(1, math.Round(h*scale)))
 	if err := wand.ResizeImage(newWidth, newHeight, imagick.FILTER_LANCZOS); err != nil {
 		return fmt.Errorf("resize image: %w", err)
 	}

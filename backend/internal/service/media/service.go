@@ -113,8 +113,6 @@ type Service interface {
 	GetFileSize(ctx context.Context, storageKey string) (int64, error)
 	// BuildThumbnailKey 构建缩略图存储key
 	BuildThumbnailKey(media *models.Media) (string, error)
-	// BuildDynamicThumbnailKey 构建动态尺寸缩略图存储key
-	BuildDynamicThumbnailKey(media *models.Media, width, height int) (string, error)
 	// GetOrGenerateThumbnail 获取或生成缩略图（按需生成）
 	GetOrGenerateThumbnail(ctx context.Context, media *models.Media, sizeParam string) (io.ReadCloser, error)
 	// GetOrGenerateThumbnailWithInfo 获取或生成缩略图（返回详细信息，包括是否是占位符）
@@ -644,14 +642,16 @@ func (s *service) BuildThumbnailKey(media *models.Media) (string, error) {
 	return s.storageAdapter.GetThumbnailKey(hash, media.ItemType, ext)
 }
 
-// BuildDynamicThumbnailKey 构建动态尺寸缩略图存储key
-func (s *service) BuildDynamicThumbnailKey(media *models.Media, width, height int) (string, error) {
-	// 从原始文件的LocalPath提取hash和扩展名
-	hash, ext, _, err := s.storageAdapter.ParseStorageKey(media.LocalPath)
-	if err != nil {
-		return "", fmt.Errorf("parse storage key: %w", err)
+// keyByTier 根据档位返回存储 key。
+func (s *service) keyByTier(media *models.Media, tier ThumbnailTier) (string, error) {
+	switch tier {
+	case TierThumbnail:
+		return s.BuildThumbnailKey(media)
+	case TierPreview:
+		return s.BuildPreviewKey(media)
+	default:
+		return "", fmt.Errorf("unsupported tier: %s", tier)
 	}
-	return s.storageAdapter.BuildDynamicThumbnailKey(hash, media.ItemType, ext, width, height)
 }
 
 // GetOrGenerateThumbnail 获取或生成缩略图（按需生成，支持异步生成和降级方案）
@@ -663,7 +663,8 @@ func (s *service) GetOrGenerateThumbnail(ctx context.Context, media *models.Medi
 	return result.Reader, nil
 }
 
-// GetOrGenerateThumbnailWithInfo 获取或生成缩略图（返回详细信息，包括是否是占位符）
+// GetOrGenerateThumbnailWithInfo 获取或生成缩略图（返回详细信息，包括是否是占位符）。
+// 仅支持档位 thumbnail、preview；fullsize 请使用原图 URL。
 func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *models.Media, sizeParam string) (*ThumbnailResult, error) {
 	startTime := time.Now()
 	defer func() {
@@ -676,8 +677,7 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		logger.String("item_type", media.ItemType),
 	)
 
-	// 解析尺寸参数
-	size, err := ParseThumbnailSize(sizeParam)
+	tier, err := ParseThumbnailSize(sizeParam)
 	if err != nil {
 		s.log.Warn("failed to parse thumbnail size parameter",
 			logger.String("size_param", sizeParam),
@@ -686,18 +686,24 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		)
 		return nil, fmt.Errorf("parse size: %w", err)
 	}
+	if tier == TierFullsize {
+		return nil, fmt.Errorf("fullsize not supported for thumbnail endpoint, use original URL")
+	}
 
-	// 构建缓存 key（用于 CacheManager）
-	var cacheKey string
-	if sizeParam == "thumbnail" {
-		key, _ := s.BuildThumbnailKey(media)
-		cacheKey = key
-	} else if sizeParam == "preview" {
-		key, _ := s.BuildPreviewKey(media)
-		cacheKey = key
-	} else {
-		key, _ := s.BuildDynamicThumbnailKey(media, size.Width, size.Height)
-		cacheKey = key
+	cacheKey, err := s.keyByTier(media, tier)
+	if err != nil {
+		return nil, fmt.Errorf("build key: %w", err)
+	}
+	spec, err := s.imageSpecByName(string(tier))
+	if err != nil {
+		return nil, fmt.Errorf("image spec for tier %s: %w", tier, err)
+	}
+	placeholderW, placeholderH := spec.MaxWidth, spec.MaxWidth
+	if placeholderW <= 0 {
+		placeholderW, placeholderH = 200, 200
+	}
+	if placeholderH <= 0 {
+		placeholderH = placeholderW
 	}
 
 	// 1. 检查 CacheManager（L1: 内存缓存，L2: 磁盘缓存）
@@ -706,7 +712,6 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		cached, err := s.cacheManager.Get(cacheKey)
 		cacheLatency := time.Since(cacheStartTime)
 		if err == nil && cached != nil {
-			// 缓存命中，直接返回
 			s.log.Debug("thumbnail cache hit",
 				logger.String("cache_key", cacheKey),
 				logger.String("media_uuid", media.UUID),
@@ -729,141 +734,27 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}
 	}
 
-	// 2. 检查是否是预设尺寸（thumbnail 或 preview）
-	if sizeParam == "thumbnail" {
-		// 使用预生成的缩略图
-		key, err := s.BuildThumbnailKey(media)
-		if err != nil {
-			return nil, fmt.Errorf("build thumbnail key: %w", err)
-		}
-		// 检查是否存在
-		exists, err := s.storageManager.Exists(ctx, key)
-		if err != nil {
-			return nil, fmt.Errorf("check thumbnail exists: %w", err)
-		}
-		if exists {
-			storageStartTime := time.Now()
-			reader, err := s.getStorageReader(ctx, key, media.LocalPoolUUID)
-			storageLatency := time.Since(storageStartTime)
-			if err == nil {
-				s.log.Info("thumbnail served from storage",
-					logger.String("storage_key", key),
-					logger.String("media_uuid", media.UUID),
-					logger.String("size_param", sizeParam),
-					logger.Duration("storage_latency_ms", storageLatency),
-					logger.Duration("total_latency_ms", time.Since(startTime)),
-				)
-				if s.cacheManager != nil {
-					// 写入缓存（异步）
-					go s.cacheThumbnail(key, reader)
-				}
-			} else {
-				s.log.Warn("failed to read thumbnail from storage",
-					logger.String("storage_key", key),
-					logger.String("media_uuid", media.UUID),
-					logger.Duration("storage_latency_ms", storageLatency),
-					logger.Error(err),
-				)
-			}
-			monitoring.RecordThumbnailStorageHit(time.Since(startTime))
-			return &ThumbnailResult{
-				Reader:        reader,
-				IsPlaceholder: false,
-			}, err
-		}
-		s.log.Debug("pre-generated thumbnail not found, falling back to dynamic generation",
-			logger.String("storage_key", key),
-			logger.String("media_uuid", media.UUID),
-		)
-		// 如果不存在，降级到动态生成
-	}
-
-	if sizeParam == "preview" {
-		// 使用预生成的预览图
-		key, err := s.BuildPreviewKey(media)
-		if err != nil {
-			return nil, fmt.Errorf("build preview key: %w", err)
-		}
-		// 检查是否存在
-		exists, err := s.storageManager.Exists(ctx, key)
-		if err != nil {
-			return nil, fmt.Errorf("check preview exists: %w", err)
-		}
-		if exists {
-			storageStartTime := time.Now()
-			reader, err := s.getStorageReader(ctx, key, media.LocalPoolUUID)
-			storageLatency := time.Since(storageStartTime)
-			if err == nil {
-				s.log.Info("pre-generated preview served from storage",
-					logger.String("storage_key", key),
-					logger.String("media_uuid", media.UUID),
-					logger.Duration("storage_latency_ms", storageLatency),
-					logger.Duration("total_latency_ms", time.Since(startTime)),
-				)
-				if s.cacheManager != nil {
-					// 写入缓存（异步）
-					go s.cacheThumbnail(key, reader)
-				}
-			} else {
-				s.log.Warn("failed to read pre-generated preview from storage",
-					logger.String("storage_key", key),
-					logger.String("media_uuid", media.UUID),
-					logger.Duration("storage_latency_ms", storageLatency),
-					logger.Error(err),
-				)
-			}
-			monitoring.RecordThumbnailStorageHit(time.Since(startTime))
-			return &ThumbnailResult{
-				Reader:        reader,
-				IsPlaceholder: false,
-			}, err
-		}
-		s.log.Debug("pre-generated preview not found, falling back to dynamic generation",
-			logger.String("storage_key", key),
-			logger.String("media_uuid", media.UUID),
-		)
-		// 如果不存在，降级到动态生成（使用 1280x0）
-		size = &ThumbnailSize{Width: 1280, Height: 0}
-	}
-
-	// 3. 构建动态缩略图 key
-	dynamicKey, err := s.BuildDynamicThumbnailKey(media, size.Width, size.Height)
+	// 2. 检查主存储是否已有该档位文件
+	exists, err := s.storageManager.Exists(ctx, cacheKey)
 	if err != nil {
-		return nil, fmt.Errorf("build dynamic thumbnail key: %w", err)
+		return nil, fmt.Errorf("check storage exists: %w", err)
 	}
-
-	// 4. 检查动态缩略图是否已存在（L3: 主存储）
-	exists, err := s.storageManager.Exists(ctx, dynamicKey)
-	if err != nil {
-		return nil, fmt.Errorf("check dynamic thumbnail exists: %w", err)
-	}
-
 	if exists {
-		// 记录访问（用于清理策略）
-		s.cleanupService.RecordAccess(dynamicKey)
-		// 从主存储读取
+		s.cleanupService.RecordAccess(cacheKey)
 		storageStartTime := time.Now()
-		reader, err := s.getStorageReader(ctx, dynamicKey, media.LocalPoolUUID)
+		reader, err := s.getStorageReader(ctx, cacheKey, media.LocalPoolUUID)
 		storageLatency := time.Since(storageStartTime)
 		if err == nil {
-			s.log.Info("dynamic thumbnail served from storage",
-				logger.String("storage_key", dynamicKey),
+			s.log.Info("thumbnail served from storage",
+				logger.String("storage_key", cacheKey),
 				logger.String("media_uuid", media.UUID),
-				logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
+				logger.String("tier", string(tier)),
 				logger.Duration("storage_latency_ms", storageLatency),
 				logger.Duration("total_latency_ms", time.Since(startTime)),
 			)
 			if s.cacheManager != nil {
-				// 写入缓存（异步）
-				go s.cacheThumbnail(dynamicKey, reader)
+				go s.cacheThumbnail(cacheKey, reader)
 			}
-		} else {
-			s.log.Warn("failed to read dynamic thumbnail from storage",
-				logger.String("storage_key", dynamicKey),
-				logger.String("media_uuid", media.UUID),
-				logger.Duration("storage_latency_ms", storageLatency),
-				logger.Error(err),
-			)
 		}
 		monitoring.RecordThumbnailStorageHit(time.Since(startTime))
 		return &ThumbnailResult{
@@ -872,114 +763,50 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}, err
 	}
 
-	// 需要按需生成，使用队列机制避免重复生成
+	// 3. 按需生成，使用队列避免重复
 	task := &ThumbnailGenerationTask{
 		MediaUUID: media.UUID,
-		SizeParam: sizeParam,
-		Key:       dynamicKey,
+		SizeParam: string(tier),
+		Key:       cacheKey,
 		CreatedAt: time.Now(),
 	}
-
-	// 尝试获取生成权限
-	acquired, waitCh := s.thumbnailQueue.TryAcquire(dynamicKey, task)
+	acquired, waitCh := s.thumbnailQueue.TryAcquire(cacheKey, task)
 	if !acquired {
-		// 已有其他请求正在生成，等待完成或返回降级方案
 		s.log.Info("thumbnail generation already in progress, waiting or returning fallback",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", cacheKey),
 			logger.String("media_uuid", media.UUID),
-			logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
+			logger.String("tier", string(tier)),
 		)
-
-		// 如果有 ThumbHash，返回降级方案
 		if media.ThumbHash != "" {
-			s.log.Debug("returning thumbhash placeholder while generation in progress",
-				logger.String("storage_key", dynamicKey),
-				logger.String("media_uuid", media.UUID),
-				logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
-			)
 			monitoring.RecordThumbnailPlaceholder(time.Since(startTime))
-			reader, err := s.getThumbHashFallback(media.ThumbHash, size.Width, size.Height)
-			return &ThumbnailResult{
-				Reader:        reader,
-				IsPlaceholder: true,
-			}, err
+			reader, err := s.getThumbHashFallback(media.ThumbHash, placeholderW, placeholderH)
+			return &ThumbnailResult{Reader: reader, IsPlaceholder: true}, err
 		}
-
-		// 等待生成完成（最多等待5秒）
 		select {
 		case err := <-waitCh:
 			if err != nil {
-				// 生成失败，返回降级方案
-				s.log.Warn("thumbnail generation failed after waiting",
-					logger.String("storage_key", dynamicKey),
-					logger.String("media_uuid", media.UUID),
-					logger.Duration("wait_time_ms", time.Since(startTime)),
-					logger.Error(err),
-				)
 				if media.ThumbHash != "" {
-					s.log.Debug("returning thumbhash placeholder after generation failure",
-						logger.String("storage_key", dynamicKey),
-						logger.String("media_uuid", media.UUID),
-					)
 					monitoring.RecordThumbnailPlaceholder(time.Since(startTime))
-					reader, err := s.getThumbHashFallback(media.ThumbHash, size.Width, size.Height)
-					return &ThumbnailResult{
-						Reader:        reader,
-						IsPlaceholder: true,
-					}, err
+					reader, err := s.getThumbHashFallback(media.ThumbHash, placeholderW, placeholderH)
+					return &ThumbnailResult{Reader: reader, IsPlaceholder: true}, err
 				}
 				return nil, fmt.Errorf("thumbnail generation failed: %w", err)
 			}
-			// 生成成功，记录访问并重新获取
-			s.log.Info("thumbnail generation completed, serving from storage",
-				logger.String("storage_key", dynamicKey),
-				logger.String("media_uuid", media.UUID),
-				logger.Duration("wait_time_ms", time.Since(startTime)),
-			)
-			s.cleanupService.RecordAccess(dynamicKey)
-			reader, err := s.getStorageReader(ctx, dynamicKey, media.LocalPoolUUID)
+			s.cleanupService.RecordAccess(cacheKey)
+			reader, err := s.getStorageReader(ctx, cacheKey, media.LocalPoolUUID)
 			if err == nil && s.cacheManager != nil {
-				// 需要先读取数据用于缓存，然后创建新的reader返回
-				data, readErr := io.ReadAll(reader)
+				data, _ := io.ReadAll(reader)
 				reader.Close()
-				if readErr == nil {
-					// 异步写入缓存
-					go func() {
-						if err := s.cacheManager.Put(dynamicKey, data); err != nil {
-							s.log.Debug("failed to cache thumbnail after generation",
-								logger.String("cache_key", dynamicKey),
-								logger.String("media_uuid", media.UUID),
-								logger.Error(err),
-							)
-						}
-					}()
-					// 返回新的reader
-					reader = io.NopCloser(bytes.NewReader(data))
-				}
+				go func() { _ = s.cacheManager.Put(cacheKey, data) }()
+				reader = io.NopCloser(bytes.NewReader(data))
 			}
 			monitoring.RecordThumbnailStorageHit(time.Since(startTime))
-			return &ThumbnailResult{
-				Reader:        reader,
-				IsPlaceholder: false,
-			}, err
+			return &ThumbnailResult{Reader: reader, IsPlaceholder: false}, err
 		case <-time.After(5 * time.Second):
-			// 超时，返回降级方案
-			s.log.Warn("thumbnail generation wait timeout, returning fallback",
-				logger.String("storage_key", dynamicKey),
-				logger.String("media_uuid", media.UUID),
-				logger.Duration("wait_timeout_ms", 5*time.Second),
-			)
 			if media.ThumbHash != "" {
-				s.log.Debug("returning thumbhash placeholder after wait timeout",
-					logger.String("storage_key", dynamicKey),
-					logger.String("media_uuid", media.UUID),
-				)
 				monitoring.RecordThumbnailPlaceholder(time.Since(startTime))
-				reader, err := s.getThumbHashFallback(media.ThumbHash, size.Width, size.Height)
-				return &ThumbnailResult{
-					Reader:        reader,
-					IsPlaceholder: true,
-				}, err
+				reader, err := s.getThumbHashFallback(media.ThumbHash, placeholderW, placeholderH)
+				return &ThumbnailResult{Reader: reader, IsPlaceholder: true}, err
 			}
 			return nil, fmt.Errorf("thumbnail generation timeout")
 		case <-ctx.Done():
@@ -987,65 +814,40 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		}
 	}
 
-	// 获得了生成权限
 	hasFallback := media.ThumbHash != ""
-	if !hasFallback {
-		fallbackKey, _ := s.BuildThumbnailKey(media)
-		hasFallback, _ = s.storageManager.Exists(ctx, fallbackKey)
+	if !hasFallback && tier == TierPreview {
+		thumbKey, _ := s.BuildThumbnailKey(media)
+		hasFallback, _ = s.storageManager.Exists(ctx, thumbKey)
 	}
 
 	if hasFallback {
-		// 有降级方案：异步生成，使用与请求无关的 context 避免请求结束后 cancel 导致 FFmpeg 被终止
-		s.log.Info("acquired thumbnail generation permission, starting async generation",
-			logger.String("storage_key", dynamicKey),
-			logger.String("media_uuid", media.UUID),
-			logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
-		)
 		detachedCtx := context.WithoutCancel(ctx)
-		go s.generateThumbnailAsync(detachedCtx, media, size, dynamicKey, task)
-
+		go s.generateThumbnailAsync(detachedCtx, media, tier, cacheKey, task)
 		if media.ThumbHash != "" {
-			s.log.Debug("returning thumbhash placeholder while generation starts",
-				logger.String("storage_key", dynamicKey),
-				logger.String("media_uuid", media.UUID),
-				logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
-			)
 			monitoring.RecordThumbnailPlaceholder(time.Since(startTime))
-			reader, err := s.getThumbHashFallback(media.ThumbHash, size.Width, size.Height)
-			return &ThumbnailResult{
-				Reader:        reader,
-				IsPlaceholder: true,
-			}, err
+			reader, err := s.getThumbHashFallback(media.ThumbHash, placeholderW, placeholderH)
+			return &ThumbnailResult{Reader: reader, IsPlaceholder: true}, err
 		}
 		fallbackKey, _ := s.BuildThumbnailKey(media)
 		reader, err := s.getStorageReader(ctx, fallbackKey, media.LocalPoolUUID)
 		if err == nil && s.cacheManager != nil {
-			data, readErr := io.ReadAll(reader)
+			data, _ := io.ReadAll(reader)
 			reader.Close()
-			if readErr == nil {
-				go func() {
-					_ = s.cacheManager.Put(fallbackKey, data)
-				}()
-				reader = io.NopCloser(bytes.NewReader(data))
-			}
+			go func() { _ = s.cacheManager.Put(fallbackKey, data) }()
+			reader = io.NopCloser(bytes.NewReader(data))
 		}
 		monitoring.RecordThumbnailStorageHit(time.Since(startTime))
-		return &ThumbnailResult{
-			Reader:        reader,
-			IsPlaceholder: false,
-		}, err
+		return &ThumbnailResult{Reader: reader, IsPlaceholder: false}, err
 	}
 
-	// 无降级方案（如视频无 ThumbHash 且无预生成缩略图）：同步生成，请求等待完成后返回
 	s.log.Info("acquired thumbnail generation permission, generating synchronously (no fallback)",
-		logger.String("storage_key", dynamicKey),
+		logger.String("storage_key", cacheKey),
 		logger.String("media_uuid", media.UUID),
-		logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
+		logger.String("tier", string(tier)),
 	)
-	s.generateThumbnailAsync(ctx, media, size, dynamicKey, task)
-	// 生成完成后从存储读取并返回（若生成失败则 key 不存在，Get 会报错）
-	s.cleanupService.RecordAccess(dynamicKey)
-			reader, err := s.getStorageReader(ctx, dynamicKey, media.LocalPoolUUID)
+	s.generateThumbnailAsync(ctx, media, tier, cacheKey, task)
+	s.cleanupService.RecordAccess(cacheKey)
+	reader, err := s.getStorageReader(ctx, cacheKey, media.LocalPoolUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1053,17 +855,12 @@ func (s *service) GetOrGenerateThumbnailWithInfo(ctx context.Context, media *mod
 		data, readErr := io.ReadAll(reader)
 		reader.Close()
 		if readErr == nil {
-			go func() {
-				_ = s.cacheManager.Put(dynamicKey, data)
-			}()
+			go func() { _ = s.cacheManager.Put(cacheKey, data) }()
 			reader = io.NopCloser(bytes.NewReader(data))
 		}
 	}
 	monitoring.RecordThumbnailStorageHit(time.Since(startTime))
-	return &ThumbnailResult{
-		Reader:        reader,
-		IsPlaceholder: false,
-	}, nil
+	return &ThumbnailResult{Reader: reader, IsPlaceholder: false}, nil
 }
 
 // cacheThumbnail 将缩略图写入缓存（辅助方法）
@@ -1102,69 +899,67 @@ func (s *service) cacheThumbnail(key string, reader io.ReadCloser) {
 	}
 }
 
-// generateThumbnailAsync 异步生成缩略图
-func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Media, size *ThumbnailSize, dynamicKey string, task *ThumbnailGenerationTask) {
+// generateThumbnailAsync 按档位异步生成缩略图/预览图并写入指定 key。
+func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Media, tier ThumbnailTier, key string, task *ThumbnailGenerationTask) {
 	startTime := time.Now()
 	monitoring.RecordThumbnailGenerationStart()
 
-	s.log.Info("starting async thumbnail generation",
-		logger.String("storage_key", dynamicKey),
-		logger.String("media_uuid", media.UUID),
-		logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
-		logger.String("item_type", media.ItemType),
-	)
-
-	// 1. 获取原始文件路径
-	originalPath, err := s.storageManager.GetSignedURL(ctx, media.LocalPath, 10*time.Minute)
+	spec, err := s.imageSpecByName(string(tier))
 	if err != nil {
-		s.log.Error("failed to get original file path for thumbnail generation",
-			logger.String("storage_key", dynamicKey),
+		s.log.Error("image spec for tier not found",
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
-			logger.String("original_path", media.LocalPath),
+			logger.String("tier", string(tier)),
 			logger.Error(err),
 		)
-		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("get original file path: %w", err))
+		s.thumbnailQueue.Complete(key, err)
 		monitoring.RecordThumbnailGenerationFailure()
 		return
 	}
 
-	// 2. 生成缩略图
-	// 构建 ImageSpec（使用 MaxWidth 和 MaxHeight）
-	// 生成动态规格名称（用于验证和构建输出路径）
-	specName := fmt.Sprintf("thumbnail_%dx%d", size.Width, size.Height)
-	spec := mediaprocessor.ImageSpec{
-		Name:      specName,
-		MaxWidth:  size.Width,
-		MaxHeight: size.Height,
-		Format:    "jpg",
-		Quality:   85,
-		Crop:      size.Height > 0, // 如果指定了高度，则允许裁剪
+	s.log.Info("starting async thumbnail generation",
+		logger.String("storage_key", key),
+		logger.String("media_uuid", media.UUID),
+		logger.String("tier", string(tier)),
+		logger.String("item_type", media.ItemType),
+	)
+
+	originalPath, err := s.storageManager.GetSignedURL(ctx, media.LocalPath, 10*time.Minute)
+	if err != nil {
+		s.log.Error("failed to get original file path for thumbnail generation",
+			logger.String("storage_key", key),
+			logger.String("media_uuid", media.UUID),
+			logger.String("original_path", media.LocalPath),
+			logger.Error(err),
+		)
+		s.thumbnailQueue.Complete(key, fmt.Errorf("get original file path: %w", err))
+		monitoring.RecordThumbnailGenerationFailure()
+		return
 	}
 
 	var thumbnailPath string
 	generateStartTime := time.Now()
 	if strings.EqualFold(media.ItemType, "image") {
 		s.log.Debug("generating thumbnail from image",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.String("original_path", originalPath),
 		)
 		thumbnailPath, err = s.processor.GenerateThumbnail(ctx, originalPath, spec)
 	} else if strings.EqualFold(media.ItemType, "video") {
-		// 对于视频，使用视频处理器从视频文件/URL 抽帧生成缩略图（不使用图片处理器）
 		s.log.Debug("generating thumbnail from video via video processor",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.String("video_path", originalPath),
 		)
 		thumbnailPath, err = s.processor.GenerateThumbnailFromVideo(ctx, originalPath, -1, spec)
 	} else {
 		s.log.Error("unsupported item type for thumbnail generation",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.String("item_type", media.ItemType),
 		)
-		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("unsupported item type: %s", media.ItemType))
+		s.thumbnailQueue.Complete(key, fmt.Errorf("unsupported item type: %s", media.ItemType))
 		monitoring.RecordThumbnailGenerationFailure()
 		return
 	}
@@ -1172,85 +967,81 @@ func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Medi
 	generateLatency := time.Since(generateStartTime)
 	if err != nil {
 		s.log.Error("thumbnail generation failed",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.String("item_type", media.ItemType),
 			logger.Duration("generation_latency_ms", generateLatency),
 			logger.Error(err),
 		)
-		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("generate thumbnail: %w", err))
+		s.thumbnailQueue.Complete(key, fmt.Errorf("generate thumbnail: %w", err))
 		monitoring.RecordThumbnailGenerationFailure()
 		return
 	}
 
 	s.log.Debug("thumbnail generated successfully",
-		logger.String("storage_key", dynamicKey),
+		logger.String("storage_key", key),
 		logger.String("media_uuid", media.UUID),
 		logger.String("thumbnail_path", thumbnailPath),
 		logger.Duration("generation_latency_ms", generateLatency),
 	)
 
-	// 3. 读取生成的缩略图文件
 	readStartTime := time.Now()
 	thumbnailFile, err := os.Open(thumbnailPath)
 	if err != nil {
 		s.log.Error("failed to open generated thumbnail file",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.String("thumbnail_path", thumbnailPath),
 			logger.Error(err),
 		)
-		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("open generated thumbnail file: %w", err))
+		s.thumbnailQueue.Complete(key, fmt.Errorf("open generated thumbnail file: %w", err))
 		monitoring.RecordThumbnailGenerationFailure()
 		return
 	}
 	defer thumbnailFile.Close()
 
-	// 4. 读取文件数据
 	thumbnailData, err := io.ReadAll(thumbnailFile)
 	readLatency := time.Since(readStartTime)
 	if err != nil {
 		s.log.Error("failed to read thumbnail file data",
-			logger.String("storage_key", dynamicKey),
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.String("thumbnail_path", thumbnailPath),
 			logger.Duration("read_latency_ms", readLatency),
 			logger.Error(err),
 		)
-		s.thumbnailQueue.Complete(dynamicKey, fmt.Errorf("read thumbnail data: %w", err))
+		s.thumbnailQueue.Complete(key, fmt.Errorf("read thumbnail data: %w", err))
 		monitoring.RecordThumbnailGenerationFailure()
 		return
 	}
 
 	s.log.Debug("thumbnail file read successfully",
-		logger.String("storage_key", dynamicKey),
+		logger.String("storage_key", key),
 		logger.String("media_uuid", media.UUID),
 		logger.Int("file_size_bytes", len(thumbnailData)),
 		logger.Duration("read_latency_ms", readLatency),
 	)
 
-	// 5. 存储到动态 key
 	storeStartTime := time.Now()
-	if err := s.storageManager.Put(ctx, dynamicKey, bytes.NewReader(thumbnailData), int64(len(thumbnailData)), nil); err != nil {
-		s.log.Error("failed to store dynamic thumbnail to storage",
-			logger.String("storage_key", dynamicKey),
+	if err := s.storageManager.Put(ctx, key, bytes.NewReader(thumbnailData), int64(len(thumbnailData)), nil); err != nil {
+		s.log.Error("failed to store thumbnail to storage",
+			logger.String("storage_key", key),
 			logger.String("media_uuid", media.UUID),
 			logger.Int("data_size_bytes", len(thumbnailData)),
 			logger.Duration("store_latency_ms", time.Since(storeStartTime)),
 			logger.Error(err),
 		)
-		s.thumbnailQueue.Complete(dynamicKey, err)
+		s.thumbnailQueue.Complete(key, err)
 		monitoring.RecordThumbnailGenerationFailure()
 		return
 	}
 	storeLatency := time.Since(storeStartTime)
 
-	// 6. 写入缓存（如果启用）
 	if s.cacheManager != nil {
 		cacheStartTime := time.Now()
-		if err := s.cacheManager.Put(dynamicKey, thumbnailData); err != nil {
+		if err := s.cacheManager.Put(key, thumbnailData); err != nil {
 			s.log.Warn("failed to cache generated thumbnail",
-				logger.String("cache_key", dynamicKey),
+				logger.String("cache_key", key),
 				logger.String("media_uuid", media.UUID),
 				logger.Int("data_size_bytes", len(thumbnailData)),
 				logger.Duration("cache_write_latency_ms", time.Since(cacheStartTime)),
@@ -1258,7 +1049,7 @@ func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Medi
 			)
 		} else {
 			s.log.Debug("generated thumbnail cached successfully",
-				logger.String("cache_key", dynamicKey),
+				logger.String("cache_key", key),
 				logger.String("media_uuid", media.UUID),
 				logger.Int("data_size_bytes", len(thumbnailData)),
 				logger.Duration("cache_write_latency_ms", time.Since(cacheStartTime)),
@@ -1266,16 +1057,15 @@ func (s *service) generateThumbnailAsync(ctx context.Context, media *models.Medi
 		}
 	}
 
-	// 记录访问（新生成的缩略图）
-	s.cleanupService.RecordAccess(dynamicKey)
+	s.cleanupService.RecordAccess(key)
 	totalLatency := time.Since(startTime)
 	monitoring.RecordThumbnailGenerationSuccess(totalLatency)
-	s.thumbnailQueue.Complete(dynamicKey, nil)
+	s.thumbnailQueue.Complete(key, nil)
 
-	s.log.Info("dynamic thumbnail generated and stored successfully",
-		logger.String("storage_key", dynamicKey),
+	s.log.Info("thumbnail generated and stored successfully",
+		logger.String("storage_key", key),
 		logger.String("media_uuid", media.UUID),
-		logger.String("size", fmt.Sprintf("%dx%d", size.Width, size.Height)),
+		logger.String("tier", string(tier)),
 		logger.Int("thumbnail_size_bytes", len(thumbnailData)),
 		logger.Duration("generation_latency_ms", generateLatency),
 		logger.Duration("read_latency_ms", readLatency),

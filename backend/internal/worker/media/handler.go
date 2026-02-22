@@ -22,17 +22,34 @@ import (
 // ThumbnailKeyBuilder 根据媒体构建缩略图存储 key，用于 worker 预生成视频缩略图。可为 nil 表示不预生成。
 type ThumbnailKeyBuilder func(media *models.Media) (string, error)
 
+// thumbnailSpecFromConfig 从配置中取 thumbnail 档位规格；无配置时返回默认长边 250、不裁剪。
+func thumbnailSpecFromConfig(cfg *mediaprocessor.Config) mediaprocessor.ImageSpec {
+	defaultSpec := mediaprocessor.ImageSpec{
+		Name: "thumbnail", MaxWidth: 250, MaxHeight: 0, Format: "jpg", Quality: 80, Crop: false,
+	}
+	if cfg == nil || len(cfg.DefaultImageSpecs) == 0 {
+		return defaultSpec
+	}
+	for _, spec := range cfg.DefaultImageSpecs {
+		if strings.EqualFold(spec.Name, "thumbnail") {
+			return spec
+		}
+	}
+	return defaultSpec
+}
+
 // RegisterMediaProcessors 注册媒体处理任务。
-// buildThumbnailKey 可选；非 nil 时视频处理成功后会预生成默认缩略图并写入该 key。
+// processorCfg 用于读取 thumbnail/preview 档位规格；buildThumbnailKey 非 nil 时视频处理成功后会预生成缩略图并写入该 key。
 func RegisterMediaProcessors(
 	mux *gq.ServeMux,
 	repo repository.MediaRepository,
 	storageManager *storage.StorageManager,
 	processor mediaprocessor.MediaProcessor,
+	processorCfg *mediaprocessor.Config,
 	buildThumbnailKey ThumbnailKeyBuilder,
 ) {
 	mux.HandleFunc("media:process:image", processImageHandler(repo, storageManager, processor))
-	mux.HandleFunc("media:process:video", processVideoHandler(repo, storageManager, processor, buildThumbnailKey))
+	mux.HandleFunc("media:process:video", processVideoHandler(repo, storageManager, processor, processorCfg, buildThumbnailKey))
 }
 
 type processPayload struct {
@@ -182,6 +199,7 @@ func processVideoHandler(
 	repo repository.MediaRepository,
 	storageManager *storage.StorageManager,
 	processor mediaprocessor.MediaProcessor,
+	processorCfg *mediaprocessor.Config,
 	buildThumbnailKey ThumbnailKeyBuilder,
 ) gq.HandlerFunc {
 	log := logger.New("worker.media.video")
@@ -276,14 +294,7 @@ func processVideoHandler(
 		if buildThumbnailKey != nil {
 			thumbnailKey, keyErr := buildThumbnailKey(media)
 			if keyErr == nil && thumbnailKey != "" {
-				spec := mediaprocessor.ImageSpec{
-					Name:      "thumbnail",
-					MaxWidth:  400,
-					MaxHeight: 400,
-					Format:    "jpg",
-					Quality:   75,
-					Crop:      true,
-				}
+				spec := thumbnailSpecFromConfig(processorCfg)
 				localPath, genErr := processor.GenerateThumbnailFromVideo(ctx, originalPath, -1, spec)
 				if genErr == nil && localPath != "" {
 					defer func() { _ = os.Remove(localPath) }()
