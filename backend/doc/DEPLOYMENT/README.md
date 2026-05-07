@@ -46,7 +46,7 @@
 
 ### 远程一键安装（curl，无需克隆）
 
-适合已有 Docker / Docker Compose 的服务器，安装目录默认 `~/prismbox-backend`（源码见 [skyline93/prismbox](https://github.com/skyline93/prismbox)）：
+适合已有 Docker / Docker Compose 的服务器，安装目录默认是执行命令时的当前目录（源码见 [skyline93/prismbox](https://github.com/skyline93/prismbox)）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scripts/install.sh | sh

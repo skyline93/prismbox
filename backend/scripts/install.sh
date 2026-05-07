@@ -9,7 +9,7 @@
 #   PRISMBOX_GIT_HOST   默认 github.com（设 gitee.com 等可改用其他托管 raw 地址）
 #   PRISMBOX_REPO       默认 skyline93/prismbox（OWNER/REPO）
 #   PRISMBOX_REF        默认 main（分支或 tag）
-#   PRISMBOX_INSTALL_DIR 安装目录，默认 $HOME/prismbox-backend
+#   PRISMBOX_INSTALL_DIR 安装目录，默认当前执行目录（$PWD）
 #
 # 参数:
 #   -d, --dir PATH      安装目录（同 PRISMBOX_INSTALL_DIR）
@@ -28,7 +28,7 @@ USAGE() {
 GIT_HOST="${PRISMBOX_GIT_HOST:-github.com}"
 REPO_SLUG="${PRISMBOX_REPO:-skyline93/prismbox}"
 GIT_REF="${PRISMBOX_REF:-main}"
-INSTALL_DIR="${PRISMBOX_INSTALL_DIR:-$HOME/prismbox-backend}"
+INSTALL_DIR="${PRISMBOX_INSTALL_DIR:-$PWD}"
 USE_HTTPS=0
 NONINTERACTIVE=0
 
