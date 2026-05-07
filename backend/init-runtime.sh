@@ -2,10 +2,10 @@
 set -e
 
 # Album Backend 首次部署初始化脚本
-# 在 backend 根目录下执行
+# 在 backend 根目录下执行（或在一键安装目录执行）
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."  # 回到 backend 根目录
+cd "$SCRIPT_DIR"
 
 echo "=========================================="
 echo "Album Backend 首次部署初始化"

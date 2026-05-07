@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scr
 curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scripts/install.sh | sh -s -- --dir /opt/prismbox-backend --yes
 ```
 
-若需从其他托管拉取脚本与 compose（例如镜像站），可在管道前设置 `PRISMBOX_GIT_HOST` 与 `PRISMBOX_REPO`。其余变量见 `scripts/install.sh` 头部注释。
+若需从其他托管拉取脚本与 compose（例如镜像站），可在管道前设置 `PRISMBOX_GIT_HOST` 与 `PRISMBOX_REPO`。其余变量见 `backend/scripts/install.sh` 头部注释。
 
 ### 方式二：容器化部署（克隆仓库）
 

@@ -127,12 +127,11 @@ mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
 fetch "$(raw_url "${PREFIX}/docker-compose.yaml")" "./docker-compose.yaml"
-mkdir -p scripts
-fetch "$(raw_url "${PREFIX}/scripts/init-runtime.sh")" "./scripts/init-runtime.sh"
-chmod +x scripts/init-runtime.sh 2>/dev/null || true
+fetch "$(raw_url "${PREFIX}/init-runtime.sh")" "./init-runtime.sh"
+chmod +x init-runtime.sh 2>/dev/null || true
 
 echo ">> 初始化数据目录与 .env"
-sh scripts/init-runtime.sh
+sh ./init-runtime.sh
 
 # 更新或追加 KEY=value（兼容值中含特殊字符，不含换行）
 env_set() {

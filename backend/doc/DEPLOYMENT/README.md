@@ -60,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scr
 
 说明：
 
-- 脚本会从代码托管拉取 `docker-compose.yaml` 与 `deploy/` 下必要文件；容器镜像由 compose 中的仓库地址拉取（与本地 `make deploy` 的「本地构建」路径不同）。
+- 脚本会从代码托管拉取 `docker-compose.yaml` 与同级的 `init-runtime.sh`；容器镜像由 compose 中的仓库地址拉取（与本地 `make deploy` 的「本地构建」路径不同）。
 - 固定发布版本时可将 `PRISMBOX_REF` 设为 tag（在 `curl` 前 `export`），详见 `backend/scripts/install.sh` 注释。
 - `--https` 会启用 `https` profile（含 certbot）；仍需按本文档 [HTTPS 配置](#https-配置) 准备证书或域名。
 
