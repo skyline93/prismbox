@@ -9,12 +9,7 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "https://prismbox.example.com/terms",
-        "contact": {
-            "name": "API Support",
-            "url": "https://prismbox.example.com/support",
-            "email": "support@prismbox.example.com"
-        },
+        "contact": {},
         "license": {
             "name": "MIT",
             "url": "https://opensource.org/licenses/MIT"
@@ -26,17 +21,17 @@ const docTemplate = `{
     "paths": {
         "/.well-known/prismbox": {
             "get": {
-                "description": "返回 API 端点信息，用于客户端自动发现",
+                "description": "Returns API endpoint metadata for automatic client configuration",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Discovery"
                 ],
-                "summary": "端点发现",
+                "summary": "Service discovery",
                 "responses": {
                     "200": {
-                        "description": "端点信息",
+                        "description": "Endpoint metadata",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -52,41 +47,41 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "下载资产的缩略图（小尺寸预览），支持动态尺寸和认证或签名 URL 访问",
+                "description": "Small preview; dynamic size; Bearer auth or signed URL",
                 "produces": [
                     "image/jpeg"
                 ],
                 "tags": [
                     "Assets"
                 ],
-                "summary": "下载资产缩略图",
+                "summary": "Download thumbnail",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "资产 UUID",
+                        "description": "Asset UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "尺寸参数：200x200, thumbnail, preview, 或单边限制如 200（默认：thumbnail）",
+                        "description": "Size: 200x200, thumbnail, preview, or single edge e.g. 200 (default thumbnail)",
                         "name": "size",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "缩略图内容"
+                        "description": "Thumbnail bytes"
                     },
                     "400": {
-                        "description": "资产不存在、权限不足或文件未处理完成",
+                        "description": "Not found, forbidden, or not ready",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -96,7 +91,7 @@ const docTemplate = `{
         },
         "/auth/apple/login": {
             "post": {
-                "description": "使用 Apple ID 登录，返回访问令牌和刷新令牌",
+                "description": "Returns access and refresh tokens using Apple identity token",
                 "consumes": [
                     "application/json"
                 ],
@@ -106,10 +101,10 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Apple 登录",
+                "summary": "Apple Sign In",
                 "parameters": [
                     {
-                        "description": "Apple 登录信息",
+                        "description": "Apple Sign In payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -120,7 +115,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "登录成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -138,13 +133,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "Apple token 无效",
+                        "description": "Invalid Apple token",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -159,7 +154,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "上传用户头像图片（需要认证），支持 jpg、jpeg、png 格式，最大 5MB",
+                "description": "Uploads avatar image (authentication required); jpg, jpeg, or png, max 5MB",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -169,11 +164,11 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "上传头像",
+                "summary": "Upload avatar",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "头像图片文件",
+                        "description": "Avatar image file",
                         "name": "avatar",
                         "in": "formData",
                         "required": true
@@ -181,7 +176,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "上传成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -199,13 +194,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "文件格式不支持或文件过大",
+                        "description": "Unsupported format or file too large",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -215,7 +210,7 @@ const docTemplate = `{
         },
         "/auth/login": {
             "post": {
-                "description": "使用邮箱和密码登录，返回访问令牌和刷新令牌",
+                "description": "Returns access and refresh tokens",
                 "consumes": [
                     "application/json"
                 ],
@@ -225,10 +220,10 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "用户登录",
+                "summary": "Login",
                 "parameters": [
                     {
-                        "description": "登录信息",
+                        "description": "Login payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -239,7 +234,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "登录成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -257,13 +252,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "认证失败，邮箱或密码错误",
+                        "description": "Invalid email or password",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -273,7 +268,7 @@ const docTemplate = `{
         },
         "/auth/logout": {
             "post": {
-                "description": "撤销刷新令牌，登出用户",
+                "description": "Revokes the provided refresh token",
                 "consumes": [
                     "application/json"
                 ],
@@ -283,10 +278,10 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "用户登出",
+                "summary": "Logout",
                 "parameters": [
                     {
-                        "description": "登出信息",
+                        "description": "Logout payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -297,13 +292,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "登出成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "刷新令牌无效",
+                        "description": "Invalid refresh token",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -318,7 +313,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "为用户账号设置密码（需要认证）",
+                "description": "Sets password for the authenticated user account",
                 "consumes": [
                     "application/json"
                 ],
@@ -328,10 +323,10 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "设置密码",
+                "summary": "Set password",
                 "parameters": [
                     {
-                        "description": "密码信息",
+                        "description": "Password payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -342,22 +337,22 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "204": {
-                        "description": "密码设置成功"
+                        "description": "No content"
                     },
                     "400": {
-                        "description": "请求参数错误或密码已设置",
+                        "description": "Bad request or password already set",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "404": {
-                        "description": "用户不存在",
+                        "description": "User not found",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -372,29 +367,29 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取当前登录用户的资料信息（需要认证）",
+                "description": "Returns profile for the current user (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "获取用户资料",
+                "summary": "Get profile",
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "用户不存在",
+                        "description": "User not found",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -404,7 +399,7 @@ const docTemplate = `{
         },
         "/auth/refresh": {
             "post": {
-                "description": "使用刷新令牌获取新的访问令牌",
+                "description": "Issues a new access token using a refresh token",
                 "consumes": [
                     "application/json"
                 ],
@@ -414,10 +409,10 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "刷新访问令牌",
+                "summary": "Refresh access token",
                 "parameters": [
                     {
-                        "description": "刷新令牌信息",
+                        "description": "Refresh token payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -428,7 +423,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "刷新成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -449,13 +444,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "刷新令牌无效或已撤销",
+                        "description": "Invalid or revoked refresh token",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "刷新令牌已过期",
+                        "description": "Refresh token expired",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -465,7 +460,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "创建新用户账号，需要提供用户名、邮箱和密码",
+                "description": "Creates a new account with username, email, and password",
                 "consumes": [
                     "application/json"
                 ],
@@ -475,10 +470,10 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "用户注册",
+                "summary": "Register user",
                 "parameters": [
                     {
-                        "description": "注册信息",
+                        "description": "Registration payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -489,7 +484,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "注册成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -507,7 +502,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误或用户名/邮箱已存在",
+                        "description": "Bad request or username/email already exists",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -522,18 +517,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "删除指定的评论（需要认证，必须是评论作者或圈子管理员）",
+                "description": "Deletes a comment (authentication required; author or group admin)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Comments"
                 ],
-                "summary": "删除评论",
+                "summary": "Delete comment",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "评论 ID",
+                        "description": "Comment ID",
                         "name": "commentId",
                         "in": "path",
                         "required": true
@@ -541,19 +536,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "删除成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "评论不存在、不是成员或权限不足",
+                        "description": "Comment not found, not a member, or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -568,23 +563,23 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取当前用户加入的所有圈子列表（需要认证）",
+                "description": "Lists all groups the current user is a member of (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "获取我的圈子列表",
+                "summary": "List my groups",
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -597,7 +592,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "创建一个新的圈子（需要认证）",
+                "description": "Creates a new group (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
@@ -607,10 +602,10 @@ const docTemplate = `{
                 "tags": [
                     "Groups"
                 ],
-                "summary": "创建圈子",
+                "summary": "Create group",
                 "parameters": [
                     {
-                        "description": "圈子信息",
+                        "description": "Group payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -621,19 +616,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -648,20 +643,20 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取当前用户作为成员的所有圈子中的帖子，按发布时间倒序分页（需要认证）",
+                "description": "Posts from all member groups, newest first, paginated (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Posts"
                 ],
-                "summary": "获取全部圈子 Feed",
+                "summary": "Get merged feed",
                 "parameters": [
                     {
                         "minimum": 1,
                         "type": "integer",
                         "default": 1,
-                        "description": "页码（默认1）",
+                        "description": "Page number (default 1)",
                         "name": "page",
                         "in": "query"
                     },
@@ -669,20 +664,20 @@ const docTemplate = `{
                         "minimum": 1,
                         "type": "integer",
                         "default": 20,
-                        "description": "每页数量（默认20）",
+                        "description": "Page size (default 20)",
                         "name": "limit",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -697,7 +692,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "使用邀请码加入圈子（需要认证）",
+                "description": "Joins a group with an invitation code (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
@@ -707,10 +702,10 @@ const docTemplate = `{
                 "tags": [
                     "Groups"
                 ],
-                "summary": "加入圈子",
+                "summary": "Join group",
                 "parameters": [
                     {
-                        "description": "邀请码",
+                        "description": "Invite code",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -721,19 +716,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "加入成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "邀请码无效、已过期或已是成员",
+                        "description": "Invalid code, expired, or already a member",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -748,18 +743,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取指定圈子的详细信息（需要认证，必须是圈子成员）",
+                "description": "Returns details for a group (authentication required; must be a member)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "获取圈子详情",
+                "summary": "Get group details",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -767,19 +762,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在或权限不足",
+                        "description": "Group not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -792,7 +787,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "更新圈子的名称和描述（需要认证，必须是圈子管理员或所有者）",
+                "description": "Updates name and description (authentication required; owner or admin)",
                 "consumes": [
                     "application/json"
                 ],
@@ -802,17 +797,17 @@ const docTemplate = `{
                 "tags": [
                     "Groups"
                 ],
-                "summary": "更新圈子信息",
+                "summary": "Update group",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "更新信息",
+                        "description": "Update payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -823,25 +818,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "更新成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在或权限不足",
+                        "description": "Group not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "403": {
-                        "description": "权限不足，必须是管理员或所有者",
+                        "description": "Forbidden; must be owner or admin",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -856,18 +851,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取圈子的帖子Feed流，支持分页（需要认证，必须是圈子成员）",
+                "description": "Paginated post feed for a group (authentication required; must be a member)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Posts"
                 ],
-                "summary": "获取圈子Feed流",
+                "summary": "Get group feed",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -876,7 +871,7 @@ const docTemplate = `{
                         "minimum": 1,
                         "type": "integer",
                         "default": 1,
-                        "description": "页码（默认1）",
+                        "description": "Page number (default 1)",
                         "name": "page",
                         "in": "query"
                     },
@@ -884,26 +879,26 @@ const docTemplate = `{
                         "minimum": 1,
                         "type": "integer",
                         "default": 20,
-                        "description": "每页数量（默认20）",
+                        "description": "Page size (default 20)",
                         "name": "limit",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在或不是成员",
+                        "description": "Group not found or not a member",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -918,18 +913,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "退出指定的圈子（需要认证，所有者不能退出）",
+                "description": "Leaves the specified group (authentication required; owner cannot leave)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "退出圈子",
+                "summary": "Leave group",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -937,19 +932,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "退出成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在、不是成员或是所有者",
+                        "description": "Group not found, not a member, or owner",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -964,25 +959,25 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取圈子中媒体的预览图（需要认证，必须是圈子成员）",
+                "description": "Preview image bytes (authentication required; must be a member)",
                 "produces": [
                     "image/jpeg"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "获取圈子媒体预览图",
+                "summary": "Get group media preview",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "media_uuid",
                         "in": "path",
                         "required": true
@@ -990,16 +985,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "预览图内容"
+                        "description": "Preview bytes"
                     },
                     "400": {
-                        "description": "媒体不存在、权限不足或文件未处理完成",
+                        "description": "Media not found, forbidden, or not ready",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1014,25 +1009,25 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取圈子中媒体的缩略图（需要认证，必须是圈子成员）",
+                "description": "Thumbnail bytes (authentication required; must be a member)",
                 "produces": [
                     "image/jpeg"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "获取圈子媒体缩略图",
+                "summary": "Get group media thumbnail",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "media_uuid",
                         "in": "path",
                         "required": true
@@ -1040,16 +1035,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "缩略图内容"
+                        "description": "Thumbnail bytes"
                     },
                     "400": {
-                        "description": "媒体不存在、权限不足或文件未处理完成",
+                        "description": "Media not found, forbidden, or not ready",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1064,18 +1059,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取指定圈子的所有成员列表（需要认证，必须是圈子成员）",
+                "description": "Lists all members (authentication required; must be a member)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "获取圈子成员列表",
+                "summary": "List group members",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1083,19 +1078,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在或权限不足",
+                        "description": "Group not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1110,18 +1105,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "为圈子创建新的邀请码（需要认证，必须是圈子管理员或所有者）",
+                "description": "Creates an invitation code (authentication required; owner or admin)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "创建邀请码",
+                "summary": "Create invite code",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1129,25 +1124,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在或权限不足",
+                        "description": "Group not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "403": {
-                        "description": "权限不足，必须是管理员或所有者",
+                        "description": "Forbidden; must be owner or admin",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1162,25 +1157,25 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "从圈子中移除指定成员（需要认证，必须是圈子管理员或所有者，不能移除所有者）",
+                "description": "Removes a member (authentication required; owner or admin; cannot remove owner)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Groups"
                 ],
-                "summary": "移除成员",
+                "summary": "Remove member",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "用户 ID",
+                        "description": "User ID",
                         "name": "userId",
                         "in": "path",
                         "required": true
@@ -1188,25 +1183,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "移除成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在、用户不存在或不能移除所有者",
+                        "description": "Group/user not found or cannot remove owner",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "403": {
-                        "description": "权限不足，必须是管理员或所有者",
+                        "description": "Forbidden; must be owner or admin",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1221,7 +1216,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "在圈子中创建新帖子，分享媒体（需要认证，必须是圈子成员）",
+                "description": "Creates a post with shared media (authentication required; must be a member)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1231,17 +1226,17 @@ const docTemplate = `{
                 "tags": [
                     "Posts"
                 ],
-                "summary": "创建帖子",
+                "summary": "Create post",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "圈子 UUID",
+                        "description": "Group UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "帖子信息",
+                        "description": "Post payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -1252,19 +1247,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "圈子不存在、不是成员或媒体不存在",
+                        "description": "Group not found, not a member, or media error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1279,20 +1274,20 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "分页获取当前用户的媒体列表，支持按类型筛选",
+                "description": "Paginated list with optional item type filter",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "获取媒体列表",
+                "summary": "List media",
                 "parameters": [
                     {
                         "minimum": 1,
                         "type": "integer",
                         "default": 1,
-                        "description": "页码（默认1）",
+                        "description": "Page number (default 1)",
                         "name": "page",
                         "in": "query"
                     },
@@ -1301,7 +1296,7 @@ const docTemplate = `{
                         "minimum": 1,
                         "type": "integer",
                         "default": 20,
-                        "description": "每页数量（默认20，最大100）",
+                        "description": "Page size (default 20, max 100)",
                         "name": "page_size",
                         "in": "query"
                     },
@@ -1311,14 +1306,14 @@ const docTemplate = `{
                             "video"
                         ],
                         "type": "string",
-                        "description": "媒体类型",
+                        "description": "Item type",
                         "name": "item_type",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -1336,13 +1331,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1357,25 +1352,25 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取指定时间点之后的媒体变更记录（创建、更新、删除）",
+                "description": "Change feed after the since query parameter (created, updated, deleted)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "获取媒体变更",
+                "summary": "Get media changes",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "起始时间（RFC3339 格式）",
+                        "description": "Start time (RFC3339)",
                         "name": "since",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -1393,13 +1388,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1414,7 +1409,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）。每批最多 100 个哈希，超时时间 30 秒。",
+                "description": "Batch hash lookup; max 100 per request, 30s timeout",
                 "consumes": [
                     "application/json"
                 ],
@@ -1424,10 +1419,10 @@ const docTemplate = `{
                 "tags": [
                     "Media"
                 ],
-                "summary": "检查文件哈希",
+                "summary": "Check content hashes",
                 "parameters": [
                     {
-                        "description": "哈希列表（最多 100 个）",
+                        "description": "Hash list (max 100)",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -1438,7 +1433,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "检查成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -1456,19 +1451,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误（批量大小超限、哈希格式无效）",
+                        "description": "Bad request (batch size or invalid hash)",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "408": {
-                        "description": "请求超时",
+                        "description": "Request timeout",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1483,7 +1478,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "上传图片或视频文件。后端会自动计算文件 hash。",
+                "description": "Upload an image or video; the server computes the file hash.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1493,11 +1488,11 @@ const docTemplate = `{
                 "tags": [
                     "Media"
                 ],
-                "summary": "上传媒体文件",
+                "summary": "Upload media",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "媒体文件",
+                        "description": "Media file",
                         "name": "file",
                         "in": "formData",
                         "required": true
@@ -1508,34 +1503,34 @@ const docTemplate = `{
                             "video"
                         ],
                         "type": "string",
-                        "description": "媒体类型",
+                        "description": "Item type",
                         "name": "item_type",
                         "in": "formData",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "客户端生成的 UUID",
+                        "description": "Client-generated UUID",
                         "name": "cloud_uuid",
                         "in": "formData",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "原始文件名",
+                        "description": "Original filename",
                         "name": "original_filename",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "媒体拍摄时间（RFC3339 格式）",
+                        "description": "Capture time (RFC3339)",
                         "name": "media_taken_at",
                         "in": "formData"
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "上传成功",
+                        "description": "Created",
                         "schema": {
                             "allOf": [
                                 {
@@ -1553,13 +1548,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误或文件格式不支持",
+                        "description": "Bad request or unsupported format",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1572,17 +1567,17 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "用于客户端验证上传端点是否可用（HEAD 请求）",
+                "description": "Use HEAD to verify the upload endpoint is reachable (auth only)",
                 "tags": [
                     "Media"
                 ],
-                "summary": "验证上传端点",
+                "summary": "Validate upload endpoint",
                 "responses": {
                     "200": {
-                        "description": "端点可用"
+                        "description": "OK"
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1597,18 +1592,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取指定媒体的详细信息，包括下载链接（需要认证）",
+                "description": "Detail including download URLs when processing is complete (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "获取媒体详情",
+                "summary": "Get media detail",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1616,7 +1611,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -1634,13 +1629,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "媒体不存在或权限不足",
+                        "description": "Not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1653,18 +1648,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "将媒体移到回收站（软删除），可以恢复",
+                "description": "Soft-delete; can be restored from bin",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "删除媒体",
+                "summary": "Delete media",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1672,19 +1667,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "删除成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "媒体不存在或权限不足",
+                        "description": "Not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1699,18 +1694,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "下载媒体的原始文件，支持认证或签名 URL 访问",
+                "description": "Original bytes; Bearer auth or signed URL",
                 "produces": [
                     "application/octet-stream"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "下载原始文件",
+                "summary": "Download original file",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1718,16 +1713,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "文件内容"
+                        "description": "File bytes"
                     },
                     "400": {
-                        "description": "媒体不存在、权限不足或文件未处理完成",
+                        "description": "Not found, forbidden, or not ready",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1742,18 +1737,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "下载媒体的预览图（压缩后的图片），支持认证或签名 URL 访问",
+                "description": "Compressed preview image; Bearer auth or signed URL",
                 "produces": [
                     "image/jpeg"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "下载预览文件",
+                "summary": "Download preview",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1761,16 +1756,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "预览图内容"
+                        "description": "Preview bytes"
                     },
                     "400": {
-                        "description": "媒体不存在、权限不足或文件未处理完成",
+                        "description": "Not found, forbidden, or not ready",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1785,18 +1780,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "永久删除媒体（硬删除），无法恢复",
+                "description": "Hard delete; cannot be recovered",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "永久删除媒体",
+                "summary": "Purge media",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1804,19 +1799,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "删除成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "媒体不存在或权限不足",
+                        "description": "Not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1831,18 +1826,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "从回收站恢复已删除的媒体",
+                "description": "Undoes soft-delete",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Media"
                 ],
-                "summary": "恢复媒体",
+                "summary": "Restore media",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "媒体 UUID",
+                        "description": "Media UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -1850,19 +1845,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "恢复成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "媒体不存在或权限不足",
+                        "description": "Not found or forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1877,17 +1872,17 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "返回缩略图服务的性能监控指标，包括请求统计、性能指标、队列状态等",
+                "description": "Request counts, latencies, queue state, etc.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Monitoring"
                 ],
-                "summary": "获取缩略图服务监控指标",
+                "summary": "Thumbnail metrics",
                 "responses": {
                     "200": {
-                        "description": "监控指标",
+                        "description": "Metrics payload",
                         "schema": {
                             "allOf": [
                                 {
@@ -1914,18 +1909,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取帖子的所有评论（需要认证，必须是圈子成员）",
+                "description": "Lists all comments for a post (authentication required; must be a member)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Comments"
                 ],
-                "summary": "获取评论列表",
+                "summary": "List comments",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "帖子 ID",
+                        "description": "Post ID",
                         "name": "postId",
                         "in": "path",
                         "required": true
@@ -1933,19 +1928,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "帖子不存在或不是成员",
+                        "description": "Post not found or not a member",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1958,7 +1953,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "为帖子添加评论，支持回复其他评论（需要认证，必须是圈子成员）",
+                "description": "Adds a comment or reply (authentication required; must be a member)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1968,17 +1963,17 @@ const docTemplate = `{
                 "tags": [
                     "Comments"
                 ],
-                "summary": "添加评论",
+                "summary": "Add comment",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "帖子 ID",
+                        "description": "Post ID",
                         "name": "postId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "评论内容",
+                        "description": "Comment payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -1989,19 +1984,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "添加成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "帖子不存在或不是成员",
+                        "description": "Post not found or not a member",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2011,18 +2006,18 @@ const docTemplate = `{
         },
         "/s/{share_token}": {
             "get": {
-                "description": "通过分享令牌访问分享的媒体资源，返回HTML页面（公开访问，不需要认证）",
+                "description": "Public HTML viewer for shared media",
                 "produces": [
                     "text/html"
                 ],
                 "tags": [
                     "Shares"
                 ],
-                "summary": "访问分享的资源",
+                "summary": "View shared resource",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "分享令牌",
+                        "description": "Share token",
                         "name": "share_token",
                         "in": "path",
                         "required": true
@@ -2030,10 +2025,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "HTML页面，包含媒体内容"
+                        "description": "HTML page with embedded media"
                     },
                     "400": {
-                        "description": "分享链接不存在、已撤销或已过期",
+                        "description": "Share not found, revoked, or expired",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2043,17 +2038,17 @@ const docTemplate = `{
         },
         "/server/ping": {
             "get": {
-                "description": "检查服务器是否正常运行",
+                "description": "Returns OK when the HTTP server is responding",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Server"
                 ],
-                "summary": "服务器健康检查",
+                "summary": "Ping server",
                 "responses": {
                     "200": {
-                        "description": "服务器正常",
+                        "description": "Healthy",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2069,7 +2064,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "创建媒体分享链接，可以指定目标用户或创建公开链接（需要认证）",
+                "description": "Share with optional target user or public link (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2079,10 +2074,10 @@ const docTemplate = `{
                 "tags": [
                     "Shares"
                 ],
-                "summary": "创建分享链接",
+                "summary": "Create share link",
                 "parameters": [
                     {
-                        "description": "分享信息",
+                        "description": "Share payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -2093,19 +2088,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功，返回分享URL",
+                        "description": "OK; returns share URL",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "媒体不存在、权限不足或目标用户不存在",
+                        "description": "Media not found, forbidden, or target user missing",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2120,23 +2115,23 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取所有分享给当前用户的内容列表（需要认证）",
+                "description": "Items shared with the current user (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Shares"
                 ],
-                "summary": "查看分享给我的内容",
+                "summary": "List shares with me",
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2146,18 +2141,18 @@ const docTemplate = `{
         },
         "/shares/{share_token}/meta": {
             "get": {
-                "description": "通过分享令牌获取分享的元数据信息（公开访问，不需要认证）",
+                "description": "Public; no authentication required",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Shares"
                 ],
-                "summary": "获取分享元数据",
+                "summary": "Get share metadata",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "分享令牌",
+                        "description": "Share token",
                         "name": "share_token",
                         "in": "path",
                         "required": true
@@ -2165,13 +2160,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "分享链接不存在、已撤销或已过期",
+                        "description": "Share not found, revoked, or expired",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2186,43 +2181,43 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取所有存储池列表，支持按类型和状态筛选（需要认证）",
+                "description": "Lists all storage pools with optional filters by type and status (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Storage"
                 ],
-                "summary": "列出存储池",
+                "summary": "List storage pools",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "存储类型筛选",
+                        "description": "Filter by storage type",
                         "name": "storage_type",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "状态筛选",
+                        "description": "Filter by status",
                         "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "500": {
-                        "description": "服务器错误",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2235,7 +2230,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "创建新的存储池（需要认证）",
+                "description": "Creates a new storage pool (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2245,10 +2240,10 @@ const docTemplate = `{
                 "tags": [
                     "Storage"
                 ],
-                "summary": "创建存储池",
+                "summary": "Create storage pool",
                 "parameters": [
                     {
-                        "description": "存储池信息",
+                        "description": "Storage pool payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -2259,19 +2254,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2286,7 +2281,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "触发存储池的对账操作，检查数据库记录与实际存储的一致性（需要认证）",
+                "description": "Triggers reconciliation to verify database records against actual storage (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2296,10 +2291,10 @@ const docTemplate = `{
                 "tags": [
                     "Storage"
                 ],
-                "summary": "触发存储池对账",
+                "summary": "Reconcile storage pools",
                 "parameters": [
                     {
-                        "description": "对账参数",
+                        "description": "Reconciliation options",
                         "name": "input",
                         "in": "body",
                         "schema": {
@@ -2309,19 +2304,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "对账触发成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "操作失败",
+                        "description": "Operation failed",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2336,29 +2331,29 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "刷新所有存储池的缓存信息（需要认证）",
+                "description": "Refreshes cached information for all storage pools (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Storage"
                 ],
-                "summary": "刷新存储池缓存",
+                "summary": "Refresh storage pool cache",
                 "responses": {
                     "200": {
-                        "description": "刷新成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "操作失败",
+                        "description": "Operation failed",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2373,37 +2368,37 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取存储池的使用情况，包括数据库记录大小和实际存储大小的对比（需要认证）",
+                "description": "Returns usage comparing database size to actual storage (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Storage"
                 ],
-                "summary": "获取存储池使用情况",
+                "summary": "Get storage pool usage",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "存储池 UUID（可选，不指定则返回所有）",
+                        "description": "Optional storage pool UUID; omit for all pools",
                         "name": "pool_uuid",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "500": {
-                        "description": "服务器错误",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2418,18 +2413,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取指定存储池的详细信息（需要认证）",
+                "description": "Returns details for a specific storage pool (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Storage"
                 ],
-                "summary": "获取存储池详情",
+                "summary": "Get storage pool",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "存储池 UUID",
+                        "description": "Storage pool UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -2437,19 +2432,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "404": {
-                        "description": "存储池不存在",
+                        "description": "Storage pool not found",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2462,7 +2457,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "更新存储池的配置信息（需要认证）",
+                "description": "Updates storage pool configuration (authentication required)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2472,17 +2467,17 @@ const docTemplate = `{
                 "tags": [
                     "Storage"
                 ],
-                "summary": "更新存储池",
+                "summary": "Update storage pool",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "存储池 UUID",
+                        "description": "Storage pool UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "更新信息",
+                        "description": "Update payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -2493,19 +2488,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "更新成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2520,18 +2515,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "禁用指定的存储池（需要认证）",
+                "description": "Disables the specified storage pool (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Storage"
                 ],
-                "summary": "禁用存储池",
+                "summary": "Disable storage pool",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "存储池 UUID",
+                        "description": "Storage pool UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -2539,19 +2534,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "禁用成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "操作失败",
+                        "description": "Operation failed",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2566,18 +2561,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "启用指定的存储池（需要认证）",
+                "description": "Enables the specified storage pool (authentication required)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Storage"
                 ],
-                "summary": "启用存储池",
+                "summary": "Enable storage pool",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "存储池 UUID",
+                        "description": "Storage pool UUID",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -2585,19 +2580,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "启用成功",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "操作失败",
+                        "description": "Operation failed",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2612,7 +2607,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "流式同步远程媒体资源到本地，支持全量和增量同步。在增量同步时，服务器会发送已删除资产的删除事件（asset_delete_v1），客户端收到后应更新本地数据库的 deletedAt 字段。删除事件格式：{\"type\": \"asset_delete_v1\", \"ids\": [uuid1, uuid2, ...], \"data\": {}}。删除事件在资产数据之后发送。",
+                "description": "Full or incremental sync. On incremental sync the server may emit ` + "`" + `asset_delete_v1` + "`" + ` after asset rows so clients can set deletedAt locally. Example delete event: {\"type\":\"asset_delete_v1\",\"ids\":[\"uuid1\"],\"data\":{}}.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2622,10 +2617,10 @@ const docTemplate = `{
                 "tags": [
                     "Sync"
                 ],
-                "summary": "流式同步资产",
+                "summary": "Stream asset sync",
                 "parameters": [
                     {
-                        "description": "同步请求",
+                        "description": "Sync request",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -2636,16 +2631,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "流式数据（JSON Lines 格式）。事件类型包括：asset_v1（资产数据）、asset_delete_v1（删除事件）、sync_complete_v1（同步完成）"
+                        "description": "JSON Lines stream: asset_v1, asset_delete_v1, sync_complete_v1"
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2660,17 +2655,17 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取当前用户的同步检查点",
+                "description": "Checkpoints for the current user and device",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Sync"
                 ],
-                "summary": "获取检查点",
+                "summary": "Get checkpoints",
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -2688,7 +2683,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2701,7 +2696,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "更新同步检查点",
+                "description": "Upserts checkpoint ack values for the device",
                 "consumes": [
                     "application/json"
                 ],
@@ -2711,10 +2706,10 @@ const docTemplate = `{
                 "tags": [
                     "Sync"
                 ],
-                "summary": "设置检查点",
+                "summary": "Set checkpoints",
                 "parameters": [
                     {
-                        "description": "检查点请求",
+                        "description": "Checkpoint payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -2725,16 +2720,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "204": {
-                        "description": "设置成功"
+                        "description": "No content"
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2747,7 +2742,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "删除指定的同步检查点",
+                "description": "Deletes checkpoints for the listed sync types on this device",
                 "consumes": [
                     "application/json"
                 ],
@@ -2757,10 +2752,10 @@ const docTemplate = `{
                 "tags": [
                     "Sync"
                 ],
-                "summary": "删除检查点",
+                "summary": "Delete checkpoints",
                 "parameters": [
                     {
-                        "description": "删除请求",
+                        "description": "Delete payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -2771,16 +2766,16 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "204": {
-                        "description": "删除成功"
+                        "description": "No content"
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -2790,17 +2785,17 @@ const docTemplate = `{
         },
         "/version": {
             "get": {
-                "description": "返回服务器版本信息",
+                "description": "Returns server version and build information",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Server"
                 ],
-                "summary": "获取版本信息",
+                "summary": "Get version",
                 "responses": {
                     "200": {
-                        "description": "版本信息",
+                        "description": "Version payload",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2834,7 +2829,7 @@ const docTemplate = `{
             }
         },
         "auth.LoginInput": {
-            "description": "用户登录请求体",
+            "description": "User login request body",
             "type": "object",
             "required": [
                 "email",
@@ -2842,12 +2837,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "description": "邮箱地址",
+                    "description": "Email",
                     "type": "string",
                     "example": "john@example.com"
                 },
                 "password": {
-                    "description": "密码",
+                    "description": "Password",
                     "type": "string",
                     "example": "password123"
                 }
@@ -2891,12 +2886,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "access_token": {
-                    "description": "访问令牌",
+                    "description": "Access token",
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 },
                 "refresh_token": {
-                    "description": "刷新令牌",
+                    "description": "Refresh token",
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 }
@@ -2906,12 +2901,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "user_id": {
-                    "description": "用户ID",
+                    "description": "User ID",
                     "type": "integer",
                     "example": 1
                 },
                 "username": {
-                    "description": "用户名",
+                    "description": "Username",
                     "type": "string",
                     "example": "john_doe"
                 }
@@ -2926,7 +2921,7 @@ const docTemplate = `{
             }
         },
         "dto.CheckHashesRequest": {
-            "description": "检查文件哈希的请求体",
+            "description": "Check hashes request body",
             "type": "object",
             "required": [
                 "hashes"
@@ -2942,33 +2937,33 @@ const docTemplate = `{
             }
         },
         "dto.CheckHashesResponse": {
-            "description": "检查哈希的响应数据",
+            "description": "Check hashes response",
             "type": "object",
             "properties": {
                 "existing_count": {
-                    "description": "已存在数量",
+                    "description": "Count existing",
                     "type": "integer"
                 },
                 "existing_hashes": {
-                    "description": "已存在的哈希列表",
+                    "description": "Hashes that already exist",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "missing_count": {
-                    "description": "缺失数量",
+                    "description": "Count missing",
                     "type": "integer"
                 },
                 "missing_hashes": {
-                    "description": "缺失的哈希列表",
+                    "description": "Hashes not yet stored",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "total_count": {
-                    "description": "总数量",
+                    "description": "Total requested",
                     "type": "integer"
                 }
             }
@@ -2981,13 +2976,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "description": "同步类型（如 \"assets_v1\"）",
+                    "description": "Sync type (e.g. \"assets_v1\")",
                     "type": "string"
                 }
             }
         },
         "dto.CreateCommentInput": {
-            "description": "创建评论的请求体",
+            "description": "Create comment request body",
             "type": "object",
             "required": [
                 "content"
@@ -3002,7 +2997,7 @@ const docTemplate = `{
             }
         },
         "dto.CreateGroupInput": {
-            "description": "创建圈子的请求体",
+            "description": "Create group request body",
             "type": "object",
             "required": [
                 "name"
@@ -3010,16 +3005,16 @@ const docTemplate = `{
             "properties": {
                 "description": {
                     "type": "string",
-                    "example": "2025年的家庭旅行"
+                    "example": "Family vacation 2025"
                 },
                 "name": {
                     "type": "string",
-                    "example": "巴厘岛假日"
+                    "example": "Summer trip"
                 }
             }
         },
         "dto.CreatePostInput": {
-            "description": "创建帖子的请求体",
+            "description": "Create post request body",
             "type": "object",
             "required": [
                 "media_uuids"
@@ -3038,7 +3033,7 @@ const docTemplate = `{
             }
         },
         "dto.CreateShareInput": {
-            "description": "创建分享链接的请求体",
+            "description": "Create share link request body",
             "type": "object",
             "required": [
                 "duration_minute",
@@ -3064,7 +3059,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "types": {
-                    "description": "要删除的同步类型列表",
+                    "description": "Sync types to clear",
                     "type": "array",
                     "minItems": 1,
                     "items": {
@@ -3074,7 +3069,7 @@ const docTemplate = `{
             }
         },
         "dto.GetChangesResponse": {
-            "description": "媒体变更列表响应数据",
+            "description": "Media changes response",
             "type": "object",
             "properties": {
                 "changes": {
@@ -3100,7 +3095,7 @@ const docTemplate = `{
             }
         },
         "dto.GetMediasResponse": {
-            "description": "媒体列表响应数据",
+            "description": "Paginated media list",
             "type": "object",
             "properties": {
                 "medias": {
@@ -3121,7 +3116,7 @@ const docTemplate = `{
             }
         },
         "dto.JoinGroupInput": {
-            "description": "加入圈子的请求体",
+            "description": "Join group request body",
             "type": "object",
             "required": [
                 "code"
@@ -3134,7 +3129,7 @@ const docTemplate = `{
             }
         },
         "dto.MediaChange": {
-            "description": "媒体变更记录",
+            "description": "Single media change record",
             "type": "object",
             "properties": {
                 "action": {
@@ -3156,7 +3151,7 @@ const docTemplate = `{
             }
         },
         "dto.MediaResponse": {
-            "description": "媒体信息响应",
+            "description": "Media item metadata",
             "type": "object",
             "properties": {
                 "backup_status": {
@@ -3184,7 +3179,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "live_photo_video_id": {
-                    "description": "Live Photo：图片资产上保存的关联视频 UUID",
+                    "description": "Live Photo: linked video UUID on the image asset",
                     "type": "string"
                 },
                 "local_path": {
@@ -3206,7 +3201,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "thumb_hash": {
-                    "description": "ThumbHash 占位符（base64 编码）",
+                    "description": "ThumbHash placeholder (base64)",
                     "type": "string"
                 },
                 "thumbnail_url": {
@@ -3267,27 +3262,27 @@ const docTemplate = `{
                     }
                 },
                 "updated_after": {
-                    "description": "RFC3339 格式的时间戳",
+                    "description": "RFC3339 timestamp",
                     "type": "string"
                 }
             }
         },
         "dto.UpdateGroupInput": {
-            "description": "更新圈子的请求体",
+            "description": "Update group request body",
             "type": "object",
             "properties": {
                 "description": {
                     "type": "string",
-                    "example": "2025年最棒的家庭旅行"
+                    "example": "Best family trip of 2025"
                 },
                 "name": {
                     "type": "string",
-                    "example": "巴厘岛假日 updated"
+                    "example": "Summer trip (updated)"
                 }
             }
         },
         "internal_api_v1_auth.RegisterInput": {
-            "description": "用户注册请求体",
+            "description": "User registration request body",
             "type": "object",
             "required": [
                 "email",
@@ -3296,18 +3291,18 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "description": "邮箱地址",
+                    "description": "Email",
                     "type": "string",
                     "example": "john@example.com"
                 },
                 "password": {
-                    "description": "密码（至少8位）",
+                    "description": "Password (min 8 characters)",
                     "type": "string",
                     "minLength": 8,
                     "example": "password123"
                 },
                 "username": {
-                    "description": "用户名",
+                    "description": "Username",
                     "type": "string",
                     "example": "john_doe"
                 }
@@ -3317,14 +3312,14 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "description": "0=成功, 1=失败",
+                    "description": "0 success, non-zero failure",
                     "type": "integer"
                 },
                 "data": {
-                    "description": "响应数据"
+                    "description": "Optional payload"
                 },
                 "message": {
-                    "description": "响应消息",
+                    "description": "Human-readable message",
                     "type": "string"
                 }
             }
@@ -3351,7 +3346,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "location": {
-                    "description": "存储池位置 URI，必填，如 local:///absolute/path；类型由 scheme 派生",
+                    "description": "Pool location URI (required), e.g. local:///absolute/path; type derived from scheme",
                     "type": "string"
                 },
                 "max_size": {
@@ -3412,7 +3407,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "使用 \"Bearer {token}\" 格式，或使用 \"x-prismbox-user-token: {token}\" 格式",
+            "description": "Use ` + "`" + `Authorization: Bearer {token}` + "`" + ` or header ` + "`" + `x-prismbox-user-token: {token}` + "`" + `",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
@@ -3427,7 +3422,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "PrismBox Backend API",
-	Description:      "PrismBox 后端服务 API 文档",
+	Description:      "PrismBox backend HTTP API reference",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -24,17 +24,17 @@ func NewHandler(shareService shareservice.Service) *Handler {
 	}
 }
 
-// CreateShare 创建分享链接
-// @Summary      创建分享链接
-// @Description  创建媒体分享链接，可以指定目标用户或创建公开链接（需要认证）
+// CreateShare creates a share link for media.
+// @Summary      Create share link
+// @Description  Share with optional target user or public link (authentication required)
 // @Tags         Shares
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        input body dto.CreateShareInput true "分享信息"
-// @Success      200 {object} response.ApiResponse "创建成功，返回分享URL"
-// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或目标用户不存在"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        input body dto.CreateShareInput true "Share payload"
+// @Success      200 {object} response.ApiResponse "OK; returns share URL"
+// @Failure      400 {object} response.ApiResponse "Media not found, forbidden, or target user missing"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /shares [post]
 func (h *Handler) CreateShare(c *gin.Context) {
 	ownerID := middleware.MustGetUserID(c)
@@ -71,14 +71,14 @@ func (h *Handler) CreateShare(c *gin.Context) {
 	response.Success(c, "Share link created successfully", publicURL)
 }
 
-// ListSharedWithMe 查看分享给我的内容
-// @Summary      查看分享给我的内容
-// @Description  获取所有分享给当前用户的内容列表（需要认证）
+// ListSharedWithMe lists shares addressed to the current user.
+// @Summary      List shares with me
+// @Description  Items shared with the current user (authentication required)
 // @Tags         Shares
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200 {object} response.ApiResponse "获取成功"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /shares/with-me [get]
 func (h *Handler) ListSharedWithMe(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -95,14 +95,14 @@ func (h *Handler) ListSharedWithMe(c *gin.Context) {
 	response.Success(c, "Shares retrieved successfully", shares)
 }
 
-// GetShareMetadata 获取分享元数据
-// @Summary      获取分享元数据
-// @Description  通过分享令牌获取分享的元数据信息（公开访问，不需要认证）
+// GetShareMetadata returns metadata for a share token.
+// @Summary      Get share metadata
+// @Description  Public; no authentication required
 // @Tags         Shares
 // @Produce      json
-// @Param        share_token path string true "分享令牌"
-// @Success      200 {object} response.ApiResponse "获取成功"
-// @Failure      400 {object} response.ApiResponse "分享链接不存在、已撤销或已过期"
+// @Param        share_token path string true "Share token"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      400 {object} response.ApiResponse "Share not found, revoked, or expired"
 // @Router       /shares/{share_token}/meta [get]
 func (h *Handler) GetShareMetadata(c *gin.Context) {
 	shareToken := c.Param("share_token")
@@ -128,14 +128,14 @@ func (h *Handler) GetShareMetadata(c *gin.Context) {
 	response.Success(c, "Share metadata retrieved successfully", metadata)
 }
 
-// GetSharedResource 访问分享的资源
-// @Summary      访问分享的资源
-// @Description  通过分享令牌访问分享的媒体资源，返回HTML页面（公开访问，不需要认证）
+// GetSharedResource serves an HTML page for a share.
+// @Summary      View shared resource
+// @Description  Public HTML viewer for shared media
 // @Tags         Shares
 // @Produce      text/html
-// @Param        share_token path string true "分享令牌"
-// @Success      200 "HTML页面，包含媒体内容"
-// @Failure      400 {object} response.ApiResponse "分享链接不存在、已撤销或已过期"
+// @Param        share_token path string true "Share token"
+// @Success      200 "HTML page with embedded media"
+// @Failure      400 {object} response.ApiResponse "Share not found, revoked, or expired"
 // @Router       /s/{share_token} [get]
 func (h *Handler) GetSharedResource(c *gin.Context) {
 	shareToken := c.Param("share_token")
@@ -165,17 +165,17 @@ func (h *Handler) GetSharedResource(c *gin.Context) {
 		mediaElement = fmt.Sprintf(`<video src="%s" controls autoplay muted loop playsinline></video>`, resource.SignedURL)
 	} else {
 		// 默认是图片，生成 <img> 标签
-		mediaElement = fmt.Sprintf(`<img src="%s" alt="分享的内容">`, resource.SignedURL)
+		mediaElement = fmt.Sprintf(`<img src="%s" alt="Shared content">`, resource.SignedURL)
 	}
 
 	// 构建完整的HTML字符串
 	htmlContent := fmt.Sprintf(`
 		<!DOCTYPE html>
-		<html lang="zh">
+		<html lang="en">
 		<head>
 			<meta charset="UTF-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<title>分享内容</title>
+			<title>Shared content</title>
 			<style>
 				body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
 				img, video { max-width: 100%%; max-height: 100%%; object-fit: contain; }

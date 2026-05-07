@@ -26,31 +26,31 @@ func NewHandler(authService authservice.Service) *Handler {
 	}
 }
 
-// RegisterInput 用户注册请求。
-// @Description 用户注册请求体
+// RegisterInput is the user registration request body.
+// @Description User registration request body
 type RegisterInput struct {
-	Username string `json:"username" binding:"required" example:"john_doe"`            // 用户名
-	Email    string `json:"email" binding:"required,email" example:"john@example.com"` // 邮箱地址
-	Password string `json:"password" binding:"required,min=8" example:"password123"`   // 密码（至少8位）
+	Username string `json:"username" binding:"required" example:"john_doe"`            // Username
+	Email    string `json:"email" binding:"required,email" example:"john@example.com"` // Email
+	Password string `json:"password" binding:"required,min=8" example:"password123"`   // Password (min 8 characters)
 }
 
-// registerSuccessData 注册成功响应数据
+// registerSuccessData is returned on successful registration.
 type registerSuccessData struct {
-	UserID   uint   `json:"user_id" example:"1"`         // 用户ID
-	Username string `json:"username" example:"john_doe"` // 用户名
+	UserID   uint   `json:"user_id" example:"1"`         // User ID
+	Username string `json:"username" example:"john_doe"` // Username
 }
 
-// LoginInput 用户登录请求。
-// @Description 用户登录请求体
+// LoginInput is the email/password login request body.
+// @Description User login request body
 type LoginInput struct {
-	Email    string `json:"email" binding:"required,email" example:"john@example.com"` // 邮箱地址
-	Password string `json:"password" binding:"required" example:"password123"`         // 密码
+	Email    string `json:"email" binding:"required,email" example:"john@example.com"` // Email
+	Password string `json:"password" binding:"required" example:"password123"`         // Password
 }
 
-// loginSuccessData 登录成功响应数据
+// loginSuccessData is returned on successful login.
 type loginSuccessData struct {
-	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`  // 访问令牌
-	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // 刷新令牌
+	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`  // Access token
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // Refresh token
 }
 
 // AppleLoginInput Apple 登录请求。
@@ -81,15 +81,15 @@ type uploadAvatarSuccessData struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
-// Register 用户注册
-// @Summary      用户注册
-// @Description  创建新用户账号，需要提供用户名、邮箱和密码
+// Register creates a new user account.
+// @Summary      Register user
+// @Description  Creates a new account with username, email, and password
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input body RegisterInput true "注册信息"
-// @Success      200 {object} response.ApiResponse{data=registerSuccessData} "注册成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误或用户名/邮箱已存在"
+// @Param        input body RegisterInput true "Registration payload"
+// @Success      200 {object} response.ApiResponse{data=registerSuccessData} "OK"
+// @Failure      400 {object} response.ApiResponse "Bad request or username/email already exists"
 // @Router       /auth/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var input RegisterInput
@@ -118,16 +118,16 @@ func (h *Handler) Register(c *gin.Context) {
 	})
 }
 
-// Login 用户登录
-// @Summary      用户登录
-// @Description  使用邮箱和密码登录，返回访问令牌和刷新令牌
+// Login authenticates with email and password.
+// @Summary      Login
+// @Description  Returns access and refresh tokens
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input body LoginInput true "登录信息"
-// @Success      200 {object} response.ApiResponse{data=loginSuccessData} "登录成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "认证失败，邮箱或密码错误"
+// @Param        input body LoginInput true "Login payload"
+// @Success      200 {object} response.ApiResponse{data=loginSuccessData} "OK"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Invalid email or password"
 // @Router       /auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var input LoginInput
@@ -152,16 +152,16 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 }
 
-// AppleLogin Apple 登录
-// @Summary      Apple 登录
-// @Description  使用 Apple ID 登录，返回访问令牌和刷新令牌
+// AppleLogin signs in with Apple.
+// @Summary      Apple Sign In
+// @Description  Returns access and refresh tokens using Apple identity token
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input body AppleLoginInput true "Apple 登录信息"
-// @Success      200 {object} response.ApiResponse{data=loginSuccessData} "登录成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "Apple token 无效"
+// @Param        input body AppleLoginInput true "Apple Sign In payload"
+// @Success      200 {object} response.ApiResponse{data=loginSuccessData} "OK"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Invalid Apple token"
 // @Router       /auth/apple/login [post]
 func (h *Handler) AppleLogin(c *gin.Context) {
 	var input AppleLoginInput
@@ -194,18 +194,18 @@ func (h *Handler) AppleLogin(c *gin.Context) {
 	})
 }
 
-// SetPassword 设置密码
-// @Summary      设置密码
-// @Description  为用户账号设置密码（需要认证）
+// SetPassword sets the account password for the current user.
+// @Summary      Set password
+// @Description  Sets password for the authenticated user account
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        input body SetPasswordInput true "密码信息"
-// @Success      204 "密码设置成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误或密码已设置"
-// @Failure      401 {object} response.ApiResponse "未认证"
-// @Failure      404 {object} response.ApiResponse "用户不存在"
+// @Param        input body SetPasswordInput true "Password payload"
+// @Success      204 "No content"
+// @Failure      400 {object} response.ApiResponse "Bad request or password already set"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
+// @Failure      404 {object} response.ApiResponse "User not found"
 // @Router       /auth/password/set [post]
 func (h *Handler) SetPassword(c *gin.Context) {
 	var input SetPasswordInput
@@ -235,16 +235,16 @@ func (h *Handler) SetPassword(c *gin.Context) {
 	response.NoContent(c)
 }
 
-// RefreshToken 刷新访问令牌
-// @Summary      刷新访问令牌
-// @Description  使用刷新令牌获取新的访问令牌
+// RefreshToken exchanges a refresh token for a new access token.
+// @Summary      Refresh access token
+// @Description  Issues a new access token using a refresh token
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input body RefreshTokenInput true "刷新令牌信息"
-// @Success      200 {object} response.ApiResponse{data=map[string]string} "刷新成功"
-// @Failure      400 {object} response.ApiResponse "刷新令牌无效或已撤销"
-// @Failure      401 {object} response.ApiResponse "刷新令牌已过期"
+// @Param        input body RefreshTokenInput true "Refresh token payload"
+// @Success      200 {object} response.ApiResponse{data=map[string]string} "OK"
+// @Failure      400 {object} response.ApiResponse "Invalid or revoked refresh token"
+// @Failure      401 {object} response.ApiResponse "Refresh token expired"
 // @Router       /auth/refresh [post]
 func (h *Handler) RefreshToken(c *gin.Context) {
 	var input RefreshTokenInput
@@ -271,15 +271,15 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	})
 }
 
-// Logout 登出
-// @Summary      用户登出
-// @Description  撤销刷新令牌，登出用户
+// Logout revokes the refresh token.
+// @Summary      Logout
+// @Description  Revokes the provided refresh token
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input body LogoutInput true "登出信息"
-// @Success      200 {object} response.ApiResponse "登出成功"
-// @Failure      400 {object} response.ApiResponse "刷新令牌无效"
+// @Param        input body LogoutInput true "Logout payload"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      400 {object} response.ApiResponse "Invalid refresh token"
 // @Router       /auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	var input LogoutInput
@@ -300,15 +300,15 @@ func (h *Handler) Logout(c *gin.Context) {
 	response.Success(c, "Successfully logged out", nil)
 }
 
-// GetProfile 获取用户资料
-// @Summary      获取用户资料
-// @Description  获取当前登录用户的资料信息（需要认证）
+// GetProfile returns the authenticated user's profile.
+// @Summary      Get profile
+// @Description  Returns profile for the current user (authentication required)
 // @Tags         Auth
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200 {object} response.ApiResponse "获取成功"
-// @Failure      400 {object} response.ApiResponse "用户不存在"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      400 {object} response.ApiResponse "User not found"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /auth/profile [get]
 func (h *Handler) GetProfile(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -352,17 +352,17 @@ func (h *Handler) GetProfile(c *gin.Context) {
 	response.Success(c, "User profile retrieved successfully", profile)
 }
 
-// UploadAvatar 上传头像
-// @Summary      上传头像
-// @Description  上传用户头像图片（需要认证），支持 jpg、jpeg、png 格式，最大 5MB
+// UploadAvatar uploads the user's avatar image.
+// @Summary      Upload avatar
+// @Description  Uploads avatar image (authentication required); jpg, jpeg, or png, max 5MB
 // @Tags         Auth
 // @Accept       multipart/form-data
 // @Produce      json
 // @Security     BearerAuth
-// @Param        avatar formData file true "头像图片文件"
-// @Success      200 {object} response.ApiResponse{data=uploadAvatarSuccessData} "上传成功"
-// @Failure      400 {object} response.ApiResponse "文件格式不支持或文件过大"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        avatar formData file true "Avatar image file"
+// @Success      200 {object} response.ApiResponse{data=uploadAvatarSuccessData} "OK"
+// @Failure      400 {object} response.ApiResponse "Unsupported format or file too large"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /auth/avatar [post]
 func (h *Handler) UploadAvatar(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)

@@ -37,21 +37,21 @@ func NewHandler(mediaService mediaservice.Service, app *appctx.App) *Handler {
 	}
 }
 
-// UploadMedia 上传媒体文件
-// @Summary      上传媒体文件
-// @Description  上传图片或视频文件。后端会自动计算文件 hash。
+// UploadMedia streams a media file upload.
+// @Summary      Upload media
+// @Description  Upload an image or video; the server computes the file hash.
 // @Tags         Media
 // @Accept       multipart/form-data
 // @Produce      json
 // @Security     BearerAuth
-// @Param        file formData file true "媒体文件"
-// @Param        item_type formData string true "媒体类型" Enums(image, video)
-// @Param        cloud_uuid formData string true "客户端生成的 UUID"
-// @Param        original_filename formData string false "原始文件名"
-// @Param        media_taken_at formData string false "媒体拍摄时间（RFC3339 格式）"
-// @Success      201 {object} response.ApiResponse{data=dto.MediaResponse} "上传成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误或文件格式不支持"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        file formData file true "Media file"
+// @Param        item_type formData string true "Item type" Enums(image, video)
+// @Param        cloud_uuid formData string true "Client-generated UUID"
+// @Param        original_filename formData string false "Original filename"
+// @Param        media_taken_at formData string false "Capture time (RFC3339)"
+// @Success      201 {object} response.ApiResponse{data=dto.MediaResponse} "Created"
+// @Failure      400 {object} response.ApiResponse "Bad request or unsupported format"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/upload-stream [post]
 func (h *Handler) UploadMedia(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -267,14 +267,13 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	apiresponse.Created(c, "Media uploaded successfully", response)
 }
 
-// ValidateUploadEndpoint 验证上传端点（HEAD 方法）
-// 用于端点健康检查和可用性验证
-// @Summary      验证上传端点
-// @Description  用于客户端验证上传端点是否可用（HEAD 请求）
+// ValidateUploadEndpoint is a HEAD probe for the upload URL.
+// @Summary      Validate upload endpoint
+// @Description  Use HEAD to verify the upload endpoint is reachable (auth only)
 // @Tags         Media
 // @Security     BearerAuth
-// @Success      200 "端点可用"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Success      200 "OK"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/upload-stream [head]
 func (h *Handler) ValidateUploadEndpoint(c *gin.Context) {
 	// 只需要验证认证，不需要实际处理文件上传
@@ -291,18 +290,18 @@ func (h *Handler) ValidateUploadEndpoint(c *gin.Context) {
 	)
 }
 
-// GetMedias 获取媒体列表
-// @Summary      获取媒体列表
-// @Description  分页获取当前用户的媒体列表，支持按类型筛选
+// GetMedias lists the current user's media with pagination.
+// @Summary      List media
+// @Description  Paginated list with optional item type filter
 // @Tags         Media
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page query int false "页码（默认1）" default(1) minimum(1)
-// @Param        page_size query int false "每页数量（默认20，最大100）" default(20) minimum(1) maximum(100)
-// @Param        item_type query string false "媒体类型" Enums(image, video)
-// @Success      200 {object} response.ApiResponse{data=dto.GetMediasResponse} "获取成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        page query int false "Page number (default 1)" default(1) minimum(1)
+// @Param        page_size query int false "Page size (default 20, max 100)" default(20) minimum(1) maximum(100)
+// @Param        item_type query string false "Item type" Enums(image, video)
+// @Success      200 {object} response.ApiResponse{data=dto.GetMediasResponse} "OK"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media [get]
 func (h *Handler) GetMedias(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -403,18 +402,18 @@ func (h *Handler) GetMedias(c *gin.Context) {
 	apiresponse.Success(c, "Success", response)
 }
 
-// CheckHashes 检查哈希
-// @Summary      检查文件哈希
-// @Description  批量检查文件哈希值，返回已存在和缺失的哈希列表（用于秒传检查）。每批最多 100 个哈希，超时时间 30 秒。
+// CheckHashes checks which content hashes already exist (dedupe / instant upload).
+// @Summary      Check content hashes
+// @Description  Batch hash lookup; max 100 per request, 30s timeout
 // @Tags         Media
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        input body dto.CheckHashesRequest true "哈希列表（最多 100 个）"
-// @Success      200 {object} response.ApiResponse{data=dto.CheckHashesResponse} "检查成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误（批量大小超限、哈希格式无效）"
-// @Failure      401 {object} response.ApiResponse "未认证"
-// @Failure      408 {object} response.ApiResponse "请求超时"
+// @Param        input body dto.CheckHashesRequest true "Hash list (max 100)"
+// @Success      200 {object} response.ApiResponse{data=dto.CheckHashesResponse} "OK"
+// @Failure      400 {object} response.ApiResponse "Bad request (batch size or invalid hash)"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
+// @Failure      408 {object} response.ApiResponse "Request timeout"
 // @Router       /media/check_hashes [post]
 func (h *Handler) CheckHashes(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -511,16 +510,16 @@ func (h *Handler) CheckHashes(c *gin.Context) {
 	apiresponse.Success(c, "Success", response)
 }
 
-// GetChanges 获取媒体变更
-// @Summary      获取媒体变更
-// @Description  获取指定时间点之后的媒体变更记录（创建、更新、删除）
+// GetChanges returns media changes since a timestamp.
+// @Summary      Get media changes
+// @Description  Change feed after the since query parameter (created, updated, deleted)
 // @Tags         Media
 // @Produce      json
 // @Security     BearerAuth
-// @Param        since query string false "起始时间（RFC3339 格式）"
-// @Success      200 {object} response.ApiResponse{data=dto.GetChangesResponse} "获取成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        since query string false "Start time (RFC3339)"
+// @Success      200 {object} response.ApiResponse{data=dto.GetChangesResponse} "OK"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/changes [get]
 func (h *Handler) GetChanges(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -580,16 +579,16 @@ func (h *Handler) GetChanges(c *gin.Context) {
 	apiresponse.Success(c, "Success", response)
 }
 
-// GetMediaDetail 获取媒体详情
-// @Summary      获取媒体详情
-// @Description  获取指定媒体的详细信息，包括下载链接（需要认证）
+// GetMediaDetail returns metadata for one media item.
+// @Summary      Get media detail
+// @Description  Detail including download URLs when processing is complete (authentication required)
 // @Tags         Media
 // @Produce      json
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
-// @Success      200 {object} response.ApiResponse{data=dto.MediaResponse} "获取成功"
-// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Media UUID"
+// @Success      200 {object} response.ApiResponse{data=dto.MediaResponse} "OK"
+// @Failure      400 {object} response.ApiResponse "Not found or forbidden"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/{uuid} [get]
 func (h *Handler) GetMediaDetail(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -668,16 +667,16 @@ func (h *Handler) GetMediaDetail(c *gin.Context) {
 	apiresponse.Success(c, "Success", response)
 }
 
-// Delete 删除媒体（软删除，移到回收站）
-// @Summary      删除媒体
-// @Description  将媒体移到回收站（软删除），可以恢复
+// Delete soft-deletes media (moves to bin).
+// @Summary      Delete media
+// @Description  Soft-delete; can be restored from bin
 // @Tags         Media
 // @Produce      json
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
-// @Success      200 {object} response.ApiResponse "删除成功"
-// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Media UUID"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      400 {object} response.ApiResponse "Not found or forbidden"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/{uuid} [delete]
 func (h *Handler) Delete(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -710,16 +709,16 @@ func (h *Handler) Delete(c *gin.Context) {
 	apiresponse.Success(c, "Media moved to bin", nil)
 }
 
-// Restore 恢复媒体（从回收站恢复）
-// @Summary      恢复媒体
-// @Description  从回收站恢复已删除的媒体
+// Restore restores media from the bin.
+// @Summary      Restore media
+// @Description  Undoes soft-delete
 // @Tags         Media
 // @Produce      json
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
-// @Success      200 {object} response.ApiResponse "恢复成功"
-// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Media UUID"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      400 {object} response.ApiResponse "Not found or forbidden"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/{uuid}/restore [post]
 func (h *Handler) Restore(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -752,16 +751,16 @@ func (h *Handler) Restore(c *gin.Context) {
 	apiresponse.Success(c, "Media restored successfully", nil)
 }
 
-// Purge 永久删除媒体（硬删除，删除数据库记录和存储文件）
-// @Summary      永久删除媒体
-// @Description  永久删除媒体（硬删除），无法恢复
+// Purge permanently deletes media from bin and storage.
+// @Summary      Purge media
+// @Description  Hard delete; cannot be recovered
 // @Tags         Media
 // @Produce      json
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
-// @Success      200 {object} response.ApiResponse "删除成功"
-// @Failure      400 {object} response.ApiResponse "媒体不存在或权限不足"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Media UUID"
+// @Success      200 {object} response.ApiResponse "OK"
+// @Failure      400 {object} response.ApiResponse "Not found or forbidden"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/{uuid}/purge [delete]
 func (h *Handler) Purge(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -794,16 +793,16 @@ func (h *Handler) Purge(c *gin.Context) {
 	apiresponse.Success(c, "Media permanently deleted", nil)
 }
 
-// DownloadOriginal 下载原始文件
-// @Summary      下载原始文件
-// @Description  下载媒体的原始文件，支持认证或签名 URL 访问
+// DownloadOriginal streams the original file.
+// @Summary      Download original file
+// @Description  Original bytes; Bearer auth or signed URL
 // @Tags         Media
 // @Produce      application/octet-stream
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
-// @Success      200 "文件内容"
-// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Media UUID"
+// @Success      200 "File bytes"
+// @Failure      400 {object} response.ApiResponse "Not found, forbidden, or not ready"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/{uuid}/download/original [get]
 func (h *Handler) DownloadOriginal(c *gin.Context) {
 	mediaUUID := c.Param("uuid")
@@ -870,16 +869,16 @@ func (h *Handler) DownloadOriginal(c *gin.Context) {
 	h.downloadFile(c, reader, mimeType, media.FileSize, getFilename(media.LocalPath))
 }
 
-// DownloadPreview 下载预览文件
-// @Summary      下载预览文件
-// @Description  下载媒体的预览图（压缩后的图片），支持认证或签名 URL 访问
+// DownloadPreview streams the preview image.
+// @Summary      Download preview
+// @Description  Compressed preview image; Bearer auth or signed URL
 // @Tags         Media
 // @Produce      image/jpeg
 // @Security     BearerAuth
-// @Param        uuid path string true "媒体 UUID"
-// @Success      200 "预览图内容"
-// @Failure      400 {object} response.ApiResponse "媒体不存在、权限不足或文件未处理完成"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Media UUID"
+// @Success      200 "Preview bytes"
+// @Failure      400 {object} response.ApiResponse "Not found, forbidden, or not ready"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /media/{uuid}/download/preview [get]
 func (h *Handler) DownloadPreview(c *gin.Context) {
 	mediaUUID := c.Param("uuid")
@@ -967,17 +966,17 @@ func (h *Handler) DownloadPreview(c *gin.Context) {
 	h.downloadFile(c, reader, mimeType, size, getFilename(storageKey))
 }
 
-// DownloadThumbnail 下载缩略图
-// @Summary      下载资产缩略图
-// @Description  下载资产的缩略图（小尺寸预览），支持动态尺寸和认证或签名 URL 访问
+// DownloadThumbnail streams a thumbnail for an asset.
+// @Summary      Download thumbnail
+// @Description  Small preview; dynamic size; Bearer auth or signed URL
 // @Tags         Assets
 // @Produce      image/jpeg
 // @Security     BearerAuth
-// @Param        uuid path string true "资产 UUID"
-// @Param        size query string false "尺寸参数：200x200, thumbnail, preview, 或单边限制如 200（默认：thumbnail）"
-// @Success      200 "缩略图内容"
-// @Failure      400 {object} response.ApiResponse "资产不存在、权限不足或文件未处理完成"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        uuid path string true "Asset UUID"
+// @Param        size query string false "Size: 200x200, thumbnail, preview, or single edge e.g. 200 (default thumbnail)"
+// @Success      200 "Thumbnail bytes"
+// @Failure      400 {object} response.ApiResponse "Not found, forbidden, or not ready"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /assets/{uuid}/thumbnail [get]
 func (h *Handler) DownloadThumbnail(c *gin.Context) {
 	requestStartTime := time.Now()

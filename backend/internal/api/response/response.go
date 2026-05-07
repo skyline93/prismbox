@@ -6,11 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ApiResponse 统一 API 响应格式（与旧架构一致）
+// ApiResponse is the standard JSON envelope for API responses.
 type ApiResponse struct {
-	Code    int         `json:"code"`           // 0=成功, 1=失败
-	Message string      `json:"message"`        // 响应消息
-	Data    interface{} `json:"data,omitempty"` // 响应数据
+	Code    int         `json:"code"`           // 0 success, non-zero failure
+	Message string      `json:"message"`        // Human-readable message
+	Data    interface{} `json:"data,omitempty"` // Optional payload
 }
 
 // Success 成功响应

@@ -125,12 +125,12 @@ func (r *Router) setupWellKnown() {
 	r.engine.GET("/.well-known/prismbox", r.getWellKnown)
 }
 
-// getWellKnown 返回 API 端点信息
-// @Summary      端点发现
-// @Description  返回 API 端点信息，用于客户端自动发现
+// getWellKnown returns API endpoint metadata for client discovery.
+// @Summary      Service discovery
+// @Description  Returns API endpoint metadata for automatic client configuration
 // @Tags         Discovery
 // @Produce      json
-// @Success      200 {object} map[string]interface{} "端点信息"
+// @Success      200 {object} map[string]interface{} "Endpoint metadata"
 // @Router       /.well-known/prismbox [get]
 func (r *Router) getWellKnown(c *gin.Context) {
 	c.JSON(200, gin.H{
@@ -146,24 +146,24 @@ func (r *Router) setupPublicRoutes() {
 	// 因为需要在根路由注册，所以通过RegisterPublicRoutes函数处理
 }
 
-// getVersion 返回服务端版本信息
-// @Summary      获取版本信息
-// @Description  返回服务器版本信息
+// getVersion returns server build/version metadata.
+// @Summary      Get version
+// @Description  Returns server version and build information
 // @Tags         Server
 // @Produce      json
-// @Success      200 {object} map[string]interface{} "版本信息"
+// @Success      200 {object} map[string]interface{} "Version payload"
 // @Router       /version [get]
 func (r *Router) getVersion(c *gin.Context) {
 	info := version.Get()
 	c.JSON(200, info)
 }
 
-// getPing 返回服务器健康检查信息
-// @Summary      服务器健康检查
-// @Description  检查服务器是否正常运行
+// getPing is a shallow liveness probe.
+// @Summary      Ping server
+// @Description  Returns OK when the HTTP server is responding
 // @Tags         Server
 // @Produce      json
-// @Success      200 {object} map[string]interface{} "服务器正常"
+// @Success      200 {object} map[string]interface{} "Healthy"
 // @Router       /server/ping [get]
 func (r *Router) getPing(c *gin.Context) {
 	c.JSON(200, gin.H{

@@ -28,17 +28,17 @@ func NewHandler(syncService syncservice.Service, app *appctx.App) *Handler {
 	}
 }
 
-// StreamSyncAssets 流式同步资产
-// @Summary      流式同步资产
-// @Description  流式同步远程媒体资源到本地，支持全量和增量同步。在增量同步时，服务器会发送已删除资产的删除事件（asset_delete_v1），客户端收到后应更新本地数据库的 deletedAt 字段。删除事件格式：{"type": "asset_delete_v1", "ids": [uuid1, uuid2, ...], "data": {}}。删除事件在资产数据之后发送。
+// StreamSyncAssets streams asset sync events as JSON Lines.
+// @Summary      Stream asset sync
+// @Description  Full or incremental sync. On incremental sync the server may emit `asset_delete_v1` after asset rows so clients can set deletedAt locally. Example delete event: {"type":"asset_delete_v1","ids":["uuid1"],"data":{}}.
 // @Tags         Sync
 // @Accept       json
 // @Produce      application/jsonlines+json
 // @Security     BearerAuth
-// @Param        request body dto.SyncStreamRequest true "同步请求"
-// @Success      200 "流式数据（JSON Lines 格式）。事件类型包括：asset_v1（资产数据）、asset_delete_v1（删除事件）、sync_complete_v1（同步完成）"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        request body dto.SyncStreamRequest true "Sync request"
+// @Success      200 "JSON Lines stream: asset_v1, asset_delete_v1, sync_complete_v1"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /sync/assets/stream [post]
 func (h *Handler) StreamSyncAssets(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -113,14 +113,14 @@ func (h *Handler) StreamSyncAssets(c *gin.Context) {
 	)
 }
 
-// GetCheckpoint 获取检查点
-// @Summary      获取检查点
-// @Description  获取当前用户的同步检查点
+// GetCheckpoint returns sync checkpoints for the device.
+// @Summary      Get checkpoints
+// @Description  Checkpoints for the current user and device
 // @Tags         Sync
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200 {object} response.ApiResponse{data=dto.GetCheckpointResponse} "获取成功"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Success      200 {object} response.ApiResponse{data=dto.GetCheckpointResponse} "OK"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /sync/checkpoint [get]
 func (h *Handler) GetCheckpoint(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -184,17 +184,17 @@ func (h *Handler) GetCheckpoint(c *gin.Context) {
 	apiresponse.Success(c, "Success", response)
 }
 
-// SetCheckpoint 设置检查点
-// @Summary      设置检查点
-// @Description  更新同步检查点
+// SetCheckpoint updates sync checkpoints.
+// @Summary      Set checkpoints
+// @Description  Upserts checkpoint ack values for the device
 // @Tags         Sync
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        request body dto.SetCheckpointRequest true "检查点请求"
-// @Success      204 "设置成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        request body dto.SetCheckpointRequest true "Checkpoint payload"
+// @Success      204 "No content"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /sync/checkpoint [post]
 func (h *Handler) SetCheckpoint(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)
@@ -265,17 +265,17 @@ func (h *Handler) SetCheckpoint(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// DeleteCheckpoint 删除检查点
-// @Summary      删除检查点
-// @Description  删除指定的同步检查点
+// DeleteCheckpoint removes sync checkpoints by type.
+// @Summary      Delete checkpoints
+// @Description  Deletes checkpoints for the listed sync types on this device
 // @Tags         Sync
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        request body dto.DeleteCheckpointRequest true "删除请求"
-// @Success      204 "删除成功"
-// @Failure      400 {object} response.ApiResponse "请求参数错误"
-// @Failure      401 {object} response.ApiResponse "未认证"
+// @Param        request body dto.DeleteCheckpointRequest true "Delete payload"
+// @Success      204 "No content"
+// @Failure      400 {object} response.ApiResponse "Bad request"
+// @Failure      401 {object} response.ApiResponse "Unauthorized"
 // @Router       /sync/checkpoint [delete]
 func (h *Handler) DeleteCheckpoint(c *gin.Context) {
 	userID := middleware.MustGetUserID(c)

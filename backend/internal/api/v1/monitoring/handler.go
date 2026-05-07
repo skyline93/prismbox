@@ -24,13 +24,13 @@ func NewHandler(mediaService mediaservice.Service) *Handler {
 	}
 }
 
-// GetThumbnailMetrics 获取缩略图服务监控指标
-// @Summary      获取缩略图服务监控指标
-// @Description  返回缩略图服务的性能监控指标，包括请求统计、性能指标、队列状态等
+// GetThumbnailMetrics returns thumbnail service metrics.
+// @Summary      Thumbnail metrics
+// @Description  Request counts, latencies, queue state, etc.
 // @Tags         Monitoring
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200 {object} response.ApiResponse{data=object} "监控指标"
+// @Success      200 {object} response.ApiResponse{data=object} "Metrics payload"
 // @Router       /monitoring/thumbnail [get]
 func (h *Handler) GetThumbnailMetrics(c *gin.Context) {
 	h.log.Debug("thumbnail metrics request received")

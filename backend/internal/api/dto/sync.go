@@ -2,49 +2,49 @@ package dto
 
 import "time"
 
-// SyncRequestType 同步类型
+// SyncRequestType identifies a sync stream kind.
 type SyncRequestType string
 
 const (
 	SyncRequestTypeAssetsV1 SyncRequestType = "assets_v1"
 )
 
-// SyncStreamRequest 流式同步请求
+// SyncStreamRequest is the body for POST /sync/assets/stream.
 type SyncStreamRequest struct {
 	Types       []SyncRequestType `json:"types" binding:"required,min=1"`
 	Reset       bool              `json:"reset"`
-	UpdatedAfter *string           `json:"updated_after,omitempty"` // RFC3339 格式的时间戳
+	UpdatedAfter *string           `json:"updated_after,omitempty"` // RFC3339 timestamp
 }
 
-// CheckpointDto 检查点 DTO
+// CheckpointDto is one persisted sync checkpoint.
 type CheckpointDto struct {
-	Type string `json:"type"` // 同步类型（如 "assets_v1"）
+	Type string `json:"type"` // Sync type (e.g. "assets_v1")
 	Ack  string `json:"ack"`  // Checkpoint ID
 }
 
-// GetCheckpointResponse 获取检查点响应
+// GetCheckpointResponse lists checkpoints for the device.
 type GetCheckpointResponse struct {
 	Checkpoints []CheckpointDto `json:"checkpoints"`
 }
 
-// SetCheckpointRequest 设置检查点请求
+// SetCheckpointRequest upserts one or more checkpoints.
 type SetCheckpointRequest struct {
 	Checkpoints []CheckpointDto `json:"checkpoints" binding:"required,min=1"`
 }
 
-// DeleteCheckpointRequest 删除检查点请求
+// DeleteCheckpointRequest selects checkpoint types to delete.
 type DeleteCheckpointRequest struct {
-	Types []string `json:"types" binding:"required,min=1"` // 要删除的同步类型列表
+	Types []string `json:"types" binding:"required,min=1"` // Sync types to clear
 }
 
-// SyncAssetsResponse 全量同步响应（游标分页）
+// SyncAssetsResponse is a cursor-paged full sync payload (legacy/non-stream).
 type SyncAssetsResponse struct {
 	Assets     []*MediaResponse `json:"assets"`
 	NextLastID string           `json:"next_last_id"`
 	HasMore    bool             `json:"has_more"`
 }
 
-// ParseUpdatedAfter 解析 updated_after 字段
+// ParseUpdatedAfter parses the optional updated_after timestamp.
 func (r *SyncStreamRequest) ParseUpdatedAfter() (*time.Time, error) {
 	if r.UpdatedAfter == nil || *r.UpdatedAfter == "" {
 		return nil, nil
