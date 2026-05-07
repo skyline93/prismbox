@@ -15,11 +15,11 @@ docker-compose exec certbot certbot renew --webroot --webroot-path=/var/www/cert
 # 复制更新的证书
 DOMAIN=${ALBUM_CERTBOT_DOMAIN:-}
 if [ -n "$DOMAIN" ]; then
-    CERT_DIR="deploy/data/cert/live/$DOMAIN"
+    CERT_DIR="data/cert/live/$DOMAIN"
     if [ -f "$CERT_DIR/fullchain.pem" ] && [ -f "$CERT_DIR/privkey.pem" ]; then
-        cp "$CERT_DIR/fullchain.pem" deploy/data/cert/cert.pem
-        cp "$CERT_DIR/privkey.pem" deploy/data/cert/key.pem
-        chmod 600 deploy/data/cert/key.pem
+        cp "$CERT_DIR/fullchain.pem" data/cert/cert.pem
+        cp "$CERT_DIR/privkey.pem" data/cert/key.pem
+        chmod 600 data/cert/key.pem
         echo "证书文件已更新"
         
         # 重新加载 Nginx

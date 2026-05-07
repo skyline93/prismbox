@@ -35,8 +35,8 @@ else
 fi
 
 # 创建必要的目录
-mkdir -p deploy/data/cert
-mkdir -p deploy/data/certbot-www
+mkdir -p data/cert
+mkdir -p data/certbot-www
 
 # 确保 Nginx 正在运行（用于 HTTP-01 验证）
 echo "检查 Nginx 服务状态..."
@@ -60,12 +60,12 @@ docker compose run --rm --entrypoint="" certbot certbot certonly \
 
 # 复制证书到 Nginx 使用的目录
 echo "复制证书文件..."
-CERT_DIR="deploy/data/cert/live/$DOMAIN"
+CERT_DIR="data/cert/live/$DOMAIN"
 if [ -f "$CERT_DIR/fullchain.pem" ] && [ -f "$CERT_DIR/privkey.pem" ]; then
-    cp "$CERT_DIR/fullchain.pem" deploy/data/cert/cert.pem
-    cp "$CERT_DIR/privkey.pem" deploy/data/cert/key.pem
-    chmod 600 deploy/data/cert/key.pem
-    echo "证书文件已复制到 deploy/data/cert/"
+    cp "$CERT_DIR/fullchain.pem" data/cert/cert.pem
+    cp "$CERT_DIR/privkey.pem" data/cert/key.pem
+    chmod 600 data/cert/key.pem
+    echo "证书文件已复制到 data/cert/"
 else
     echo "错误: 证书文件不存在"
     exit 1
@@ -82,8 +82,8 @@ echo "=========================================="
 echo "证书获取成功！"
 echo "=========================================="
 echo "域名: $DOMAIN"
-echo "证书路径: deploy/data/cert/cert.pem"
-echo "私钥路径: deploy/data/cert/key.pem"
+echo "证书路径: data/cert/cert.pem"
+echo "私钥路径: data/cert/key.pem"
 echo ""
 echo "下一步:"
 echo "1. 设置 ALBUM_ENABLE_HTTPS=true"

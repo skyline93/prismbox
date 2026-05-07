@@ -11,6 +11,8 @@
 #   PRISMBOX_REF        默认 main（分支或 tag）
 #   PRISMBOX_INSTALL_DIR 安装目录，默认当前执行目录（$PWD）
 #
+# 安装后数据目录为安装路径下的 data/（PostgreSQL、配置、证书、日志等），不再使用 deploy/data。
+#
 # 参数:
 #   -d, --dir PATH      安装目录（同 PRISMBOX_INSTALL_DIR）
 #   -r, --ref REF       Git 引用（同 PRISMBOX_REF）

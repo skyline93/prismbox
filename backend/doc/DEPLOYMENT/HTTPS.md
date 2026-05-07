@@ -52,11 +52,11 @@ docker-compose --profile https up -d
 
 ```bash
 # 将证书文件放置到指定目录
-cp your-cert.pem backend/deploy/data/cert/cert.pem
-cp your-key.pem backend/deploy/data/cert/key.pem
+cp your-cert.pem backend/data/cert/cert.pem
+cp your-key.pem backend/data/cert/key.pem
 
 # 设置正确的权限
-chmod 600 backend/deploy/data/cert/key.pem
+chmod 600 backend/data/cert/key.pem
 ```
 
 #### 2. 启用 HTTPS
@@ -207,8 +207,8 @@ docker-compose logs certbot
 **问题**：Nginx 无法加载 SSL 证书
 
 **排查步骤**：
-1. 检查证书文件是否存在：`ls -la deploy/data/cert/`
-2. 检查证书文件权限：`chmod 600 deploy/data/cert/key.pem`
+1. 检查证书文件是否存在：`ls -la data/cert/`
+2. 检查证书文件权限：`chmod 600 data/cert/key.pem`
 3. 检查 Nginx 配置：`docker-compose exec nginx nginx -t`
 
 **解决方案**：

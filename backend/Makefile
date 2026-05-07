@@ -176,7 +176,7 @@ docker-build-dev: ## 构建开发环境镜像（需先 make docker-build-base）
 # 部署相关命令
 deploy-init: ## 初始化部署环境（创建必要目录）
 	@echo ">> initializing deployment environment"
-	@if [ ! -d "deploy/data/postgresql" ]; then \
+	@if [ ! -d "data/postgresql" ]; then \
 		echo ">> first deployment, running init script..."; \
 		sh ./init-runtime.sh; \
 	else \

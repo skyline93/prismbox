@@ -190,8 +190,8 @@ services:
     image: certbot/certbot:latest
     container_name: album-certbot
     volumes:
-      - ./deploy/data/cert:/etc/letsencrypt
-      - ./deploy/data/certbot-www:/var/www/certbot
+      - ./data/cert:/etc/letsencrypt
+      - ./data/certbot-www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - album-network
@@ -210,9 +210,9 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
-      - "./deploy/data/cert:/etc/nginx/ssl:ro"
-      - "./deploy/data/certbot-www:/var/www/certbot:ro"
-      - "./deploy/data/logs/nginx:/var/log/nginx"
+      - "./data/cert:/etc/nginx/ssl:ro"
+      - "./data/certbot-www:/var/www/certbot:ro"
+      - "./data/logs/nginx:/var/log/nginx"
     environment:
       - ENABLE_HTTPS=${ALBUM_ENABLE_HTTPS:-false}
       - SSL_CERT_PATH=${ALBUM_SSL_CERT_PATH:-/etc/nginx/ssl/cert.pem}
@@ -281,8 +281,8 @@ docker-compose run --rm certbot certonly \
     $SERVER
 
 # 复制证书到 Nginx 使用的目录
-cp deploy/data/cert/live/$DOMAIN/fullchain.pem deploy/data/cert/cert.pem
-cp deploy/data/cert/live/$DOMAIN/privkey.pem deploy/data/cert/key.pem
+cp data/cert/live/$DOMAIN/fullchain.pem data/cert/cert.pem
+cp data/cert/live/$DOMAIN/privkey.pem data/cert/key.pem
 
 # 重新加载 Nginx
 docker-compose exec nginx nginx -s reload
@@ -705,7 +705,7 @@ export ALBUM_CERTBOT_DOMAIN=api.example.com
 export ALBUM_SERVER_PUBLIC_BASE_URL=https://api.example.com
 
 # 2. 创建证书目录
-mkdir -p deploy/data/cert deploy/data/certbot-www
+mkdir -p data/cert data/certbot-www
 
 # 3. 首次获取证书（测试环境）
 export ALBUM_CERTBOT_STAGING=true
@@ -788,7 +788,7 @@ curl https://api.example.com/api/v1/version
 
 **解决方案**：
 - 手动执行续期：`docker-compose exec certbot certbot renew`
-- 检查证书目录权限：`chmod 755 deploy/data/cert`
+- 检查证书目录权限：`chmod 755 data/cert`
 
 #### Nginx SSL 错误
 
@@ -801,7 +801,7 @@ curl https://api.example.com/api/v1/version
 
 **解决方案**：
 - 确保证书文件路径正确
-- 设置正确的文件权限：`chmod 600 deploy/data/cert/key.pem`
+- 设置正确的文件权限：`chmod 600 data/cert/key.pem`
 
 ### 18.5.2 移动端 HTTPS 问题
 

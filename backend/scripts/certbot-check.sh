@@ -14,7 +14,7 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
-CERT_DIR="deploy/data/cert/live/$DOMAIN"
+CERT_DIR="data/cert/live/$DOMAIN"
 CERT_FILE="$CERT_DIR/fullchain.pem"
 
 if [ ! -f "$CERT_FILE" ]; then

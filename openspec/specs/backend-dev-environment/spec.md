@@ -10,7 +10,7 @@ TBD - created by archiving change add-backend-dev-docker-compose. Update Purpose
 #### Scenario: 项目名与数据目录隔离
 - **WHEN** 使用开发 compose 启动（如 `docker compose -f docker-compose.dev.yaml up -d`）
 - **THEN** Compose 项目名 SHALL 为独立值（如 `album-dev`），与生产所用项目名或默认项目名不同
-- **AND** 开发用数据（PostgreSQL、配置、证书、日志等）SHALL 存放在独立目录（如 `backend/deploy/data-dev`），与生产数据目录（如 `deploy/data`）分离
+- **AND** 开发用数据（PostgreSQL、配置、证书、日志等）SHALL 存放在独立目录（如 `backend/deploy/data-dev`），与生产数据目录（如 `backend/data`）分离
 - **AND** 开发 compose 中服务 SHALL 不设置固定 container_name，由 Compose 按项目名生成容器名，避免与生产容器名冲突
 
 #### Scenario: 开发与生产可分别启停
@@ -31,7 +31,7 @@ TBD - created by archiving change add-backend-dev-docker-compose. Update Purpose
 #### Scenario: 配置与生产对齐
 - **WHEN** 比较开发 compose 与生产 compose 中同名服务的环境变量与卷路径结构
 - **THEN** 开发 compose 中 postgresql、nginx、certbot 的环境变量及卷路径语义 SHALL 与生产一致
-- **AND** 仅数据根路径 SHALL 从生产目录（如 `deploy/data`）改为开发目录（如 `deploy/data-dev`）
+- **AND** 仅数据根路径 SHALL 从生产目录（如 `data`）改为开发目录（如 `deploy/data-dev`）
 
 ### Requirement: 开发后端服务挂载源码并常驻
 

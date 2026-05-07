@@ -60,9 +60,10 @@ curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scr
 
 说明：
 
-- 脚本会从代码托管拉取 `docker-compose.yaml` 与同级的 `init-runtime.sh`；容器镜像由 compose 中的仓库地址拉取（与本地 `make deploy` 的「本地构建」路径不同）。
+- 脚本会从代码托管拉取 `docker-compose.yaml` 与同级的 `init-runtime.sh`；容器镜像由 compose 中的仓库地址拉取（与本地 `make deploy` 的「本地构建」路径不同）。安装目录下仅使用顶层 `data/` 存放数据库、配置、证书与日志等，**不会**再出现 `deploy/data` 这一层。
 - 固定发布版本时可将 `PRISMBOX_REF` 设为 tag（在 `curl` 前 `export`），详见 `backend/scripts/install.sh` 注释。
 - `--https` 会启用 `https` profile（含 certbot）；仍需按本文档 [HTTPS 配置](#https-配置) 准备证书或域名。
+- **从旧版升级**：若此前数据在 `deploy/data/`（与本仓库 `deploy/` 源码目录并列的运行时目录），在 `backend` 根目录或你的安装目录执行 `mv deploy/data data` 后再更新 `docker-compose.yaml` 并重启容器，以免挂载到空目录。
 
 ### 使用 Makefile（克隆仓库后）
 
@@ -182,12 +183,12 @@ make deploy
 ```bash
 # 生成自签名证书
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout deploy/data/cert/key.pem \
-  -out deploy/data/cert/cert.pem \
+  -keyout data/cert/key.pem \
+  -out data/cert/cert.pem \
   -subj "/CN=YOUR_IP_OR_DOMAIN" \
   -addext "subjectAltName=IP:YOUR_IP"
 
-chmod 600 deploy/data/cert/key.pem
+chmod 600 data/cert/key.pem
 ```
 
 **方式 B：Let's Encrypt 证书（生产环境推荐）**
@@ -284,8 +285,8 @@ docker compose exec album-backend sh  # 进入后端容器
 ```bash
 # 生成自签名证书
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout deploy/data/cert/key.pem \
-  -out deploy/data/cert/cert.pem \
+  -keyout data/cert/key.pem \
+  -out data/cert/cert.pem \
   -subj "/CN=YOUR_DOMAIN_OR_IP"
 
 # 获取 Let's Encrypt 证书
@@ -365,12 +366,12 @@ CORS 由 Nginx 统一处理，支持：
 ```bash
 # 1. 生成自签名证书
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout deploy/data/cert/key.pem \
-  -out deploy/data/cert/cert.pem \
+  -keyout data/cert/key.pem \
+  -out data/cert/cert.pem \
   -subj "/CN=47.107.63.140" \
   -addext "subjectAltName=IP:47.107.63.140"
 
-chmod 600 deploy/data/cert/key.pem
+chmod 600 data/cert/key.pem
 
 # 2. 启用 HTTPS
 export ALBUM_ENABLE_HTTPS=true
@@ -448,7 +449,7 @@ curl https://api.example.com/api/v1/version
 
 **解决**：
 1. 检查 Nginx 配置：`docker compose exec nginx cat /etc/nginx/conf.d/default.conf | grep acme-challenge`
-2. 检查目录权限：`ls -la deploy/data/certbot-www/`
+2. 检查目录权限：`ls -la data/certbot-www/`
 3. 查看 Nginx 日志：`docker compose logs nginx`
 
 **问题 3：证书自动续期**
@@ -501,7 +502,7 @@ docker compose exec postgresql psql -U album -d album
 
 ```bash
 # 1. 检查证书文件
-ls -la deploy/data/cert/
+ls -la data/cert/
 
 # 2. 检查 Nginx 配置
 docker compose exec nginx nginx -t
