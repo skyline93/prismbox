@@ -178,7 +178,7 @@ deploy-init: ## 初始化部署环境（创建必要目录）
 	@echo ">> initializing deployment environment"
 	@if [ ! -d "deploy/data/postgresql" ]; then \
 		echo ">> first deployment, running init script..."; \
-		bash deploy/init.sh; \
+		sh scripts/init-runtime.sh; \
 	else \
 		echo ">> deployment already initialized"; \
 	fi
