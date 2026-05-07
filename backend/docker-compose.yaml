@@ -1,11 +1,13 @@
 # Album Backend Docker Compose 配置文件
 # 在 backend 根目录下执行: docker-compose up -d
+# pull_policy: missing — 本地已有镜像则不再从仓库拉取（up / pull 均尊重此策略，见各服务）
 
 version: '3.8'
 
 services:
   postgresql:
     image: postgres:14
+    pull_policy: missing
     restart: always
     container_name: album-postgresql
     ports:
@@ -27,6 +29,7 @@ services:
 
   album-backend:
     image: registry.cn-shenzhen.aliyuncs.com/greene/album-backend:latest-${ALBUM_ARCH:-amd64}
+    pull_policy: missing
     restart: always
     container_name: album-backend
     depends_on:
@@ -34,6 +37,8 @@ services:
         condition: service_healthy
     expose:
       - "8080"
+    ports:
+      - "8080:8080"
     volumes:
       - "./data:/app/data"
       - "./data/public:/app/public"
@@ -99,6 +104,7 @@ services:
 
   nginx:
     image: registry.cn-shenzhen.aliyuncs.com/greene/album-nginx:latest-${ALBUM_ARCH:-amd64}
+    pull_policy: missing
     restart: always
     container_name: album-nginx
     depends_on:
@@ -123,6 +129,7 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+    pull_policy: missing
     container_name: album-certbot
     restart: unless-stopped
     volumes:

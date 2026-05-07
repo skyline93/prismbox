@@ -203,7 +203,7 @@ export ALBUM_ARCH
 
 echo ">> 拉取镜像..."
 # shellcheck disable=SC2086
-$DOCKER_COMPOSE $PROFILE_ARGS pull
+$DOCKER_COMPOSE $PROFILE_ARGS pull --policy missing
 
 echo ">> 启动服务..."
 # shellcheck disable=SC2086
