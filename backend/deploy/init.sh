@@ -22,11 +22,6 @@ mkdir -p deploy/data/certbot-www/.well-known/acme-challenge
 echo "设置目录权限..."
 chmod -R 755 deploy/data
 
-# 设置脚本执行权限
-echo "设置脚本执行权限..."
-chmod +x deploy/docker-entrypoint.sh 2>/dev/null || true
-chmod +x deploy/docker-entrypoint-backend.sh 2>/dev/null || true
-
 # 检查配置文件
 if [ ! -f "deploy/data/configs/config.yaml" ]; then
     echo "提示: deploy/data/configs/config.yaml 不存在，容器启动时会自动生成（使用环境变量配置）"
@@ -111,6 +106,6 @@ echo ""
 echo "下一步："
 echo "1. （可选）检查并修改 .env 文件中的配置（所有配置都有默认值）"
 echo "2. （可选）如果启用 HTTPS，请将 SSL 证书放置到 deploy/data/cert/ 目录"
-echo "3. 运行 ./deploy.sh 一键部署启动服务"
+echo "3. 运行 docker compose up -d（或 ./deploy.sh / make deploy）启动服务"
 echo ""
 

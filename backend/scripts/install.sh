@@ -129,9 +129,7 @@ cd "$INSTALL_DIR"
 fetch "$(raw_url "${PREFIX}/docker-compose.yaml")" "./docker-compose.yaml"
 mkdir -p deploy
 fetch "$(raw_url "${PREFIX}/deploy/init.sh")" "./deploy/init.sh"
-fetch "$(raw_url "${PREFIX}/deploy/docker-entrypoint.sh")" "./deploy/docker-entrypoint.sh"
-fetch "$(raw_url "${PREFIX}/deploy/docker-entrypoint-backend.sh")" "./deploy/docker-entrypoint-backend.sh"
-chmod +x deploy/init.sh deploy/docker-entrypoint.sh deploy/docker-entrypoint-backend.sh 2>/dev/null || true
+chmod +x deploy/init.sh 2>/dev/null || true
 
 echo ">> 初始化数据目录与 .env"
 sh deploy/init.sh
