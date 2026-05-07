@@ -4,7 +4,7 @@ set -e
 # Album Backend 首次部署初始化脚本
 # 在 backend 根目录下执行
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/.."  # 回到 backend 根目录
 
 echo "=========================================="

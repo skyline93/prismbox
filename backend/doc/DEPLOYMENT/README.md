@@ -44,7 +44,27 @@
 
 ## 快速开始
 
-### 使用 Makefile（推荐）
+### 远程一键安装（curl，无需克隆）
+
+适合已有 Docker / Docker Compose 的服务器，安装目录默认 `~/prismbox-backend`（源码见 [skyline93/prismbox](https://github.com/skyline93/prismbox)）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scripts/install.sh | sh
+```
+
+常用参数：通过管道后的 `sh -s --` 传递，例如非交互、指定目录、启用 HTTPS compose profile：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scripts/install.sh | sh -s -- --dir /opt/prismbox-backend --yes --https
+```
+
+说明：
+
+- 脚本会从代码托管拉取 `docker-compose.yaml` 与 `deploy/` 下必要文件；容器镜像由 compose 中的仓库地址拉取（与本地 `make deploy` 的「本地构建」路径不同）。
+- 固定发布版本时可将 `PRISMBOX_REF` 设为 tag（在 `curl` 前 `export`），详见 `backend/scripts/install.sh` 注释。
+- `--https` 会启用 `https` profile（含 certbot）；仍需按本文档 [HTTPS 配置](#https-配置) 准备证书或域名。
+
+### 使用 Makefile（克隆仓库后）
 
 ```bash
 cd backend

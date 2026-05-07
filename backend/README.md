@@ -17,7 +17,23 @@ Album Backend 是一个基于 Go 语言开发的照片和视频管理后端服�
 
 ## 🚀 快速开始
 
-### 方式一：容器化部署（推荐）
+### 方式一：远程一键安装（无需克隆仓库）
+
+在已安装 **Docker** 与 **Docker Compose** 的机器上执行（默认从 [GitHub prismbox](https://github.com/skyline93/prismbox) 下载 compose 与部署脚本，再由 Docker 拉取 `docker-compose.yaml` 中的后端与 Nginx 镜像）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scripts/install.sh | sh
+```
+
+可选：固定版本、自定义目录、`--yes` 非交互、`--https` 启用 HTTPS profile 等：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skyline93/prismbox/main/backend/scripts/install.sh | sh -s -- --dir ~/prismbox-backend --yes
+```
+
+若需从其他托管拉取脚本与 compose（例如镜像站），可在管道前设置 `PRISMBOX_GIT_HOST` 与 `PRISMBOX_REPO`。其余变量见 `scripts/install.sh` 头部注释。
+
+### 方式二：容器化部署（克隆仓库）
 
 一键部署，所有配置都有默认值：
 
@@ -28,7 +44,7 @@ cd backend
 
 详细说明请参考：[部署文档](./doc/DEPLOYMENT/README.md)
 
-### 方式二：本地开发
+### 方式三：本地开发
 
 #### 前置要求
 

@@ -15,9 +15,8 @@ services:
       POSTGRES_USER: ${ALBUM_POSTGRES_USER:-album}
       POSTGRES_PASSWORD: ${ALBUM_POSTGRES_PASSWORD:-album}
       POSTGRES_DB: ${ALBUM_POSTGRES_DB:-album}
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
-      - "/etc/localtime:/etc/localtime:ro"
-      - "/etc/timezone:/etc/timezone:ro"
       - "./deploy/data-dev/postgresql:/var/lib/postgresql/data"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${ALBUM_POSTGRES_USER:-album} -d ${ALBUM_POSTGRES_DB:-album}"]
